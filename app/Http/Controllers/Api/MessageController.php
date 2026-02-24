@@ -45,16 +45,29 @@ class MessageController extends Controller
     {
         $user = Auth::user();
 
-        $threads = MessageThread::forUser($user->id)
+        $search = $request->query('search');
+
+        $query = MessageThread::forUser($user->id)
             ->with([
                 'latestMessage.sender:id,name,username',
                 'participants.user:id,name,username',
                 'messages' => function ($query) {
                     $query->orderBy('created_at', 'desc')->limit(1);
                 }
-            ])
-            ->orderBy('updated_at', 'desc')
-            ->get();
+            ]);
+
+        // Search in subject AND message body content
+        if ($search && trim($search) !== '') {
+            $searchTerm = '%' . trim($search) . '%';
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('subject', 'like', $searchTerm)
+                  ->orWhereHas('messages', function ($mq) use ($searchTerm) {
+                      $mq->where('body', 'like', $searchTerm);
+                  });
+            });
+        }
+
+        $threads = $query->orderBy('updated_at', 'desc')->get();
 
         // Add unread status and other participant info
         $threads->map(function ($thread) use ($user) {

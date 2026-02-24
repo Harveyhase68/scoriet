@@ -3624,7 +3624,7 @@ export const it: Translations = {
   messagingpanel1340: 'Cancellare',
   messagingpanel1346: 'Da te ',
   messagingpanel1346_2: ' Allegato',
-  messagingpanel1346_3: 'Da te',
+  messagingpanel1346_3: 'Inviare',
   messagingpanel1367: 'Sblocca gli allegati',
   messagingpanel1376: 'Cancellare',
   messagingpanel1382: 'Sblocca (50 crediti)',

@@ -64,7 +64,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [globalFilter, setGlobalFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchQueryRef = useRef('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [_activeTabIndex, _setActiveTabIndex] = useState(0);
 
@@ -128,7 +130,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
   const toast = useRef<Toast>(null);
 
-  const loadThreads = useCallback(async (silent: boolean = false) => {
+  const loadThreads = useCallback(async (silent: boolean = false, search?: string) => {
     try {
       if (!silent) setLoading(true);
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
@@ -136,7 +138,12 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         throw new Error(t.messagingpanel133);
       }
 
-      const response = await fetch('/api/messages/threads', {
+      const url = new URL('/api/messages/threads', window.location.origin);
+      if (search && search.trim()) {
+        url.searchParams.set('search', search.trim());
+      }
+
+      const response = await fetch(url.toString(), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -290,7 +297,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   // Only refreshes the thread LIST - does NOT change the selected thread (non-intrusive)
   useEffect(() => {
     const refreshInterval = setInterval(() => {
-      loadThreads(true); // silent refresh thread list only
+      loadThreads(true, searchQueryRef.current); // silent refresh thread list, respecting active search
       // Also refresh the currently selected thread to show new messages in the conversation
       if (selectedThread) {
         loadThreadDetails(selectedThread.id, true); // isRefresh = true, don't scroll
@@ -307,7 +314,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       const threadId = customEvent.detail?.threadId;
 
       // Refresh the thread list first
-      await loadThreads(true);
+      await loadThreads(true, searchQueryRef.current);
 
       // If a specific thread ID was provided (from notification click), select that thread
       if (threadId) {
@@ -354,10 +361,14 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               detail: t.messagingpanel351,
               life: 3000,
             });
-            if (selectedThread?.id === thread.id) {
-              setSelectedThread(null);
-            }
-            loadThreads();
+            // Clear the message view if the deleted thread was selected
+            setSelectedThread(prev => {
+              if (prev?.id === thread.id) return null;
+              return prev;
+            });
+            setHasMoreOlder(false);
+            setTotalMessages(0);
+            loadThreads(false, searchQueryRef.current);
             window.dispatchEvent(new CustomEvent('messagesUpdated'));
           }
         } catch {
@@ -708,7 +719,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         setSelectedProject(null);
         setSelectedTeam(null);
         setComposeFiles([]); // Clear compose attachments
-        loadThreads();
+        loadThreads(false, searchQueryRef.current);
         if (data.thread) {
           setSelectedThread(data.thread);
         }
@@ -773,7 +784,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         setReplyBody('');
         setSelectedFiles([]); // Clear selected files
         loadThreadDetails(selectedThread.id); // Will auto-scroll to bottom
-        loadThreads(true);
+        loadThreads(true, searchQueryRef.current);
       } else {
         throw new Error(t.messagingpanel775);
       }
@@ -854,15 +865,25 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   const renderHeader = () => {
     return (
       <div className="flex justify-between items-center">
-        <span className="p-input-icon-left">
-          <i className="pi pi-search" />
+        <div style={{ position: 'relative', width: '100%' }}>
           <InputText
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={searchQuery}
+            onChange={(e) => {
+              const value = e.target.value;
+              setSearchQuery(value);
+              searchQueryRef.current = value;
+              // Debounce: wait 400ms after typing stops before searching
+              if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+              searchTimerRef.current = setTimeout(() => {
+                loadThreads(true, value);
+              }, 400);
+            }}
             placeholder={t.messagingpanel859}
             className="w-full"
+            style={{ paddingRight: '2rem' }}
           />
-        </span>
+          <i className="pi pi-search" style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, pointerEvents: 'none' }} />
+        </div>
       </div>
     );
   };
@@ -880,7 +901,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
           label={t.messagingpanel877}
           icon="pi pi-refresh"
           className="p-button-sm p-button-secondary"
-          onClick={() => loadThreads()}
+          onClick={() => loadThreads(false, searchQueryRef.current)}
         />
       </div>
     );
@@ -942,7 +963,6 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               selection={selectedThread}
               onSelectionChange={(e) => handleThreadSelect(e.value as Thread)}
               dataKey="id"
-              globalFilter={globalFilter}
               header={renderHeader()}
               emptyMessage={t.messagingpanel943}
               scrollable

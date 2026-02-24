@@ -1690,13 +1690,13 @@ export default function ProjectSettingsPanel() {
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
                                         {t.projectsettingspanel689}
                                     </label>
-                                    <PrimePassword
-                                        value={formData.google_translate_api_key}
+                                    <input
+                                        type="text"
+                                        value={formData.google_translate_api_key || ''}
                                         onChange={(e) => setFormData({ ...formData, google_translate_api_key: e.target.value })}
                                         placeholder="AIzaSy..."
-                                        className="w-full font-mono"
-                                        feedback={false}
-                                        toggleMask
+                                        className="w-full font-mono rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                                     />
                                     <div className="text-xs mt-1">
                                         {t.projectsettingspanel700}

@@ -179,7 +179,7 @@
             <h1 class="title"><?php echo e(__('new-messagebladephp179')); ?></h1>
         </div>
 
-        <p>Hallo <?php echo e($recipient->name); ?>,</p>
+        <p><?php echo e(__('new-messagebladephp182')); ?><?php echo e($recipient->name); ?>,</p>
 
         <p><?php echo e(__('new-messagebladephp184')); ?></p>
 

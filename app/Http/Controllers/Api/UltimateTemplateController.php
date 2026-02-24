@@ -110,7 +110,11 @@ class UltimateTemplateController extends Controller
             $format = $request->query('format', 'json'); // json, js, php
             $compile = $request->query('compile', true); // Compile templates to JS functions
             $includeSource = $request->query('include_source', false); // Include template source as comments
-            $migrationFromVersion = $request->query('migration_from_version'); // For schema migration SQL
+            // 📊 Per-schema migration versions (JSON object: {schemaId: versionNumber, ...})
+            $migrationFromVersions = $request->query('migration_from_versions');
+            if ($migrationFromVersions && is_string($migrationFromVersions)) {
+                $migrationFromVersions = json_decode($migrationFromVersions, true);
+            }
             // 🎯 NEU: schema_version für Project-Dateien - erlaubt Auswahl einer spezifischen Schema-Version
             $schemaVersion = $request->query('schema_version'); // For project_file types - specific schema version
 
@@ -119,7 +123,7 @@ class UltimateTemplateController extends Controller
             // Wenn $tableName gesetzt ist (db_table_file) → KEINE Migrations im GTree
             // Wenn $tableName NULL ist (project_file) → Migrations im GTree einbinden
             // 🎯 NEU: $schemaVersion erlaubt die Auswahl einer spezifischen Schema-Version (nicht automatisch die neueste)
-            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersion, $tableName, $schemaVersion);
+            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions, $tableName, $schemaVersion);
 
             // Initialize Ultimate Template Engine
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
@@ -242,6 +246,31 @@ class UltimateTemplateController extends Controller
             $endTime = microtime(true);
             $executionTime = ($endTime - $startTime) * 1000; // Convert to milliseconds
 
+            // 📊 Track performance metric
+            $cacheStats = $cacheService ? $cacheService->getHitStats() : ['hits' => 0, 'misses' => 0, 'total' => 0, 'hit_rate' => 0];
+            $user = auth()->user();
+            try {
+                PerformanceMetric::create([
+                    'user_id' => $user?->id,
+                    'operation' => PerformanceMetric::OP_GENERATION,
+                    'operation_detail' => "Template: {$templateId}" . ($tableName ? " ({$tableName})" : ' (project)'),
+                    'duration_ms' => (int) $executionTime,
+                    'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                    'tables_count' => null,
+                    'fields_count' => null,
+                    'from_cache' => $cacheStats['hits'] > 0,
+                    'subscription_type' => $user?->subscription?->type ?? ($user?->isPatron() ? 'patron' : 'free'),
+                    'metadata' => [
+                        'cache_hits' => $cacheStats['hits'],
+                        'cache_misses' => $cacheStats['misses'],
+                        'cache_hit_rate' => $cacheStats['hit_rate'],
+                    ],
+                    'created_at' => now(),
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Performance tracking error: ' . $e->getMessage());
+            }
+
             // Build response based on format
             return $this->buildResponse($format, [
                 'template_id' => $templateId,
@@ -308,11 +337,11 @@ class UltimateTemplateController extends Controller
      * @param int|null $projectId Project ID
      * @param int $templateId Template ID
      * @param Template $template Template model
-     * @param int|null $migrationFromVersion Version to migrate from (null = no migration)
+     * @param array|null $migrationFromVersions Per-schema migration versions {schemaId: versionNumber} (null = no migration)
      * @param string|null $tableName Table name for db_table_file types (null = project file)
      * @param int|null $schemaVersion Specific schema version to use (null = use latest)
      */
-    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersion = null, ?string $tableName = null, $schemaVersion = null): array
+    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersions = null, ?string $tableName = null, $schemaVersion = null): array
     {
         // Load project and schema data
         $actualProject = $projectId ? Project::find($projectId) : null;
@@ -372,16 +401,24 @@ class UltimateTemplateController extends Controller
                     $versionTables = $this->getCachedSchemaTables($targetVersion->id);
                     $schemaTables = $schemaTables->merge($versionTables);
 
-                    // 📊 Build migration data if migration_from_version is set
+                    // 📊 Build migration data if per-schema migration version is set
                     // 🎯 WICHTIG: NUR für Project-Dateien, NICHT für DB-Tabellen-Dateien!
                     // Migration = eine Datei pro Version, nicht pro Tabelle
-                    if ($isProjectFile && $migrationFromVersion !== null && $targetVersionId !== null) {
-                        $fromVersion = SchemaVersion::where('schema_id', $schema->id)
-                            ->where('version_number', (int)$migrationFromVersion)
-                            ->first();
+                    if ($isProjectFile && $migrationFromVersions !== null && $targetVersionId !== null) {
+                        // Per-schema migration version lookup
+                        $schemaSpecificVersion = null;
+                        if (is_array($migrationFromVersions)) {
+                            $schemaSpecificVersion = $migrationFromVersions[(string)$schema->id] ?? $migrationFromVersions[$schema->id] ?? null;
+                        }
 
-                        if ($fromVersion && $fromVersion->id !== $targetVersionId) {
-                            $migrationData = $this->buildMigrationData($fromVersion, $targetVersion, $actualProject);
+                        if ($schemaSpecificVersion !== null) {
+                            $fromVersion = SchemaVersion::where('schema_id', $schema->id)
+                                ->where('version_number', (int)$schemaSpecificVersion)
+                                ->first();
+
+                            if ($fromVersion && $fromVersion->id !== $targetVersionId) {
+                                $migrationData = $this->buildMigrationData($fromVersion, $targetVersion, $actualProject);
+                            }
                         }
                     }
                 }
@@ -2235,6 +2272,7 @@ JS;
             $compile = $request->input('compile', true);
             $includeSource = $request->input('include_source', false);
             $includeGtree = $request->input('include_gtree', false); // 🚀 NEW: Only send gtree when requested!
+            $migrationFromVersions = $request->input('migration_from_versions'); // 📊 Per-schema migration versions
 
             if (!$projectId) {
                 return response()->json([
@@ -2262,7 +2300,7 @@ JS;
 
             // Build gtree if not cached
             if (!$gtreeData) {
-                $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template);
+                $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions);
 
                 // Cache for 24 hours
                 if ($cacheService) {
@@ -2372,6 +2410,32 @@ JS;
 
             // Get cache hit stats before cleanup
             $cacheStats = $cacheService ? $cacheService->getHitStats() : ['hits' => 0, 'misses' => 0, 'total' => 0, 'hit_rate' => 0];
+
+            // 📊 Track performance metric for batch processing
+            $user = auth()->user();
+            try {
+                PerformanceMetric::create([
+                    'user_id' => $user?->id,
+                    'operation' => PerformanceMetric::OP_GENERATION,
+                    'operation_detail' => "Batch: {$templateId} ({$tableCount} tables)",
+                    'duration_ms' => (int) $executionTime,
+                    'memory_peak_mb' => (int) (memory_get_peak_usage(true) / 1024 / 1024),
+                    'tables_count' => count($tables),
+                    'fields_count' => null,
+                    'from_cache' => $gtreeFromCache || ($cacheStats['hits'] > 0),
+                    'subscription_type' => $user?->subscription?->type ?? ($user?->isPatron() ? 'patron' : 'free'),
+                    'metadata' => [
+                        'batch' => true,
+                        'gtree_from_cache' => $gtreeFromCache,
+                        'cache_hits' => $cacheStats['hits'],
+                        'cache_misses' => $cacheStats['misses'],
+                        'cache_hit_rate' => $cacheStats['hit_rate'],
+                    ],
+                    'created_at' => now(),
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Performance tracking error: ' . $e->getMessage());
+            }
 
             // 🚀 Build response with optional gtree (MASSIVE BANDWIDTH SAVE!)
             $response = response()->json([

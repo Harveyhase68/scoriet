@@ -3624,7 +3624,7 @@ export const es: Translations = {
   messagingpanel1340: 'Cancelar',
   messagingpanel1346: 'De ti ',
   messagingpanel1346_2: '  Adjunto',
-  messagingpanel1346_3: 'De ti',
+  messagingpanel1346_3: 'Enviar',
   messagingpanel1367: 'Desbloquear archivos adjuntos',
   messagingpanel1376: 'Cancelar',
   messagingpanel1382: 'Desbloquear (50 créditos)',
