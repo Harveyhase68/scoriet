@@ -1462,7 +1462,7 @@ class UltimateTemplateController extends Controller
         $gtreeData['gtree'][0]['project'][0]['currentFormWindowIdx'] = $currentFormWindowIdx;
         $gtreeData['gtree'][0]['project'][0]['currentFormWindowType'] = $formWindowType;
 
-        // 🎯 Per-file field assignment overlay (visibility state + sort order)
+        // 🎯 Per-file field assignment overlay (visibility + sort on INDEX ARRAYS only, fields order unchanged!)
         $fileAssignments = TemplateFileFieldAssignment::where('template_file_id', $file->id)
             ->get()
             ->keyBy('schema_field_id');
@@ -1471,7 +1471,10 @@ class UltimateTemplateController extends Controller
             foreach ($gtreeData['gtree'][0]['project'][0]['tables'] as &$tableData) {
                 if (!isset($tableData['fields'])) continue;
 
-                foreach ($tableData['fields'] as &$fieldData) {
+                // Apply visibility + sort values to field properties (array ORDER stays unchanged!)
+                $customSort = []; // field_index → sort_order (only fields with explicit sort_order)
+                $notAvail = [];   // field_index → true (for not_available fields)
+                foreach ($tableData['fields'] as $idx => &$fieldData) {
                     $sfId = $fieldData['schema_field_id'] ?? null;
                     if ($sfId && isset($fileAssignments[$sfId])) {
                         $assignment = $fileAssignments[$sfId];
@@ -1480,84 +1483,39 @@ class UltimateTemplateController extends Controller
                         if ($assignment->sort_order !== null) {
                             $fieldData['sort'] = $assignment->sort_order;
                             $fieldData['sortindex'] = $assignment->sort_order;
+                            $customSort[$idx] = $assignment->sort_order;
+                        }
+                        if ($assignment->visibility_state === 'not_available') {
+                            $notAvail[$idx] = true;
                         }
                     }
                 }
                 unset($fieldData);
 
-                // Re-sort fields by sort_order after overlay
-                usort($tableData['fields'], function ($a, $b) {
-                    return ($a['sort'] ?? 0) - ($b['sort'] ?? 0);
-                });
+                // Sort comparator: custom sort_order first (numerically), then unassigned (original index)
+                $cmp = function ($a, $b) use ($customSort) {
+                    $ac = isset($customSort[$a]);
+                    $bc = isset($customSort[$b]);
+                    if ($ac !== $bc) return $ac ? -1 : 1;
+                    if ($ac && $bc) return $customSort[$a] !== $customSort[$b] ? $customSort[$a] - $customSort[$b] : $a - $b;
+                    return $a - $b;
+                };
+                $sort = function ($arr) use ($cmp) { usort($arr, $cmp); return $arr; };
+                $excl = function ($arr) use ($notAvail) { return array_values(array_filter($arr, fn($i) => !isset($notAvail[$i]))); };
 
-                // Rebuild ALL index arrays after re-sort + assignment filtering
-                // Convention: arrays WITHOUT 'all' suffix exclude 'not_available' fields
-                //             arrays WITH 'all' suffix include ALL fields regardless of assignment
-                // First: resolve file-key field names (supports composite keys)
-                $fileKeyNameStr = $tableData['fileprimarykey'] ?? $tableData['filekeyname'] ?? 'id';
-                $allFieldNames = array_column($tableData['fields'], 'name');
-                $fileKeyNames = [$fileKeyNameStr]; // Default: single key
-                // Check if it's a composite key
-                $compositeSeparators = [',', '+', '|', ';', ' '];
-                foreach ($compositeSeparators as $sep) {
-                    if (strpos($fileKeyNameStr, $sep) !== false) {
-                        $parts = array_map('trim', explode($sep, $fileKeyNameStr));
-                        $validParts = array_filter($parts, function($p) use ($allFieldNames) {
-                            return !empty($p) && in_array($p, $allFieldNames);
-                        });
-                        if (count($validParts) > 1) {
-                            $fileKeyNames = array_values($validParts);
-                            break;
-                        }
-                    }
-                }
+                // Re-order index arrays by per-file sort_order (fields array stays in original order!)
+                $tableData['fieldsnokey']      = $sort($excl($tableData['fieldsnokeyall']));
+                $tableData['fieldsnokeyall']   = $sort($tableData['fieldsnokeyall']);
+                $tableData['fieldsnoblob']     = $sort($excl($tableData['fieldsnobloball']));
+                $tableData['fieldsnobloball']  = $sort($tableData['fieldsnobloball']);
+                $tableData['fieldssearchkeys'] = $sort($tableData['fieldssearchkeys']);
 
-                $newFieldsNoKey = [];
-                $newFieldsNoKeyAll = [];
-                $newFieldsNoBlob = [];
-                $newFieldsNoBlobAll = [];
-                $newFieldsSearchKeys = [];
-                foreach ($tableData['fields'] as $idx => $f) {
-                    $isNotAvailable = ($f['visibility_state'] ?? '') === 'not_available';
-                    $fieldName = $f['name'] ?? '';
-                    $isKey = ($f['isprimary'] ?? false) || in_array($fieldName, $fileKeyNames);
-
-                    if (!$isKey) {
-                        // fieldsnokeyall: exclude PK + file-keys, but NO assignment filtering
-                        $newFieldsNoKeyAll[] = $idx;
-                        // fieldsnokey: exclude PK + file-keys + not_available
-                        if (!$isNotAvailable) {
-                            $newFieldsNoKey[] = $idx;
-                        }
-                    }
-
-                    if (!($f['isblob'] ?? false)) {
-                        // fieldsnobloball: no assignment filtering (all non-BLOB)
-                        $newFieldsNoBlobAll[] = $idx;
-                        // fieldsnoblob: exclude BLOB types AND not_available fields
-                        if (!$isNotAvailable) {
-                            $newFieldsNoBlob[] = $idx;
-                        }
-                    }
-
-                    // fieldssearchkeys: file-key field indices
-                    if (in_array($fieldName, $fileKeyNames)) {
-                        $newFieldsSearchKeys[] = $idx;
-                    }
-                }
-                $tableData['fieldsnokey'] = $newFieldsNoKey;
-                $tableData['fieldsnokeyall'] = $newFieldsNoKeyAll;
-                $tableData['fieldsnoblob'] = $newFieldsNoBlob;
-                $tableData['fieldsnobloball'] = $newFieldsNoBlobAll;
-                $tableData['fieldssearchkeys'] = $newFieldsSearchKeys;
-
-                // Update all counters to match rebuilt arrays
-                $tableData['nmaxfields'] = count($tableData['fields']);
-                $tableData['nmaxitemsnokey'] = count($newFieldsNoKey);
-                $tableData['nmaxitemsnokeyall'] = count($newFieldsNoKeyAll);
-                $tableData['nmaxitemsnoblob'] = count($newFieldsNoBlob);
-                $tableData['nmaxitemsnobloball'] = count($newFieldsNoBlobAll);
-                $tableData['nmaxsearchkeys'] = count($newFieldsSearchKeys);
+                // Update counters to match
+                $tableData['nmaxitemsnokey']     = count($tableData['fieldsnokey']);
+                $tableData['nmaxitemsnokeyall']  = count($tableData['fieldsnokeyall']);
+                $tableData['nmaxitemsnoblob']    = count($tableData['fieldsnoblob']);
+                $tableData['nmaxitemsnobloball'] = count($tableData['fieldsnobloball']);
+                $tableData['nmaxsearchkeys']     = count($tableData['fieldssearchkeys']);
             }
             unset($tableData);
         }
