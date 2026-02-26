@@ -211,6 +211,51 @@ class TemplateCacheService
     }
 
     /**
+     * Invalidate GTree cache for ALL templates linked to a specific project
+     *
+     * Use when project-level data changes (settings, languages, variables, etc.)
+     *
+     * @param int $projectId
+     * @return void
+     */
+    public function invalidateGtreeForProject(int $projectId): void
+    {
+        $templateIds = \Illuminate\Support\Facades\DB::table('project_template_usage')
+            ->where('project_id', $projectId)
+            ->where('is_active', true)
+            ->pluck('template_id')
+            ->unique();
+
+        foreach ($templateIds as $templateId) {
+            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}";
+            Cache::forget($gtreeCacheKey);
+        }
+    }
+
+    /**
+     * Invalidate compiled template cache for ALL templates linked to a specific project
+     *
+     * Use when project-level data that affects compilation changes (e.g. template variable values)
+     *
+     * @param int $projectId
+     * @return void
+     */
+    public function invalidateCompiledForProject(int $projectId): void
+    {
+        $templateIds = \Illuminate\Support\Facades\DB::table('project_template_usage')
+            ->where('project_id', $projectId)
+            ->where('is_active', true)
+            ->pluck('template_id')
+            ->unique();
+
+        if (config('cache.default') === 'redis') {
+            foreach ($templateIds as $templateId) {
+                Cache::tags(["template:{$templateId}"])->flush();
+            }
+        }
+    }
+
+    /**
      * Clear all template compilation cache
      * Use only for major changes (schema updates, etc.)
      *

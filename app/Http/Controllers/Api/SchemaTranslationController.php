@@ -77,7 +77,7 @@ class SchemaTranslationController extends Controller
         $validated = $request->validate([
             'item_name' => 'required|string|max:255',
             'code' => 'required|string|max:5|exists:languages,code',
-            'translated_text' => 'required|string|max:500',
+            'translated_text' => 'required|string|max:65535',
             'description' => 'nullable|string|max:1000',
             'is_active' => 'boolean'
         ]);
@@ -110,7 +110,7 @@ class SchemaTranslationController extends Controller
         $validated = $request->validate([
             'item_name' => 'required|string|max:255',
             'code' => 'required|string|max:5|exists:languages,code',
-            'translated_text' => 'required|string|max:500',
+            'translated_text' => 'required|string|max:65535',
             'description' => 'nullable|string|max:1000',
             'is_active' => 'boolean'
         ]);
@@ -207,14 +207,18 @@ class SchemaTranslationController extends Controller
 
         $schemaStructure = $allTables->map(function ($table) {
             return [
+                'id' => $table->id,
                 'table_name' => $table->table_name,
                 'comment' => $table->comment,
                 'schema_name' => $table->schema_name ?? 'Unknown', // Include schema name
                 'fields' => $table->fields->map(function ($field) {
                     return [
+                        'id' => $field->id,
                         'field_name' => $field->field_name,
                         'field_type' => strtolower($field->field_type),
-                        'comment' => $field->comment
+                        'field_order' => $field->field_order,
+                        'comment' => $field->comment,
+                        'control_type' => $field->control_type ?? 'TEXT',
                     ];
                 })->toArray()
             ];
@@ -287,7 +291,7 @@ class SchemaTranslationController extends Controller
             'item_name' => 'required|string|max:255',
             'translations' => 'required|array',
             'translations.*.code' => 'required|string|max:5|exists:languages,code',
-            'translations.*.translated_text' => 'required|string|max:500',
+            'translations.*.translated_text' => 'required|string|max:65535',
             'translations.*.description' => 'nullable|string|max:1000'
         ]);
 

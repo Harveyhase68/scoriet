@@ -81,4 +81,12 @@ class TemplateFile extends Model
     {
         return $query->where('file_type', $type);
     }
+
+    /**
+     * Get the per-field assignments for this template file.
+     */
+    public function fieldAssignments()
+    {
+        return $this->hasMany(TemplateFileFieldAssignment::class, 'template_file_id');
+    }
 }

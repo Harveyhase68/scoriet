@@ -907,11 +907,18 @@ class TemplateController extends Controller
             ]);
         }
 
-        // Update files - delete existing and recreate
+        // Update files - UPDATE existing, CREATE new, DELETE removed
+        // IMPORTANT: We must preserve file IDs to maintain FK relationships
+        // (template_file_field_assignments has ON DELETE CASCADE on template_file_id)
         if (isset($validated['files'])) {
-            $template->files()->delete();
+            // Index existing files by file_name for matching
+            $existingFiles = $template->files()->get()->keyBy('file_name');
+            $incomingFileNames = [];
 
             foreach ($validated['files'] as $fileData) {
+                $fileName = $fileData['file_name'];
+                $incomingFileNames[] = $fileName;
+
                 $processedContent = null;
 
                 // 🆕 Check if this is a managed files list (File Manager mode)
@@ -922,7 +929,7 @@ class TemplateController extends Controller
                         $processedContent = [
                             'file_content' => $zipBase64,
                             'content_type' => 'zip',
-                            'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
+                            'zip_filename' => $fileData['zip_filename'] ?? $fileName,
                         ];
                     } catch (\Exception $e) {
                         \Log::error(__('templatecontrollerphp928'), ['error' => $e->getMessage()]);
@@ -933,34 +940,49 @@ class TemplateController extends Controller
                     $processedContent = [
                         'file_content' => $fileData['file_content'],
                         'content_type' => 'zip',
-                        'zip_filename' => $fileData['zip_filename'] ?? $fileData['file_name'],
+                        'zip_filename' => $fileData['zip_filename'] ?? $fileName,
                     ];
                 } else {
                     // Process archive content (auto-converts TAR.GZ/TAR.XZ to ZIP)
                     $processedContent = $this->processArchiveFileContent(
                         $fileData['file_content'],
-                        $fileData['zip_filename'] ?? $fileData['file_name']
+                        $fileData['zip_filename'] ?? $fileName
                     );
                 }
 
-                $template->files()->create([
-                    'file_name' => $fileData['file_name'],
-                    'file_path' => $fileData['file_path'] ?? $fileData['file_name'], // Use provided file_path or fallback to file_name
+                $fileAttributes = [
+                    'file_name' => $fileName,
+                    'file_path' => $fileData['file_path'] ?? $fileName,
                     'file_content' => $processedContent['file_content'],
                     'file_type' => $fileData['file_type'],
                     'file_order' => $fileData['file_order'] ?? 0,
                     'output_path' => $fileData['output_path'] ?? '/',
-                    'content_type' => $processedContent['content_type'], // Auto-detected
-                    'zip_filename' => $processedContent['zip_filename'], // Original filename preserved
+                    'content_type' => $processedContent['content_type'],
+                    'zip_filename' => $processedContent['zip_filename'],
                     'form_window_type' => $fileData['form_window_type'] ?? 0,
-                ]);
+                    'is_include_only' => $fileData['is_include_only'] ?? false,
+                ];
+
+                if ($existingFiles->has($fileName)) {
+                    // UPDATE existing file in place (preserves ID + FK relationships)
+                    $existingFiles->get($fileName)->update($fileAttributes);
+                } else {
+                    // CREATE new file
+                    $template->files()->create($fileAttributes);
+                }
+            }
+
+            // DELETE files that are no longer in the incoming data
+            // (only these lose their field assignments - which is correct behavior)
+            $filesToDelete = $existingFiles->keys()->diff($incomingFileNames);
+            foreach ($filesToDelete as $fileName) {
+                $existingFiles->get($fileName)->delete();
             }
 
             // Update file_count based on actual number of files
             $template->update(['file_count' => $template->files()->count()]);
 
-            // 🗑️ CACHE: Explicitly invalidate ALL caches after files were recreated
-            // The bulk delete above doesn't trigger model events, so we must invalidate manually
+            // 🗑️ CACHE: Explicitly invalidate ALL caches after files were changed
             try {
                 $cacheService = app(TemplateCacheService::class);
                 $cacheService->invalidateTemplate($template->id);

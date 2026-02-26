@@ -67,6 +67,7 @@ const CodeGenerationPanel = lazy(() => import('@/Components/Panels/CodeGeneratio
 const DeploymentLogPanel = lazy(() => import('@/Components/Panels/DeploymentLogPanel'));
 const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageManagementPanel'));
 const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
+const FieldAssignmentPanel = lazy(() => import('@/Components/Panels/FieldAssignmentPanel'));
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const PayoutAdminPanel = lazy(() => import('@/Components/Panels/PayoutAdminPanel'));
 const PerformanceMetricsPanel = lazy(() => import('@/Components/Panels/PerformanceMetricsPanel'));
@@ -890,6 +891,19 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <SchemaTranslationPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'field-assignments':
+      return {
+        id,
+        title: data.title || t.fieldassignmentpanel_title,
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <FieldAssignmentPanel />
           </Suspense>
         ),
         closable: true,

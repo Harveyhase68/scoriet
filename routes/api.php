@@ -728,6 +728,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schema-translations/item/{itemName}', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'getItemTranslations']);
     Route::post('/schema-translations/bulk-update', [\App\Http\Controllers\Api\SchemaTranslationController::class, 'bulkUpdate']);
 
+    // Template File Field Assignments
+    Route::get('/template-file-field-assignments/matrix', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'getMatrix']);
+    Route::post('/template-file-field-assignments/bulk-update', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'bulkUpdate']);
+    Route::delete('/template-file-field-assignments/{id}', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'destroy']);
+    Route::post('/template-file-field-assignments/reset-table', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'resetTable']);
+
     // Translation Export/Import
     Route::get('/translations/export', [TranslationExportController::class, 'export']);
     Route::post('/translations/import', [TranslationExportController::class, 'import']);

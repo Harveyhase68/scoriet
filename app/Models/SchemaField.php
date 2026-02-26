@@ -63,4 +63,12 @@ class SchemaField extends Model
     {
         return $this->hasMany(SchemaConstraintColumn::class, 'field_id');
     }
+
+    /**
+     * Get the per-template-file assignments for this field.
+     */
+    public function templateFileAssignments(): HasMany
+    {
+        return $this->hasMany(TemplateFileFieldAssignment::class, 'schema_field_id');
+    }
 }

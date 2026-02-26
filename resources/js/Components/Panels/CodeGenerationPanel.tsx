@@ -91,6 +91,16 @@ interface GenerationError {
   error: string;
 }
 
+interface ValidationWarning {
+  file: string;
+  template: string;
+  variable: string;
+  line: number;
+  description?: string;
+  default_value?: string;
+  category: 'required_missing' | 'unknown' | 'optional_missing';
+}
+
 // Code Adjustment interfaces for applying during generation
 interface CodeAdjustmentInsertion {
   id: number;
@@ -156,6 +166,7 @@ export default function CodeGenerationPanel() {
   const [generating, setGenerating] = useState(false);
   const [generationErrors, setGenerationErrors] = useState<GenerationError[]>([]);
   const [generationStats, setGenerationStats] = useState<{ errors: number; files: number } | null>(null);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
   const [archiveWarning, setArchiveWarning] = useState<string | null>(null);
   const [fileConflicts, setFileConflicts] = useState<FileConflict[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
@@ -1564,6 +1575,8 @@ export default function CodeGenerationPanel() {
       // ==========================================================================
       const zip = new JSZip();
       const errors: GenerationError[] = [];
+      const collectedValidationWarnings: ValidationWarning[] = [];
+      const seenValidationKeys = new Set<string>(); // De-duplicate across tables
       let fileCount = 0;
 
       // Track which files have been added to prevent duplicates
@@ -1661,6 +1674,30 @@ export default function CodeGenerationPanel() {
               return { compiled: [], gtree: null };
             }
 
+            // Collect validation warnings (required missing, unknown, optional missing)
+            if (data.validation) {
+              const addWarnings = (items: any[], category: ValidationWarning['category']) => {
+                for (const item of items) {
+                  const key = `${item.file}:${item.variable}:${category}`;
+                  if (!seenValidationKeys.has(key)) {
+                    seenValidationKeys.add(key);
+                    collectedValidationWarnings.push({
+                      file: item.file,
+                      template: template.name,
+                      variable: item.variable,
+                      line: item.line,
+                      description: item.description,
+                      default_value: item.default_value,
+                      category,
+                    });
+                  }
+                }
+              };
+              addWarnings(data.validation.required_missing || [], 'required_missing');
+              addWarnings(data.validation.unknown_variables || [], 'unknown');
+              addWarnings(data.validation.optional_missing || [], 'optional_missing');
+            }
+
             const compiled = data.processed_files || [];
             const gtree = data.gtree || baseGtree; // Use gtree from API response!
 
@@ -1744,11 +1781,37 @@ export default function CodeGenerationPanel() {
                 continue;
               }
 
+              const compiledTemplates = typedResult.compiled_templates || [];
               const cacheKey = `${templateId}_${typedResult.table_name || 'project'}`;
               compiledCache.set(cacheKey, {
-                compiled: typedResult.compiled_templates || [],
+                compiled: compiledTemplates,
                 gtree: sharedGtree, // Use shared gtree for all tables
               });
+
+              // Collect validation warnings from per-file data (de-duplicated)
+              for (const ct of compiledTemplates) {
+                const addWarnings = (items: any[], category: ValidationWarning['category']) => {
+                  for (const item of items) {
+                    const fileName = ct.filename || ct.original_template || item.file || 'unknown';
+                    const key = `${fileName}:${item.variable}:${category}`;
+                    if (!seenValidationKeys.has(key)) {
+                      seenValidationKeys.add(key);
+                      collectedValidationWarnings.push({
+                        file: item.file || fileName,
+                        template: template.name,
+                        variable: item.variable,
+                        line: item.line,
+                        description: item.description,
+                        default_value: item.default_value,
+                        category,
+                      });
+                    }
+                  }
+                };
+                addWarnings(ct.required_missing || [], 'required_missing');
+                addWarnings(ct.unknown_variables || [], 'unknown');
+                addWarnings(ct.optional_missing || [], 'optional_missing');
+              }
             }
 
           } catch (error: any) {
@@ -1982,7 +2045,7 @@ export default function CodeGenerationPanel() {
             t.generation_type === 'project_file' || t.generation_type === 'static_file'
           );
           for (const compiledFile of projectFileTemplates) {
-            executeCompiledTemplate(compiledFile, null, null, gtree);
+            executeCompiledTemplate(compiledFile, null, null, compiledFile.overlaid_gtree || gtree);
           }
         }
 
@@ -1997,7 +2060,7 @@ export default function CodeGenerationPanel() {
 
           for (const lang of selectedLangs) {
             for (const compiledFile of projectLangTemplates) {
-              executeCompiledTemplate(compiledFile, null, lang, gtree);
+              executeCompiledTemplate(compiledFile, null, lang, compiledFile.overlaid_gtree || gtree);
             }
           }
         }
@@ -2035,7 +2098,7 @@ export default function CodeGenerationPanel() {
               );
 
               for (const compiledFile of tableFileTemplates) {
-                executeCompiledTemplate(compiledFile, tableName, null, gtree);
+                executeCompiledTemplate(compiledFile, tableName, null, compiledFile.overlaid_gtree || gtree);
               }
             }
 
@@ -2081,7 +2144,7 @@ export default function CodeGenerationPanel() {
               // Execute for all languages (gtree language modified in browser)
               for (const lang of selectedLangs) {
                 for (const compiledFile of tableLangTemplates) {
-                  executeCompiledTemplate(compiledFile, tableName, lang, gtree);
+                  executeCompiledTemplate(compiledFile, tableName, lang, compiledFile.overlaid_gtree || gtree);
                 }
               }
             }
@@ -2094,29 +2157,86 @@ export default function CodeGenerationPanel() {
       }
 
       // ==========================================================================
-      // STEP 4: Add ERRORS.txt if there are errors
+      // STEP 4: Add ERRORS.txt if there are errors or validation warnings
       // ==========================================================================
-      if (errors.length > 0) {
+      const requiredMissingWarnings = collectedValidationWarnings.filter(w => w.category === 'required_missing');
+      const unknownVarWarnings = collectedValidationWarnings.filter(w => w.category === 'unknown');
+      const optionalMissingWarnings = collectedValidationWarnings.filter(w => w.category === 'optional_missing');
+
+      if (errors.length > 0 || collectedValidationWarnings.length > 0) {
         let errorsContent = '='.repeat(80) + '\n';
-        errorsContent += 'GENERATION ERRORS REPORT\n';
+        errorsContent += 'GENERATION REPORT\n';
         errorsContent += '='.repeat(80) + '\n\n';
         errorsContent += `Total Errors: ${errors.length}\n`;
         errorsContent += `Total Files Generated: ${fileCount}\n`;
         errorsContent += `Generated: ${new Date().toISOString()}\n\n`;
-        errorsContent += '='.repeat(80) + '\n\n';
 
-        errors.forEach((err, index) => {
-          errorsContent += `ERROR #${index + 1}\n`;
-          errorsContent += `Template: ${err.template}\n`;
-          errorsContent += `File: ${err.file}\n`;
-          if (err.table) errorsContent += `Table: ${err.table}\n`;
-          if (err.language) errorsContent += `Language: ${err.language}\n`;
-          errorsContent += `Error: ${err.error}\n`;
-          errorsContent += '-'.repeat(80) + '\n\n';
-        });
+        if (errors.length > 0) {
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += 'GENERATION ERRORS\n';
+          errorsContent += '='.repeat(80) + '\n\n';
+
+          errors.forEach((err, index) => {
+            errorsContent += `ERROR #${index + 1}\n`;
+            errorsContent += `Template: ${err.template}\n`;
+            errorsContent += `File: ${err.file}\n`;
+            if (err.table) errorsContent += `Table: ${err.table}\n`;
+            if (err.language) errorsContent += `Language: ${err.language}\n`;
+            errorsContent += `Error: ${err.error}\n`;
+            errorsContent += '-'.repeat(80) + '\n\n';
+          });
+        }
+
+        if (requiredMissingWarnings.length > 0) {
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += `REQUIRED MISSING VARIABLES (${requiredMissingWarnings.length})\n`;
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += 'These variables are required but not set in project settings.\n';
+          errorsContent += 'Output will contain "undefined".\n\n';
+
+          requiredMissingWarnings.forEach((w) => {
+            errorsContent += `  ${w.file}, line ${w.line}: {:${w.variable}:}`;
+            if (w.description) errorsContent += ` - ${w.description}`;
+            errorsContent += '\n';
+          });
+          errorsContent += '\n';
+        }
+
+        if (unknownVarWarnings.length > 0) {
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += `UNKNOWN VARIABLES (${unknownVarWarnings.length})\n`;
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += 'These variables are not defined as template variables.\n';
+          errorsContent += 'Output will contain "undefined".\n\n';
+
+          unknownVarWarnings.forEach((w) => {
+            errorsContent += `  ${w.file}, line ${w.line}: {:${w.variable}:}\n`;
+          });
+          errorsContent += '\n';
+        }
+
+        if (optionalMissingWarnings.length > 0) {
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += `OPTIONAL MISSING VARIABLES (${optionalMissingWarnings.length})\n`;
+          errorsContent += '='.repeat(80) + '\n';
+          errorsContent += 'These optional variables are not set. Default values are used.\n\n';
+
+          optionalMissingWarnings.forEach((w) => {
+            errorsContent += `  ${w.file}, line ${w.line}: {:${w.variable}:}`;
+            if (w.default_value) errorsContent += ` (default: "${w.default_value}")`;
+            if (w.description) errorsContent += ` - ${w.description}`;
+            errorsContent += '\n';
+          });
+          errorsContent += '\n';
+        }
 
         zip.file('ERRORS.txt', errorsContent);
       }
+
+      // Update state for UI display (must be set BEFORE return)
+      setGenerationStats({ errors: errors.length, files: fileCount });
+      setGenerationErrors(errors);
+      setValidationWarnings(collectedValidationWarnings);
 
       // ==========================================================================
       // STEP 5: Generate and download archive (browser-based for large projects)
@@ -2231,10 +2351,6 @@ export default function CodeGenerationPanel() {
 
         return; // Stop here, callback handles everything
       }
-
-      // Update state
-      setGenerationStats({ errors: errors.length, files: fileCount });
-      setGenerationErrors(errors);
   };
 
   // 🆕 Separated generation logic so it can be called after conflict confirmation
@@ -2244,6 +2360,9 @@ export default function CodeGenerationPanel() {
       setError(null);
       setShowConflictDialog(false);
       setGenerationProgress(null);
+      setGenerationStats(null);
+      setGenerationErrors([]);
+      setValidationWarnings([]);
 
       // 💰 Charge credits before generation
       const chargeResult = await chargeCreditsForGeneration();
@@ -3140,6 +3259,93 @@ export default function CodeGenerationPanel() {
 
                   <div className="mt-3 text-xs text-red-400">
                     {t.codegenerationpanel3156}<strong>ERRORS.txt</strong>{t.codegenerationpanel3156_2}
+                  </div>
+                </div>
+              )}
+
+              {/* Validation Warnings after Generation */}
+              {validationWarnings.length > 0 && (
+                <div className="mb-6 space-y-3">
+                  {/* Required Missing Variables (RED) */}
+                  {validationWarnings.filter(w => w.category === 'required_missing').length > 0 && (
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(220, 38, 38, 0.15)', border: '1px solid rgba(220, 38, 38, 0.4)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className="pi pi-times-circle" style={{ color: '#f87171' }}></i>
+                        <span className="font-semibold" style={{ color: '#f87171' }}>
+                          {t.codegenerationpanel_val_required} ({validationWarnings.filter(w => w.category === 'required_missing').length})
+                        </span>
+                      </div>
+                      <div className="text-xs mb-2" style={{ color: '#fca5a5' }}>
+                        {t.codegenerationpanel_val_required_desc}
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded p-2 space-y-1" style={{ backgroundColor: colors.bgSecondary }}>
+                        {validationWarnings.filter(w => w.category === 'required_missing').map((w, idx) => (
+                          <div key={idx} className="text-sm font-mono" style={{ color: colors.textPrimary }}>
+                            <span className="font-semibold" style={{ color: '#f87171' }}>{w.file}</span>
+                            <span style={{ color: colors.textSecondary }}>, line {w.line}</span>
+                            : <span style={{ color: colors.accent }}>{`{:${w.variable}:}`}</span>
+                            {w.description && (
+                              <span className="ml-2" style={{ color: '#f87171' }}>- {w.description}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 text-xs" style={{ color: '#fca5a5' }}>
+                        {t.codegenerationpanel_val_required_hint}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Unknown Variables (ORANGE) */}
+                  {validationWarnings.filter(w => w.category === 'unknown').length > 0 && (
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.4)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className="pi pi-exclamation-triangle" style={{ color: '#fbbf24' }}></i>
+                        <span className="font-semibold" style={{ color: '#fbbf24' }}>
+                          {t.codegenerationpanel_val_unknown} ({validationWarnings.filter(w => w.category === 'unknown').length})
+                        </span>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded p-2 space-y-1" style={{ backgroundColor: colors.bgSecondary }}>
+                        {validationWarnings.filter(w => w.category === 'unknown').map((w, idx) => (
+                          <div key={idx} className="text-sm font-mono" style={{ color: colors.textPrimary }}>
+                            <span className="font-semibold" style={{ color: '#fbbf24' }}>{w.file}</span>
+                            <span style={{ color: colors.textSecondary }}>, line {w.line}</span>
+                            : <span style={{ color: colors.accent }}>{`{:${w.variable}:}`}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Optional Missing Variables (BLUE) */}
+                  {validationWarnings.filter(w => w.category === 'optional_missing').length > 0 && (
+                    <div className="p-4 rounded-lg" style={{ backgroundColor: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.4)' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <i className="pi pi-info-circle" style={{ color: '#60a5fa' }}></i>
+                        <span className="font-semibold" style={{ color: '#60a5fa' }}>
+                          {t.codegenerationpanel_val_optional} ({validationWarnings.filter(w => w.category === 'optional_missing').length})
+                        </span>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto rounded p-2 space-y-1" style={{ backgroundColor: colors.bgSecondary }}>
+                        {validationWarnings.filter(w => w.category === 'optional_missing').map((w, idx) => (
+                          <div key={idx} className="text-sm font-mono" style={{ color: colors.textPrimary }}>
+                            <span className="font-semibold" style={{ color: '#60a5fa' }}>{w.file}</span>
+                            <span style={{ color: colors.textSecondary }}>, line {w.line}</span>
+                            : <span style={{ color: colors.accent }}>{`{:${w.variable}:}`}</span>
+                            {w.default_value && (
+                              <span className="ml-2" style={{ color: colors.successText }}>= &quot;{w.default_value}&quot;</span>
+                            )}
+                            {w.description && (
+                              <div className="ml-6 text-xs" style={{ color: '#60a5fa' }}>{w.description}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-xs" style={{ color: colors.textMuted }}>
+                    {t.codegenerationpanel_val_errors_txt}
                   </div>
                 </div>
               )}
