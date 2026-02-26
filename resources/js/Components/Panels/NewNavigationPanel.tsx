@@ -489,6 +489,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           command: () => onOpenPanel('schema-translation')
         },
         {
+          label: t.fieldassignmentpanel_title,
+          icon: 'pi pi-sliders-h',
+          command: () => onOpenPanel('field-assignments')
+        },
+        {
           label: t.newnavigationpanel472,
           icon: 'pi pi-sync',
           command: () => onOpenPanel('query-builder')
@@ -902,6 +907,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <button onClick={blurAndRun(() => onOpenPanel('schema-translation'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-language"></i>
                     <span>{t.panelsewnavigationpanel548}</span>
+                  </button>
+                  <button onClick={blurAndRun(() => onOpenPanel('field-assignments'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                    <i className="pi pi-sliders-h"></i>
+                    <span>{t.fieldassignmentpanel_title}</span>
                   </button>
                   <button onClick={blurAndRun(() => onOpenPanel('query-builder'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sync"></i>

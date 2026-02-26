@@ -8,6 +8,7 @@ import { MultiSelect } from 'primereact/multiselect';
 import { FileUpload } from 'primereact/fileupload';
 import { Tree } from 'primereact/tree';
 import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { api } from '@/lib/api';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
@@ -41,6 +42,7 @@ interface SchemaField {
   field_name: string;
   field_type: string;
   comment?: string;
+  control_type?: string;
 }
 
 export default function SchemaTranslationPanel() {
@@ -55,6 +57,8 @@ export default function SchemaTranslationPanel() {
   const [loading, setLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [selectedItemTranslations, setSelectedItemTranslations] = useState<Record<string, string>>({});
+  const [selectedItemContentTranslations, setSelectedItemContentTranslations] = useState<Record<string, string>>({});
+  const [contentSaveTimeoutId, setContentSaveTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
   // Export/Import
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -144,34 +148,40 @@ export default function SchemaTranslationPanel() {
     }
   }, [selectedProject, toast]);
 
+  // Helper to parse translation response into code->text map
+  const parseTranslationsResponse = (response: any): Record<string, string> => {
+    const map: Record<string, string> = {};
+    const data = response.translations || {};
+    if (Array.isArray(data)) {
+      data.forEach((t: any) => {
+        if (t.code && t.translated_text) map[t.code] = t.translated_text;
+      });
+    } else if (typeof data === 'object' && data !== null) {
+      Object.entries(data).forEach(([, t]: [string, any]) => {
+        if (t && t.code && t.translated_text) map[t.code] = t.translated_text;
+      });
+    }
+    return map;
+  };
+
   const fetchTranslationsForItem = React.useCallback(async (itemName: string) => {
     try {
       const response = await api.request(`/schema-translations/item/${encodeURIComponent(itemName)}`);
-      const translationsMap: Record<string, string> = {};
-
-      // The API returns { item_name: "...", translations: {...} }
-      const translationsData = response.translations || {};
-
-      if (Array.isArray(translationsData)) {
-        // Array format: [{ code: 'de', translated_text: '...' }, ...]
-        translationsData.forEach((translation: any) => {
-          if (translation.code && translation.translated_text) {
-            translationsMap[translation.code] = translation.translated_text;
-          }
-        });
-      } else if (typeof translationsData === 'object' && translationsData !== null) {
-        // Object format: { de: { code: 'de', translated_text: '...' }, en: { ... } }
-        Object.entries(translationsData).forEach(([, translation]: [string, any]) => {
-          if (translation && translation.code && translation.translated_text) {
-            translationsMap[translation.code] = translation.translated_text;
-          }
-        });
-      }
-
-      setSelectedItemTranslations(translationsMap);
+      setSelectedItemTranslations(parseTranslationsResponse(response));
     } catch {
-      // Item has no translations yet, that's okay
       setSelectedItemTranslations({});
+    }
+
+    // If this is a field (contains dot), also fetch content translations
+    if (itemName.includes('.')) {
+      try {
+        const contentResponse = await api.request(`/schema-translations/item/${encodeURIComponent(itemName + '[content]')}`);
+        setSelectedItemContentTranslations(parseTranslationsResponse(contentResponse));
+      } catch {
+        setSelectedItemContentTranslations({});
+      }
+    } else {
+      setSelectedItemContentTranslations({});
     }
   }, []);
 
@@ -220,8 +230,11 @@ export default function SchemaTranslationPanel() {
             <span style={{ color: colors.successText }}>📄</span>
             <span className="font-mono text-sm" style={{ color: colors.textPrimary }}>{field.field_name}</span>
             <Tag value={field.field_type} severity="success" />
+            {field.control_type && field.control_type.toUpperCase() === 'COMBOBOX' && (
+              <Tag value="CB" severity="warning" />
+            )}
             {field.comment && (
-              <Tag value={field.comment} severity="warning" />
+              <Tag value={field.comment} severity="info" />
             )}
           </div>
         ),
@@ -280,6 +293,52 @@ export default function SchemaTranslationPanel() {
     }, 1000); // 1 second debounce
 
     setSaveTimeoutId(newTimeoutId);
+  };
+
+  // Helper: get control_type of the currently selected field
+  const getSelectedFieldControlType = (): string | null => {
+    if (!selectedItem || !selectedItem.includes('.')) return null;
+    const [tableName, fieldName] = selectedItem.split('.');
+    const table = schemaStructure.find(t => t.table_name === tableName);
+    if (!table) return null;
+    const field = table.fields.find(f => f.field_name === fieldName);
+    return field?.control_type?.toUpperCase() || null;
+  };
+
+  // Auto-save handler for content translations (debounced, saves to itemName[content])
+  const handleContentTranslationChange = (languageCode: string, value: string) => {
+    setSelectedItemContentTranslations(prev => ({ ...prev, [languageCode]: value }));
+
+    if (contentSaveTimeoutId) clearTimeout(contentSaveTimeoutId);
+
+    const newTimeoutId = setTimeout(async () => {
+      if (!selectedItem) return;
+      setAutoSaving(true);
+      try {
+        const translationsToSave = Object.entries({
+          ...selectedItemContentTranslations,
+          [languageCode]: value
+        })
+          .filter(([, text]) => (text as string).trim() !== '')
+          .map(([code, text]) => ({ code, translated_text: (text as string).trim() }));
+
+        if (translationsToSave.length > 0) {
+          await api.request('/schema-translations/bulk-update', {
+            method: 'POST',
+            body: JSON.stringify({
+              item_name: selectedItem + '[content]',
+              translations: translationsToSave
+            })
+          });
+        }
+      } catch {
+        // Silent fail
+      } finally {
+        setAutoSaving(false);
+      }
+    }, 1000);
+
+    setContentSaveTimeoutId(newTimeoutId);
   };
 
   const handleExportTranslations = async () => {
@@ -685,7 +744,7 @@ export default function SchemaTranslationPanel() {
                   <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{itemInfo.displayName}</h3>
                   <Tag value={itemInfo.type} severity={itemInfo.color === 'blue' ? 'info' : 'success'} />
                 </div>
-                <p className="text-sm" style={{ color: colors.textMuted }}>{t.schematranslationpanel688}{itemInfo.type.toLowerCase()}</p>
+                <p className="text-sm" style={{ color: colors.textMuted }}>{t.schematranslationpanel688}</p>
               </div>
             </div>
             {autoSaving && (
@@ -734,6 +793,26 @@ export default function SchemaTranslationPanel() {
                   className="w-full schema-translation-input"
                   style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                 />
+                {/* Combobox content textarea — only shown for COMBOBOX control type */}
+                {getSelectedFieldControlType() === 'COMBOBOX' && (
+                  <div className="mt-2">
+                    <label className="text-xs font-medium mb-1 block" style={{ color: colors.textMuted }}>
+                      {t.schematranslationpanel_content_label}
+                    </label>
+                    <InputTextarea
+                      placeholder={t.schematranslationpanel_content_placeholder}
+                      value={selectedItemContentTranslations[language.code] || ''}
+                      onChange={(e) => handleContentTranslationChange(language.code, e.target.value)}
+                      rows={5}
+                      autoResize
+                      className="w-full"
+                      style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
+                    />
+                    <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                      {t.schematranslationpanel_content_hint}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

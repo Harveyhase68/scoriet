@@ -28,11 +28,10 @@ class TemplateFileObserver
      */
     public function updated(TemplateFile $templateFile): void
     {
-        // Invalidate cache for this specific file
-        $this->invalidateFileCache($templateFile);
-
-        // Also invalidate GTree cache for affected projects
-        $this->invalidateGtreeCache($templateFile);
+        // Invalidate ENTIRE template cache + GTree cache
+        // Must flush all files in the template (not just this one) because other
+        // files may {:include:} this file — their cached output would be stale.
+        $this->invalidateTemplateAndGtreeCache($templateFile);
 
         // Regenerate generation trees
         $this->regenerateAffectedProjects($templateFile, 'updated');
@@ -48,9 +47,9 @@ class TemplateFileObserver
      */
     public function deleted(TemplateFile $templateFile): void
     {
-        // Invalidate cache for deleted file and GTree cache
-        $this->invalidateFileCache($templateFile);
-        $this->invalidateGtreeCache($templateFile);
+        // Invalidate ENTIRE template cache + GTree cache
+        // Must flush all files because other files may {:include:} the deleted file.
+        $this->invalidateTemplateAndGtreeCache($templateFile);
 
         // Regenerate generation trees
         $this->regenerateAffectedProjects($templateFile, 'deleted');

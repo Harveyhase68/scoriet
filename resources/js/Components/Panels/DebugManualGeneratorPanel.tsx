@@ -322,6 +322,7 @@ export default function DebugManualGeneratorPanel({
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [includeTemplateSource, setIncludeTemplateSource] = useState(false);
+  const [skipCache, setSkipCache] = useState(false);
   const [downloadFilename, setDownloadFilename] = useState<string>('generated.php');
 
   // Validation States (3 categories)
@@ -998,6 +999,11 @@ export default function DebugManualGeneratorPanel({
         url.searchParams.set('include_source', '1');
       }
 
+      // Skip Redis cache if checkbox is enabled (force fresh generation)
+      if (skipCache) {
+        url.searchParams.set('skip_cache', '1');
+      }
+
       // Add migration_from_version parameter if set
       if (migrationFromVersion !== null) {
         url.searchParams.set('migration_from_version', migrationFromVersion.toString());
@@ -1097,8 +1103,9 @@ export default function DebugManualGeneratorPanel({
         }
 
         if (targetFile) {
-          // Use backend gtree data (contains full database structure)
-          const gtreeData = data.gtree || [];
+          // Use per-file overlaid GTree if available (contains assignment filtering)
+          // Falls back to base GTree when no assignments exist for this file
+          const gtreeData = targetFile.overlaid_gtree || data.gtree || [];
 
           // Store gtree in localStorage for efficient access during execution
           localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
@@ -1788,18 +1795,33 @@ function ${functionName}() {
 
           {/* Options */}
           <div className="mt-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="include-template-source"
-                checked={includeTemplateSource}
-                onChange={(e) => setIncludeTemplateSource(e.target.checked)}
-                className="w-4 h-4"
-                style={{ accentColor: colors.accent }}
-              />
-              <label htmlFor="include-template-source" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
-                {t.debugmanualgeneratorpanel1360}
-              </label>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="include-template-source"
+                  checked={includeTemplateSource}
+                  onChange={(e) => setIncludeTemplateSource(e.target.checked)}
+                  className="w-4 h-4"
+                  style={{ accentColor: colors.accent }}
+                />
+                <label htmlFor="include-template-source" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
+                  {t.debugmanualgeneratorpanel1360}
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="skip-redis-cache"
+                  checked={skipCache}
+                  onChange={(e) => setSkipCache(e.target.checked)}
+                  className="w-4 h-4"
+                  style={{ accentColor: '#f59e0b' }}
+                />
+                <label htmlFor="skip-redis-cache" className="text-sm cursor-pointer" style={{ color: '#f59e0b' }}>
+                  {t.debugmanualgeneratorpanel_skipcache}
+                </label>
+              </div>
             </div>
           </div>
 
@@ -2577,18 +2599,40 @@ function ${functionName}() {
                     </div>
                   </div>
 
-                  {/* Code Display */}
-                  <div className="p-4 max-h-96 overflow-auto">
-                    <div
-                      className="text-sm whitespace-pre-wrap font-mono"
-                      style={{
-                        fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace',
-                        color: colors.textPrimary,
-                        lineHeight: 1.4
-                      }}
-                    >
-                      {executedResult || `${t.debugmanualgeneratorpanel2587}"${t.debugmanualgeneratorpanel1377}"${t.debugmanualgeneratorpanel2587_2}`}
-                    </div>
+                  {/* Code Display with Line Numbers */}
+                  <div className="max-h-96 overflow-auto">
+                    {executedResult ? (
+                      <table className="w-full border-collapse" style={{ fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace', fontSize: '0.875rem', lineHeight: 1.4 }}>
+                        <tbody>
+                          {executedResult.split('\n').map((line, idx) => (
+                            <tr key={idx} className="hover:opacity-80" style={{ backgroundColor: idx % 2 === 0 ? 'transparent' : `${colors.bgSecondary}44` }}>
+                              <td
+                                className="select-none text-right px-3 py-0"
+                                style={{
+                                  color: colors.textMuted,
+                                  borderRight: `1px solid ${colors.borderPrimary}`,
+                                  minWidth: '3.5rem',
+                                  userSelect: 'none',
+                                  verticalAlign: 'top',
+                                }}
+                              >
+                                {idx + 1}
+                              </td>
+                              <td
+                                className="pl-3 pr-4 py-0 whitespace-pre-wrap"
+                                style={{ color: colors.textPrimary, wordBreak: 'break-all' }}
+                              >
+                                {line || '\u00A0'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="p-4 text-sm font-mono" style={{ color: colors.textPrimary }}>
+                        {`${t.debugmanualgeneratorpanel2587}"${t.debugmanualgeneratorpanel1377}"${t.debugmanualgeneratorpanel2587_2}`}
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabPanel>

@@ -27,8 +27,8 @@ class UltimateTemplateEngine
 
     // 🎯 Index-based contexts: these arrays contain indices into fields[] instead of duplicated objects
     private const INDEX_BASED_CONTEXTS = [
-        'fieldsnokey', 'fieldsnokeyall',
-        // Future: 'fieldsnoblob', 'fieldsblob', 'fieldsmasterdetail', etc.
+        'fieldsnokey', 'fieldsnokeyall', 'fieldsnoblob', 'fieldsnobloball', 'fieldssearchkeys',
+        // Future: 'fieldsblob', 'fieldsmasterdetail', etc.
     ];
 
     // 🆕 {:code:} Block Processing
@@ -305,6 +305,7 @@ class UltimateTemplateEngine
 
             // COUNTERS
             'nmaxitems', 'nmaxitemsnokey', 'nmaxitemsnokeyall',
+            'nmaxitemsnoblob', 'nmaxitemsnobloball',
             'nmaxkeys', 'nmaxforeignkeys',
             'nmaxitemsmasterdetail', 'nmaxitemsmasterdetailnokeys',
             'nmaxfiles', 'nmaxtables', 'nmaxlanguages', 'nmaxsearchkeys',
@@ -356,7 +357,10 @@ class UltimateTemplateEngine
         // 1. Text-Literale "\n" und "\r" schützen
         $templateContent = $this->protectTextLiterals($templateContent);
 
-        // 2. Per echte Newlines (char 10) in Zeilen aufteilen
+        // 2. Normalize line endings BEFORE splitting: \r\n → \n, standalone \r → \n
+        $templateContent = str_replace(["\r\n", "\r"], "\n", $templateContent);
+
+        // 3. Per echte Newlines (char 10) in Zeilen aufteilen
         $lines = explode("\n", $templateContent);
 
         // Store original lines for source comments
@@ -757,11 +761,32 @@ class UltimateTemplateEngine
             return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnokeyall; i++) {\n";
         }
 
+        // 🎯 FIELDS WITHOUT BLOB/TEXT LOOP - Loop through fieldsnoblob array (index-based)
+        if (strpos($line, '{:for nmaxitemsnoblob:}') !== false) {
+            $this->pushLoopContext('fieldsnoblob');
+            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
+            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnoblob; i++) {\n";
+        }
+
+        // 🎯 ALL FIELDS WITHOUT BLOB/TEXT LOOP (ignores assignments) - Loop through fieldsnobloball array
+        if (strpos($line, '{:for nmaxitemsnobloball:}') !== false) {
+            $this->pushLoopContext('fieldsnobloball');
+            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
+            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnobloball; i++) {\n";
+        }
+
         // 🎯 CONSTRAINTS LOOP - Loop through constraints array
         if (strpos($line, '{:for nmaxconstraints:}') !== false) {
             $this->pushLoopContext('constraints');
             $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
             return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxconstraints; i++) {\n";
+        }
+
+        // 🎯 SEARCH KEYS LOOP - Loop through fieldssearchkeys array (index-based into fields[])
+        if (strpos($line, '{:for nmaxsearchkeys:}') !== false) {
+            $this->pushLoopContext('fieldssearchkeys');
+            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
+            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxsearchkeys; i++) {\n";
         }
 
         // Standard nmaxitems loop
@@ -857,6 +882,12 @@ class UltimateTemplateEngine
                 return 'fieldsnokey';
             case 'fieldsnokeyall':
                 return 'fieldsnokeyall';
+            case 'fieldsnoblob':
+                return 'fieldsnoblob';
+            case 'fieldsnobloball':
+                return 'fieldsnobloball';
+            case 'fieldssearchkeys':
+                return 'fieldssearchkeys';
             case 'constraints':
                 return 'constraints';
             case 'fields':
@@ -1354,8 +1385,8 @@ class UltimateTemplateEngine
                     return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxconstraints; i++) {\n";
                 }
             } elseif ($loopVar === 'nmaxsearchkeys') {
-                // Search keys loop (for database search fields)
-                $this->pushLoopContext('searchkeys');
+                // Search keys loop (for database search/file-key fields) - index-based into fields[]
+                $this->pushLoopContext('fieldssearchkeys');
                 if ($tableIndex !== null) {
                     return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxsearchkeys; i++) {\n";
                 } else {
@@ -1442,15 +1473,15 @@ class UltimateTemplateEngine
         $text = str_replace('"', '\\"', $text);
 
         // 🔧 Convert REAL CR/LF/Tab BYTES to Unicode escapes
-        $text = str_replace("\r", '\\\\\\\\u000D', $text);   // Real CR byte
-        $text = str_replace("\n", '\\\\\\\\u000A', $text);   // Real LF byte
-        $text = str_replace("\t", '\\\\\\\\u0009', $text);   // Real Tab byte
+        $text = str_replace("\r", '\\u000D', $text);   // Real CR byte
+        $text = str_replace("\n", '\\u000A', $text);   // Real LF byte
+        $text = str_replace("\t", '\\u0009', $text);   // Real Tab byte
 
         // 🔧 Convert TEXT escape sequences \\r\\n\\t (after doubling) to Unicode escapes
-        // After line 582, template text "\r\n" became "\\r\\n" (2 backslashes in string)
-        $text = str_replace('\\\\r', '\\\\\\\\u000D', $text);   // Search: \\r (2 BS) → Replace: \\\\u000D (8 BS)
-        $text = str_replace('\\\\n', '\\\\\\\\u000A', $text);   // Search: \\n (2 BS) → Replace: \\\\u000A (8 BS)
-        $text = str_replace('\\\\t', '\\\\\\\\u0009', $text);   // Search: \\t (2 BS) → Replace: \\\\u0009 (8 BS)
+        // After line 1438, template text "\r\n" became "\\r\\n" (doubled backslash)
+        $text = str_replace('\\\\r', '\\u000D', $text);   // Escaped \r → Unicode CR
+        $text = str_replace('\\\\n', '\\u000A', $text);   // Escaped \n → Unicode LF
+        $text = str_replace('\\\\t', '\\u0009', $text);   // Escaped \t → Unicode Tab
 
         return $text;
     }
@@ -1782,6 +1813,8 @@ class UltimateTemplateEngine
             'nmaxitems' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitems" : "gtree[0].project[0].tables[tableIdx].nmaxitems",
             'nmaxitemsnokey' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnokey" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnokey",
             'nmaxitemsnokeyall' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnokeyall" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnokeyall",
+            'nmaxitemsnoblob' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnoblob" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnoblob",
+            'nmaxitemsnobloball' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobloball" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnobloball",
             'nmaxkeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxkeys" : "gtree[0].project[0].tables[tableIdx].nmaxkeys",
             'nmaxforeignkeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeys" : "gtree[0].project[0].tables[tableIdx].nmaxforeignkeys",
             'nmaxitemsmasterdetail' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsmasterdetail" : "gtree[0].project[0].tables[tableIdx].nmaxitemsmasterdetail",
@@ -1875,6 +1908,9 @@ class UltimateTemplateEngine
             'table.primarykeyfield' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
             'table.nmaxitems' => "gtree[0].project[0].tables[tableIdx].nmaxitems",
             'table.nmaxitemsnokey' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnokey",
+            'table.nmaxitemsnokeyall' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnokeyall",
+            'table.nmaxitemsnoblob' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnoblob",
+            'table.nmaxitemsnobloball' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnobloball",
             'table.nmaxkeys' => "gtree[0].project[0].tables[tableIdx].nmaxkeys",
             'table.nmaxforeignkeys' => "gtree[0].project[0].tables[tableIdx].nmaxforeignkeys",
             'table.nmaxsearchkeys' => "gtree[0].project[0].tables[tableIdx].nmaxsearchkeys",

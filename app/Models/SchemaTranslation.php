@@ -105,9 +105,33 @@ class SchemaTranslation extends Model
     public function getFieldName(): ?string
     {
         if ($this->isField()) {
-            return explode('.', $this->item_name)[1];
+            $fieldPart = explode('.', $this->item_name)[1];
+            // Strip [content] suffix if present
+            if (str_ends_with($fieldPart, '[content]')) {
+                $fieldPart = substr($fieldPart, 0, -9); // length of '[content]' = 9
+            }
+            return $fieldPart;
         }
 
         return null;
+    }
+
+    /**
+     * Check if this translation is a combobox content translation.
+     * Content translations use the convention: tablename.fieldname[content]
+     */
+    public function isContent(): bool
+    {
+        return str_ends_with($this->item_name, '[content]');
+    }
+
+    /**
+     * Get the base item_name without the [content] suffix.
+     */
+    public function getBaseFieldName(): string
+    {
+        return $this->isContent()
+            ? substr($this->item_name, 0, -9) // strip '[content]'
+            : $this->item_name;
     }
 }

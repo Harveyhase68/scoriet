@@ -197,19 +197,35 @@ class TemplateController extends Controller
             ]);
 
             // Update template files if provided
+            // IMPORTANT: Update existing files in place to preserve IDs + FK relationships
+            // (template_file_field_assignments has ON DELETE CASCADE on template_file_id)
             if (isset($validated['files'])) {
-                // Delete all existing files
-                $template->files()->delete();
-                
-                // Create new files
+                $existingFiles = $template->files()->get()->keyBy('file_name');
+                $incomingFileNames = [];
+
                 foreach ($validated['files'] as $index => $fileData) {
-                    $template->files()->create([
-                        'file_name' => $fileData['file_name'],
-                        'file_path' => $fileData['file_path'] ?? "templates/{$template->id}/{$fileData['file_name']}",
+                    $fileName = $fileData['file_name'];
+                    $incomingFileNames[] = $fileName;
+
+                    $fileAttributes = [
+                        'file_name' => $fileName,
+                        'file_path' => $fileData['file_path'] ?? "templates/{$template->id}/{$fileName}",
                         'file_content' => $fileData['file_content'],
                         'file_type' => $fileData['file_type'] ?? 'template',
                         'file_order' => $fileData['file_order'] ?? $index,
-                    ]);
+                    ];
+
+                    if ($existingFiles->has($fileName)) {
+                        $existingFiles->get($fileName)->update($fileAttributes);
+                    } else {
+                        $template->files()->create($fileAttributes);
+                    }
+                }
+
+                // Delete files that are no longer in the incoming data
+                $filesToDelete = $existingFiles->keys()->diff($incomingFileNames);
+                foreach ($filesToDelete as $fileName) {
+                    $existingFiles->get($fileName)->delete();
                 }
             }
 

@@ -15,6 +15,7 @@ use App\Models\SchemaVersion;
 use App\Models\SchemaTable;
 use App\Models\Language;
 use App\Models\SchemaTranslation;
+use App\Models\TemplateFileFieldAssignment;
 use App\Models\ProjectFormSet;
 use App\Models\ProjectGeneration;
 use App\Services\CreditService;
@@ -137,7 +138,9 @@ class UltimateTemplateController extends Controller
             $allSyntaxWarnings = []; // Collect all syntax warnings across all files
 
             // 🎯 Initialize cache service (only if enabled in config)
-            $cacheService = config('scoriet.template_cache.enabled', false) ? app(TemplateCacheService::class) : null;
+            // skip_cache=1 bypasses Redis cache for debugging/testing
+            $skipCache = $request->query('skip_cache', false);
+            $cacheService = (!$skipCache && config('scoriet.template_cache.enabled', false)) ? app(TemplateCacheService::class) : null;
 
             // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
             $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
@@ -270,6 +273,10 @@ class UltimateTemplateController extends Controller
             } catch (\Exception $e) {
                 \Log::error('Performance tracking error: ' . $e->getMessage());
             }
+
+            // 🎯 Base GTree at top level (unfiltered)
+            // Each processed file carries its own overlaid_gtree (only when assignments exist)
+            // Frontend uses the file-specific overlay when executing a specific file's code
 
             // Build response based on format
             return $this->buildResponse($format, [
@@ -782,6 +789,7 @@ class UltimateTemplateController extends Controller
                     // Core field info
                     'name' => $fieldName,
                     'type' => strtoupper($field->field_type),
+                    'schema_field_id' => $field->id, // For per-file assignment lookup
 
                     // Enhanced metadata
                     'controltype' => 24,
@@ -802,6 +810,7 @@ class UltimateTemplateController extends Controller
                     'isforeign' => str_ends_with($fieldName, '_id') && !($field->is_primary_key ?? false),
                     'istimestamp' => in_array($fieldName, ['created_at', 'updated_at', 'deleted_at']),
                     'autoincrement' => $field->is_auto_increment ?? false, // 🎯 Read from database
+                    'isblob' => $this->isBlobType($field->field_type), // 🎯 BLOB/TEXT large field detection
                     'visible' => true,
 
                     // 🎯 LINK FIELDS - For ComboBox, ListBox, RadioButtons, etc.
@@ -818,15 +827,31 @@ class UltimateTemplateController extends Controller
             })->toArray();
 
             // 🎯 Create INDEX-BASED filtered field arrays (lightweight references into fields[])
+            // Resolve file-key fields (supports composite keys like "field1,field2")
             $fileKeyName = $table->filekeyname ?? $primaryKeyFieldName ?? 'id';
+            $fileKeyNames = $this->resolveSearchKeyFields($table, $fields);
+
             $fieldsNoKeyIndices = [];
             $fieldsNoKeyAllIndices = [];
+            $fieldsNoBlobIndices = [];
+            $fieldsNoBlobAllIndices = [];
+            $fieldsSearchKeyIndices = [];
             foreach ($mappedFields as $index => $field) {
-                if (!$field['isprimary']) {
+                $isKey = $field['isprimary'] || in_array($field['name'], $fileKeyNames);
+
+                if (!$isKey) {
+                    // Both fieldsnokey and fieldsnokeyall exclude PK + file-keys
+                    // Difference only matters after assignment overlay in processTemplateFile
                     $fieldsNoKeyIndices[] = $index;
-                    if ($field['name'] !== $fileKeyName) {
-                        $fieldsNoKeyAllIndices[] = $index;
-                    }
+                    $fieldsNoKeyAllIndices[] = $index;
+                }
+                if (!$field['isblob']) {
+                    $fieldsNoBlobIndices[] = $index;
+                    $fieldsNoBlobAllIndices[] = $index;
+                }
+                // fieldssearchkeys: indices of the file-key fields (for {:for nmaxsearchkeys:} loop)
+                if (in_array($field['name'], $fileKeyNames)) {
+                    $fieldsSearchKeyIndices[] = $index;
                 }
             }
 
@@ -911,6 +936,8 @@ class UltimateTemplateController extends Controller
                 'nmaxfields' => count($mappedFields),
                 'nmaxitemsnokey' => count($fieldsNoKeyIndices),
                 'nmaxitemsnokeyall' => count($fieldsNoKeyAllIndices),
+                'nmaxitemsnoblob' => count($fieldsNoBlobIndices), // 🎯 Fields without BLOB/TEXT types
+                'nmaxitemsnobloball' => count($fieldsNoBlobAllIndices), // 🎯 All fields without BLOB/TEXT (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields),
@@ -927,6 +954,9 @@ class UltimateTemplateController extends Controller
                 'fields' => $mappedFields,
                 'fieldsnokey' => $fieldsNoKeyIndices, // 🎯 Index array → fields[fieldsnokey[i]]
                 'fieldsnokeyall' => $fieldsNoKeyAllIndices, // 🎯 Index array → fields[fieldsnokeyall[i]]
+                'fieldsnoblob' => $fieldsNoBlobIndices, // 🎯 Index array → fields[fieldsnoblob[i]]
+                'fieldsnobloball' => $fieldsNoBlobAllIndices, // 🎯 All non-BLOB fields (ignores assignments)
+                'fieldssearchkeys' => $fieldsSearchKeyIndices, // 🎯 Index array → fields[fieldssearchkeys[i]] (file-key fields)
                 'keys' => $mappedKeys, // PRIMARY + UNIQUE keys only
                 'foreignkeys' => $mappedForeignKeys, // 🎯 FOREIGN KEY constraints with reference info
                 'constraints' => $mappedConstraints, // ALL constraints (PRIMARY, UNIQUE, FOREIGN)
@@ -1007,19 +1037,32 @@ class UltimateTemplateController extends Controller
                 ->values() // 🎯 Re-index array to 0,1,2... instead of keeping original keys
                 ->toArray();
 
+            // Batch-load content translations for all fields of this table (avoids N+1 queries)
+            $contentItemNames = $fields->map(fn($f) => $tableName . '.' . $f->field_name . '[content]')->toArray();
+            $contentTranslationsLookup = [];
+            if (!empty($contentItemNames)) {
+                $contentRows = SchemaTranslation::whereIn('item_name', $contentItemNames)
+                    ->where('is_active', true)
+                    ->get();
+                foreach ($contentRows as $row) {
+                    $contentTranslationsLookup[$row->item_name . '|' . $row->code] = $row->translated_text;
+                }
+            }
+
             // Enhanced field mapping with translations
-            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields) {
+            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields, $contentTranslationsLookup) {
                 $fieldName = $field->field_name;
                 $fullFieldName = $tableName . '.' . $fieldName;
 
-                // Get translations for this field
-                $fieldTranslations = $this->getTranslationsForItem($fullFieldName, $languages);
+                // Get translations for this field (with content lookup for combobox fields)
+                $fieldTranslations = $this->getTranslationsForItem($fullFieldName, $languages, $contentTranslationsLookup);
 
                 // 🎯 Base field data
                 $fieldData = [
                     // Core field info
                     'name' => $fieldName,
                     'type' => strtoupper($field->field_type),
+                    'schema_field_id' => $field->id, // For per-file assignment lookup
 
                     // Enhanced metadata
                     'controltype' => $field->control_type ?? 'TEXT', // 🎯 Read from database
@@ -1040,6 +1083,7 @@ class UltimateTemplateController extends Controller
                     'isforeign' => str_ends_with($fieldName, '_id') && !($field->is_primary_key ?? false),
                     'istimestamp' => in_array($fieldName, ['created_at', 'updated_at', 'deleted_at']),
                     'autoincrement' => $field->is_auto_increment ?? false, // 🎯 Read from database
+                    'isblob' => $this->isBlobType($field->field_type), // 🎯 BLOB/TEXT large field detection
                     'visible' => true,
 
                     // 🎯 NEW: ITEMS variables for templates
@@ -1084,15 +1128,31 @@ class UltimateTemplateController extends Controller
             })->toArray();
 
             // 🎯 Create INDEX-BASED filtered field arrays (lightweight references into fields[])
+            // Resolve file-key fields (supports composite keys like "field1,field2")
             $fileKeyName = $table->filekeyname ?? $primaryKeyFieldName ?? 'id';
+            $fileKeyNames = $this->resolveSearchKeyFields($table, $fields);
+
             $fieldsNoKeyIndices = [];
             $fieldsNoKeyAllIndices = [];
+            $fieldsNoBlobIndices = [];
+            $fieldsNoBlobAllIndices = [];
+            $fieldsSearchKeyIndices = [];
             foreach ($mappedFields as $index => $field) {
-                if (!$field['isprimary']) {
+                $isKey = $field['isprimary'] || in_array($field['name'], $fileKeyNames);
+
+                if (!$isKey) {
+                    // Both fieldsnokey and fieldsnokeyall exclude PK + file-keys
+                    // Difference only matters after assignment overlay in processTemplateFile
                     $fieldsNoKeyIndices[] = $index;
-                    if ($field['name'] !== $fileKeyName) {
-                        $fieldsNoKeyAllIndices[] = $index;
-                    }
+                    $fieldsNoKeyAllIndices[] = $index;
+                }
+                if (!$field['isblob']) {
+                    $fieldsNoBlobIndices[] = $index;
+                    $fieldsNoBlobAllIndices[] = $index;
+                }
+                // fieldssearchkeys: indices of the file-key fields (for {:for nmaxsearchkeys:} loop)
+                if (in_array($field['name'], $fileKeyNames)) {
+                    $fieldsSearchKeyIndices[] = $index;
                 }
             }
 
@@ -1179,6 +1239,8 @@ class UltimateTemplateController extends Controller
                 'nmaxfields' => count($mappedFields),
                 'nmaxitemsnokey' => count($fieldsNoKeyIndices),
                 'nmaxitemsnokeyall' => count($fieldsNoKeyAllIndices),
+                'nmaxitemsnoblob' => count($fieldsNoBlobIndices), // 🎯 Fields without BLOB/TEXT types
+                'nmaxitemsnobloball' => count($fieldsNoBlobAllIndices), // 🎯 All fields without BLOB/TEXT (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields),
@@ -1195,6 +1257,9 @@ class UltimateTemplateController extends Controller
                 'fields' => $mappedFields,
                 'fieldsnokey' => $fieldsNoKeyIndices, // 🎯 Index array → fields[fieldsnokey[i]]
                 'fieldsnokeyall' => $fieldsNoKeyAllIndices, // 🎯 Index array → fields[fieldsnokeyall[i]]
+                'fieldsnoblob' => $fieldsNoBlobIndices, // 🎯 Index array → fields[fieldsnoblob[i]]
+                'fieldsnobloball' => $fieldsNoBlobAllIndices, // 🎯 All non-BLOB fields (ignores assignments)
+                'fieldssearchkeys' => $fieldsSearchKeyIndices, // 🎯 Index array → fields[fieldssearchkeys[i]] (file-key fields)
                 'keys' => $mappedKeys, // PRIMARY + UNIQUE keys only
                 'foreignkeys' => $mappedForeignKeys, // 🎯 FOREIGN KEY constraints with reference info
                 'constraints' => $mappedConstraints, // ALL constraints (PRIMARY, UNIQUE, FOREIGN)
@@ -1215,7 +1280,7 @@ class UltimateTemplateController extends Controller
     /**
      * 🌍 GET TRANSLATIONS FOR ITEM (TABLE OR FIELD)
      */
-    private function getTranslationsForItem(string $itemName, $languages): array
+    private function getTranslationsForItem(string $itemName, $languages, ?array $contentTranslationsLookup = null): array
     {
         $translations = [];
 
@@ -1236,11 +1301,22 @@ class UltimateTemplateController extends Controller
                 $caption = $this->createFallbackCaption($itemName);
             }
 
-            $translations[] = [
+            $entry = [
                 'caption' => $caption,
                 'code' => $languageCode,
                 'index' => $index
             ];
+
+            // Add combobox content translation if available
+            // Uses pre-loaded lookup for performance (avoids N+1 queries)
+            if ($contentTranslationsLookup !== null) {
+                $contentKey = $itemName . '[content]|' . $languageCode;
+                if (isset($contentTranslationsLookup[$contentKey])) {
+                    $entry['content'] = $contentTranslationsLookup[$contentKey];
+                }
+            }
+
+            $translations[] = $entry;
         }
 
         return $translations;
@@ -1386,6 +1462,106 @@ class UltimateTemplateController extends Controller
         $gtreeData['gtree'][0]['project'][0]['currentFormWindowIdx'] = $currentFormWindowIdx;
         $gtreeData['gtree'][0]['project'][0]['currentFormWindowType'] = $formWindowType;
 
+        // 🎯 Per-file field assignment overlay (visibility state + sort order)
+        $fileAssignments = TemplateFileFieldAssignment::where('template_file_id', $file->id)
+            ->get()
+            ->keyBy('schema_field_id');
+
+        if ($fileAssignments->isNotEmpty() && isset($gtreeData['gtree'][0]['project'][0]['tables'])) {
+            foreach ($gtreeData['gtree'][0]['project'][0]['tables'] as &$tableData) {
+                if (!isset($tableData['fields'])) continue;
+
+                foreach ($tableData['fields'] as &$fieldData) {
+                    $sfId = $fieldData['schema_field_id'] ?? null;
+                    if ($sfId && isset($fileAssignments[$sfId])) {
+                        $assignment = $fileAssignments[$sfId];
+                        $fieldData['visibility_state'] = $assignment->visibility_state;
+                        $fieldData['visible'] = !in_array($assignment->visibility_state, ['invisible', 'not_available']);
+                        if ($assignment->sort_order !== null) {
+                            $fieldData['sort'] = $assignment->sort_order;
+                            $fieldData['sortindex'] = $assignment->sort_order;
+                        }
+                    }
+                }
+                unset($fieldData);
+
+                // Re-sort fields by sort_order after overlay
+                usort($tableData['fields'], function ($a, $b) {
+                    return ($a['sort'] ?? 0) - ($b['sort'] ?? 0);
+                });
+
+                // Rebuild ALL index arrays after re-sort + assignment filtering
+                // Convention: arrays WITHOUT 'all' suffix exclude 'not_available' fields
+                //             arrays WITH 'all' suffix include ALL fields regardless of assignment
+                // First: resolve file-key field names (supports composite keys)
+                $fileKeyNameStr = $tableData['fileprimarykey'] ?? $tableData['filekeyname'] ?? 'id';
+                $allFieldNames = array_column($tableData['fields'], 'name');
+                $fileKeyNames = [$fileKeyNameStr]; // Default: single key
+                // Check if it's a composite key
+                $compositeSeparators = [',', '+', '|', ';', ' '];
+                foreach ($compositeSeparators as $sep) {
+                    if (strpos($fileKeyNameStr, $sep) !== false) {
+                        $parts = array_map('trim', explode($sep, $fileKeyNameStr));
+                        $validParts = array_filter($parts, function($p) use ($allFieldNames) {
+                            return !empty($p) && in_array($p, $allFieldNames);
+                        });
+                        if (count($validParts) > 1) {
+                            $fileKeyNames = array_values($validParts);
+                            break;
+                        }
+                    }
+                }
+
+                $newFieldsNoKey = [];
+                $newFieldsNoKeyAll = [];
+                $newFieldsNoBlob = [];
+                $newFieldsNoBlobAll = [];
+                $newFieldsSearchKeys = [];
+                foreach ($tableData['fields'] as $idx => $f) {
+                    $isNotAvailable = ($f['visibility_state'] ?? '') === 'not_available';
+                    $fieldName = $f['name'] ?? '';
+                    $isKey = ($f['isprimary'] ?? false) || in_array($fieldName, $fileKeyNames);
+
+                    if (!$isKey) {
+                        // fieldsnokeyall: exclude PK + file-keys, but NO assignment filtering
+                        $newFieldsNoKeyAll[] = $idx;
+                        // fieldsnokey: exclude PK + file-keys + not_available
+                        if (!$isNotAvailable) {
+                            $newFieldsNoKey[] = $idx;
+                        }
+                    }
+
+                    if (!($f['isblob'] ?? false)) {
+                        // fieldsnobloball: no assignment filtering (all non-BLOB)
+                        $newFieldsNoBlobAll[] = $idx;
+                        // fieldsnoblob: exclude BLOB types AND not_available fields
+                        if (!$isNotAvailable) {
+                            $newFieldsNoBlob[] = $idx;
+                        }
+                    }
+
+                    // fieldssearchkeys: file-key field indices
+                    if (in_array($fieldName, $fileKeyNames)) {
+                        $newFieldsSearchKeys[] = $idx;
+                    }
+                }
+                $tableData['fieldsnokey'] = $newFieldsNoKey;
+                $tableData['fieldsnokeyall'] = $newFieldsNoKeyAll;
+                $tableData['fieldsnoblob'] = $newFieldsNoBlob;
+                $tableData['fieldsnobloball'] = $newFieldsNoBlobAll;
+                $tableData['fieldssearchkeys'] = $newFieldsSearchKeys;
+
+                // Update all counters to match rebuilt arrays
+                $tableData['nmaxfields'] = count($tableData['fields']);
+                $tableData['nmaxitemsnokey'] = count($newFieldsNoKey);
+                $tableData['nmaxitemsnokeyall'] = count($newFieldsNoKeyAll);
+                $tableData['nmaxitemsnoblob'] = count($newFieldsNoBlob);
+                $tableData['nmaxitemsnobloball'] = count($newFieldsNoBlobAll);
+                $tableData['nmaxsearchkeys'] = count($newFieldsSearchKeys);
+            }
+            unset($tableData);
+        }
+
         // ✅ VALIDATE TEMPLATE VARIABLES WITH CONTEXT (informational only, does not block)
         $templateId = $file->template_id ?? null;
         $projectId = $gtreeData['gtree'][0]['project'][0]['projectid'] ?? null;
@@ -1443,6 +1619,8 @@ class UltimateTemplateController extends Controller
             'has_syntax_errors' => !empty($syntaxErrors),
             'syntax_errors' => $syntaxErrors,
             'syntax_warnings' => $syntaxWarnings,
+            // 🎯 Per-file overlaid GTree (only included when file has assignments)
+            'overlaid_gtree' => $fileAssignments->isNotEmpty() ? $gtreeData['gtree'] : null,
         ];
     }
 
@@ -1517,6 +1695,26 @@ class UltimateTemplateController extends Controller
             'boolean', 'bool', 'tinyint(1)' => 'boolean',
             default => 'string'
         };
+    }
+
+    /**
+     * 🎯 Check if a field type is a BLOB/TEXT large data type
+     * These are excluded from {:for nmaxitemsnoblob:} loops
+     */
+    private function isBlobType(string $fieldType): bool
+    {
+        $type = strtolower($fieldType);
+        // Strip size suffix like TEXT(65535) or BLOB(255)
+        $baseType = strpos($type, '(') !== false ? substr($type, 0, strpos($type, '(')) : $type;
+        return in_array($baseType, [
+            'blob', 'tinyblob', 'mediumblob', 'longblob',
+            'text', 'tinytext', 'mediumtext', 'longtext',
+            'clob',         // Oracle, Firebird, H2
+            'image',        // MS-SQL (deprecated but still in use)
+            'ntext',        // MS-SQL (deprecated but still in use)
+            'binary',       // Binary large data
+            'varbinary',    // Variable-length binary
+        ]);
     }
 
     private function extractFieldSize(string $fieldType): int
@@ -1601,6 +1799,53 @@ class UltimateTemplateController extends Controller
 
         // Default: single key (even if we don't recognize the pattern)
         return 1;
+    }
+
+    /**
+     * 🔑 RESOLVE SEARCH KEY FIELDS - Returns array of field names from filekeyname
+     * Similar logic to calculateSearchKeysCount() but returns field names instead of count.
+     * Supports composite keys (e.g., "field1,field2" or "field1+field2").
+     */
+    private function resolveSearchKeyFields($table, $fields): array
+    {
+        $fileKeyName = $table->filekeyname ?? $table->primarykeyfield ?? 'id';
+        $fieldNames = $fields->pluck('field_name')->toArray();
+
+        // Single field that exists in the table
+        if (in_array($fileKeyName, $fieldNames)) {
+            return [$fileKeyName];
+        }
+
+        // Check for composite key patterns with clear separators
+        $compositeSeparators = [',', '+', '|', ';', ' '];
+
+        foreach ($compositeSeparators as $separator) {
+            if (strpos($fileKeyName, $separator) !== false) {
+                $keyParts = array_map('trim', explode($separator, $fileKeyName));
+                $validParts = array_filter($keyParts, function($part) use ($fieldNames) {
+                    return !empty($part) && in_array($part, $fieldNames);
+                });
+
+                if (count($validParts) > 1) {
+                    return array_values($validParts);
+                }
+            }
+        }
+
+        // Check for underscore separator ONLY if all parts are valid field names
+        if (strpos($fileKeyName, '_') !== false) {
+            $underscoreParts = explode('_', $fileKeyName);
+            $validUnderscoreParts = array_filter($underscoreParts, function($part) use ($fieldNames) {
+                return !empty(trim($part)) && in_array(trim($part), $fieldNames);
+            });
+
+            if (count($validUnderscoreParts) > 1 && count($validUnderscoreParts) === count($underscoreParts)) {
+                return array_values(array_map('trim', $validUnderscoreParts));
+            }
+        }
+
+        // Default: return the fileKeyName as single entry (even if not found in fields)
+        return [$fileKeyName];
     }
 
     /**
@@ -2281,7 +2526,9 @@ JS;
             }
 
             // Initialize cache service
-            $cacheService = config('scoriet.template_cache.enabled', false) ? app(TemplateCacheService::class) : null;
+            // skip_cache=1 bypasses Redis cache for debugging/testing
+            $skipCache = $request->input('skip_cache', false);
+            $cacheService = (!$skipCache && config('scoriet.template_cache.enabled', false)) ? app(TemplateCacheService::class) : null;
 
             // 🚀 OPTIMIZATION: Cache gtree in Redis (MASSIVE PERFORMANCE BOOST!)
             // Build gtree only ONCE per project+template, reuse for 24 hours

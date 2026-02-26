@@ -939,24 +939,23 @@ export default function ProjectSettingsPanel() {
                 }
             }
 
-            // Bulk update via API
-            if (valuesToSave.length > 0) {
-                const response = await fetch(
-                    `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values/bulk`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({ values: valuesToSave }),
-                    }
-                );
-
-                if (!response.ok) {
-                    throw new Error(`${t.projectsettingspanel958}"${template.name}"`);
+            // Bulk update via API (always call — backend deletes all then inserts non-empty)
+            // This ensures cleared/empty variables are properly deleted from DB
+            const response = await fetch(
+                `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values/bulk`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ values: valuesToSave }),
                 }
+            );
+
+            if (!response.ok) {
+                throw new Error(`${t.projectsettingspanel958}"${template.name}"`);
             }
         }
     };
@@ -1831,17 +1830,35 @@ export default function ProjectSettingsPanel() {
                                                                     </p>
                                                                 )}
 
-                                                                <InputText
-                                                                    value={currentValue}
-                                                                    onChange={(e) => handleVariableValueChange(
-                                                                        template.id,
-                                                                        variable.variable_name,
-                                                                        selectedVariableLanguage,
-                                                                        e.target.value
+                                                                <div className="flex items-center gap-2">
+                                                                    <InputText
+                                                                        value={currentValue}
+                                                                        onChange={(e) => handleVariableValueChange(
+                                                                            template.id,
+                                                                            variable.variable_name,
+                                                                            selectedVariableLanguage,
+                                                                            e.target.value
+                                                                        )}
+                                                                        placeholder={variable.default_value || `${t.projectsettingspanel1841}{${variable.variable_name}}${t.projectsettingspanel1841_2}`}
+                                                                        className="w-full"
+                                                                    />
+                                                                    {currentValue && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleVariableValueChange(
+                                                                                template.id,
+                                                                                variable.variable_name,
+                                                                                selectedVariableLanguage,
+                                                                                ''
+                                                                            )}
+                                                                            className="flex-shrink-0 p-2 rounded hover:bg-red-900/30 transition-colors"
+                                                                            title={t.projectsettingspanel_var_delete}
+                                                                            style={{ color: colors.errorText }}
+                                                                        >
+                                                                            <i className="pi pi-times"></i>
+                                                                        </button>
                                                                     )}
-                                                                    placeholder={variable.default_value || `${t.projectsettingspanel1841}{${variable.variable_name}}${t.projectsettingspanel1841_2}`}
-                                                                    className="w-full"
-                                                                />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

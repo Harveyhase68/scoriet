@@ -24,6 +24,14 @@ use App\Observers\ProjectTemplateUsageObserver;
 use App\Observers\SchemaTableObserver;
 use App\Observers\ProjectGenerationTreeObserver;
 use App\Observers\ProjectSchemaObserver;
+use App\Observers\LanguageObserver;
+use App\Observers\ProjectFormSetObserver;
+use App\Observers\SchemaTranslationObserver;
+use App\Observers\TemplateFileFieldAssignmentObserver;
+use App\Models\Language;
+use App\Models\ProjectFormSet;
+use App\Models\SchemaTranslation;
+use App\Models\TemplateFileFieldAssignment;
 
 class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthServiceProvider
 {
@@ -97,5 +105,9 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         SchemaTable::observe(SchemaTableObserver::class);
         ProjectGenerationTree::observe(ProjectGenerationTreeObserver::class);
         ProjectSchema::observe(ProjectSchemaObserver::class);
+        Language::observe(LanguageObserver::class);
+        ProjectFormSet::observe(ProjectFormSetObserver::class);
+        SchemaTranslation::observe(SchemaTranslationObserver::class);
+        TemplateFileFieldAssignment::observe(TemplateFileFieldAssignmentObserver::class);
     }
 }

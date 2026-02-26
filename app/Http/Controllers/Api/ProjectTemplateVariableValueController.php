@@ -7,6 +7,7 @@ use App\Models\ProjectTemplateVariableValue;
 use App\Models\Project;
 use App\Models\Template;
 use App\Models\TemplateVariable;
+use App\Services\TemplateCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -158,6 +159,15 @@ class ProjectTemplateVariableValueController extends Controller
 
                 $updated[] = $value;
             }
+        }
+
+        // Invalidate GTree + compiled template cache (variable values are embedded in GTree)
+        try {
+            $cacheService = app(TemplateCacheService::class);
+            $cacheService->invalidateGtreeForProject($projectId);
+            $cacheService->invalidateCompiledForProject($projectId);
+        } catch (\Exception $e) {
+            \Log::error("Failed to invalidate cache after variable update for project {$projectId}: " . $e->getMessage());
         }
 
         return response()->json([
