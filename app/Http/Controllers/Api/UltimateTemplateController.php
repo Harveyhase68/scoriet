@@ -830,7 +830,7 @@ class UltimateTemplateController extends Controller
             // Resolve file-key fields (supports composite keys like "field1,field2")
             // Use ?: (Elvis) instead of ?? to also catch empty strings "" (ProjectImportService stores "" as default)
             $fileKeyName = $table->filekeyname ?: ($primaryKeyFieldName ?: 'id');
-            $fileKeyNames = $this->resolveSearchKeyFields($table, $fields);
+            $fileKeyNames = $this->resolveSearchKeyFields($table, $fields, $primaryKeyFieldName);
 
             $fieldsNoKeyIndices = [];
             $fieldsNoKeyAllIndices = [];
@@ -941,7 +941,7 @@ class UltimateTemplateController extends Controller
                 'nmaxitemsnobloball' => count($fieldsNoBlobAllIndices), // 🎯 All fields without BLOB/TEXT (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
-                'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields),
+                'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields, $primaryKeyFieldName),
 
                 // Master-detail (placeholder - implement when needed)
                 'nmaxitemsmasterdetail' => 0,
@@ -1132,7 +1132,7 @@ class UltimateTemplateController extends Controller
             // Resolve file-key fields (supports composite keys like "field1,field2")
             // Use ?: (Elvis) instead of ?? to also catch empty strings "" (ProjectImportService stores "" as default)
             $fileKeyName = $table->filekeyname ?: ($primaryKeyFieldName ?: 'id');
-            $fileKeyNames = $this->resolveSearchKeyFields($table, $fields);
+            $fileKeyNames = $this->resolveSearchKeyFields($table, $fields, $primaryKeyFieldName);
 
             $fieldsNoKeyIndices = [];
             $fieldsNoKeyAllIndices = [];
@@ -1245,7 +1245,7 @@ class UltimateTemplateController extends Controller
                 'nmaxitemsnobloball' => count($fieldsNoBlobAllIndices), // 🎯 All fields without BLOB/TEXT (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
-                'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields),
+                'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields, $primaryKeyFieldName),
 
                 // Master-detail (placeholder - implement when needed)
                 'nmaxitemsmasterdetail' => 0,
@@ -1710,11 +1710,12 @@ class UltimateTemplateController extends Controller
      * 🔧 CALCULATE SEARCH KEYS COUNT FOR COMPOSITE KEYS
      * Determines how many fields make up the search key based on filekeyname
      */
-    private function calculateSearchKeysCount($table, $fields): int
+    private function calculateSearchKeysCount($table, $fields, ?string $primaryKeyFieldName = null): int
     {
         // Get the file key name (primary search key)
         // Use ?: (Elvis) instead of ?? to also catch empty strings ""
-        $fileKeyName = $table->filekeyname ?: ($table->primarykeyfield ?: 'id');
+        // Prefer dynamically detected $primaryKeyFieldName over DB column $table->primarykeyfield
+        $fileKeyName = $table->filekeyname ?: ($primaryKeyFieldName ?: ($table->primarykeyfield ?: 'id'));
         $fieldNames = $fields->pluck('field_name')->toArray();
 
         // 🔧 SAUBERE LÖSUNG: Check if filekeyname is a single existing field first
@@ -1767,10 +1768,11 @@ class UltimateTemplateController extends Controller
      * Similar logic to calculateSearchKeysCount() but returns field names instead of count.
      * Supports composite keys (e.g., "field1,field2" or "field1+field2").
      */
-    private function resolveSearchKeyFields($table, $fields): array
+    private function resolveSearchKeyFields($table, $fields, ?string $primaryKeyFieldName = null): array
     {
         // Use ?: (Elvis) instead of ?? to also catch empty strings ""
-        $fileKeyName = $table->filekeyname ?: ($table->primarykeyfield ?: 'id');
+        // Prefer dynamically detected $primaryKeyFieldName over DB column $table->primarykeyfield
+        $fileKeyName = $table->filekeyname ?: ($primaryKeyFieldName ?: ($table->primarykeyfield ?: 'id'));
         $fieldNames = $fields->pluck('field_name')->toArray();
 
         // Single field that exists in the table

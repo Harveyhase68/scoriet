@@ -7230,5 +7230,9 @@ export const it: Translations = {
   createteammodal158: 'Sono consentite solo lettere minuscole, numeri e caratteri di sottolineatura',
   createteammodal121: 'Errore durante l\'aggiornamento dei crediti:',
   createteammodal97: 'Errore durante il controllo dell\'abbonamento al team:',
+  debugmanualgeneratorpanel1349: 'L\'errore potrebbe essere in linea ',
+  debugmanualgeneratorpanel1352: 'Linea modello ',
+  debugmanualgeneratorpanel1349_2: ' del modello',
+  debugmanualgeneratorpanel1354: 'nella configurazione gtree',
 
 };

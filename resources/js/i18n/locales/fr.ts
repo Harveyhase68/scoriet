@@ -7231,5 +7231,9 @@ export const fr: Translations = {
   createteammodal158: 'Seules les lettres minuscules, les chiffres et les traits de soulignement sont autorisés.',
   createteammodal121: 'Erreur lors de l\'actualisation des crédits :',
   createteammodal97: 'Erreur lors de la vérification de l\'abonnement de l\'équipe :',
+  debugmanualgeneratorpanel1349: 'Une erreur peut se trouver dans la ligne. ',
+  debugmanualgeneratorpanel1352: 'Ligne de gabarit ',
+  debugmanualgeneratorpanel1349_2: ' modèle',
+  debugmanualgeneratorpanel1354: 'configuration gtree',
 
 };

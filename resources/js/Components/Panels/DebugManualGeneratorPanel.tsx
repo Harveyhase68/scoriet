@@ -1346,12 +1346,12 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
             // let's try a different approach: find the error line in our actual code
             if (jsLineNumber > codeLines.length) {
               // Error line is beyond our code - probably from eval context
-              lineNumber = ` (Error may be in line ~${jsLineNumber % codeLines.length || 1} of template)`;
+              lineNumber = ` (${t.debugmanualgeneratorpanel1349}~${jsLineNumber % codeLines.length || 1}${t.debugmanualgeneratorpanel1349_2})`;
             } else if (jsLineNumber > gtreeLines) {
               const templateLineNumber = jsLineNumber - gtreeLines;
-              lineNumber = ` (Template Line ${templateLineNumber}, JS Line ${jsLineNumber})`;
+              lineNumber = ` (${t.debugmanualgeneratorpanel1352}${templateLineNumber}, JS Line ${jsLineNumber})`;
             } else {
-              lineNumber = ` (JS Line ${jsLineNumber} - in gtree setup)`;
+              lineNumber = ` (JS Line ${jsLineNumber} - ${t.debugmanualgeneratorpanel1354})`;
             }
           } else {
             lineNumber = ` (JS Line ${jsLineNumber})`;

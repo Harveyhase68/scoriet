@@ -7249,5 +7249,9 @@ export const en: Translations = {
   createteammodal158: 'Only lowercase letters, numbers, and underscores are allowed',
   createteammodal121: 'Error refreshing credits:',
   createteammodal97: 'Error checking team subscription:',
+  debugmanualgeneratorpanel1349: 'Error may be in line  ',
+  debugmanualgeneratorpanel1352: 'Template Line  ',
+  debugmanualgeneratorpanel1349_2: '  of template',
+  debugmanualgeneratorpanel1354: 'in gtree setup',
 
 };
