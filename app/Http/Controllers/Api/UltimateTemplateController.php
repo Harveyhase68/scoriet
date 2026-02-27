@@ -828,7 +828,8 @@ class UltimateTemplateController extends Controller
 
             // 🎯 Create INDEX-BASED filtered field arrays (lightweight references into fields[])
             // Resolve file-key fields (supports composite keys like "field1,field2")
-            $fileKeyName = $table->filekeyname ?? $primaryKeyFieldName ?? 'id';
+            // Use ?: (Elvis) instead of ?? to also catch empty strings "" (ProjectImportService stores "" as default)
+            $fileKeyName = $table->filekeyname ?: ($primaryKeyFieldName ?: 'id');
             $fileKeyNames = $this->resolveSearchKeyFields($table, $fields);
 
             $fieldsNoKeyIndices = [];
@@ -1129,7 +1130,8 @@ class UltimateTemplateController extends Controller
 
             // 🎯 Create INDEX-BASED filtered field arrays (lightweight references into fields[])
             // Resolve file-key fields (supports composite keys like "field1,field2")
-            $fileKeyName = $table->filekeyname ?? $primaryKeyFieldName ?? 'id';
+            // Use ?: (Elvis) instead of ?? to also catch empty strings "" (ProjectImportService stores "" as default)
+            $fileKeyName = $table->filekeyname ?: ($primaryKeyFieldName ?: 'id');
             $fileKeyNames = $this->resolveSearchKeyFields($table, $fields);
 
             $fieldsNoKeyIndices = [];
@@ -1711,7 +1713,8 @@ class UltimateTemplateController extends Controller
     private function calculateSearchKeysCount($table, $fields): int
     {
         // Get the file key name (primary search key)
-        $fileKeyName = $table->filekeyname ?? $table->primarykeyfield ?? 'id';
+        // Use ?: (Elvis) instead of ?? to also catch empty strings ""
+        $fileKeyName = $table->filekeyname ?: ($table->primarykeyfield ?: 'id');
         $fieldNames = $fields->pluck('field_name')->toArray();
 
         // 🔧 SAUBERE LÖSUNG: Check if filekeyname is a single existing field first
@@ -1766,7 +1769,8 @@ class UltimateTemplateController extends Controller
      */
     private function resolveSearchKeyFields($table, $fields): array
     {
-        $fileKeyName = $table->filekeyname ?? $table->primarykeyfield ?? 'id';
+        // Use ?: (Elvis) instead of ?? to also catch empty strings ""
+        $fileKeyName = $table->filekeyname ?: ($table->primarykeyfield ?: 'id');
         $fieldNames = $fields->pluck('field_name')->toArray();
 
         // Single field that exists in the table

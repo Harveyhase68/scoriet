@@ -1453,7 +1453,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
         }
       } else {
         // For non-SyntaxErrors (ReferenceError, TypeError, etc.), show error immediately without fallback
-        setExecutedResult(`${errorMessage}\n\n{t.debugmanualgeneratorpanel1448_2}`);
+        setExecutedResult(`${errorMessage}\n\n${t.debugmanualgeneratorpanel1448_2}`);
         setActiveTabIndex(1); // Switch to result tab
       }
     }

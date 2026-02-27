@@ -450,7 +450,7 @@ class SchemaStorageService
 
             foreach ($previousTables as $table) {
                 $previousPrimaryKeys[$table->table_name] = $table->primarykeyfield;
-                $previousFileKeys[$table->table_name] = $table->filekeyname ?? $table->primarykeyfield;
+                $previousFileKeys[$table->table_name] = $table->filekeyname ?: $table->primarykeyfield;
                 $previousFileNamesRenamed[$table->table_name] = $table->file_name_renamed ?? '';
                 $previousFileNamesShort[$table->table_name] = $table->file_name_short ?? '';
             }

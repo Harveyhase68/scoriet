@@ -728,8 +728,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         const savedLayouts = await loadLayoutForVersion(schema, version);
 
         // Check if this is the latest version - use the passed parameters, not state
+        // Use Number() to handle MariaDB string/number type mismatch
         const isLatestVersion = schema && version &&
-          version.version_number === schema.last_version;
+          Number(version.version_number) === Number(schema.last_version);
 
         // Calculate read-only mode based on schema ownership
         const userId = parseInt(localStorage.getItem('user_id') || '0');
@@ -828,8 +829,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   // Auto-select schema when preSelectedSchemaId is provided
   useEffect(() => {
     if (preSelectedSchemaId && floatingSchemas.length > 0) {
-      const preSelectedSchema = floatingSchemas.find(schema => schema.id === preSelectedSchemaId);
-      if (preSelectedSchema && (!selectedSchema || selectedSchema.id !== preSelectedSchemaId)) {
+      const preSelectedSchema = floatingSchemas.find(schema => Number(schema.id) === Number(preSelectedSchemaId));
+      if (preSelectedSchema && (!selectedSchema || Number(selectedSchema.id) !== Number(preSelectedSchemaId))) {
         setSelectedSchema(preSelectedSchema);
       }
     }
@@ -927,7 +928,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         const versions = await loadSchemaVersions(importedSchema);
 
         // Find and load the newly created version
-        const newVersion = versions.find(v => v.version_number === result.version_number);
+        const newVersion = versions.find(v => Number(v.version_number) === Number(result.version_number));
         if (newVersion) {
           await loadSchemaVersionWithSchema(importedSchema, newVersion);
         }
@@ -1383,7 +1384,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // If a new version was created, reload and select it
       if (result.new_version) {
         await loadSchemaVersions(selectedSchema!);
-        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        const newVersion = schemaVersions.find(v => Number(v.version_number) === Number(result.new_version.version_number));
         if (newVersion && selectedSchema) {
           setTimeout(() => {
             loadSchemaVersionWithSchema(selectedSchema, newVersion);
@@ -1574,7 +1575,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
           // Reload schema versions to get the new version
           const newVersions = await loadSchemaVersions(selectedSchema);
-          const newVersion = newVersions?.find((v: SchemaVersionExtended) => v.version_number === result.new_version_number);
+          const newVersion = newVersions?.find((v: SchemaVersionExtended) => Number(v.version_number) === Number(result.new_version_number));
 
           if (newVersion) {
             setSelectedVersion(newVersion);
@@ -1780,7 +1781,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           // Use the new_last_version from backend response if available
           const newLastVersionNumber = result.new_last_version;
           const latestVersion = newLastVersionNumber
-            ? remainingVersions.find(v => v.version_number === newLastVersionNumber)
+            ? remainingVersions.find(v => Number(v.version_number) === Number(newLastVersionNumber))
             : remainingVersions.reduce((latest, current) =>
                 (current.version_number || 0) > (latest.version_number || 0) ? current : latest
               );
@@ -1838,7 +1839,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // If a new version was created, reload and select it
       if (result.new_version) {
         await loadSchemaVersions(selectedSchema!);
-        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        const newVersion = schemaVersions.find(v => Number(v.version_number) === Number(result.new_version.version_number));
         if (newVersion && selectedSchema) {
           setTimeout(() => {
             loadSchemaVersionWithSchema(selectedSchema, newVersion);
@@ -1899,7 +1900,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // If a new version was created, reload and select it
       if (result.new_version) {
         await loadSchemaVersions(selectedSchema!);
-        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        const newVersion = schemaVersions.find(v => Number(v.version_number) === Number(result.new_version.version_number));
         if (newVersion && selectedSchema) {
           setTimeout(() => {
             loadSchemaVersionWithSchema(selectedSchema, newVersion);
@@ -1991,7 +1992,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // If a new version was created, reload and select it
       if (result.new_version) {
         await loadSchemaVersions(selectedSchema!);
-        const newVersion = schemaVersions.find(v => v.version_number === result.new_version.version_number);
+        const newVersion = schemaVersions.find(v => Number(v.version_number) === Number(result.new_version.version_number));
         if (newVersion && selectedSchema) {
           setTimeout(() => {
             loadSchemaVersionWithSchema(selectedSchema, newVersion);
@@ -2380,8 +2381,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             <select
               value={selectedSchema?.id || ''}
               onChange={(e) => {
-                const schemaId = parseInt(e.target.value);
-                const schema = floatingSchemas.find(s => s.id === schemaId);
+                const schemaId = Number(e.target.value);
+                const schema = floatingSchemas.find(s => Number(s.id) === schemaId);
                 setSelectedSchema(schema || null);
               }}
               className="px-3 py-1 rounded text-sm focus:outline-none"
@@ -2911,7 +2912,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 </div>
               </div>
 
-              {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+              {!selectedVersion || Number(selectedVersion.version_number) !== Number(selectedSchema?.last_version) ? (
                 <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                   {t.panelt22922}
                 </div>
@@ -3021,7 +3022,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 </div>
               </div>
 
-              {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+              {!selectedVersion || Number(selectedVersion.version_number) !== Number(selectedSchema?.last_version) ? (
                 <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                   {t.panelt23032}
                 </div>
@@ -3369,7 +3370,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                   </div>
                 )}
 
-                {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+                {!selectedVersion || Number(selectedVersion.version_number) !== Number(selectedSchema?.last_version) ? (
                   <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                     {t.panelt23380}
                   </div>
@@ -3443,7 +3444,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 </ul>
               </div>
 
-              {!selectedVersion || selectedVersion.version_number !== selectedSchema?.last_version ? (
+              {!selectedVersion || Number(selectedVersion.version_number) !== Number(selectedSchema?.last_version) ? (
                 <div className="mt-4 p-3 rounded text-sm" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}`, color: colors.warningText }}>
                   {t.panelt23454}
                 </div>
