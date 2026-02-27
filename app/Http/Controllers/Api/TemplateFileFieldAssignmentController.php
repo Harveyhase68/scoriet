@@ -93,7 +93,7 @@ class TemplateFileFieldAssignmentController extends Controller
                 'id' => $table->id,
                 'table_name' => $table->table_name,
                 'comment' => $table->comment,
-                'filekeyname' => $table->filekeyname ?? $table->primarykeyfield ?? null,
+                'filekeyname' => $table->filekeyname ?: ($table->primarykeyfield ?: null),
             ],
             'template_files' => $templateFiles->map(function ($tf) {
                 return [

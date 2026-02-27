@@ -152,7 +152,7 @@ class SimpleTemplateEngine
         $replacements = [
             '{:tablename:}' => $table['tablename'] ?? 'Unknown',
             '{:filename:}' => $table['tablename'] ?? 'Unknown', // Alias
-            '{:filekeyname:}' => $table['primarykeyfield'] ?? 'id', // 🎯 DAS WAR DER FEHLER!
+            '{:filekeyname:}' => $table['primarykeyfield'] ?: 'id', // Use ?: to catch empty strings too
             '{:nmaxitems:}' => $table['nmaxitems'] ?? 0,
             '{:nmaxsearchkeys:}' => $table['nmaxitems'] ?? 0, // Für Suchfelder
         ];

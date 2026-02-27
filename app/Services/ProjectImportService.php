@@ -447,8 +447,8 @@ class ProjectImportService
                 'schema_version_id' => $version->id,
                 'schema_id' => $schema->id,
                 'table_name' => $tableData['table_name'] ?? '',
-                'primarykeyfield' => $tableData['primarykeyfield'] ?? '',
-                'filekeyname' => $tableData['filekeyname'] ?? '',
+                'primarykeyfield' => $tableData['primarykeyfield'] ?? null,
+                'filekeyname' => $tableData['filekeyname'] ?? null,
                 'file_name_renamed' => $tableData['file_name_renamed'] ?? '',
                 'file_name_short' => $tableData['file_name_short'] ?? '',
             ]);
