@@ -7267,4 +7267,9 @@ templatemodal480: string;
   createteammodal158: string;
   createteammodal121: string;
   createteammodal97: string;
+ 
+  debugmanualgeneratorpanel1349: string;
+  debugmanualgeneratorpanel1352: string;
+  debugmanualgeneratorpanel1349_2: string;
+  debugmanualgeneratorpanel1354: string;
 }

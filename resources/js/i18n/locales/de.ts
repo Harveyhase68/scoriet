@@ -7243,5 +7243,9 @@ export const de: Translations = {
   createteammodal158: 'Nur Kleinbuchstaben, Zahlen und Unterstriche sind erlaubt.',
   createteammodal121: 'Fehler beim Aktualisieren der Credits:',
   createteammodal97: 'Fehler bei der Überprüfung des Team-Abonnements:',
+  debugmanualgeneratorpanel1349: 'Der Fehler könnte in der Zeile liegen ',
+  debugmanualgeneratorpanel1352: 'Vorlagenlinie ',
+  debugmanualgeneratorpanel1349_2: ' Vorlage',
+  debugmanualgeneratorpanel1354: 'in gtree setup',
 
 };

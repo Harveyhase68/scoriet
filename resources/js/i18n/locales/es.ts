@@ -7230,5 +7230,9 @@ export const es: Translations = {
   createteammodal158: 'Solo se permiten letras minúsculas, números y guiones bajos.',
   createteammodal121: 'Error al actualizar los créditos:',
   createteammodal97: 'Error al comprobar la suscripción del equipo:',
+  debugmanualgeneratorpanel1349: 'El error puede estar en la línea ',
+  debugmanualgeneratorpanel1352: 'Línea de plantilla ',
+  debugmanualgeneratorpanel1349_2: ' de plantilla',
+  debugmanualgeneratorpanel1354: 'en la configuración de gtree',
 
 };
