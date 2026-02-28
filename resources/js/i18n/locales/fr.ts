@@ -7235,5 +7235,13 @@ export const fr: Translations = {
   debugmanualgeneratorpanel1352: 'Ligne de gabarit ',
   debugmanualgeneratorpanel1349_2: ' modèle',
   debugmanualgeneratorpanel1354: 'configuration gtree',
+  templateimportwizardpanel1828: 'Paramètres du modèle (exportation australienne)',
+  templateimportwizardpanel1815: ' Archives de répertoires statiques',
+  templateimportwizardpanel1837: 'Variables personnalisées ',
+  templateimportwizardpanel1864: 'Fichiers protégés ',
+  templateimportwizardpanel1884: 'Script d\'installation ',
+  templateimportwizardpanel1908: 'Script de mise à jour ',
+  templateimportwizardpanel1699: 'Archives de répertoires statiques (exportation de modèles)',
+  templateimportwizardpanel1702: 'Ces archives ont été trouvées dans l\'exportation du modèle et seront importées telles quelles.',
 
 };

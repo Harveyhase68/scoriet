@@ -1160,8 +1160,8 @@ class TemplateController extends Controller
     {
         $user = Auth::user();
 
-        // Load template manually since route uses {id} not {template}
-        $template = Template::find($id);
+        // Load template with files and variables for complete cloning
+        $template = Template::with(['files', 'variables'])->find($id);
         if (!$template) {
             return response()->json(['message' => __('templatecontrollerphp1144')], 404);
         }
@@ -1220,6 +1220,9 @@ class TemplateController extends Controller
             'is_system_template' => false, // Cloned templates are never system templates
             'file_count' => $template->file_count,
             'cloned_from_template_id' => $isFromStore ? $template->id : null, // Track source for plagiarism detection
+            'protected_files' => $template->protected_files ?? [],
+            'install_script' => $template->install_script ?? [],
+            'update_script' => $template->update_script ?? [],
         ]);
 
         // Clone template files
@@ -1234,6 +1237,17 @@ class TemplateController extends Controller
                 'content_type' => $file->content_type,
                 'zip_filename' => $file->zip_filename,
                 'form_window_type' => $file->form_window_type ?? 0,
+                'is_include_only' => $file->is_include_only ?? false,
+            ]);
+        }
+
+        // Clone custom variables
+        foreach ($template->variables as $variable) {
+            $clonedTemplate->variables()->create([
+                'variable_name' => $variable->variable_name,
+                'description' => $variable->description,
+                'default_value' => $variable->default_value,
+                'is_required' => $variable->is_required,
             ]);
         }
 
@@ -1652,7 +1666,7 @@ class TemplateController extends Controller
         $user = Auth::user();
 
         // Find template
-        $template = Template::with(['files', 'creator'])->find($templateId);
+        $template = Template::with(['files', 'creator', 'variables'])->find($templateId);
 
         if (!$template) {
             return response()->json([
@@ -1680,11 +1694,22 @@ class TemplateController extends Controller
                 'visibility' => $template->visibility,
                 'is_system_template' => $template->is_system_template,
                 'created_at' => $template->created_at,
+                'protected_files' => $template->protected_files ?? [],
+                'install_script' => $template->install_script ?? [],
+                'update_script' => $template->update_script ?? [],
                 'creator' => [
                     'name' => $template->creator->name,
                     'email' => $template->creator->email,
                 ],
             ],
+            'custom_variables' => $template->variables->map(function ($v) {
+                return [
+                    'variable_name' => $v->variable_name,
+                    'description' => $v->description,
+                    'default_value' => $v->default_value,
+                    'is_required' => $v->is_required,
+                ];
+            })->toArray(),
             'files' => $template->files->map(function ($file) {
                 return [
                     'file_name' => $file->file_name,
@@ -1808,7 +1833,7 @@ class TemplateController extends Controller
             return response()->json(['error' => __('templatecontrollerphp1786')], 400);
         }
 
-        $template = Template::with(['files', 'creator'])->find($templateId);
+        $template = Template::with(['files', 'creator', 'variables'])->find($templateId);
 
         if (!$template) {
             return response()->json(['message' => __('templatecontrollerphp1792')], 404);
@@ -1862,6 +1887,10 @@ class TemplateController extends Controller
                         'output_path' => $file->output_path,
                         'file_type' => $file->file_type,
                         'file_order' => $file->file_order,
+                        'content_type' => $file->content_type ?? 'text',
+                        'zip_filename' => $file->zip_filename,
+                        'form_window_type' => $file->form_window_type ?? 0,
+                        'is_include_only' => $file->is_include_only ?? false,
                     ];
                 } else {
                     // No duplicate - no archive_source needed
@@ -1872,6 +1901,10 @@ class TemplateController extends Controller
                         'output_path' => $file->output_path,
                         'file_type' => $file->file_type,
                         'file_order' => $file->file_order,
+                        'content_type' => $file->content_type ?? 'text',
+                        'zip_filename' => $file->zip_filename,
+                        'form_window_type' => $file->form_window_type ?? 0,
+                        'is_include_only' => $file->is_include_only ?? false,
                     ];
                 }
             }
@@ -1885,7 +1918,18 @@ class TemplateController extends Controller
                     'language' => $template->language,
                     'tags' => $template->tags,
                     'is_active' => $template->is_active,
+                    'protected_files' => $template->protected_files ?? [],
+                    'install_script' => $template->install_script ?? [],
+                    'update_script' => $template->update_script ?? [],
                 ],
+                'custom_variables' => $template->variables->map(function ($v) {
+                    return [
+                        'variable_name' => $v->variable_name,
+                        'description' => $v->description,
+                        'default_value' => $v->default_value,
+                        'is_required' => $v->is_required,
+                    ];
+                })->toArray(),
                 'files' => $filesData,
             ];
             \Illuminate\Support\Facades\File::put(
@@ -2028,6 +2072,21 @@ class TemplateController extends Controller
                 'template_data.template.language' => 'required|string|max:50',
                 'template_data.template.tags' => 'nullable|array',
                 'template_data.template.is_active' => 'nullable|boolean',
+                'template_data.template.protected_files' => 'nullable|array',
+                'template_data.template.protected_files.*' => 'string',
+                'template_data.template.install_script' => 'nullable|array',
+                'template_data.template.install_script.*.step' => 'nullable|integer',
+                'template_data.template.install_script.*.command' => 'nullable|string',
+                'template_data.template.install_script.*.description' => 'nullable|string',
+                'template_data.template.update_script' => 'nullable|array',
+                'template_data.template.update_script.*.step' => 'nullable|integer',
+                'template_data.template.update_script.*.command' => 'nullable|string',
+                'template_data.template.update_script.*.description' => 'nullable|string',
+                'template_data.custom_variables' => 'nullable|array',
+                'template_data.custom_variables.*.variable_name' => 'required_with:template_data.custom_variables|string',
+                'template_data.custom_variables.*.description' => 'nullable|string',
+                'template_data.custom_variables.*.default_value' => 'nullable|string',
+                'template_data.custom_variables.*.is_required' => 'nullable|boolean',
                 'template_data.files' => 'nullable|array',
                 'template_data.files.*.file_name' => 'required|string',
                 'template_data.files.*.file_path' => 'nullable|string',
@@ -2044,6 +2103,7 @@ class TemplateController extends Controller
 
             $templateData = $validated['template_data']['template'];
             $filesData = $validated['template_data']['files'] ?? [];
+            $customVariables = $validated['template_data']['custom_variables'] ?? [];
             $overwriteExisting = $validated['overwrite_existing'] ?? false;
 
             // Check if template with same name exists
@@ -2070,7 +2130,21 @@ class TemplateController extends Controller
                 'tags' => $templateData['tags'] ?? [],
                 'is_active' => $templateData['is_active'] ?? true,
                 'file_count' => count($filesData),
+                'creator_user_id' => Auth::user()->id,
+                'protected_files' => $templateData['protected_files'] ?? [],
+                'install_script' => $templateData['install_script'] ?? [],
+                'update_script' => $templateData['update_script'] ?? [],
             ]);
+
+            // Import custom variables
+            foreach ($customVariables as $varData) {
+                $template->variables()->create([
+                    'variable_name' => $varData['variable_name'],
+                    'description' => $varData['description'] ?? null,
+                    'default_value' => $varData['default_value'] ?? null,
+                    'is_required' => $varData['is_required'] ?? false,
+                ]);
+            }
 
             // Create template files
             foreach ($filesData as $index => $fileData) {
@@ -2187,7 +2261,21 @@ class TemplateController extends Controller
                     'is_active' => $templateInfo['is_active'] ?? true,
                     'file_count' => count($filesData),
                     'creator_user_id' => Auth::user()->id, // Set current user as creator
+                    'protected_files' => $templateInfo['protected_files'] ?? [],
+                    'install_script' => $templateInfo['install_script'] ?? [],
+                    'update_script' => $templateInfo['update_script'] ?? [],
                 ]);
+
+                // Import custom variables from template.json
+                $customVariables = $templateData['custom_variables'] ?? [];
+                foreach ($customVariables as $varData) {
+                    $template->variables()->create([
+                        'variable_name' => $varData['variable_name'],
+                        'description' => $varData['description'] ?? null,
+                        'default_value' => $varData['default_value'] ?? null,
+                        'is_required' => $varData['is_required'] ?? false,
+                    ]);
+                }
 
                 // Create template files - read content from physical files in archive
                 foreach ($filesData as $index => $fileData) {
@@ -2202,15 +2290,24 @@ class TemplateController extends Controller
                     $contentType = 'text'; // Default
                     $zipFilename = null;
 
+                    // Three-level ZIP detection:
+                    // 1. Metadata from template.json (content_type field)
+                    // 2. file_type === 'static_directory' → always a ZIP by definition
+                    // 3. Magic bytes check with isZipFile()
+                    $metadataContentType = $fileData['content_type'] ?? null;
+                    $metadataZipFilename = $fileData['zip_filename'] ?? null;
+                    $isStaticDirectory = ($fileData['file_type'] ?? '') === 'static_directory';
+
                     if (\Illuminate\Support\Facades\File::exists($physicalFilePath)) {
-                        // Check if this is a ZIP file (binary file)
-                        $isZipFile = $this->isZipFile($physicalFilePath);
+                        $isZipFile = $metadataContentType === 'zip'
+                            || $isStaticDirectory
+                            || $this->isZipFile($physicalFilePath);
 
                         if ($isZipFile) {
                             // ZIP file - read as binary and encode to base64
                             $fileContent = base64_encode(\Illuminate\Support\Facades\File::get($physicalFilePath));
                             $contentType = 'zip';
-                            $zipFilename = $fileName; // Store original filename
+                            $zipFilename = $metadataZipFilename ?? $fileName;
                         } else {
                             // Regular text file
                             $fileContent = \Illuminate\Support\Facades\File::get($physicalFilePath);
@@ -2219,6 +2316,11 @@ class TemplateController extends Controller
                     } else {
                         // Fallback: if file_content is in JSON (old format), use it
                         $fileContent = $fileData['file_content'] ?? '';
+                        // Even without physical file, respect metadata content_type
+                        if ($metadataContentType === 'zip' || $isStaticDirectory) {
+                            $contentType = 'zip';
+                            $zipFilename = $metadataZipFilename ?? $fileName;
+                        }
                     }
 
                     $template->files()->create([
@@ -2230,6 +2332,8 @@ class TemplateController extends Controller
                         'file_order' => $fileData['file_order'] ?? $index,
                         'content_type' => $contentType,
                         'zip_filename' => $zipFilename,
+                        'form_window_type' => $fileData['form_window_type'] ?? 0,
+                        'is_include_only' => $fileData['is_include_only'] ?? false,
                     ]);
                 }
 

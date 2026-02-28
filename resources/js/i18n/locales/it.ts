@@ -7234,5 +7234,13 @@ export const it: Translations = {
   debugmanualgeneratorpanel1352: 'Linea modello ',
   debugmanualgeneratorpanel1349_2: ' del modello',
   debugmanualgeneratorpanel1354: 'nella configurazione gtree',
+  templateimportwizardpanel1828: 'Impostazioni modello (esportazione aus)',
+  templateimportwizardpanel1815: ' Archivio directory statico',
+  templateimportwizardpanel1837: 'Variabili personalizzate ',
+  templateimportwizardpanel1864: 'File protetti ',
+  templateimportwizardpanel1884: 'Script di installazione ',
+  templateimportwizardpanel1908: 'Aggiorna script ',
+  templateimportwizardpanel1699: 'Archivi directory statici (esportazione modello)',
+  templateimportwizardpanel1702: 'Questi archivi sono stati trovati nell\'esportazione del modello e verranno importati così come sono.',
 
 };

@@ -7247,5 +7247,13 @@ export const de: Translations = {
   debugmanualgeneratorpanel1352: 'Vorlagenlinie ',
   debugmanualgeneratorpanel1349_2: ' Vorlage',
   debugmanualgeneratorpanel1354: 'in gtree setup',
+  templateimportwizardpanel1828: 'Vorlageneinstellungen (aus Export)',
+  templateimportwizardpanel1815: ' Archiv für statische Verzeichnisse',
+  templateimportwizardpanel1837: 'Benutzerdefinierte Variablen ',
+  templateimportwizardpanel1864: 'Geschützte Dateien ',
+  templateimportwizardpanel1884: 'Installationsskript ',
+  templateimportwizardpanel1908: 'Update-Skript ',
+  templateimportwizardpanel1699: 'Statische Verzeichnisarchive (Vorlagenexport)',
+  templateimportwizardpanel1702: 'Diese Archive wurden im Vorlagenexport gefunden und werden unverändert importiert.',
 
 };

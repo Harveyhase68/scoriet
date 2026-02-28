@@ -7272,4 +7272,12 @@ templatemodal480: string;
   debugmanualgeneratorpanel1352: string;
   debugmanualgeneratorpanel1349_2: string;
   debugmanualgeneratorpanel1354: string;
+  templateimportwizardpanel1828: string;
+  templateimportwizardpanel1815: string;
+  templateimportwizardpanel1837: string;
+  templateimportwizardpanel1864: string;
+  templateimportwizardpanel1884: string;
+  templateimportwizardpanel1908: string;
+  templateimportwizardpanel1699: string;
+  templateimportwizardpanel1702: string;
 }
