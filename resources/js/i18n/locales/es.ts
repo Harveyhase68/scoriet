@@ -7234,5 +7234,13 @@ export const es: Translations = {
   debugmanualgeneratorpanel1352: 'Línea de plantilla ',
   debugmanualgeneratorpanel1349_2: ' de plantilla',
   debugmanualgeneratorpanel1354: 'en la configuración de gtree',
+  templateimportwizardpanel1828: 'Configuración de plantilla (al exportar)',
+  templateimportwizardpanel1815: ' Archivo de directorio estático',
+  templateimportwizardpanel1837: 'Variables personalizadas ',
+  templateimportwizardpanel1864: 'Archivos protegidos ',
+  templateimportwizardpanel1884: 'Instalar script ',
+  templateimportwizardpanel1908: 'Script de actualización ',
+  templateimportwizardpanel1699: 'Archivos de directorio estático (exportación de plantilla)',
+  templateimportwizardpanel1702: 'Estos archivos se encontraron en la exportación de plantilla y se importarán tal como están.',
 
 };

@@ -7253,5 +7253,13 @@ export const en: Translations = {
   debugmanualgeneratorpanel1352: 'Template Line  ',
   debugmanualgeneratorpanel1349_2: '  of template',
   debugmanualgeneratorpanel1354: 'in gtree setup',
+  templateimportwizardpanel1828: 'Template settings (from export)',
+  templateimportwizardpanel1815: '  Static Directory Archive',
+  templateimportwizardpanel1837: 'Custom Variables  ',
+  templateimportwizardpanel1864: 'Protected Files  ',
+  templateimportwizardpanel1884: 'Install Script  ',
+  templateimportwizardpanel1908: 'Update Script  ',
+  templateimportwizardpanel1699: 'Static Directory Archives (Template Export)',
+  templateimportwizardpanel1702: 'These archives were found in the template export and will be imported as-is.',
 
 };

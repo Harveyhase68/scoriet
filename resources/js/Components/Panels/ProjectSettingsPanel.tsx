@@ -284,7 +284,7 @@ export default function ProjectSettingsPanel() {
                     start_page: project.start_page || 'index.php',
                     default_language: project.default_language || 'en',
                     archive_format: project.archive_format || 'zip',
-                    filename_short_length: project.filename_short_length || 2,
+                    filename_short_length: Number(project.filename_short_length) || 2,
                     decimal_separator: project.decimal_separator || ',',
                     thousands_separator: project.thousands_separator || '.',
                     date_format: project.date_format || 'd.m.Y',

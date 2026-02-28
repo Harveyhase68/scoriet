@@ -350,7 +350,7 @@ const FileModal: React.FC<FileModalProps> = ({
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
     const toast = useToast();
     const { control, handleSubmit: handleFormSubmit, reset, formState: { errors } } = useForm({
         defaultValues: {
@@ -1167,24 +1167,23 @@ const FileModal: React.FC<FileModalProps> = ({
                                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                                     {t.filemodal1122}({editingFile.zip_filename || editingFile.file_name})
                                 </label>
-                                <div className="border-2 border-gray-600 bg-gray-800 rounded-lg p-4" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                <div className="rounded-lg p-4" style={{ maxHeight: '400px', overflowY: 'auto', border: `2px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                                     {isLoadingZipList ? (
-                                        <div className="flex items-center justify-center p-8 text-gray-400">
+                                        <div className="flex items-center justify-center p-8" style={{ color: colors.textMuted }}>
                                             <i className="pi pi-spin pi-spinner mr-2"></i>
                                             {t.filemodal1128}
                                         </div>
                                     ) : zipFileList.length > 0 ? (
                                         <div className="space-y-0.5">
-                                            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-600">
-                                                <span className="text-gray-400 text-sm font-semibold">
+                                            <div className="flex items-center justify-between mb-3 pb-2" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
+                                                <span className="text-sm font-semibold" style={{ color: colors.textMuted }}>
                                                     {zipFileList.length} {zipFileList.length === 1 ? t.filemodal1180 : t.filemodal1180_2}
                                                 </span>
-                                                <span className="text-gray-400 text-sm">
+                                                <span className="text-sm" style={{ color: colors.textMuted }}>
                                                     {t.filemodal1137}{(zipFileList.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB
                                                 </span>
                                             </div>
                                             {zipFileList.map((file, index) => {
-                                                // 🎯 Split path into directory and filename
                                                 const lastSlash = file.name.lastIndexOf('/');
                                                 const directory = lastSlash > -1 ? file.name.substring(0, lastSlash + 1) : '';
                                                 const filename = lastSlash > -1 ? file.name.substring(lastSlash + 1) : file.name;
@@ -1192,18 +1191,21 @@ const FileModal: React.FC<FileModalProps> = ({
                                                 return (
                                                     <div
                                                         key={index}
-                                                        className="flex items-center justify-between p-2 hover:bg-gray-700 rounded"
+                                                        className="flex items-center justify-between p-2 rounded"
+                                                        style={{ cursor: 'default' }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgTertiary}
+                                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                                     >
                                                         <div className="flex items-center min-w-0 flex-1">
-                                                            <i className="pi pi-file text-blue-400 mr-2 flex-shrink-0"></i>
-                                                            <span className="text-gray-200 font-mono text-sm truncate">
+                                                            <i className="pi pi-file mr-2 flex-shrink-0" style={{ color: colors.accent }}></i>
+                                                            <span className="font-mono text-sm truncate" style={{ color: colors.textPrimary }}>
                                                                 {directory && (
-                                                                    <span className="text-gray-500">{directory}</span>
+                                                                    <span style={{ color: colors.textMuted }}>{directory}</span>
                                                                 )}
-                                                                <span className="text-gray-200">{filename}</span>
+                                                                <span style={{ color: colors.textPrimary }}>{filename}</span>
                                                             </span>
                                                         </div>
-                                                        <span className="text-gray-400 text-xs ml-3 flex-shrink-0">
+                                                        <span className="text-xs ml-3 flex-shrink-0" style={{ color: colors.textMuted }}>
                                                             {(file.size / 1024).toFixed(1)} KB
                                                         </span>
                                                     </div>
@@ -1211,16 +1213,16 @@ const FileModal: React.FC<FileModalProps> = ({
                                             })}
                                         </div>
                                     ) : (
-                                        <div className="text-center text-gray-400 p-8">
+                                        <div className="text-center p-8" style={{ color: colors.textMuted }}>
                                             <i className="pi pi-inbox text-4xl mb-2"></i>
                                             <p>{t.filemodal1170}</p>
                                         </div>
                                     )}
                                 </div>
-                                <div className="mt-3 bg-blue-900 border border-blue-700 rounded-lg p-3">
+                                <div className="mt-3 rounded-lg p-3" style={{ backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.25)'}` }}>
                                     <div className="flex items-start">
-                                        <i className="pi pi-info-circle text-blue-400 mr-2 mt-0.5"></i>
-                                        <div className="text-sm text-blue-200">
+                                        <i className="pi pi-info-circle mr-2 mt-0.5" style={{ color: colors.accent }}></i>
+                                        <div className="text-sm" style={{ color: isDark ? 'rgba(147, 197, 253, 0.9)' : 'rgba(30, 64, 175, 0.85)' }}>
                                             <strong>{t.filemodal1178}</strong>{t.filemodal1178_2}
                                         </div>
                                     </div>
@@ -1256,7 +1258,7 @@ const FileModal: React.FC<FileModalProps> = ({
                 {/* Archive Upload - Mode 1 */}
                 {contentMode === 'zip' && uploadMode === 'archive' && (
                     <div className="mb-4">
-                        <label className="block text-sm font-medium mb-2">
+                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                             {t.filemodal1214}(ZIP, TAR.GZ, TAR.XZ)
                         </label>
                         {!uploadedFile ? (
@@ -1273,23 +1275,27 @@ const FileModal: React.FC<FileModalProps> = ({
                                     }
                                 }}
                                 emptyTemplate={
-                                    <div className="flex flex-col items-center justify-center p-8 text-gray-300">
-                                        <i className="pi pi-upload" style={{ fontSize: '48px', color: '#6b7280', marginBottom: '16px' }}></i>
-                                        <p className="text-lg mb-2">{t.filemodal1232}</p>
-                                        <p className="text-sm text-gray-400">
+                                    <div className="flex flex-col items-center justify-center p-8" style={{ color: colors.textSecondary }}>
+                                        <i className="pi pi-upload" style={{ fontSize: '48px', color: colors.textMuted, marginBottom: '16px' }}></i>
+                                        <p className="text-lg mb-2" style={{ color: colors.textSecondary }}>{t.filemodal1232}</p>
+                                        <p className="text-sm" style={{ color: colors.textMuted }}>
                                             {t.filemodal1234}
                                         </p>
                                     </div>
                                 }
                                 className="w-full"
+                                pt={{
+                                    buttonbar: { style: { backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary } },
+                                    content: { style: { backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary } },
+                                }}
                             />
                         ) : (
-                            <div className="border-2 border-green-500 bg-green-900 rounded-lg p-4">
+                            <div className="rounded-lg p-4" style={{ border: `2px solid ${isDark ? 'rgba(34, 197, 94, 0.5)' : 'rgba(22, 163, 74, 0.4)'}`, backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(22, 163, 74, 0.06)' }}>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center">
-                                        <i className="pi pi-check-circle text-green-400 mr-2"></i>
-                                        <span className="text-green-100">{uploadedFile.name}</span>
-                                        <span className="text-green-300 ml-2">
+                                        <i className="pi pi-check-circle mr-2" style={{ color: isDark ? '#4ade80' : '#16a34a' }}></i>
+                                        <span style={{ color: colors.textPrimary }}>{uploadedFile.name}</span>
+                                        <span className="ml-2" style={{ color: colors.textSecondary }}>
                                             ({(uploadedFile.size / 1024).toFixed(1)} KB)
                                         </span>
                                     </div>

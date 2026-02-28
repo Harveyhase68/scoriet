@@ -387,8 +387,12 @@ class AuthController extends Controller
 
         // SINGLE SESSION ENFORCEMENT: Revoke all existing tokens before creating new one
         // This prevents account sharing and ensures only one active session per user
-        $existingTokenCount = $user->tokens()->where('revoked', false)->count();
-        $user->tokens()->update(['revoked' => true]);
+        // Skip in demo mode to allow multiple users sharing the same demo accounts
+        $existingTokenCount = 0;
+        if (!config('scoriet.demo')) {
+            $existingTokenCount = $user->tokens()->where('revoked', false)->count();
+            $user->tokens()->update(['revoked' => true]);
+        }
 
         // Create a personal access token
         $tokenResult = $user->createToken($rememberMe ? __('authcontrollerphp394') : __('authcontrollerphp394_2'));

@@ -108,8 +108,12 @@ class CustomTokenController extends AccessTokenController
 
                         // SINGLE SESSION ENFORCEMENT: Revoke all existing tokens before creating new one
                         // This prevents account sharing and ensures only one active session per user
-                        $existingTokenCount = $user->tokens()->where('revoked', false)->count();
-                        $user->tokens()->update(['revoked' => true]);
+                        // Skip in demo mode to allow multiple users sharing the same demo accounts
+                        $existingTokenCount = 0;
+                        if (!config('scoriet.demo')) {
+                            $existingTokenCount = $user->tokens()->where('revoked', false)->count();
+                            $user->tokens()->update(['revoked' => true]);
+                        }
 
                         // Store the count for the response (will be used later)
                         $requestData['_revoked_sessions'] = $existingTokenCount;

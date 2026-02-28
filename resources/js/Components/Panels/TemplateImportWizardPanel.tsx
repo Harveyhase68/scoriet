@@ -21,6 +21,16 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage, tpl } from '@/i18n';
 
+interface TemplateMeta {
+    file_type: string | null;
+    content_type: string | null;
+    zip_filename: string | null;
+    output_path: string | null;
+    file_order: number | null;
+    form_window_type: number;
+    is_include_only: boolean;
+}
+
 interface FileInfo {
     path: string;
     name: string;
@@ -28,6 +38,20 @@ interface FileInfo {
     size: number;
     extension: string | null;
     file_type?: string;
+    template_meta?: TemplateMeta;
+}
+
+interface CustomVariable {
+    variable_name: string;
+    description: string | null;
+    default_value: string | null;
+    is_required: boolean;
+}
+
+interface ScriptStep {
+    step: number;
+    command: string;
+    description: string;
 }
 
 interface ExtensionPreset {
@@ -152,6 +176,9 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     // TreeTable selection uses a special format: { 'node-key': { checked: boolean, partialChecked: boolean } }
     const [selectedStaticDirKeys, setSelectedStaticDirKeys] = useState<Record<string, { checked: boolean; partialChecked: boolean }>>({});
     const [staticDirectoryName, setStaticDirectoryName] = useState('dependencies');
+    // Pre-packaged static directory archives (from Scoriet template export with template.json)
+    const [prePackagedArchives, setPrePackagedArchives] = useState<FileInfo[]>([]);
+    const [selectedPrePackaged, setSelectedPrePackaged] = useState<SelectionMap>({});
 
     // Extension presets
     const [presets, setPresets] = useState<ExtensionPreset[]>(loadPresets);
@@ -174,6 +201,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const [isSystemTemplate, setIsSystemTemplate] = useState(false);
     const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
     const [filteredLanguages, setFilteredLanguages] = useState<string[]>([]);
+
+    // Template extra metadata from Scoriet export (custom variables, protected files, scripts)
+    const [importedCustomVariables, setImportedCustomVariables] = useState<CustomVariable[] | null>(null);
+    const [importedProtectedFiles, setImportedProtectedFiles] = useState<string[] | null>(null);
+    const [importedInstallScript, setImportedInstallScript] = useState<ScriptStep[] | null>(null);
+    const [importedUpdateScript, setImportedUpdateScript] = useState<ScriptStep[] | null>(null);
 
     // Private template unlock state
     const [currentUser, setCurrentUser] = useState<{ credits: number; user_type?: string } | null>(null);
@@ -210,15 +243,20 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         { label: t.templateimportwizardpanel207 }
     ];
 
-    // Calculate files available for Step 2 (Static files) - exclude files already selected in Step 1
-    const filesForStaticSelection = useMemo(() => {
-        return allFiles.filter(f => !selectedTemplateFiles[f.path]);
-    }, [allFiles, selectedTemplateFiles]);
+    // Set of pre-packaged archive paths for fast lookup
+    const prePackagedPaths = useMemo(() => {
+        return new Set(prePackagedArchives.map(f => f.path));
+    }, [prePackagedArchives]);
 
-    // Calculate remaining files (not selected in Step 1 or Step 2)
+    // Calculate files available for Step 2 (Static files) - exclude files already selected in Step 1 and pre-packaged
+    const filesForStaticSelection = useMemo(() => {
+        return allFiles.filter(f => !selectedTemplateFiles[f.path] && !prePackagedPaths.has(f.path));
+    }, [allFiles, selectedTemplateFiles, prePackagedPaths]);
+
+    // Calculate remaining files (not selected in Step 1, Step 2, or pre-packaged)
     const remainingFiles = useMemo(() => {
-        return allFiles.filter(f => !selectedTemplateFiles[f.path] && !selectedStaticFiles[f.path]);
-    }, [allFiles, selectedTemplateFiles, selectedStaticFiles]);
+        return allFiles.filter(f => !selectedTemplateFiles[f.path] && !selectedStaticFiles[f.path] && !prePackagedPaths.has(f.path));
+    }, [allFiles, selectedTemplateFiles, selectedStaticFiles, prePackagedPaths]);
 
     // Build tree structure from remaining files
     const remainingFilesTree = useMemo((): TreeNode[] => {
@@ -240,6 +278,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         path: file.path,
                         size: file.size,
                         file_type: file.file_type,
+                        template_meta: file.template_meta,
                         is_dir: false,
                     },
                 });
@@ -277,6 +316,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                         path: file.path,
                         size: file.size,
                         file_type: file.file_type,
+                        template_meta: file.template_meta,
                         is_dir: false,
                     },
                 });
@@ -494,6 +534,13 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         setSelectedTemplateFiles({});
         setSelectedStaticFiles({});
         setSelectedStaticDirKeys({});
+        setPrePackagedArchives([]);
+        setSelectedPrePackaged({});
+        setStaticDirectoryName('dependencies');
+        setImportedCustomVariables(null);
+        setImportedProtectedFiles(null);
+        setImportedInstallScript(null);
+        setImportedUpdateScript(null);
         setTemplateName('');
         setTemplateDescription('');
         setTemplateCategory('');
@@ -559,10 +606,58 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             setSelectedStaticFiles({});
             setSelectedStaticDirKeys({});
 
-            // Generate template name from archive name
-            const baseName = data.original_name.replace(/\.(zip|tar\.gz|tar\.xz|tgz)$/i, '');
-            const safeName = baseName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-            setTemplateName(safeName);
+            // If template.json metadata was found (Scoriet export), auto-fill template info
+            // and auto-categorize files based on their metadata
+            if (data.has_template_json) {
+                // Auto-fill template metadata
+                if (data.template_name) setTemplateName(data.template_name);
+                if (data.template_description) setTemplateDescription(data.template_description);
+                if (data.template_category) setTemplateCategory(data.template_category);
+                if (data.template_language) setTemplateLanguage(data.template_language);
+                if (data.template_tags) setTemplateTags(data.template_tags);
+
+                // Store extra metadata (custom variables, protected files, scripts)
+                setImportedCustomVariables(data.template_custom_variables || null);
+                setImportedProtectedFiles(data.template_protected_files || null);
+                setImportedInstallScript(data.template_install_script || null);
+                setImportedUpdateScript(data.template_update_script || null);
+
+                // Auto-categorize files based on template_meta
+                const autoTemplateFiles: SelectionMap = {};
+                const autoStaticFiles: SelectionMap = {};
+                const autoPrePackaged: FileInfo[] = [];
+                const autoPrePackagedSelection: SelectionMap = {};
+                const files: FileInfo[] = data.all_files || [];
+
+                for (const file of files) {
+                    if (file.template_meta) {
+                        const metaFileType = file.template_meta.file_type;
+                        if (metaFileType === 'static_directory') {
+                            // Pre-packaged static directory archive → Step 4
+                            autoPrePackaged.push(file);
+                            autoPrePackagedSelection[file.path] = true;
+                        } else if (metaFileType === 'static_file') {
+                            autoStaticFiles[file.path] = true;
+                        } else {
+                            // db_table_file, general_file, or any other template file type
+                            autoTemplateFiles[file.path] = true;
+                        }
+                    }
+                }
+
+                // Apply auto-categorization
+                if (Object.keys(autoTemplateFiles).length > 0 || Object.keys(autoStaticFiles).length > 0 || autoPrePackaged.length > 0) {
+                    setSelectedTemplateFiles(autoTemplateFiles);
+                    setSelectedStaticFiles(autoStaticFiles);
+                    setPrePackagedArchives(autoPrePackaged);
+                    setSelectedPrePackaged(autoPrePackagedSelection);
+                }
+            } else {
+                // Generate template name from archive name (no metadata available)
+                const baseName = data.original_name.replace(/\.(zip|tar\.gz|tar\.xz|tgz)$/i, '');
+                const safeName = baseName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+                setTemplateName(safeName);
+            }
 
             setCurrentStep(1);
         } catch (err: any) {
@@ -716,6 +811,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         const staticFilePaths = getSelectedPaths(selectedStaticFiles);
         const staticDirPaths = getSelectedStaticDirPaths();
 
+        // Include pre-packaged archives via template_files path
+        // (backend detects ZIP via metadata and stores with correct file_type/content_type)
+        const prePackagedPaths = getSelectedPaths(selectedPrePackaged);
+        const allTemplatePaths = [...templateFilePaths, ...prePackagedPaths];
+
         // Validate
         if (!templateName) {
             setError(t.templateimportwizardpanel716);
@@ -729,7 +829,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             setError(t.templateimportwizardpanel724);
             return;
         }
-        if (templateFilePaths.length === 0) {
+        if (allTemplatePaths.length === 0) {
             setError(t.templateimportwizardpanel728);
             return;
         }
@@ -755,7 +855,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     is_system: isSystemTemplate,
                     unlock_private: privateUnlockConfirmed,
                     import_mode: importMode,
-                    template_files: templateFilePaths,
+                    template_files: allTemplatePaths,
                     static_files: staticFilePaths,
                     static_directory_files: staticDirPaths,
                     static_directory_name: staticDirectoryName
@@ -791,9 +891,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    // File type badge
-    const fileTypeBadge = (fileType: string | undefined) => {
-        if (!fileType) return null;
+    // File type badge - shows template_meta.file_type if available (from Scoriet export)
+    const fileTypeBadge = (fileType: string | undefined, templateMeta?: TemplateMeta) => {
+        // Prefer template_meta file_type from Scoriet export metadata
+        const displayType = templateMeta?.file_type || fileType;
+        if (!displayType) return null;
         const typeColors: Record<string, 'success' | 'info' | 'warning' | 'danger' | undefined> = {
             'php': 'info',
             'javascript': 'warning',
@@ -804,8 +906,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             'blade': 'info',
             'image': 'warning',
             'archive': 'danger',
+            'static_directory': 'danger',
+            'static_file': 'warning',
+            'db_table_file': 'info',
+            'general_file': undefined,
         };
-        return <Tag value={fileType} severity={typeColors[fileType] || undefined} />;
+        return <Tag value={displayType} severity={typeColors[displayType] || undefined} />;
     };
 
     // Get file extension from path
@@ -1353,7 +1459,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     <Column
                         field="file_type"
                         header={t.templateimportwizardpanel1341}
-                        body={(row: FileInfo) => fileTypeBadge(row.file_type)}
+                        body={(row: FileInfo) => fileTypeBadge(row.file_type, row.template_meta)}
                         style={{ width: '100px' }}
                     />
                     <Column
@@ -1585,6 +1691,37 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             {t.templateimportwizardpanel1571}
                         </p>
 
+                        {/* Pre-packaged static directory archives from Scoriet template export */}
+                        {prePackagedArchives.length > 0 && (
+                            <div className="mb-4 p-3 rounded-lg" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+                                <h4 className="text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                                    <i className="pi pi-box mr-2" />
+                                    {t.templateimportwizardpanel1699}
+                                </h4>
+                                <p className="text-xs mb-3" style={{ color: colors.textMuted }}>
+                                    {t.templateimportwizardpanel1702}
+                                </p>
+                                {prePackagedArchives.map(file => (
+                                    <div key={file.path} className="flex items-center gap-3 py-1">
+                                        <Checkbox
+                                            checked={!!selectedPrePackaged[file.path]}
+                                            onChange={(e) => {
+                                                setSelectedPrePackaged(prev => ({
+                                                    ...prev,
+                                                    [file.path]: e.checked ?? false
+                                                }));
+                                            }}
+                                        />
+                                        <i className="pi pi-server text-orange-500" />
+                                        <span className="font-mono text-sm font-medium">{file.name}</span>
+                                        <Tag value="static_directory" severity="danger" />
+                                        <Tag value="archive" severity="warning" />
+                                        <span className="text-xs" style={{ color: colors.textMuted }}>({formatSize(file.size)})</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {remainingFilesTree.length > 0 ? (
                             <>
                                 <div className="mb-4">
@@ -1638,7 +1775,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                             if (node.data.is_dir) {
                                                 return <Tag value={t.templateimportwizardpanel1639} severity="warning" />;
                                             }
-                                            return node.data.file_type ? fileTypeBadge(node.data.file_type) : <Tag value="-" severity="secondary" />;
+                                            return node.data.file_type ? fileTypeBadge(node.data.file_type, node.data.template_meta) : <Tag value="-" severity="secondary" />;
                                         }}
                                         style={{ width: '100px' }}
                                     />
@@ -1660,6 +1797,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 const templateFileCount = countSelected(selectedTemplateFiles);
                 const staticFileCount = countSelected(selectedStaticFiles);
                 const staticDirFileCount = countSelectedInTree();
+                const prePackagedCount = countSelected(selectedPrePackaged);
 
                 return (
                     <div className="p-4">
@@ -1673,9 +1811,120 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                             <ul className="text-sm space-y-1" style={{ color: colors.textSecondary }}>
                                 <li><i className="pi pi-file mr-2" />{templateFileCount}{t.templateimportwizardpanel1674}</li>
                                 <li><i className="pi pi-image mr-2" />{staticFileCount}{t.templateimportwizardpanel1675}</li>
-                                <li><i className="pi pi-folder mr-2" />{staticDirFileCount}{t.templateimportwizardpanel1676}({staticDirectoryName}.zip)</li>
+                                {prePackagedCount > 0 && (
+                                    <li><i className="pi pi-server mr-2" />{prePackagedCount}{t.templateimportwizardpanel1815}{prePackagedCount > 1 ? 's' : ''} ({prePackagedArchives.filter(f => selectedPrePackaged[f.path]).map(f => f.name).join(', ')})</li>
+                                )}
+                                {staticDirFileCount > 0 && (
+                                    <li><i className="pi pi-folder mr-2" />{staticDirFileCount}{t.templateimportwizardpanel1676}({staticDirectoryName}.zip)</li>
+                                )}
                             </ul>
                         </div>
+
+                        {/* Template Extra Metadata (from Scoriet export) */}
+                        {(importedCustomVariables?.length || importedProtectedFiles?.length || importedInstallScript?.length || importedUpdateScript?.length) ? (
+                            <div className="rounded-lg p-4 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                                <h4 className="font-medium mb-3" style={{ color: colors.textPrimary }}>
+                                    <i className="pi pi-cog mr-2" />
+                                    {t.templateimportwizardpanel1828}
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    {/* Custom Variables */}
+                                    {importedCustomVariables && importedCustomVariables.length > 0 ? (
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <i className="pi pi-code" style={{ color: colors.accent }} />
+                                                <span className="font-medium" style={{ color: colors.textSecondary }}>
+                                                    {t.templateimportwizardpanel1837}({importedCustomVariables.length})
+                                                </span>
+                                            </div>
+                                            <ul className="space-y-1 ml-6" style={{ color: colors.textMuted }}>
+                                                {importedCustomVariables.map((v, i) => (
+                                                    <li key={i}>
+                                                        <span className="font-mono text-xs px-1 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+                                                            {v.variable_name}
+                                                        </span>
+                                                        {v.default_value ? (
+                                                            <span className="text-xs ml-1">= {v.default_value}</span>
+                                                        ) : null}
+                                                        {v.is_required ? (
+                                                            <Tag value="required" severity="warning" className="ml-1 text-xs" style={{ fontSize: '0.6rem', padding: '0 4px' }} />
+                                                        ) : null}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : null}
+
+                                    {/* Protected Files */}
+                                    {importedProtectedFiles && importedProtectedFiles.length > 0 ? (
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <i className="pi pi-shield" style={{ color: '#f59e0b' }} />
+                                                <span className="font-medium" style={{ color: colors.textSecondary }}>
+                                                    {t.templateimportwizardpanel1864}({importedProtectedFiles.length})
+                                                </span>
+                                            </div>
+                                            <ul className="space-y-1 ml-6" style={{ color: colors.textMuted }}>
+                                                {importedProtectedFiles.map((f, i) => (
+                                                    <li key={i} className="text-xs">
+                                                        <i className="pi pi-lock mr-1" style={{ fontSize: '0.65rem' }} />
+                                                        {f}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : null}
+
+                                    {/* Install Script */}
+                                    {importedInstallScript && importedInstallScript.length > 0 ? (
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <i className="pi pi-download" style={{ color: '#22c55e' }} />
+                                                <span className="font-medium" style={{ color: colors.textSecondary }}>
+                                                    {t.templateimportwizardpanel1884}({importedInstallScript.length} {importedInstallScript.length === 1 ? 'Step' : 'Steps'})
+                                                </span>
+                                            </div>
+                                            <ul className="space-y-1 ml-6" style={{ color: colors.textMuted }}>
+                                                {importedInstallScript.map((s, i) => (
+                                                    <li key={i} className="text-xs">
+                                                        <span className="font-mono px-1 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+                                                            {s.command}
+                                                        </span>
+                                                        {s.description ? (
+                                                            <span className="ml-1 italic">{s.description}</span>
+                                                        ) : null}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : null}
+
+                                    {/* Update Script */}
+                                    {importedUpdateScript && importedUpdateScript.length > 0 ? (
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <i className="pi pi-refresh" style={{ color: '#3b82f6' }} />
+                                                <span className="font-medium" style={{ color: colors.textSecondary }}>
+                                                    {t.templateimportwizardpanel1908}({importedUpdateScript.length} {importedUpdateScript.length === 1 ? 'Step' : 'Steps'})
+                                                </span>
+                                            </div>
+                                            <ul className="space-y-1 ml-6" style={{ color: colors.textMuted }}>
+                                                {importedUpdateScript.map((s, i) => (
+                                                    <li key={i} className="text-xs">
+                                                        <span className="font-mono px-1 rounded" style={{ backgroundColor: colors.bgTertiary }}>
+                                                            {s.command}
+                                                        </span>
+                                                        {s.description ? (
+                                                            <span className="ml-1 italic">{s.description}</span>
+                                                        ) : null}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            </div>
+                        ) : null}
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="col-span-2">
