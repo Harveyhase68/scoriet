@@ -10,6 +10,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SchemaField extends Model
 {
+    // Display state — visual hint, passed to gtree as metadata. Does NOT filter generation.
+    public const DISPLAY_ENABLED   = 'enabled';
+    public const DISPLAY_DISABLED  = 'disabled';
+    public const DISPLAY_GRAYED    = 'grayed';
+    public const DISPLAY_INVISIBLE = 'invisible';
+    public const DISPLAY_EXCLUDED  = 'excluded';
+
+    // Generation mode — controls which parts of code generation apply to this field.
+    public const GEN_FULL           = 'full';
+    public const GEN_CODE_ONLY      = 'code_only';      // in nmaxitems, no per-field files
+    public const GEN_TEMPLATE_ONLY  = 'template_only';  // per-field files generated, skipped in nmaxitems loops
+    public const GEN_REFERENCE_ONLY = 'reference_only'; // only in gtree for FK-resolution
+    public const GEN_EXCLUDED       = 'excluded';       // removed from gtree entirely
+
     protected $fillable = [
         'table_id',
         'field_name',
@@ -31,6 +45,8 @@ class SchemaField extends Model
         'link_order_field',
         'link_order_direction',
         'editmask', // Edit mask for input validation (framework-agnostic)
+        'display_state',
+        'generation_mode',
     ];
 
     protected $casts = [
@@ -70,5 +86,13 @@ class SchemaField extends Model
     public function templateFileAssignments(): HasMany
     {
         return $this->hasMany(TemplateFileFieldAssignment::class, 'schema_field_id');
+    }
+
+    /**
+     * Get the per-report-pattern assignments for this field.
+     */
+    public function reportPatternAssignments(): HasMany
+    {
+        return $this->hasMany(ReportPatternFieldAssignment::class, 'schema_field_id');
     }
 }

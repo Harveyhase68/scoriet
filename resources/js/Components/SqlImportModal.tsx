@@ -453,15 +453,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         body: JSON.stringify(payload),
       });
 
-      // Try to parse JSON response
+      // Try to parse JSON response — read body as text first to avoid "body stream already read" error
       let result: any;
+      const responseText = await response.text();
       try {
-        result = await response.json();
+        result = JSON.parse(responseText);
       } catch {
-        // If JSON parsing fails, get text response for debugging
-        const textResponse = await response.text();
-        console.error(t.sqlimportmodal461, textResponse);
-        throw new Error(`${t.sqlimportmodal462}(${response.status}): ${response.statusText}\n\n${t.sqlimportmodal462}${textResponse.substring(0, 500)}${textResponse.length > 500 ? '...' : ''}`);
+        console.error(t.sqlimportmodal461, responseText.substring(0, 1000));
+        throw new Error(`${t.sqlimportmodal462}(${response.status}): ${response.statusText}\n\n${t.sqlimportmodal462}${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`);
       }
 
       if (!response.ok || !result.success) {
@@ -1219,6 +1218,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                       className="w-full px-3 py-2 rounded focus:outline-none sql-import-input"
                       style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                       disabled={servicePolling || testingConnection}
+                      autoComplete="new-password"
                     />
                   </div>
                   <div className="flex items-end">

@@ -25,6 +25,14 @@ class FormWindow extends Model
         'text_color',
         'is_active',
         'sort_order',
+        // Paper/print configuration (report types)
+        'paper_size',
+        'paper_orientation',
+        'paper_unit',
+        'margin_top',
+        'margin_right',
+        'margin_bottom',
+        'margin_left',
     ];
 
     protected $casts = [
@@ -34,6 +42,10 @@ class FormWindow extends Model
         'default_height' => 'integer',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
+        'margin_top' => 'decimal:2',
+        'margin_right' => 'decimal:2',
+        'margin_bottom' => 'decimal:2',
+        'margin_left' => 'decimal:2',
     ];
 
     // ========== RELATIONSHIPS ==========
@@ -52,6 +64,29 @@ class FormWindow extends Model
     public function elements(): HasMany
     {
         return $this->hasMany(FormElement::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Field placements (database fields placed into containers)
+     */
+    public function itemPlacements(): HasMany
+    {
+        return $this->hasMany(FormItemPlacement::class)->orderBy('sort_order');
+    }
+
+    public function fieldPlacements(): HasMany
+    {
+        return $this->hasMany(FormItemPlacement::class)->where('item_type', 'field')->orderBy('sort_order');
+    }
+
+    public function buttonPlacements(): HasMany
+    {
+        return $this->hasMany(FormItemPlacement::class)->where('item_type', 'button')->orderBy('sort_order');
+    }
+
+    public function menuPlacements(): HasMany
+    {
+        return $this->hasMany(FormItemPlacement::class)->where('item_type', 'menu_item')->orderBy('sort_order');
     }
 
     // ========== ACCESSORS ==========
@@ -134,6 +169,42 @@ class FormWindow extends Model
                 $result[$type] = $element;
             }
         }
+
+        return $result;
+    }
+
+    /**
+     * Extended toGTreeArray with placements for a specific schema table
+     * Used during code generation to include field/button layouts
+     */
+    public function toGTreeArrayWithPlacements(?int $schemaTableId = null, ?string $language = null): array
+    {
+        $result = $this->toGTreeArray();
+
+        // Load placements for this window (optionally filtered by table)
+        $query = $this->itemPlacements()->visible()->orderBy('sort_order');
+        if ($schemaTableId) {
+            $query->where(function ($q) use ($schemaTableId) {
+                $q->where('schema_table_id', $schemaTableId)
+                  ->orWhereNull('schema_table_id'); // Include buttons/menus without table
+            });
+        }
+        $placements = $query->with(['schemaField', 'lookupTable'])->get();
+
+        // Separate by type
+        $fields = $placements->where('item_type', 'field')->values();
+        $buttons = $placements->where('item_type', 'button')->values();
+        $menuItems = $placements->where('item_type', 'menu_item')->values();
+
+        $result['layoutsingles'] = $fields->map(fn($p) => $p->toGTreeArray($language))->toArray();
+        $result['nmaxlayoutsingles'] = $fields->count();
+        $result['layoutsinglecount'] = $fields->count();
+
+        $result['layoutbuttons'] = $buttons->map(fn($p) => $p->toGTreeArray($language))->toArray();
+        $result['nmaxlayoutbuttons'] = $buttons->count();
+
+        $result['layoutmenus'] = $menuItems->map(fn($p) => $p->toGTreeArray($language))->toArray();
+        $result['nmaxlayoutmenus'] = $menuItems->count();
 
         return $result;
     }

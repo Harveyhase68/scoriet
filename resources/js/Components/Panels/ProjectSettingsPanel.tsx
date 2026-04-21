@@ -3,6 +3,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { InputNumber } from 'primereact/inputnumber';
 import { Password as PrimePassword } from 'primereact/password';
 import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
@@ -20,6 +21,10 @@ interface Language {
     name: string;
     native_name: string;
     is_active: boolean;
+    // Optional — only present when the API endpoint returns the full Language
+    // row (see app/Models/Language.php). Kept optional so interfaces built
+    // against trimmed responses don't need to change.
+    flag?: string;
 }
 
 interface ProjectMember {
@@ -106,9 +111,27 @@ export default function ProjectSettingsPanel() {
   // Theme
   const { colors } = useTheme();
     const toast = useToast();
-    const { selectedProject, loadProjects } = useProject();
+    const { selectedProject, loadProjects, releaseLock } = useProject();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // --- Validation UX state ---
+    // Controls the currently shown TabView tab so we can jump to the first
+    // tab that contains an invalid field. `invalidFields` is a set of field
+    // names (as used in the Laravel validator / formData) that failed either
+    // client-side pre-validation or the backend 422 response. Inputs pick up
+    // the red PrimeReact `p-invalid` class when their key is in this set.
+    const [activeTabIndex, setActiveTabIndex] = useState<number>(0);
+    const [invalidFields, setInvalidFields] = useState<Set<string>>(new Set());
+    const invalidClass = (field: string) => (invalidFields.has(field) ? 'p-invalid' : '');
+    const clearFieldError = (field: string) => {
+        setInvalidFields(prev => {
+            if (!prev.has(field)) return prev;
+            const next = new Set(prev);
+            next.delete(field);
+            return next;
+        });
+    };
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
     const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
@@ -120,11 +143,22 @@ export default function ProjectSettingsPanel() {
     const [loadingVariables, setLoadingVariables] = useState(false);
     const [_savingVariables, setSavingVariables] = useState(false); // Future use
 
+    // Project Translations State
+    const [translations, setTranslations] = useState<Record<string, any>>({});
+    const [selectedTransLang, setSelectedTransLang] = useState<string>('');
+    const [savingTranslation, setSavingTranslation] = useState(false);
+
     // Protected Files and Deployment Scripts State
     const [projectProtectedFiles, setProjectProtectedFiles] = useState<string[]>([]);
     const [projectInstallScript, setProjectInstallScript] = useState<ScriptStep[]>([]);
     const [projectUpdateScript, setProjectUpdateScript] = useState<ScriptStep[]>([]);
     const [linkedTemplates, setLinkedTemplates] = useState<Template[]>([]); // For showing template protected files
+
+    // Project Defaults: FormSet & ReportPattern
+    const [availableFormSets, setAvailableFormSets] = useState<Array<{ id: number; name: string }>>([]);
+    const [availableReportPatterns, setAvailableReportPatterns] = useState<Array<{ id: number; name: string }>>([]);
+    const [defaultFormSetId, setDefaultFormSetId] = useState<number | null>(null);
+    const [defaultReportPatternId, setDefaultReportPatternId] = useState<number | null>(null);
 
     // Git Integration State
     const [gitSettings, setGitSettings] = useState<GitSettings>({
@@ -185,23 +219,118 @@ export default function ProjectSettingsPanel() {
         // Form Designer Settings
         form_designer_snap_to_grid: true,
         form_designer_grid_size: 20,
+        // Report Designer Settings
+        report_designer_snap_to_grid: true,
+        report_designer_grid_unit: 'mm' as string,
+        report_designer_grid_size: 5,
         // Project Properties
         project_directory: '',
         project_url: '',
         start_page: 'index.php',
         default_language: 'en',
+        target_language: 'html',
         archive_format: 'zip',
         filename_short_length: 2,
-        // Localization Settings
-        decimal_separator: ',',
-        thousands_separator: '.',
-        date_format: 'd.m.Y',
-        time_format: 'H:i:s',
-        currency_symbol: t.editprojectmodal602,
-        timezone: 'Europe/Vienna',
         // API Keys
         google_translate_api_key: ''
     });
+
+    // Release edit lock automatically when this panel is closed (unmounted)
+    useEffect(() => {
+        const projectId = selectedProject?.id;
+        return () => {
+            if (projectId) {
+                releaseLock(projectId);
+            }
+        };
+    }, [selectedProject?.id, releaseLock]);
+
+    // Load FormSet/ReportPattern lists + current project defaults whenever the
+    // selected project changes. The Defaults tab uses these to render dropdowns
+    // and an immediate "save on change" pattern (no global Save button).
+    useEffect(() => {
+        if (!selectedProject?.id) return;
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
+        const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
+
+        fetch('/api/form-sets', { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.data) setAvailableFormSets(data.data.map((fs: { id: number; name: string }) => ({ id: fs.id, name: fs.name })));
+            }).catch(() => {});
+        fetch('/api/report-patterns', { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.data) setAvailableReportPatterns(data.data.map((rp: { id: number; name: string }) => ({ id: rp.id, name: rp.name })));
+            }).catch(() => {});
+
+        fetch(`/api/projects/${selectedProject.id}/form-set`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                setDefaultFormSetId(data?.data?.id ?? null);
+            }).catch(() => {});
+        fetch(`/api/projects/${selectedProject.id}/report-pattern`, { headers })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                setDefaultReportPatternId(data?.data?.id ?? null);
+            }).catch(() => {});
+    }, [selectedProject?.id]);
+
+    // Save handlers — save immediately on dropdown change so the user has no
+    // separate "Save defaults" button to remember.
+    //
+    // We check `response.ok` explicitly: `fetch()` only rejects on network
+    // errors, not on HTTP 4xx/5xx. Without this check a silently failing
+    // DELETE would still flip the UI state to "null" while the DB keeps the
+    // old row active — which is exactly what caused the earlier "snap back"
+    // bug when the user re-opened the panel.
+    const saveDefaultFormSet = async (newId: number | null) => {
+        if (!selectedProject?.id) return;
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
+        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        try {
+            const resp = newId === null
+                ? await fetch(`/api/projects/${selectedProject.id}/form-set`, { method: 'DELETE', headers })
+                : await fetch(`/api/projects/${selectedProject.id}/form-set`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ form_set_id: newId }),
+                });
+
+            if (!resp.ok) {
+                toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
+                return; // keep the old state visible so the UI matches reality
+            }
+            setDefaultFormSetId(newId);
+            toast.showSuccess?.((t as unknown as Record<string, string>).projectsettings_default_saved || 'Default saved');
+        } catch {
+            toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
+        }
+    };
+
+    const saveDefaultReportPattern = async (newId: number | null) => {
+        if (!selectedProject?.id) return;
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
+        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+        try {
+            const resp = newId === null
+                ? await fetch(`/api/projects/${selectedProject.id}/report-pattern`, { method: 'DELETE', headers })
+                : await fetch(`/api/projects/${selectedProject.id}/report-pattern`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ report_pattern_id: newId }),
+                });
+
+            if (!resp.ok) {
+                toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
+                return;
+            }
+            setDefaultReportPatternId(newId);
+            toast.showSuccess?.((t as unknown as Record<string, string>).projectsettings_default_saved || 'Default saved');
+        } catch {
+            toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
+        }
+    };
 
     const loadLanguages = useCallback(async () => {
         try {
@@ -279,20 +408,20 @@ export default function ProjectSettingsPanel() {
                     diagram_vertical_spacing: project.diagram_vertical_spacing || 700,
                     form_designer_snap_to_grid: project.form_designer_snap_to_grid ?? true,
                     form_designer_grid_size: project.form_designer_grid_size || 20,
+                    report_designer_snap_to_grid: project.report_designer_snap_to_grid ?? true,
+                    report_designer_grid_unit: project.report_designer_grid_unit || 'mm',
+                    report_designer_grid_size: Number(project.report_designer_grid_size) || 5,
                     project_directory: project.project_directory || '',
                     project_url: project.project_url || '',
                     start_page: project.start_page || 'index.php',
                     default_language: project.default_language || 'en',
+                    target_language: project.target_language || 'html',
                     archive_format: project.archive_format || 'zip',
                     filename_short_length: Number(project.filename_short_length) || 2,
-                    decimal_separator: project.decimal_separator || ',',
-                    thousands_separator: project.thousands_separator || '.',
-                    date_format: project.date_format || 'd.m.Y',
-                    time_format: project.time_format || 'H:i:s',
-                    currency_symbol: project.currency_symbol || t.editprojectmodal602,
-                    timezone: project.timezone || 'Europe/Vienna',
                     google_translate_api_key: project.google_translate_api_key || ''
                 });
+                // Sync target_language to localStorage for TableModal access
+                localStorage.setItem('scoriet_target_language', project.target_language || 'html');
             }
         } catch {
             toast.showError(t.projectsettingspanel151);
@@ -808,6 +937,48 @@ export default function ProjectSettingsPanel() {
         }
     }, [selectedProject, toast]);
 
+    const loadTranslations = useCallback(async () => {
+        if (!selectedProject) return;
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+            const response = await fetch(`/api/projects/${selectedProject.id}/translations`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setTranslations(data);
+                // Set default selected language only on first load
+                setSelectedTransLang(prev => prev || selectedProject.default_language || 'en');
+            }
+        } catch { /* ignore */ }
+    }, [selectedProject]);
+
+    const saveTranslation = useCallback(async (langCode: string, data: any) => {
+        if (!selectedProject) return;
+        setSavingTranslation(true);
+        try {
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            if (!token) return;
+            const response = await fetch(`/api/projects/${selectedProject.id}/translations`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language_code: langCode, ...data }),
+            });
+            if (response.ok) {
+                const result = await response.json();
+                setTranslations(prev => ({ ...prev, [langCode]: result.translation }));
+                toast.showSuccess(t.msgSaved || 'Saved successfully');
+            } else {
+                toast.showError(t.msgSaveError || 'Failed to save');
+            }
+        } catch {
+            toast.showError(t.msgSaveError || 'Failed to save');
+        } finally {
+            setSavingTranslation(false);
+        }
+    }, [selectedProject, toast, t]);
+
     useEffect(() => {
         loadLanguages();
         if (selectedProject) {
@@ -817,12 +988,92 @@ export default function ProjectSettingsPanel() {
             loadLinkedTemplates();
             loadGitSettings();
             loadFtpSettings();
+            loadTranslations();
         }
-    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates, loadGitSettings, loadFtpSettings]);
+    }, [selectedProject, loadProjectData, loadProjectMembers, loadLanguages, loadTemplateVariables, loadLinkedTemplates, loadGitSettings, loadFtpSettings, loadTranslations]);
+
+    // Map of backend field name → tab index where that input lives. When a
+    // validation error comes back (or a client-side check fires), we use this
+    // to jump the user straight to the offending tab. Keep in sync with the
+    // TabView order below (Common, Characteristics, Database, ...).
+    const fieldToTab: Record<string, number> = {
+        // Tab 0 — Common
+        name: 0,
+        join_code: 0,
+        is_public: 0,
+        new_owner_id: 0,
+        description: 0,
+        // Tab 2 — Database
+        database_name: 2,
+        database_type: 2,
+        database_server: 2,
+        database_port: 2,
+        database_username: 2,
+        database_password: 2,
+        // Tab 3 — Diagram Settings
+        diagram_max_tables_per_row: 3,
+        diagram_table_width: 3,
+        diagram_table_height: 3,
+        diagram_horizontal_spacing: 3,
+        diagram_vertical_spacing: 3,
+        // Tab 4 — Forms & Reports
+        form_designer_snap_to_grid: 4,
+        form_designer_grid_size: 4,
+        report_designer_snap_to_grid: 4,
+        report_designer_grid_unit: 4,
+        report_designer_grid_size: 4,
+        // Tab 5 — Languages (default_language lives here)
+        default_language: 5,
+        target_language: 5,
+        // Tab 7 — Code
+        project_directory: 7,
+        project_url: 7,
+        start_page: 7,
+        archive_format: 7,
+        filename_short_length: 7,
+        google_translate_api_key: 7,
+        // Tab 10 — Git/GitHub
+        git_provider_id: 10,
+        git_repository: 10,
+        git_default_branch: 10,
+        git_main_branch: 10,
+        git_target_directory: 10,
+        git_workflow: 10,
+        git_pr_title_template: 10,
+        git_pr_description_template: 10,
+        git_auto_delete_branch: 10,
+    };
+
+    // Apply a validation failure: select the correct tab, mark the field red
+    // (picked up via the `invalidClass()` helper on each input), and show a
+    // meaningful toast message instead of the previous generic text.
+    const applyValidationError = (field: string, message: string) => {
+        setInvalidFields(new Set([field]));
+        const tab = fieldToTab[field];
+        if (typeof tab === 'number') {
+            setActiveTabIndex(tab);
+        }
+        toast.showError(message);
+    };
 
     const handleSave = async () => {
         if (!selectedProject) {
             toast.showError(t.databaseexportmodal344);
+            return;
+        }
+
+        // ---- Client-side pre-validation ----
+        // Only the most common "obvious" case: an empty project name. The
+        // backend catches everything else via its validation rules, and we
+        // surface those errors field-by-field below. Doing a full duplicate
+        // of Laravel's rules client-side would drift from the server over
+        // time and cause inconsistent behaviour.
+        if (!formData.name || !formData.name.trim()) {
+            applyValidationError(
+                'name',
+                (t as unknown as Record<string, string>).projectsettings_err_name_required
+                    || 'Project name is required.',
+            );
             return;
         }
 
@@ -838,6 +1089,8 @@ export default function ProjectSettingsPanel() {
         }
 
         setSaving(true);
+        // Clear any stale validation marks from previous attempts.
+        setInvalidFields(new Set());
         try {
             const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
             if (!token) {
@@ -857,6 +1110,25 @@ export default function ProjectSettingsPanel() {
             });
 
             if (!projectResponse.ok) {
+                // Try to pick out Laravel's 422 validation payload so we can
+                // show the exact field + message and jump to the right tab.
+                // Shape: { message: string, errors: { field: [msg, ...] } }
+                if (projectResponse.status === 422) {
+                    try {
+                        const errBody = await projectResponse.json();
+                        const errors = (errBody?.errors || {}) as Record<string, string[]>;
+                        const firstField = Object.keys(errors)[0];
+                        if (firstField) {
+                            const firstMsg = errors[firstField]?.[0] || errBody?.message || t.editprojectmodal183;
+                            applyValidationError(firstField, firstMsg);
+                            return; // handled — don't fall through to generic error
+                        }
+                        if (errBody?.message) {
+                            toast.showError(errBody.message);
+                            return;
+                        }
+                    } catch { /* fall through to generic */ }
+                }
                 throw new Error(t.editprojectmodal183);
             }
 
@@ -878,11 +1150,51 @@ export default function ProjectSettingsPanel() {
             });
 
             if (!settingsResponse.ok) {
+                // Same treatment as the main project save: if Laravel gave us
+                // a 422 validation payload, show the specific field message
+                // and jump to the tab where that input lives.
+                if (settingsResponse.status === 422) {
+                    try {
+                        const errBody = await settingsResponse.json();
+                        const errors = (errBody?.errors || {}) as Record<string, string[]>;
+                        const firstField = Object.keys(errors)[0];
+                        if (firstField) {
+                            const firstMsg = errors[firstField]?.[0] || errBody?.message || t.projectsettingspanel243;
+                            applyValidationError(firstField, firstMsg);
+                            return;
+                        }
+                        if (errBody?.message) {
+                            toast.showError(errBody.message);
+                            return;
+                        }
+                    } catch { /* fall through to generic */ }
+                }
                 throw new Error(t.projectsettingspanel243);
             }
 
-            // ✅ Also save template variables
-            await saveTemplateVariablesInternal(token);
+            // ✅ Also save template variables — but do not let a failure here
+            // (e.g. unfilled required variables) abort the whole save. Project
+            // and language settings are already persisted at this point; a
+            // variable-save issue should be surfaced as a warning instead.
+            let variableSaveWarning: string | null = null;
+            try {
+                await saveTemplateVariablesInternal(token);
+            } catch (varError) {
+                variableSaveWarning = varError instanceof Error ? varError.message : String(varError);
+            }
+
+            // ✅ Also save all project translations
+            for (const langCode of Object.keys(translations)) {
+                const data = translations[langCode];
+                if (data && langCode) {
+                    const { _visited, id: _id, project_id: _project_id, created_at: _created_at, updated_at: _updated_at, ...cleanData } = data;
+                    await fetch(`/api/projects/${selectedProject.id}/translations`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+                        body: JSON.stringify({ language_code: langCode, ...cleanData }),
+                    });
+                }
+            }
 
             // Success message includes template variables if they exist
             const hasTemplateVars = templatesWithVariables.length > 0;
@@ -890,6 +1202,12 @@ export default function ProjectSettingsPanel() {
                 ? t.projectsettingspanel890
                 : t.projectsettingspanel246;
             toast.showSuccess(successMsg);
+
+            // Surface any variable-save warning after the success toast so the
+            // user knows their project was saved but variable values weren't.
+            if (variableSaveWarning) {
+                toast.showWarn(variableSaveWarning);
+            }
 
             // Refresh projects to update the UI
             loadProjects();
@@ -939,7 +1257,16 @@ export default function ProjectSettingsPanel() {
                 }
             }
 
-            // Bulk update via API (always call — backend deletes all then inserts non-empty)
+            // Safety: if nothing to save, skip the API call. The backend
+            // accepts empty arrays (meaning "clear all") — but sending one
+            // when state hasn't fully loaded would silently wipe the user's
+            // existing values in DB. No filled fields means no intent to
+            // change variables on this save.
+            if (valuesToSave.length === 0) {
+                continue;
+            }
+
+            // Bulk update via API (backend deletes all then inserts non-empty)
             // This ensures cleared/empty variables are properly deleted from DB
             const response = await fetch(
                 `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values/bulk`,
@@ -1051,7 +1378,11 @@ export default function ProjectSettingsPanel() {
                 />
             </div>
 
-            <TabView className="flex-1 tabview-wrap-tabs">
+            <TabView
+                className="flex-1 tabview-wrap-tabs"
+                activeIndex={activeTabIndex}
+                onTabChange={(e) => setActiveTabIndex(e.index)}
+            >
                 <TabPanel header={<span><i className="pi pi-cog mr-2"></i>{t.projectsettingspanel313}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
@@ -1060,9 +1391,12 @@ export default function ProjectSettingsPanel() {
                                     </label>
                                     <InputText
                                         value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, name: e.target.value });
+                                            clearFieldError('name');
+                                        }}
                                         placeholder={t.editprojectmodal240}
-                                        className="w-full font-mono"
+                                        className={`w-full font-mono ${invalidClass('name')}`}
                                         style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     />
                                     <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
@@ -1070,18 +1404,38 @@ export default function ProjectSettingsPanel() {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel331}
-                                    </label>
-                                    <InputTextarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        rows={3}
-                                        placeholder={t.editprojectmodal260}
-                                        className="w-full"
-                                    />
-                                </div>
+                                {/* Caption + Description from project_translations */}
+                                {(() => {
+                                    const lang = formData.default_language || 'en';
+                                    const trans = translations[lang] || {};
+                                    const getF = (f: string) => trans[f] ?? '';
+                                    const setF = (f: string, v: string) => {
+                                        setTranslations(prev => ({
+                                            ...prev,
+                                            [lang]: { ...(prev[lang] || {}), language_code: lang, [f]: v }
+                                        }));
+                                    };
+                                    return (<>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                                {t.projectsettingspanel_caption || 'Project Caption'}
+                                            </label>
+                                            <InputText value={getF('caption')} onChange={(e) => setF('caption', e.target.value)} className="w-full" />
+                                            <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                                {t.projectsettingspanel_caption_allgemein || 'Display name for the project (from translations, current default language)'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                                {t.projectsettingspanel331}
+                                            </label>
+                                            <InputTextarea value={getF('description')} onChange={(e) => setF('description', e.target.value)} rows={3} placeholder={t.editprojectmodal260} className="w-full" />
+                                            <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                                {t.projectsettingspanel_desc_allgemein || 'Project description (from translations, current default language)'}
+                                            </div>
+                                        </div>
+                                    </>);
+                                })()}
 
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
@@ -1145,6 +1499,163 @@ export default function ProjectSettingsPanel() {
                                 )}
                             </div>
                 </TabPanel>
+
+                <TabPanel header={<span><i className="pi pi-file mr-2"></i>{t.projectsettingspanel489}</span>}>
+                            <div className="space-y-4 max-w-3xl">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel492}
+                                    </label>
+                                    <InputText
+                                        value={formData.project_directory}
+                                        onChange={(e) => setFormData({ ...formData, project_directory: e.target.value })}
+                                        placeholder="C:\Users\Public\Documents\my_project"
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel501}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel507}
+                                    </label>
+                                    <InputText
+                                        value={formData.project_url}
+                                        onChange={(e) => setFormData({ ...formData, project_url: e.target.value })}
+                                        placeholder="http://localhost/my_project"
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel516}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel522}
+                                    </label>
+                                    <InputText
+                                        value={formData.start_page}
+                                        onChange={(e) => setFormData({ ...formData, start_page: e.target.value })}
+                                        placeholder="index.php"
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel866}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel872}
+                                    </label>
+                                    <Dropdown
+                                        value={formData.default_language}
+                                        onChange={(e) => setFormData({ ...formData, default_language: e.value })}
+                                        options={availableLanguages.map(lang => ({
+                                            label: lang.native_name || lang.name,
+                                            value: lang.code
+                                        }))}
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel552}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel893}
+                                    </label>
+                                    <Dropdown
+                                        value={formData.archive_format}
+                                        onChange={(e) => setFormData({ ...formData, archive_format: e.value })}
+                                        options={[
+                                            { label: t.projectsettingspanel1433, value: 'zip' },
+                                            { label: t.projectsettingspanel1434, value: 'tar.gz' },
+                                            { label: t.projectsettingspanel1435, value: 'tar.xz' }
+                                        ]}
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel906}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        Target Programming Language
+                                    </label>
+                                    <Dropdown
+                                        value={formData.target_language || 'html'}
+                                        onChange={(e) => setFormData({ ...formData, target_language: e.value })}
+                                        options={[
+                                            { label: 'HTML (pattern attribute)', value: 'html' },
+                                            { label: 'React / PrimeReact InputMask', value: 'react_primereact' },
+                                            { label: 'React / react-imask', value: 'react_imask' },
+                                            { label: 'Vue.js / Maska', value: 'vue_maska' },
+                                            { label: 'Vue.js / PrimeVue InputMask', value: 'vue_primevue' },
+                                            { label: 'Vue.js / Vuetify', value: 'vue_vuetify' },
+                                            { label: 'Vue.js / Quasar', value: 'vue_quasar' },
+                                            { label: 'Angular / ngx-mask', value: 'angular_ngxmask' },
+                                            { label: 'Angular / imaskjs', value: 'angular_imask' },
+                                            { label: 'jQuery Mask Plugin', value: 'jquery_mask' },
+                                            { label: 'Vanilla JavaScript', value: 'vanilla_js' },
+                                        ]}
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                        Defines the edit mask syntax for input fields in the database schema editor.
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel558}
+                                    </label>
+                                    <Dropdown
+                                        value={formData.filename_short_length}
+                                        onChange={(e) => setFormData({ ...formData, filename_short_length: e.value })}
+                                        options={[
+                                            { label: t.editprojectmodal506, value: 2 },
+                                            { label: t.editprojectmodal507, value: 3 },
+                                            { label: t.editprojectmodal508, value: 4 },
+                                            { label: t.editprojectmodal509, value: 5 }
+                                        ]}
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel926}
+                                    </div>
+                                </div>
+
+                                {/* Google Translate API Key */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel689}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.google_translate_api_key || ''}
+                                        onChange={(e) => setFormData({ ...formData, google_translate_api_key: e.target.value })}
+                                        placeholder="AIzaSy..."
+                                        className="w-full font-mono rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
+                                    />
+                                    <div className="text-xs mt-1">
+                                        {t.projectsettingspanel700}
+                                    </div>
+                                    <div className="text-xs text-blue-400 mt-1">
+                                        🔗 <a href="https://cloud.google.com/translate/docs/setup" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-300">
+                                            {t.projectsettingspanel1058}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                </TabPanel>
+
                 <TabPanel header={<span><i className="pi pi-database mr-2"></i>{t.projectsettingspanel405}</span>}>
                             <div className="space-y-4 max-w-3xl">
                                 <div>
@@ -1309,41 +1820,6 @@ export default function ProjectSettingsPanel() {
                                     </div>
                                 </div>
 
-                                {/* Form Designer Settings */}
-                                <div className="mt-6 pt-6 border-t theme-border-secondary">
-                                    <h4 className="text-md font-semibold theme-text-primary mb-4">
-                                        <i className="pi pi-window-maximize mr-2"></i>
-                                        {t.projectsettingspanel1316}
-                                    </h4>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex items-center gap-3">
-                                            <Checkbox
-                                                inputId="form_designer_snap"
-                                                checked={formData.form_designer_snap_to_grid}
-                                                onChange={(e) => setFormData({ ...formData, form_designer_snap_to_grid: e.checked ?? true })}
-                                            />
-                                            <label htmlFor="form_designer_snap" className="text-sm theme-text-secondary cursor-pointer">
-                                                {t.projectsettingspanel1326}
-                                            </label>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                                {t.projectsettingspanel1331}
-                                            </label>
-                                            <InputText
-                                                type="number"
-                                                value={formData.form_designer_grid_size.toString()}
-                                                onChange={(e) => setFormData({ ...formData, form_designer_grid_size: parseInt(e.target.value) || 20 })}
-                                                placeholder="20"
-                                                className="w-full"
-                                                min={5}
-                                                max={100}
-                                            />
-                                            <small className="theme-text-muted">{t.projectsettingspanel1342}</small>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <div className="mt-6 p-4 theme-bg-tertiary rounded">
                                     <h4 className="font-semibold mb-2 theme-text-primary">{t.projectsettingspanel814}</h4>
                                     <div className="text-sm theme-text-secondary space-y-1">
@@ -1354,359 +1830,164 @@ export default function ProjectSettingsPanel() {
                                 </div>
                             </div>
                 </TabPanel>
-                <TabPanel header={<span><i className="pi pi-file mr-2"></i>{t.projectsettingspanel489}</span>}>
-                            <div className="space-y-4 max-w-3xl">
+
+                {/* Forms & Reports Tab — defaults + designer settings */}
+                <TabPanel header={<span><i className="pi pi-bookmark mr-2"></i>{(t as unknown as Record<string, string>).projectsettings_forms_reports || 'Forms & Reports'}</span>}>
+                    <div className="space-y-6 max-w-3xl p-4">
+                        <div className="mb-2 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
+                            <i className="pi pi-info-circle mr-2"></i>
+                            {(t as unknown as Record<string, string>).projectsettings_defaults_intro
+                              || 'Pick the default Form Set and Report Pattern for tables that do not specify their own. Without a default, the code generator will not produce forms / reports for those tables.'}
+                        </div>
+
+                        {/* Default Form Set
+                            Uses a sentinel value (-1) for "No default" instead of null:
+                            PrimeReact's <Dropdown> does not reliably fire onChange when
+                            the selected option carries value: null (the library treats
+                            it the same as "no value" which is the initial state, so
+                            selecting it after a real FormSet was chosen looks like a
+                            no-op). A numeric sentinel sidesteps the issue cleanly; we
+                            translate it back to null at save time. */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                {(t as unknown as Record<string, string>).projectsettings_default_form_set || 'Default Form Set'}
+                            </label>
+                            <Dropdown
+                                value={defaultFormSetId ?? -1}
+                                options={[
+                                    { label: '— ' + ((t as unknown as Record<string, string>).projectsettings_no_default || 'No default') + ' —', value: -1 },
+                                    ...availableFormSets.map(fs => ({ label: fs.name, value: fs.id })),
+                                ]}
+                                onChange={(e) => saveDefaultFormSet(e.value === -1 ? null : e.value)}
+                                placeholder="—"
+                                className="w-full"
+                            />
+                            <p className="text-xs theme-text-muted mt-1">
+                                {(t as unknown as Record<string, string>).projectsettings_default_form_set_hint
+                                  || 'Used by tables without their own form set selection.'}
+                            </p>
+                        </div>
+
+                        {/* Form Designer Settings */}
+                        <div className="pt-4 border-t theme-border-secondary">
+                            <h4 className="text-md font-semibold theme-text-primary mb-4">
+                                <i className="pi pi-window-maximize mr-2"></i>
+                                {t.projectsettingspanel1316}
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-3">
+                                    <Checkbox
+                                        inputId="form_designer_snap"
+                                        checked={formData.form_designer_snap_to_grid}
+                                        onChange={(e) => setFormData({ ...formData, form_designer_snap_to_grid: e.checked ?? true })}
+                                    />
+                                    <label htmlFor="form_designer_snap" className="text-sm theme-text-secondary cursor-pointer">
+                                        {t.projectsettingspanel1326}
+                                    </label>
+                                </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel492}
+                                        {t.projectsettingspanel1331}
                                     </label>
                                     <InputText
-                                        value={formData.project_directory}
-                                        onChange={(e) => setFormData({ ...formData, project_directory: e.target.value })}
-                                        placeholder="C:\Users\Public\Documents\my_project"
+                                        type="number"
+                                        value={formData.form_designer_grid_size.toString()}
+                                        onChange={(e) => setFormData({ ...formData, form_designer_grid_size: parseInt(e.target.value) || 20 })}
+                                        placeholder="20"
                                         className="w-full"
+                                        min={5}
+                                        max={100}
                                     />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel501}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel507}
-                                    </label>
-                                    <InputText
-                                        value={formData.project_url}
-                                        onChange={(e) => setFormData({ ...formData, project_url: e.target.value })}
-                                        placeholder="http://localhost/my_project"
-                                        className="w-full"
-                                    />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel516}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel522}
-                                    </label>
-                                    <InputText
-                                        value={formData.start_page}
-                                        onChange={(e) => setFormData({ ...formData, start_page: e.target.value })}
-                                        placeholder="index.php"
-                                        className="w-full"
-                                    />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel866}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel872}
-                                    </label>
-                                    <Dropdown
-                                        value={formData.default_language}
-                                        onChange={(e) => setFormData({ ...formData, default_language: e.value })}
-                                        options={[
-                                            { label: t.editprojectmodal484, value: 'en' },
-                                            { label: t.editprojectmodal485, value: 'de' },
-                                            { label: t.editprojectmodal486, value: 'fr' },
-                                            { label: t.editprojectmodal487, value: 'es' },
-                                            { label: t.editprojectmodal488, value: 'it' }
-                                        ]}
-                                        className="w-full"
-                                    />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel552}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel893}
-                                    </label>
-                                    <Dropdown
-                                        value={formData.archive_format}
-                                        onChange={(e) => setFormData({ ...formData, archive_format: e.value })}
-                                        options={[
-                                            { label: t.projectsettingspanel1433, value: 'zip' },
-                                            { label: t.projectsettingspanel1434, value: 'tar.gz' },
-                                            { label: t.projectsettingspanel1435, value: 'tar.xz' }
-                                        ]}
-                                        className="w-full"
-                                    />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel906}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel558}
-                                    </label>
-                                    <Dropdown
-                                        value={formData.filename_short_length}
-                                        onChange={(e) => setFormData({ ...formData, filename_short_length: e.value })}
-                                        options={[
-                                            { label: t.editprojectmodal506, value: 2 },
-                                            { label: t.editprojectmodal507, value: 3 },
-                                            { label: t.editprojectmodal508, value: 4 },
-                                            { label: t.editprojectmodal509, value: 5 }
-                                        ]}
-                                        className="w-full"
-                                    />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel926}
-                                    </div>
                                 </div>
                             </div>
-                </TabPanel>
-                <TabPanel header={<span><i className="pi pi-globe mr-2"></i>{t.projectsettingspanel932}</span>}>
-                            <div className="space-y-4 max-w-3xl">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            {t.projectsettingspanel582}
-                                        </label>
-                                        <InputText
-                                            value={formData.decimal_separator}
-                                            onChange={(e) => setFormData({ ...formData, decimal_separator: e.target.value })}
-                                            placeholder=","
-                                            maxLength={1}
-                                            className="w-full"
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {t.projectsettingspanel946}
-                                        </div>
-                                    </div>
+                            <small className="theme-text-muted block mt-2">{t.projectsettingspanel1342}</small>
+                        </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            {t.projectsettingspanel598}
-                                        </label>
-                                        <InputText
-                                            value={formData.thousands_separator}
-                                            onChange={(e) => setFormData({ ...formData, thousands_separator: e.target.value })}
-                                            placeholder="."
-                                            maxLength={1}
-                                            className="w-full"
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {t.projectsettingspanel962}
-                                        </div>
-                                    </div>
+                        {/* Default Report Pattern — same sentinel-value pattern as Default Form Set above */}
+                        <div className="pt-4 border-t theme-border-secondary">
+                            <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                {(t as unknown as Record<string, string>).projectsettings_default_report_pattern || 'Default Report Pattern'}
+                            </label>
+                            <Dropdown
+                                value={defaultReportPatternId ?? -1}
+                                options={[
+                                    { label: '— ' + ((t as unknown as Record<string, string>).projectsettings_no_default || 'No default') + ' —', value: -1 },
+                                    ...availableReportPatterns.map(rp => ({ label: rp.name, value: rp.id })),
+                                ]}
+                                onChange={(e) => saveDefaultReportPattern(e.value === -1 ? null : e.value)}
+                                placeholder="—"
+                                className="w-full"
+                            />
+                            <p className="text-xs theme-text-muted mt-1">
+                                {(t as unknown as Record<string, string>).projectsettings_default_report_pattern_hint
+                                  || 'Used by tables without their own report pattern selection.'}
+                            </p>
+                        </div>
+
+                        {/* Report Designer Settings */}
+                        <div className="pt-4 border-t theme-border-secondary">
+                            <h4 className="text-md font-semibold theme-text-primary mb-4">
+                                <i className="pi pi-print mr-2"></i>
+                                {t.projectsettingspanel_report_designer || 'Report Designer Settings'}
+                            </h4>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="flex items-center gap-3">
+                                    <Checkbox
+                                        inputId="report_designer_snap"
+                                        checked={formData.report_designer_snap_to_grid}
+                                        onChange={(e) => setFormData({ ...formData, report_designer_snap_to_grid: e.checked ?? true })}
+                                    />
+                                    <label htmlFor="report_designer_snap" className="text-sm theme-text-secondary cursor-pointer">
+                                        {t.projectsettingspanel_report_snap || 'Snap to Grid'}
+                                    </label>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            {t.projectsettingspanel616}
-                                        </label>
-                                        <InputText
-                                            value={formData.date_format}
-                                            onChange={(e) => setFormData({ ...formData, date_format: e.target.value })}
-                                            placeholder="d.m.Y"
-                                            className="w-full"
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {t.projectsettingspanel979}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            {t.projectsettingspanel631}
-                                        </label>
-                                        <InputText
-                                            value={formData.time_format}
-                                            onChange={(e) => setFormData({ ...formData, time_format: e.target.value })}
-                                            placeholder="H:i:s"
-                                            className="w-full"
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {t.projectsettingspanel995}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            {t.projectpanel1263}
-                                        </label>
-                                        <InputText
-                                            value={formData.currency_symbol}
-                                            onChange={(e) => setFormData({ ...formData, currency_symbol: e.target.value })}
-                                            placeholder={t.editprojectmodal602}
-                                            maxLength={5}
-                                            className="w-full"
-                                        />
-                                        <div className="text-xs mt-1">
-                                            {t.projectsettingspanel1012}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                            {t.editprojectmodal613}
-                                        </label>
-                                        <Dropdown
-                                            value={formData.timezone}
-                                            onChange={(e) => setFormData({ ...formData, timezone: e.value })}
-                                            options={[
-                                                // UTC
-                                                { label: 'UTC (Coordinated Universal Time)', value: 'UTC' },
-
-                                                // Europe
-                                                { label: 'Europe/Amsterdam (CET/CEST)', value: 'Europe/Amsterdam' },
-                                                { label: 'Europe/Andorra (CET/CEST)', value: 'Europe/Andorra' },
-                                                { label: 'Europe/Athens (EET/EEST)', value: 'Europe/Athens' },
-                                                { label: 'Europe/Belgrade (CET/CEST)', value: 'Europe/Belgrade' },
-                                                { label: 'Europe/Berlin (CET/CEST)', value: 'Europe/Berlin' },
-                                                { label: 'Europe/Bratislava (CET/CEST)', value: 'Europe/Bratislava' },
-                                                { label: 'Europe/Brussels (CET/CEST)', value: 'Europe/Brussels' },
-                                                { label: 'Europe/Bucharest (EET/EEST)', value: 'Europe/Bucharest' },
-                                                { label: 'Europe/Budapest (CET/CEST)', value: 'Europe/Budapest' },
-                                                { label: 'Europe/Copenhagen (CET/CEST)', value: 'Europe/Copenhagen' },
-                                                { label: 'Europe/Dublin (GMT/IST)', value: 'Europe/Dublin' },
-                                                { label: 'Europe/Helsinki (EET/EEST)', value: 'Europe/Helsinki' },
-                                                { label: 'Europe/Istanbul (TRT)', value: 'Europe/Istanbul' },
-                                                { label: 'Europe/Kiev (EET/EEST)', value: 'Europe/Kiev' },
-                                                { label: 'Europe/Lisbon (WET/WEST)', value: 'Europe/Lisbon' },
-                                                { label: 'Europe/Ljubljana (CET/CEST)', value: 'Europe/Ljubljana' },
-                                                { label: 'Europe/London (GMT/BST)', value: 'Europe/London' },
-                                                { label: 'Europe/Luxembourg (CET/CEST)', value: 'Europe/Luxembourg' },
-                                                { label: 'Europe/Madrid (CET/CEST)', value: 'Europe/Madrid' },
-                                                { label: 'Europe/Malta (CET/CEST)', value: 'Europe/Malta' },
-                                                { label: 'Europe/Milan (CET/CEST)', value: 'Europe/Milan' },
-                                                { label: 'Europe/Monaco (CET/CEST)', value: 'Europe/Monaco' },
-                                                { label: 'Europe/Moscow (MSK)', value: 'Europe/Moscow' },
-                                                { label: 'Europe/Oslo (CET/CEST)', value: 'Europe/Oslo' },
-                                                { label: 'Europe/Paris (CET/CEST)', value: 'Europe/Paris' },
-                                                { label: 'Europe/Prague (CET/CEST)', value: 'Europe/Prague' },
-                                                { label: 'Europe/Riga (EET/EEST)', value: 'Europe/Riga' },
-                                                { label: 'Europe/Rome (CET/CEST)', value: 'Europe/Rome' },
-                                                { label: 'Europe/Sofia (EET/EEST)', value: 'Europe/Sofia' },
-                                                { label: 'Europe/Stockholm (CET/CEST)', value: 'Europe/Stockholm' },
-                                                { label: 'Europe/Tallinn (EET/EEST)', value: 'Europe/Tallinn' },
-                                                { label: 'Europe/Vienna (CET/CEST)', value: 'Europe/Vienna' },
-                                                { label: 'Europe/Vilnius (EET/EEST)', value: 'Europe/Vilnius' },
-                                                { label: 'Europe/Warsaw (CET/CEST)', value: 'Europe/Warsaw' },
-                                                { label: 'Europe/Zagreb (CET/CEST)', value: 'Europe/Zagreb' },
-                                                { label: 'Europe/Zurich (CET/CEST)', value: 'Europe/Zurich' },
-
-                                                // Americas
-                                                { label: 'America/Anchorage (AKST/AKDT)', value: 'America/Anchorage' },
-                                                { label: 'America/Argentina/Buenos_Aires (ART)', value: 'America/Argentina/Buenos_Aires' },
-                                                { label: 'America/Bogota (COT)', value: 'America/Bogota' },
-                                                { label: 'America/Caracas (VET)', value: 'America/Caracas' },
-                                                { label: 'America/Chicago (CST/CDT)', value: 'America/Chicago' },
-                                                { label: 'America/Denver (MST/MDT)', value: 'America/Denver' },
-                                                { label: 'America/Halifax (AST/ADT)', value: 'America/Halifax' },
-                                                { label: 'America/Havana (CST/CDT)', value: 'America/Havana' },
-                                                { label: 'America/Lima (PET)', value: 'America/Lima' },
-                                                { label: 'America/Los_Angeles (PST/PDT)', value: 'America/Los_Angeles' },
-                                                { label: 'America/Mexico_City (CST/CDT)', value: 'America/Mexico_City' },
-                                                { label: 'America/New_York (EST/EDT)', value: 'America/New_York' },
-                                                { label: 'America/Panama (EST)', value: 'America/Panama' },
-                                                { label: 'America/Phoenix (MST)', value: 'America/Phoenix' },
-                                                { label: 'America/Santiago (CLT/CLST)', value: 'America/Santiago' },
-                                                { label: 'America/Sao_Paulo (BRT/BRST)', value: 'America/Sao_Paulo' },
-                                                { label: 'America/St_Johns (NST/NDT)', value: 'America/St_Johns' },
-                                                { label: 'America/Toronto (EST/EDT)', value: 'America/Toronto' },
-                                                { label: 'America/Vancouver (PST/PDT)', value: 'America/Vancouver' },
-
-                                                // Asia
-                                                { label: 'Asia/Almaty (ALMT)', value: 'Asia/Almaty' },
-                                                { label: 'Asia/Baghdad (AST)', value: 'Asia/Baghdad' },
-                                                { label: 'Asia/Baku (AZT)', value: 'Asia/Baku' },
-                                                { label: 'Asia/Bangkok (ICT)', value: 'Asia/Bangkok' },
-                                                { label: 'Asia/Beirut (EET/EEST)', value: 'Asia/Beirut' },
-                                                { label: 'Asia/Colombo (IST)', value: 'Asia/Colombo' },
-                                                { label: 'Asia/Dhaka (BST)', value: 'Asia/Dhaka' },
-                                                { label: 'Asia/Dubai (GST)', value: 'Asia/Dubai' },
-                                                { label: 'Asia/Ho_Chi_Minh (ICT)', value: 'Asia/Ho_Chi_Minh' },
-                                                { label: 'Asia/Hong_Kong (HKT)', value: 'Asia/Hong_Kong' },
-                                                { label: 'Asia/Jakarta (WIB)', value: 'Asia/Jakarta' },
-                                                { label: 'Asia/Jerusalem (IST/IDT)', value: 'Asia/Jerusalem' },
-                                                { label: 'Asia/Kabul (AFT)', value: 'Asia/Kabul' },
-                                                { label: 'Asia/Karachi (PKT)', value: 'Asia/Karachi' },
-                                                { label: 'Asia/Kathmandu (NPT)', value: 'Asia/Kathmandu' },
-                                                { label: 'Asia/Kolkata (IST)', value: 'Asia/Kolkata' },
-                                                { label: 'Asia/Kuala_Lumpur (MYT)', value: 'Asia/Kuala_Lumpur' },
-                                                { label: 'Asia/Kuwait (AST)', value: 'Asia/Kuwait' },
-                                                { label: 'Asia/Manila (PHT)', value: 'Asia/Manila' },
-                                                { label: 'Asia/Riyadh (AST)', value: 'Asia/Riyadh' },
-                                                { label: 'Asia/Seoul (KST)', value: 'Asia/Seoul' },
-                                                { label: 'Asia/Shanghai (CST)', value: 'Asia/Shanghai' },
-                                                { label: 'Asia/Singapore (SGT)', value: 'Asia/Singapore' },
-                                                { label: 'Asia/Taipei (CST)', value: 'Asia/Taipei' },
-                                                { label: 'Asia/Tehran (IRST/IRDT)', value: 'Asia/Tehran' },
-                                                { label: 'Asia/Tokyo (JST)', value: 'Asia/Tokyo' },
-                                                { label: 'Asia/Vladivostok (VLAT)', value: 'Asia/Vladivostok' },
-                                                { label: 'Asia/Yangon (MMT)', value: 'Asia/Yangon' },
-                                                { label: 'Asia/Yekaterinburg (YEKT)', value: 'Asia/Yekaterinburg' },
-
-                                                // Africa
-                                                { label: 'Africa/Algiers (CET)', value: 'Africa/Algiers' },
-                                                { label: 'Africa/Cairo (EET)', value: 'Africa/Cairo' },
-                                                { label: 'Africa/Casablanca (WET/WEST)', value: 'Africa/Casablanca' },
-                                                { label: 'Africa/Johannesburg (SAST)', value: 'Africa/Johannesburg' },
-                                                { label: 'Africa/Lagos (WAT)', value: 'Africa/Lagos' },
-                                                { label: 'Africa/Nairobi (EAT)', value: 'Africa/Nairobi' },
-                                                { label: 'Africa/Tunis (CET)', value: 'Africa/Tunis' },
-
-                                                // Australia & Pacific
-                                                { label: 'Australia/Adelaide (ACST/ACDT)', value: 'Australia/Adelaide' },
-                                                { label: 'Australia/Brisbane (AEST)', value: 'Australia/Brisbane' },
-                                                { label: 'Australia/Darwin (ACST)', value: 'Australia/Darwin' },
-                                                { label: 'Australia/Hobart (AEST/AEDT)', value: 'Australia/Hobart' },
-                                                { label: 'Australia/Melbourne (AEST/AEDT)', value: 'Australia/Melbourne' },
-                                                { label: 'Australia/Perth (AWST)', value: 'Australia/Perth' },
-                                                { label: 'Australia/Sydney (AEST/AEDT)', value: 'Australia/Sydney' },
-                                                { label: 'Pacific/Auckland (NZST/NZDT)', value: 'Pacific/Auckland' },
-                                                { label: 'Pacific/Fiji (FJT/FJST)', value: 'Pacific/Fiji' },
-                                                { label: 'Pacific/Guam (ChST)', value: 'Pacific/Guam' },
-                                                { label: 'Pacific/Honolulu (HST)', value: 'Pacific/Honolulu' },
-
-                                                // Atlantic & Indian Ocean
-                                                { label: 'Atlantic/Azores (AZOT/AZOST)', value: 'Atlantic/Azores' },
-                                                { label: 'Atlantic/Canary (WET/WEST)', value: 'Atlantic/Canary' },
-                                                { label: 'Atlantic/Reykjavik (GMT)', value: 'Atlantic/Reykjavik' },
-                                                { label: 'Indian/Maldives (MVT)', value: 'Indian/Maldives' },
-                                                { label: 'Indian/Mauritius (MUT)', value: 'Indian/Mauritius' }
-                                            ]}
-                                            className="w-full"
-                                            filter
-                                            filterPlaceholder={t.projectsettingspanel1682}
-                                            showClear
-                                        />
-                                    </div>
-                                </div>
-
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        {t.projectsettingspanel689}
+                                        {t.projectsettingspanel_report_unit || 'Unit'}
                                     </label>
-                                    <input
-                                        type="text"
-                                        value={formData.google_translate_api_key || ''}
-                                        onChange={(e) => setFormData({ ...formData, google_translate_api_key: e.target.value })}
-                                        placeholder="AIzaSy..."
-                                        className="w-full font-mono rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
+                                    <Dropdown
+                                        value={formData.report_designer_grid_unit}
+                                        options={[
+                                            { label: 'Millimeter (mm)', value: 'mm' },
+                                            { label: 'Inch (in)', value: 'inch' },
+                                        ]}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            report_designer_grid_unit: e.value,
+                                            report_designer_grid_size: e.value === 'inch' ? 0.25 : 5,
+                                        })}
+                                        className="w-full"
                                     />
-                                    <div className="text-xs mt-1">
-                                        {t.projectsettingspanel700}
-                                    </div>
-                                    <div className="text-xs text-blue-400 mt-1">
-                                        🔗 <a href="https://cloud.google.com/translate/docs/setup" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-300">
-                                            {t.projectsettingspanel1058}
-                                        </a>
-                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel_report_gridsize || 'Grid Size'}
+                                    </label>
+                                    <InputNumber
+                                        value={formData.report_designer_grid_size}
+                                        onValueChange={(e) => setFormData({ ...formData, report_designer_grid_size: e.value ?? 5 })}
+                                        mode="decimal"
+                                        minFractionDigits={formData.report_designer_grid_unit === 'inch' ? 2 : 1}
+                                        maxFractionDigits={formData.report_designer_grid_unit === 'inch' ? 4 : 2}
+                                        min={0.1}
+                                        max={100}
+                                        step={formData.report_designer_grid_unit === 'inch' ? 0.0625 : 0.5}
+                                        suffix={formData.report_designer_grid_unit === 'inch' ? ' in' : ' mm'}
+                                        className="w-full"
+                                        showButtons
+                                        buttonLayout="horizontal"
+                                        incrementButtonIcon="pi pi-plus"
+                                        decrementButtonIcon="pi pi-minus"
+                                        incrementButtonClassName="p-button-secondary"
+                                        decrementButtonClassName="p-button-secondary"
+                                    />
                                 </div>
                             </div>
+                            <small className="theme-text-muted block mt-2">
+                                {formData.report_designer_grid_unit === 'inch' ? 'z.B. 0.25 in' : 'z.B. 2.5 mm'}
+                            </small>
+                        </div>
+                    </div>
                 </TabPanel>
                 <TabPanel header={<span><i className="pi pi-comments mr-2"></i>{t.projectsettingspanel711}</span>}>
                             <div className="max-w-4xl">
@@ -1747,6 +2028,184 @@ export default function ProjectSettingsPanel() {
                                     </p>
                                 </div>
                             </div>
+                </TabPanel>
+
+                {/* Project Translations Tab */}
+                <TabPanel header={<span><i className="pi pi-language mr-2"></i>{t.projectsettingspanel_translations || 'Translations'}</span>}>
+                    <div className="max-w-4xl">
+                        <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
+                            <i className="pi pi-info-circle mr-2"></i>
+                            {t.projectsettingspanel_translations_info || 'Translate project name, description and locale settings per language. The default language is used as fallback.'}
+                        </div>
+
+                        {/* Language selector */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                {t.projectsettingspanel_select_language || 'Language'}
+                            </label>
+                            <Dropdown
+                                value={selectedTransLang}
+                                onChange={(e) => {
+                                    // Auto-save current language before switching
+                                    if (selectedTransLang && translations[selectedTransLang]) {
+                                        const data = translations[selectedTransLang];
+                                        const { _visited, id: _id, project_id: _project_id, created_at: _created_at, updated_at: _updated_at, ...cleanData } = data;
+                                        saveTranslation(selectedTransLang, cleanData);
+                                    }
+                                    setSelectedTransLang(e.value);
+                                }}
+                                options={selectedLanguages.map(code => {
+                                    const lang = availableLanguages.find(l => l.code === code);
+                                    return { label: lang ? `${lang.flag ?? ''} ${lang.native_name || lang.name}` : code, value: code };
+                                })}
+                                className="w-full"
+                                placeholder={t.projectsettingspanel_select_language || 'Select language...'}
+                            />
+                        </div>
+
+                        {selectedTransLang && (() => {
+                            const trans = translations[selectedTransLang] || {};
+                            const isDefault = selectedTransLang === formData.default_language;
+                            const defaultCaption = selectedProject?.name ? selectedProject.name.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '';
+
+                            const getField = (field: string) => trans[field] ?? '';
+                            const setField = (field: string, value: string) => {
+                                setTranslations(prev => ({
+                                    ...prev,
+                                    [selectedTransLang]: { ...(prev[selectedTransLang] || {}), language_code: selectedTransLang, [field]: value }
+                                }));
+                            };
+
+                            // Auto-fill caption if empty when switching language
+                            if (!trans.caption && !trans._visited) {
+                                const localeDefaults = {
+                                    de: { decimal_separator: ',', thousands_separator: '.', date_format: 'd.m.Y', time_format: 'H:i:s', currency_symbol: '€', timezone: 'Europe/Vienna' },
+                                    en: { decimal_separator: '.', thousands_separator: ',', date_format: 'm/d/Y', time_format: 'h:i A', currency_symbol: '$', timezone: 'America/New_York' },
+                                    fr: { decimal_separator: ',', thousands_separator: ' ', date_format: 'd/m/Y', time_format: 'H:i', currency_symbol: '€', timezone: 'Europe/Paris' },
+                                    es: { decimal_separator: ',', thousands_separator: '.', date_format: 'd/m/Y', time_format: 'H:i', currency_symbol: '€', timezone: 'Europe/Madrid' },
+                                    it: { decimal_separator: ',', thousands_separator: '.', date_format: 'd/m/Y', time_format: 'H:i', currency_symbol: '€', timezone: 'Europe/Rome' },
+                                } as Record<string, any>;
+                                const defaults = localeDefaults[selectedTransLang] || localeDefaults['en'];
+                                setTimeout(() => {
+                                    setTranslations(prev => ({
+                                        ...prev,
+                                        [selectedTransLang]: {
+                                            ...(prev[selectedTransLang] || {}),
+                                            language_code: selectedTransLang,
+                                            caption: defaultCaption,
+                                            description: selectedProject?.description || '',
+                                            ...(!trans.decimal_separator && { decimal_separator: defaults.decimal_separator }),
+                                            ...(!trans.thousands_separator && { thousands_separator: defaults.thousands_separator }),
+                                            ...(!trans.date_format && { date_format: defaults.date_format }),
+                                            ...(!trans.time_format && { time_format: defaults.time_format }),
+                                            ...(!trans.currency_symbol && { currency_symbol: defaults.currency_symbol }),
+                                            ...(!trans.timezone && { timezone: defaults.timezone }),
+                                            _visited: true,
+                                        }
+                                    }));
+                                }, 0);
+                            }
+
+                            return (
+                                <div className="space-y-4">
+                                    {isDefault && (
+                                        <div className="p-2 rounded text-xs" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
+                                            <i className="pi pi-star-fill mr-1"></i>
+                                            {t.projectsettingspanel_default_lang || 'This is the default language (fallback for all others).'}
+                                        </div>
+                                    )}
+
+                                    {/* Caption */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                            {t.projectsettingspanel_caption || 'Project Caption'}
+                                        </label>
+                                        <InputText value={getField('caption')} onChange={(e) => setField('caption', e.target.value)} className="w-full" />
+                                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                            {t.projectsettingspanel_caption_help || 'Translated project name (e.g., "System Project", "Système Projet")'}
+                                        </div>
+                                    </div>
+
+                                    {/* Description */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                            {t.projectsettingspanel_description || 'Description'}
+                                        </label>
+                                        <InputTextarea value={getField('description')} onChange={(e) => setField('description', e.target.value)} rows={3} className="w-full" />
+                                    </div>
+
+                                    <div className="border-t pt-4 mt-4" style={{ borderColor: colors.borderPrimary }}>
+                                        <h4 className="text-sm font-semibold mb-3" style={{ color: colors.textPrimary }}>
+                                            <i className="pi pi-globe mr-2"></i>
+                                            {t.projectsettingspanel_locale || 'Locale Settings'}
+                                        </h4>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {/* Decimal Separator */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                                    {t.projectsettingspanel544 || 'Decimal Separator'}
+                                                </label>
+                                                <InputText value={getField('decimal_separator')} onChange={(e) => setField('decimal_separator', e.target.value)} maxLength={1} className="w-full" />
+                                            </div>
+                                            {/* Thousands Separator */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                                    {t.projectsettingspanel549 || 'Thousands Separator'}
+                                                </label>
+                                                <InputText value={getField('thousands_separator')} onChange={(e) => setField('thousands_separator', e.target.value)} maxLength={1} className="w-full" />
+                                            </div>
+                                            {/* Date Format */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                                    {t.projectsettingspanel554 || 'Date Format'}
+                                                </label>
+                                                <InputText value={getField('date_format')} onChange={(e) => setField('date_format', e.target.value)} className="w-full" />
+                                                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>d.m.Y, m/d/Y, Y-m-d</div>
+                                            </div>
+                                            {/* Time Format */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                                    {t.projectsettingspanel559 || 'Time Format'}
+                                                </label>
+                                                <InputText value={getField('time_format')} onChange={(e) => setField('time_format', e.target.value)} className="w-full" />
+                                                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>H:i:s, h:i A</div>
+                                            </div>
+                                            {/* Currency Symbol */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                                    {t.projectsettingspanel564 || 'Currency Symbol'}
+                                                </label>
+                                                <InputText value={getField('currency_symbol')} onChange={(e) => setField('currency_symbol', e.target.value)} maxLength={5} className="w-full" />
+                                            </div>
+                                            {/* Timezone */}
+                                            <div>
+                                                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                                    {t.projectsettingspanel569 || 'Timezone'}
+                                                </label>
+                                                <InputText value={getField('timezone')} onChange={(e) => setField('timezone', e.target.value)} className="w-full" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Save button */}
+                                    <div className="flex justify-end mt-4">
+                                        <Button
+                                            label={t.btnSave || 'Save'}
+                                            icon="pi pi-check"
+                                            severity="success"
+                                            loading={savingTranslation}
+                                            onClick={() => {
+                                                const data = translations[selectedTransLang] || {};
+                                                const { _visited, id: _id, project_id: _project_id, created_at: _created_at, updated_at: _updated_at, ...cleanData } = data;
+                                                saveTranslation(selectedTransLang, cleanData);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
                 </TabPanel>
 
                 {/* Template Variables Tab */}
@@ -1878,6 +2337,7 @@ export default function ProjectSettingsPanel() {
                     </div>
                 </TabPanel>
 
+                {/* Deployment Scripts Tab */}
                 {/* Protected Files Tab */}
                 <TabPanel header={t.projectsettingspanel1864}>
                     <div className="p-4">
@@ -1889,7 +2349,6 @@ export default function ProjectSettingsPanel() {
                     </div>
                 </TabPanel>
 
-                {/* Deployment Scripts Tab */}
                 <TabPanel header={t.projectsettingspanel1875}>
                     <div className="p-4">
                         <DeploymentScriptsEditor

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CliDevice;
 use App\Models\CliTask;
 use App\Models\TemplateFile;
 use App\Services\SchemaStorageService;
@@ -16,6 +17,25 @@ use ZipArchive;
 class SvcController extends Controller
 {
     /**
+     * Resolve target_device_id from request.
+     * If a device_id is provided, verify it belongs to the user and is active.
+     * Returns the device_id string or null (for untargeted/any-device tasks).
+     */
+    private function resolveTargetDevice(Request $request): ?string
+    {
+        $deviceId = $request->input('target_device_id');
+        if (!$deviceId) return null;
+
+        // Verify device belongs to user and is active
+        $device = CliDevice::where('device_id', $deviceId)
+            ->where('user_id', $request->user()->id)
+            ->where('is_active', true)
+            ->first();
+
+        return $device ? $deviceId : null;
+    }
+
+    /**
      * Get next pending task from queue
      * Called by scoriet-svc to poll for work
      *
@@ -23,9 +43,27 @@ class SvcController extends Controller
      */
     public function getQueue(Request $request): JsonResponse
     {
-        // Get next pending task (highest priority first, then oldest)
-        $task = CliTask::where('status', CliTask::STATUS_PENDING)
-            ->orderBy('priority', 'desc')
+        $deviceId = $request->header('X-Device-Id');
+
+        // Heartbeat: update device last_seen_at if device_id provided
+        if ($deviceId) {
+            CliDevice::where('device_id', $deviceId)->update(['last_seen_at' => now()]);
+        }
+
+        // Get next pending task: only tasks targeted at this device OR untargeted tasks
+        $query = CliTask::where('status', CliTask::STATUS_PENDING);
+
+        if ($deviceId) {
+            $query->where(function ($q) use ($deviceId) {
+                $q->whereNull('target_device_id')
+                  ->orWhere('target_device_id', $deviceId);
+            });
+        } else {
+            // No device_id: only pick up untargeted tasks (backwards compatible)
+            $query->whereNull('target_device_id');
+        }
+
+        $task = $query->orderBy('priority', 'desc')
             ->orderBy('created_at', 'asc')
             ->first();
 
@@ -275,6 +313,7 @@ class SvcController extends Controller
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_CONNECTION_TEST,
             'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => null,
             'payload' => [
                 'connection_type' => $payload['connection_type'],
@@ -344,6 +383,7 @@ class SvcController extends Controller
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_DATABASE_IMPORT,
             'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => $project->id,
             'payload' => [
                 'connection_type' => $payload['connection_type'],
@@ -392,6 +432,7 @@ class SvcController extends Controller
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_DATABASE_EXPORT,
             'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => null,
             'payload' => [
                 'connection_type' => $payload['connection_type'],
@@ -435,6 +476,7 @@ class SvcController extends Controller
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_PROJECT_DOWNLOAD,
             'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => $request->input('project_id'),
             'payload' => [
                 'project_id' => $request->input('project_id'),
@@ -671,6 +713,7 @@ class SvcController extends Controller
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_TEMPLATE_UPLOAD,
             'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => null, // Templates are not project-specific
             'payload' => [
                 'directory_path' => $validated['directory_path'],
@@ -1000,6 +1043,7 @@ class SvcController extends Controller
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_FILE_EDIT,
             'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => null,
             'payload' => [
                 'template_id' => $validated['template_id'],
@@ -1180,5 +1224,208 @@ class SvcController extends Controller
         file_put_contents($tempDir . '/session.json', json_encode($sessionData));
 
         return response()->json(['success' => true, 'message' => __('svccontrollerphp1182')]);
+    }
+
+    /**
+     * Create a data query task
+     * Called from GUI when the live preview needs real data from the user's local database
+     *
+     * POST /cli/svc/tasks/data-query
+     */
+    public function createDataQueryTask(Request $request): JsonResponse
+    {
+        $request->validate([
+            'payload.connection_type' => 'required|in:mysql,postgresql,sqlite,mssql',
+            'payload.host' => 'required_unless:payload.connection_type,sqlite|string',
+            'payload.port' => 'nullable|integer',
+            'payload.database' => 'required|string',
+            'payload.username' => 'required_unless:payload.connection_type,sqlite|string',
+            'payload.password' => 'nullable|string',
+            'payload.table_name' => 'required|string|max:255',
+            'payload.columns' => 'required|array|min:1',
+            'payload.columns.*' => 'required|string|max:255',
+            'payload.query_type' => 'required|in:single_record,list',
+            'payload.where_clause' => 'nullable|string|max:1000',
+            'payload.order_by' => 'nullable|string|max:500',
+            'payload.limit' => 'nullable|integer|min:1|max:500',
+            'payload.offset' => 'nullable|integer|min:0',
+        ]);
+
+        $user = $request->user();
+        $payload = $request->input('payload');
+
+        // Determine default limit based on query type
+        $defaultLimit = $payload['query_type'] === 'single_record' ? 1 : 50;
+
+        $task = CliTask::create([
+            'task_type' => CliTask::TYPE_DATA_QUERY,
+            'user_id' => $user->id,
+            'target_device_id' => $this->resolveTargetDevice($request),
+            'project_id' => $request->input('project_id'),
+            'payload' => [
+                'connection_type' => $payload['connection_type'],
+                'host' => $payload['host'] ?? 'localhost',
+                'port' => $payload['port'] ?? ($payload['connection_type'] === 'postgresql' ? 5432 : ($payload['connection_type'] === 'mssql' ? 1433 : 3306)),
+                'database' => $payload['database'],
+                'username' => $payload['username'] ?? '',
+                'password' => $payload['password'] ?? '',
+                'table_name' => $payload['table_name'],
+                'columns' => $payload['columns'],
+                'query_type' => $payload['query_type'],
+                'where_clause' => $payload['where_clause'] ?? null,
+                'order_by' => $payload['order_by'] ?? null,
+                'limit' => $payload['limit'] ?? $defaultLimit,
+                'offset' => $payload['offset'] ?? 0,
+            ],
+            'priority' => 25, // Highest priority - interactive live preview
+            'max_retries' => 0, // No retry for data queries
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'task_id' => $task->id,
+            'message' => 'Data query task created',
+        ], 201);
+    }
+
+    /**
+     * Receive data query results from scoriet-svc
+     * Called by the Rust service after executing the query on the user's local database
+     *
+     * POST /cli/svc/data-query-result
+     */
+    public function submitDataQueryResult(Request $request): JsonResponse
+    {
+        $request->validate([
+            'task_id' => 'required|integer|exists:cli_tasks,id',
+            'columns' => 'required|array',
+            'columns.*' => 'required|string',
+            'rows' => 'required|array',
+            'total_count' => 'required|integer|min:0',
+            'column_types' => 'nullable|array',
+        ]);
+
+        $task = CliTask::find($request->input('task_id'));
+
+        if (!$task) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Task not found',
+            ], 404);
+        }
+
+        if ($task->task_type !== CliTask::TYPE_DATA_QUERY) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Task is not a data query task',
+            ], 400);
+        }
+
+        $task->markAsCompleted([
+            'columns' => $request->input('columns'),
+            'rows' => $request->input('rows'),
+            'total_count' => $request->input('total_count'),
+            'column_types' => $request->input('column_types', []),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data query results received',
+        ]);
+    }
+
+    /**
+     * Register or update a CLI device
+     * Called by scoriet-svc on startup or by CLI on login
+     *
+     * POST /cli/svc/devices/register
+     */
+    public function registerDevice(Request $request): JsonResponse
+    {
+        $request->validate([
+            'device_id' => 'required|uuid',
+            'device_name' => 'required|string|max:100',
+            'platform' => 'required|string|max:20',
+            'hostname' => 'nullable|string|max:255',
+        ]);
+
+        $user = $request->user();
+
+        $device = CliDevice::updateOrCreate(
+            ['device_id' => $request->input('device_id')],
+            [
+                'user_id' => $user->id,
+                'device_name' => $request->input('device_name'),
+                'platform' => $request->input('platform'),
+                'hostname' => $request->input('hostname'),
+                'last_seen_at' => now(),
+                'is_active' => true,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'device' => [
+                'id' => $device->id,
+                'device_id' => $device->device_id,
+                'device_name' => $device->device_name,
+                'platform' => $device->platform,
+            ],
+        ]);
+    }
+
+    /**
+     * List all devices for the current user
+     * Called by GUI to show device selector when creating tasks
+     *
+     * GET /cli/svc/devices
+     */
+    public function listDevices(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $devices = CliDevice::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->orderBy('last_seen_at', 'desc')
+            ->get()
+            ->map(function ($device) {
+                return [
+                    'id' => $device->id,
+                    'device_id' => $device->device_id,
+                    'device_name' => $device->device_name,
+                    'platform' => $device->platform,
+                    'hostname' => $device->hostname,
+                    'is_online' => $device->isOnline(),
+                    'last_seen_at' => $device->last_seen_at?->toIso8601String(),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'devices' => $devices,
+        ]);
+    }
+
+    /**
+     * Deactivate a device
+     *
+     * DELETE /cli/svc/devices/{deviceId}
+     */
+    public function removeDevice(string $deviceId, Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $device = CliDevice::where('device_id', $deviceId)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$device) {
+            return response()->json(['success' => false, 'message' => 'Device not found'], 404);
+        }
+
+        $device->is_active = false;
+        $device->save();
+
+        return response()->json(['success' => true, 'message' => 'Device removed']);
     }
 }

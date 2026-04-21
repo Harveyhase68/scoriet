@@ -27,7 +27,7 @@ class UltimateTemplateEngine
 
     // 🎯 Index-based contexts: these arrays contain indices into fields[] instead of duplicated objects
     private const INDEX_BASED_CONTEXTS = [
-        'fieldsnokey', 'fieldsnokeyall', 'fieldsnoblob', 'fieldsnobloball', 'fieldssearchkeys',
+        'fieldsnokey', 'fieldsnokeyall', 'fieldsnoblob', 'fieldsnobloball', 'fieldsnobinaryblob', 'fieldsnobinarybloball', 'fieldssearchkeys',
         // Future: 'fieldsblob', 'fieldsmasterdetail', etc.
     ];
 
@@ -247,6 +247,10 @@ class UltimateTemplateEngine
             'macro', 'endmacro', 'call',
             // Other controls
             'include', 'extends', 'block', 'endblock',
+            // Smart Injection marker
+            'inject',
+            // Smart Injection sections
+            'section', 'sectionend',
         ];
 
         if (in_array(strtolower($variable), $controlKeywords)) {
@@ -262,8 +266,8 @@ class UltimateTemplateEngine
             }
         }
 
-        // Check if it has a known prefix (project., file., item., field., form., formset., table., language., keys., foreignkeys., migration.)
-        if (preg_match('/^(project|file|item|field|form|formset|table|language|keys|foreignkeys|migration)\./', $variable)) {
+        // Check if it has a known prefix
+        if (preg_match('/^(project|file|item|field|form|formset|table|language|keys|foreign|foreignunique|foreignkeys|foreignkeysunique|migration|layoutsingle|layoutbutton|layoutcolumn|layoutmenu|reportpattern|reportsingle|reportlist|reportsingleelement|reportlistelement|layoutreportsingle|layoutreportlist)\./', $variable)) {
             return true;
         }
 
@@ -271,14 +275,14 @@ class UltimateTemplateEngine
         // MUST stay in sync with processVariable() legacyMappings!
         $legacyMappings = [
             // PROJECT BASICS
-            'projectname', 'projectcaption', 'projectid', 'projectdatabase',
+            'projectname', 'projectcaption', 'projectdescription', 'projectid', 'projectdatabase',
             'projecturl', 'projectdirectory', 'startpage',
             'defaultlanguage', 'defaultlanguagename', 'defaultlanguageindex',
             'filenameshortlength',
 
             // DATABASE CONNECTION VARIABLES
             'projectdbid', 'projectdbtype', 'projectdbserver', 'projectdbname',
-            'projectdbusername', 'projectdbpassword',
+            'projectdbusername', 'projectdbpassword', 'projectdbport',
 
             // LOCALIZATION SETTINGS
             'decimalsep', 'thousandsep', 'dateformat', 'timeformat',
@@ -299,30 +303,49 @@ class UltimateTemplateEngine
 
             // FILE/TABLE INFO
             'tablename', 'tableindex', 'filename', 'filenameshort', 'fileid',
+            'filecamelcase', 'filepascalcase', 'filenamerenamed',
+            'filesingular', 'filesingularpascalcase', 'filesingularcamelcase',
             'filecaption', 'filedescription', 'filekeyname', 'fileprimarykey',
             'filegeneratemasterdetail', 'filedetailfileid', 'filedetailfilename',
             'filedetailkey',
 
+            // TABLE FLAGS (boolean)
+            'hastimestamps', 'hasprimarykey', 'hasblob', 'hasbinaryblob', 'hasforeignkeys',
+
             // COUNTERS
             'nmaxitems', 'nmaxitemsnokey', 'nmaxitemsnokeyall',
             'nmaxitemsnoblob', 'nmaxitemsnobloball',
-            'nmaxkeys', 'nmaxforeignkeys',
+            'nmaxitemsnobinaryblob', 'nmaxitemsnobinarybloball',
+            'nmaxkeys', 'nmaxforeignkeys', 'nmaxforeignkeysunique',
             'nmaxitemsmasterdetail', 'nmaxitemsmasterdetailnokeys',
             'nmaxfiles', 'nmaxtables', 'nmaxlanguages', 'nmaxsearchkeys',
-            'nmaxconstraints',
+            'nmaxconstraints', 'tablesgen', 'fieldsgen',
+            // Form layout counters
+            'nmaxlayoutsingles', 'layoutsinglecount', 'nmaxlayoutcolumns',
+            'nmaxlayoutbuttons', 'nmaxlayoutmenus',
+            // Report layout counters + per-table report meta
+            'nmaxreportsingleelements', 'nmaxreportlistelements',
+            'nmaxlayoutreportsingle', 'nmaxlayoutreportlist',
+            'report_pattern_id', 'report_pattern_name',
         ];
 
         if (in_array($variable, $legacyMappings)) {
             return true;
         }
 
-        // Check against item/field mappings
+        // Check against item/field/layout mappings
         $itemFieldMappings = [
-            'item.name', 'item.type', 'item.controltype', 'item.typecast',
+            'item.name', 'item.pascalcase', 'item.camelcase', 'item.type', 'item.controltype', 'item.typecast',
             'item.caption', 'item.linktable', 'item.linkfield', 'item.linkdisplayfield', 'item.linkorderfield', 'item.linkorder',
-            'field.name', 'field.type', 'field.controltype', 'field.typecast',
+            'field.name', 'field.pascalcase', 'field.camelcase', 'field.type', 'field.controltype', 'field.typecast',
             'field.caption', 'field.linktable', 'field.linkfield', 'field.linkorder',
         ];
+
+        // Layout variable prefixes (layoutsingle.*, layoutcolumn.*, layoutbutton.*, layoutmenu.*)
+        // and report layout/element loop variants
+        if (preg_match('/^(layoutsingle|layoutcolumn|layoutbutton|layoutmenu|layoutreportsingle|layoutreportlist|reportsingleelement|reportlistelement)\./', $variable)) {
+            return true;
+        }
 
         if (in_array($variable, $itemFieldMappings)) {
             return true;
@@ -367,7 +390,17 @@ class UltimateTemplateEngine
         $originalLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $this->restoreTextLiterals($templateContent)));
 
         // 🎨 Calculate form window index from form_window_type
-        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table, 4=report_single, 5=report_list
+        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table
+        // NOTE: legacy values 4=report_single, 5=report_list used to map to
+        // formset.windows[3]/[4] (FormWindow rows that are now dead leftovers).
+        // The new report system uses {:reportsingle.X:} / {:reportlist.X:}
+        // which resolve via the per-table node — see
+        // UltimateTemplateController::buildUltimateProjectData(). We coerce
+        // legacy report types to 0 here so any stray template metadata pointing
+        // at the old enum doesn't produce garbage formset.windows[3/4] paths.
+        if ($formWindowType >= 4) {
+            $formWindowType = 0;
+        }
         $this->currentFormWindowIdx = $formWindowType > 0 ? $formWindowType - 1 : 0;
 
         $jsFunction = "function {$functionName}() {\n";
@@ -617,6 +650,16 @@ class UltimateTemplateEngine
             return $this->processLoopEnd();
         }
 
+        // 🔌 SMART INJECTION TAGS — pass through as literal content
+        // {:section name:}, {:sectionend:}, {:inject tag:}, {:inject tag;name:}
+        // must appear verbatim in the compiled output so the frontend's
+        // parseSections() and insertBeforeMarker() can process them after JS execution.
+        // Without this check, {:sectionend:} gets resolved as a variable → "undefined".
+        if ($this->isSmartInjectionTag($trimmedLine)) {
+            $escapedLine = $this->escapeForJavaScript($line);
+            return "  sContentResult += '{$escapedLine}\\u000A';\n";
+        }
+
         // 🔧 MIXED CONTENT LINE PROCESSING
         // Handle lines that contain inline template syntax mixed with content
         if ($this->hasMixedContent($line)) {
@@ -740,66 +783,96 @@ class UltimateTemplateEngine
             return "  for (let {$variable} of {$this->processVariable($collection, $tableIndex)}) {\n";
         }
 
+        // Helper: resolve table reference - uses fixed index for db_table_file, or tableIdx for nmaxtables loops
+        $tableRef = $tableIndex !== null ? "tables[{$tableIndex}]" : "tables[tableIdx]";
+
         // 🎯 KEYS LOOP - Loop through keys array
         if (strpos($line, '{:for nmaxkeys:}') !== false) {
             $this->pushLoopContext('keys');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxkeys; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxkeys; i++) {\n";
         }
 
         // 🎯 FIELDS WITHOUT KEY LOOP - Loop through fieldsnokey array (index-based)
         if (strpos($line, '{:for nmaxitemsnokey:}') !== false) {
             $this->pushLoopContext('fieldsnokey');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnokey; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitemsnokey; i++) {\n";
         }
 
         // 🎯 FIELDS WITHOUT KEY AND SEARCH KEY LOOP - Loop through fieldsnokeyall array (index-based)
         if (strpos($line, '{:for nmaxitemsnokeyall:}') !== false) {
             $this->pushLoopContext('fieldsnokeyall');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnokeyall; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitemsnokeyall; i++) {\n";
         }
 
         // 🎯 FIELDS WITHOUT BLOB/TEXT LOOP - Loop through fieldsnoblob array (index-based)
         if (strpos($line, '{:for nmaxitemsnoblob:}') !== false) {
             $this->pushLoopContext('fieldsnoblob');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnoblob; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitemsnoblob; i++) {\n";
         }
 
         // 🎯 ALL FIELDS WITHOUT BLOB/TEXT LOOP (ignores assignments) - Loop through fieldsnobloball array
         if (strpos($line, '{:for nmaxitemsnobloball:}') !== false) {
             $this->pushLoopContext('fieldsnobloball');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitemsnobloball; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitemsnobloball; i++) {\n";
+        }
+
+        // 🎯 FIELDS WITHOUT BINARY BLOB LOOP - Loop through fieldsnobinaryblob array
+        if (strpos($line, '{:for nmaxitemsnobinaryblob:}') !== false) {
+            $this->pushLoopContext('fieldsnobinaryblob');
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitemsnobinaryblob; i++) {\n";
+        }
+
+        // 🎯 ALL FIELDS WITHOUT BINARY BLOB LOOP (ignores assignments)
+        if (strpos($line, '{:for nmaxitemsnobinarybloball:}') !== false) {
+            $this->pushLoopContext('fieldsnobinarybloball');
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitemsnobinarybloball; i++) {\n";
         }
 
         // 🎯 CONSTRAINTS LOOP - Loop through constraints array
         if (strpos($line, '{:for nmaxconstraints:}') !== false) {
             $this->pushLoopContext('constraints');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxconstraints; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxconstraints; i++) {\n";
+        }
+
+        // 🎯 FOREIGN KEYS LOOP - Loop through foreignkeys array
+        if (strpos($line, '{:for nmaxforeignkeys:}') !== false) {
+            $this->pushLoopContext('foreignkeys');
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxforeignkeys; i++) {\n";
+        }
+
+        // 🎯 FOREIGN KEYS UNIQUE LOOP - Deduplicated: one entry per referenced table
+        if (strpos($line, '{:for nmaxforeignkeysunique:}') !== false) {
+            $this->pushLoopContext('foreignkeysunique');
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxforeignkeysunique; i++) {\n";
         }
 
         // 🎯 SEARCH KEYS LOOP - Loop through fieldssearchkeys array (index-based into fields[])
         if (strpos($line, '{:for nmaxsearchkeys:}') !== false) {
             $this->pushLoopContext('fieldssearchkeys');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxsearchkeys; i++) {\n";
+            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxsearchkeys; i++) {\n";
         }
 
-        // Standard nmaxitems loop
+        // Standard nmaxitems loop — indirection via fieldsgen[].
+        // fields[] holds ALL fields (incl. excluded/reference_only/template_only)
+        // so FK/lookup still works, but only fields listed in fieldsgen[]
+        // actually iterate. Body references `i` as the ACTUAL field index.
         if (strpos($line, '{:for nmaxitems:}') !== false) {
             $this->pushLoopContext('fields');
-            $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-            return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitems; i++) {\n";
+            return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].{$tableRef}.nmaxitems; _fgenI++) {\n"
+                 . "    const i = gtree[0].project[0].{$tableRef}.fieldsgen[_fgenI];\n";
         }
 
-        // Tables loop (nmaxtables and nmaxfiles are aliases)
+        // Tables loop (nmaxtables and nmaxfiles are aliases).
+        //
+        // Indirection via tablesgen: tables[] holds ALL tables (incl. excluded,
+        // reference_only, template_only) so FK/lookup still works, but only
+        // tables listed in tablesgen[] actually iterate. nmaxtables === tablesgen.length.
+        // Body code references `tableIdx` as the ACTUAL table index (not the
+        // loop counter), so existing templates keep working unchanged.
         if (strpos($line, '{:for nmaxtables:}') !== false || strpos($line, '{:for nmaxfiles:}') !== false) {
             $this->pushLoopContext('tables');
-            return "  for (let tableIdx = 0; tableIdx < gtree[0].project[0].nmaxtables; tableIdx++) {\n";
+            return "  for (let _tgenI = 0; _tgenI < gtree[0].project[0].nmaxtables; _tgenI++) {\n"
+                 . "    const tableIdx = gtree[0].project[0].tablesgen[_tgenI];\n";
         }
 
         // 🎯 MIGRATION LOOPS - Loop through migration change arrays
@@ -818,6 +891,42 @@ class UltimateTemplateEngine
         if (strpos($line, '{:for nmaxmigration_foreignkeys:}') !== false) {
             $this->pushLoopContext('migration_foreignkeys');
             return "  for (let migIdx = 0; migIdx < gtree[0].project[0].nmaxmigration_foreignkeys; migIdx++) {\n";
+        }
+
+        // 🎯 FORM LAYOUT LOOPS
+        if (strpos($line, '{:for nmaxlayoutsingles:}') !== false) {
+            $this->pushLoopContext('layoutsingles');
+            return "  for (let loopIndex_layoutsingles = 0; loopIndex_layoutsingles < (gtree[0].project[0].{$tableRef}.nmaxlayoutsingles || 0); loopIndex_layoutsingles++) {\n";
+        }
+        if (strpos($line, '{:for nmaxlayoutcolumns:}') !== false) {
+            $this->pushLoopContext('layoutcolumns');
+            return "  for (let loopIndex_layoutcolumns = 0; loopIndex_layoutcolumns < (gtree[0].project[0].{$tableRef}.nmaxlayoutcolumns || 0); loopIndex_layoutcolumns++) {\n";
+        }
+        if (strpos($line, '{:for nmaxlayoutbuttons:}') !== false) {
+            $this->pushLoopContext('layoutbuttons');
+            return "  for (let loopIndex_layoutbuttons = 0; loopIndex_layoutbuttons < (gtree[0].project[0].{$tableRef}.nmaxlayoutbuttons || 0); loopIndex_layoutbuttons++) {\n";
+        }
+        if (strpos($line, '{:for nmaxlayoutmenus:}') !== false) {
+            $this->pushLoopContext('layoutmenus');
+            return "  for (let loopIndex_layoutmenus = 0; loopIndex_layoutmenus < (gtree[0].project[0].{$tableRef}.nmaxlayoutmenus || 0); loopIndex_layoutmenus++) {\n";
+        }
+
+        // 🎯 REPORT LAYOUT LOOPS
+        if (strpos($line, '{:for nmaxlayoutreportsingle:}') !== false) {
+            $this->pushLoopContext('layoutreportsingles');
+            return "  for (let loopIndex_layoutreportsingles = 0; loopIndex_layoutreportsingles < (gtree[0].project[0].{$tableRef}.nmaxlayoutreportsingle || 0); loopIndex_layoutreportsingles++) {\n";
+        }
+        if (strpos($line, '{:for nmaxlayoutreportlist:}') !== false) {
+            $this->pushLoopContext('layoutreportlists');
+            return "  for (let loopIndex_layoutreportlists = 0; loopIndex_layoutreportlists < (gtree[0].project[0].{$tableRef}.nmaxlayoutreportlist || 0); loopIndex_layoutreportlists++) {\n";
+        }
+        if (strpos($line, '{:for nmaxreportsingleelements:}') !== false) {
+            $this->pushLoopContext('reportsingleelements');
+            return "  for (let loopIndex_reportsingleelements = 0; loopIndex_reportsingleelements < (gtree[0].project[0].{$tableRef}.nmaxreportsingleelements || 0); loopIndex_reportsingleelements++) {\n";
+        }
+        if (strpos($line, '{:for nmaxreportlistelements:}') !== false) {
+            $this->pushLoopContext('reportlistelements');
+            return "  for (let loopIndex_reportlistelements = 0; loopIndex_reportlistelements < (gtree[0].project[0].{$tableRef}.nmaxreportlistelements || 0); loopIndex_reportlistelements++) {\n";
         }
 
         // Custom count loops - matches {:for countvar:}
@@ -840,8 +949,7 @@ class UltimateTemplateEngine
 
         // Fallback
         $this->pushLoopContext('fields');
-        $tableIndexValue = $tableIndex !== null ? $tableIndex : 0;
-        return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndexValue}].nmaxitems; i++) {\n";
+        return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxitems; i++) {\n";
     }
 
     private function processLoopEnd(): string
@@ -991,6 +1099,36 @@ class UltimateTemplateEngine
             $replacement = preg_replace("/\s*\+\s*'$/", '', $replacement);
 
             return $replacement;
+        }, $condition);
+
+        // 🎯 Handle bare variable names (without {:...:} wrapper and without dot prefix)
+        // e.g. {:if hasblob:} → resolve 'hasblob' via processVariable → gtree path
+        // Must run AFTER the {:var:} and item.xxx replacements above.
+        // Negative lookbehind (?<![.'"]) prevents matching words inside already-resolved
+        // gtree property paths (.notnull, .phptype) or string literals ('string').
+        $condition = preg_replace_callback('/(?<![.\'"])\b([a-zA-Z_][a-zA-Z0-9_]*)\b/', function($matches) use ($tableIndex) {
+            $word = $matches[1];
+            // Skip JavaScript keywords, literals, already-resolved expressions, and loop variables
+            $skipWords = ['true', 'false', 'null', 'undefined', 'typeof', 'instanceof',
+                          'i', 'j', 'tableIdx', 'gtree', 'project', 'tables', 'fields',
+                          'keys', 'foreignkeys', 'constraints', 'lang', 'formset', 'windows',
+                          'if', 'else', 'return', 'var', 'let', 'const', 'function',
+                          'length', 'indexOf', 'includes', 'toString', 'trim',
+                          'String', 'Number', 'Boolean', 'Array', 'Object', 'Math',
+                          // Comparison operators — must NOT be resolved as variables!
+                          // They are converted to JS operators in the next step.
+                          'eq', 'ne', 'gt', 'lt', 'gte', 'lte', 'and', 'or', 'not'];
+            if (in_array($word, $skipWords)) {
+                return $word;
+            }
+            // Try to resolve via processVariable - if it returns a gtree path, use it
+            $resolved = $this->processVariable($word, $tableIndex);
+            if (strpos($resolved, 'gtree[') !== false) {
+                $resolved = preg_replace("/^'\s*\+\s*/", '', $resolved);
+                $resolved = preg_replace("/\s*\+\s*'$/", '', $resolved);
+                return $resolved;
+            }
+            return $word;
         }, $condition);
 
         // When comparing loop counter with loop limit (i < nmaxX), subtract 1
@@ -1192,6 +1330,45 @@ class UltimateTemplateEngine
     }
 
     /**
+     * 🔌 SMART INJECTION TAG DETECTION
+     *
+     * Detects Smart Injection tags that must pass through as literal content:
+     * - {:section name:}     — Section start marker
+     * - {:sectionend:}       — Section end marker
+     * - {:inject tag:}       — Injection point marker (normal mode)
+     * - {:inject tag;name:}  — Injection point marker (section mode)
+     *
+     * These tags are consumed by the frontend's parseSections() and insertBeforeMarker()
+     * functions AFTER JavaScript execution. They must NOT be processed as variables.
+     */
+    private function isSmartInjectionTag(string $trimmedLine): bool
+    {
+        // Check if the line CONTAINS any Smart Injection tag.
+        // These can appear standalone or embedded in comments:
+        //   {:sectionend:}
+        //   {:section auth1:}
+        //   // {:inject routes:}
+        //   <!-- {:inject scripts;head:} -->
+
+        // {:sectionend:}
+        if (strpos($trimmedLine, '{:sectionend:}') !== false) {
+            return true;
+        }
+
+        // {:section name:} — {:section followed by space (name contains no {:} syntax)
+        if (strpos($trimmedLine, '{:section ') !== false && strpos($trimmedLine, ':}') !== false) {
+            return true;
+        }
+
+        // {:inject tag:} or {:inject tag;name:}
+        if (strpos($trimmedLine, '{:inject ') !== false && strpos($trimmedLine, ':}') !== false) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * 📝 ENHANCED CONTENT LINE PROCESSING - Fix variable replacement issues
      */
     private function processContentLine(string $line, ?int $tableIndex): string
@@ -1269,7 +1446,8 @@ class UltimateTemplateEngine
                 $matchPos = $matches[0][1];
 
                 // Add content before the template syntax
-                if ($matchPos > $currentPos) {
+                $hadContentBefore = ($matchPos > $currentPos);
+                if ($hadContentBefore) {
                     $contentBefore = substr($line, $currentPos, $matchPos - $currentPos);
                     // Check if content has variables and process them
                     if ($this->hasVariables($contentBefore)) {
@@ -1280,6 +1458,13 @@ class UltimateTemplateEngine
                         $result .= "  sContentResult += '{$escapedContent}';\n";
                     }
                 }
+
+                // Determine if this tag opens a block (content before it needs a newline INSIDE the block)
+                $isBlockOpener = strpos($matchText, '{:if ') === 0
+                    || strpos($matchText, '{:for ') === 0
+                    || strpos($matchText, '{:foreach ') === 0
+                    || strpos($matchText, '{:elseif ') === 0
+                    || $matchText === '{:else:}';
 
                 // Process the template syntax based on type
                 if (strpos($matchText, '{:for ') === 0 || strpos($matchText, '{:foreach ') === 0) {
@@ -1312,7 +1497,18 @@ class UltimateTemplateEngine
                     $result .= "      break;\n";
                 }
 
+                // When content preceded a block-opening tag AND the tag is the last
+                // thing on the line, the newline belongs INSIDE the block so it only
+                // appears when the condition/loop is active.
+                // Example: ->get(){:if hasblob:}\n  → newline only when hasblob=true
+                // But NOT: AAAA{:if x:}BBBB → no extra newline (inline continues)
+                $isAtEndOfLine = ($matchPos + strlen($matchText)) >= $lineLength;
+                if ($hadContentBefore && $isBlockOpener && $isAtEndOfLine) {
+                    $result .= "  sContentResult += '\\u000A';\n";
+                }
+
                 $currentPos = $matchPos + strlen($matchText);
+                $lastMatchText = $matchText;
             } else {
                 // No more template syntax, add remaining content
                 $remainingContent = substr($line, $currentPos);
@@ -1325,9 +1521,20 @@ class UltimateTemplateEngine
                         $escapedContent = $this->escapeForJavaScript($remainingContent);
                         $result .= "  sContentResult += '{$escapedContent}\\u000A';\n";
                     }
+                    $lastMatchText = null; // Content after last tag → newline already included
                 }
                 break;
             }
+        }
+
+        // Line ended with a closing tag (while-loop exited because $currentPos >= $lineLength)
+        // The newline after the closing tag must be preserved, otherwise the next line glues onto this one
+        if (isset($lastMatchText) && (
+            $lastMatchText === '{:endif:}' ||
+            $lastMatchText === '{:endfor:}' ||
+            $lastMatchText === '{:endswitch:}'
+        )) {
+            $result .= "  sContentResult += '\\u000A';\n";
         }
 
         return $result;
@@ -1368,6 +1575,14 @@ class UltimateTemplateEngine
                 } else {
                     return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxforeignkeys; i++) {\n";
                 }
+            } elseif ($loopVar === 'nmaxforeignkeysunique') {
+                // 🎯 FOREIGN KEYS UNIQUE loop - deduplicated by referenced table
+                $this->pushLoopContext('foreignkeysunique');
+                if ($tableIndex !== null) {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeysunique; i++) {\n";
+                } else {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxforeignkeysunique; i++) {\n";
+                }
             } elseif ($loopVar === 'nmaxitemsnokey') {
                 // 🎯 FIELDS WITHOUT KEY loop - through fieldsnokey array
                 $this->pushLoopContext('fieldsnokey');
@@ -1393,21 +1608,47 @@ class UltimateTemplateEngine
                     return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxsearchkeys; i++) {\n";
                 }
             } elseif ($loopVar === 'nmaxitems') {
-                // Items/fields loop (for all table fields)
+                // Items/fields loop — indirection via fieldsgen[].
+                // nmaxitems === fieldsgen.length, body's `i` = fieldsgen[_fgenI]
+                // so templates referencing {item.xxx:} keep working unchanged
+                // against the full fields[] array.
                 $this->pushLoopContext('fields');
                 if ($tableIndex !== null) {
-                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; i++) {\n";
+                    return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; _fgenI++) {\n"
+                         . "    const i = gtree[0].project[0].tables[{$tableIndex}].fieldsgen[_fgenI];\n";
                 } else {
-                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitems; i++) {\n";
+                    return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].tables[tableIdx].nmaxitems; _fgenI++) {\n"
+                         . "    const i = gtree[0].project[0].tables[tableIdx].fieldsgen[_fgenI];\n";
                 }
             } elseif ($loopVar === 'nmaxlanguages') {
                 // 🎯 LANGUAGES loop - through project lang array
                 $this->pushLoopContext('languages');
                 return "  for (let i = 0; i < gtree[0].project[0].nmaxlanguages; i++) {\n";
+            } elseif ($loopVar === 'nmaxitemsnobinaryblob') {
+                // 🎯 FIELDS WITHOUT BINARY BLOB loop
+                $this->pushLoopContext('fieldsnobinaryblob');
+                if ($tableIndex !== null) {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobinaryblob; i++) {\n";
+                } else {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitemsnobinaryblob; i++) {\n";
+                }
+            } elseif ($loopVar === 'nmaxitemsnobinarybloball') {
+                // 🎯 ALL FIELDS WITHOUT BINARY BLOB loop (ignores assignments)
+                $this->pushLoopContext('fieldsnobinarybloball');
+                if ($tableIndex !== null) {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobinarybloball; i++) {\n";
+                } else {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitemsnobinarybloball; i++) {\n";
+                }
             } elseif ($loopVar === 'nmaxtables' || $loopVar === 'nmaxfiles') {
-                // 🎯 TABLES loop - through project tables array (nmaxfiles is a legacy alias)
+                // 🎯 TABLES loop — indirection via tablesgen[].
+                // tables[] keeps ALL tables (incl. non-iterable ones for FK lookup),
+                // nmaxtables === tablesgen.length. Body uses tableIdx = tablesgen[_tgenI]
+                // so templates referencing {table.xxx:} work unchanged.
+                // (nmaxfiles is the legacy alias; same semantics.)
                 $this->pushLoopContext('tables');
-                return "  for (let tableIdx = 0; tableIdx < gtree[0].project[0].nmaxtables; tableIdx++) {\n";
+                return "  for (let _tgenI = 0; _tgenI < gtree[0].project[0].nmaxtables; _tgenI++) {\n"
+                     . "    const tableIdx = gtree[0].project[0].tablesgen[_tgenI];\n";
             } else {
                 // Generic loop variable
                 $this->pushLoopContext('fields'); // Default to fields
@@ -1415,13 +1656,17 @@ class UltimateTemplateEngine
             }
         }
 
-        // Handle simple {for %} syntax
+        // Handle simple {for %} syntax — shorthand for {:for nmaxitems:},
+        // same fieldsgen indirection so excluded/reference_only/template_only
+        // fields are skipped while remaining available in fields[] by name/index.
         if (strpos($matchText, '{:for %:}') !== false) {
             $this->pushLoopContext('fields');
             if ($tableIndex !== null) {
-                return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; i++) {\n";
+                return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; _fgenI++) {\n"
+                     . "    const i = gtree[0].project[0].tables[{$tableIndex}].fieldsgen[_fgenI];\n";
             } else {
-                return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitems; i++) {\n";
+                return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].tables[tableIdx].nmaxitems; _fgenI++) {\n"
+                     . "    const i = gtree[0].project[0].tables[tableIdx].fieldsgen[_fgenI];\n";
             }
         }
 
@@ -1465,23 +1710,27 @@ class UltimateTemplateEngine
      */
     private function escapeForJavaScript(string $text): string
     {
-        // Escape backslashes first (doubles all backslashes including \r\n\t text)
+        // 🔧 STEP 1: Convert REAL CR/LF/Tab BYTES to placeholders BEFORE backslash doubling
+        // These are actual control character bytes (0x0D, 0x0A, 0x09) — not text like "\r"
+        $text = str_replace("\r\n", '§§CRLF§§', $text);   // Real CRLF pair (must be first!)
+        $text = str_replace("\r", '§§CR§§', $text);        // Real CR byte (0x0D)
+        $text = str_replace("\n", '§§LF§§', $text);        // Real LF byte (0x0A)
+        $text = str_replace("\t", '§§TAB§§', $text);       // Real Tab byte (0x09)
+
+        // 🔧 STEP 2: Double all backslashes
+        // Text like \\ru_RU\\ becomes \\\\ru_RU\\\\ — preserved correctly
+        // NO conversion of \r \n \t text sequences — those are literal text, not escape codes
         $text = str_replace('\\', '\\\\', $text);
 
-        // Escape quotes
+        // 🔧 STEP 3: Escape quotes
         $text = str_replace("'", "\\'", $text);
         $text = str_replace('"', '\\"', $text);
 
-        // 🔧 Convert REAL CR/LF/Tab BYTES to Unicode escapes
-        $text = str_replace("\r", '\\u000D', $text);   // Real CR byte
-        $text = str_replace("\n", '\\u000A', $text);   // Real LF byte
-        $text = str_replace("\t", '\\u0009', $text);   // Real Tab byte
-
-        // 🔧 Convert TEXT escape sequences \\r\\n\\t (after doubling) to Unicode escapes
-        // After line 1438, template text "\r\n" became "\\r\\n" (doubled backslash)
-        $text = str_replace('\\\\r', '\\u000D', $text);   // Escaped \r → Unicode CR
-        $text = str_replace('\\\\n', '\\u000A', $text);   // Escaped \n → Unicode LF
-        $text = str_replace('\\\\t', '\\u0009', $text);   // Escaped \t → Unicode Tab
+        // 🔧 STEP 4: Restore real control character placeholders to JavaScript Unicode escapes
+        $text = str_replace('§§CRLF§§', '\\u000D\\u000A', $text);
+        $text = str_replace('§§CR§§', '\\u000D', $text);
+        $text = str_replace('§§LF§§', '\\u000A', $text);
+        $text = str_replace('§§TAB§§', '\\u0009', $text);
 
         return $text;
     }
@@ -1615,16 +1864,30 @@ class UltimateTemplateEngine
         $variable = trim($variable);
 
         // Check legacyMappings first (most common variables)
+        $tableRef = $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}]" : "gtree[0].project[0].tables[tableIdx]";
         $legacyMappings = [
+            // Project-level
             'projectname' => "gtree[0].project[0].projectname",
             'projectcaption' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].caption",
+            'projectdescription' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].filedescription",
             'projectid' => "gtree[0].project[0].projectid",
             'projectdatabase' => "gtree[0].project[0].projectdatabase",
             'tablename' => "gtree[0].project[0].tablename", // Set directly on project level before execution
             'tableindex' => "gtree[0].project[0].tableindex", // Set directly on project level before execution
-            'filename' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filename" : "gtree[0].project[0].tables[tableIdx].filename",
-            'filekeyname' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].primarykeyfield" : "gtree[0].project[0].tables[tableIdx].primarykeyfield",
-            'fileprimarykey' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fileprimarykey" : "gtree[0].project[0].tables[tableIdx].fileprimarykey",
+
+            // Table-level: basic info
+            'filename' => "{$tableRef}.filename",
+            'filecamelcase' => "{$tableRef}.filecamelcase",
+            'filepascalcase' => "{$tableRef}.filepascalcase",
+            'filenameshort' => "{$tableRef}.filenameshort",
+            'filenamerenamed' => "{$tableRef}.filenamerenamed",
+            'filekeyname' => "{$tableRef}.primarykeyfield",
+            'fileprimarykey' => "{$tableRef}.fileprimarykey",
+
+            // Table-level: singular variants
+            'filesingular' => "{$tableRef}.filesingular",
+            'filesingularpascalcase' => "{$tableRef}.filesingularpascalcase",
+            'filesingularcamelcase' => "{$tableRef}.filesingularcamelcase",
         ];
 
         if (isset($legacyMappings[$variable])) {
@@ -1636,6 +1899,35 @@ class UltimateTemplateEngine
             $itemVar = substr($variable, 5);
             $itemExpr = $this->getItemExpression($tableIndex);
             return "{$itemExpr}.{$itemVar}";
+        }
+
+        // Field variables (alias for item.* inside field loops)
+        if (strpos($variable, 'field.') === 0) {
+            $fieldVar = substr($variable, 6);
+            $itemExpr = $this->getItemExpression($tableIndex);
+            return "{$itemExpr}.{$fieldVar}";
+        }
+
+        // Foreign key variables (inside nmaxforeignkeys loops)
+        // Must resolve to tables[…].foreignkeys[i].X — must match the path used by
+        // the foreignKeysMappings block in processVariable(). Without this branch,
+        // {:pascalcase(foreign.referencedtable):} falls through to the final
+        // gtree[0].project[0].{$variable} fallback and produces a broken path.
+        if (strpos($variable, 'foreign.') === 0) {
+            $fkVar = substr($variable, 8);
+            return "{$tableRef}.foreignkeys[i].{$fkVar}";
+        }
+
+        // Foreign key unique variables (inside nmaxforeignkeysunique loops)
+        if (strpos($variable, 'foreignunique.') === 0) {
+            $fkuVar = substr($variable, 14);
+            return "{$tableRef}.foreignkeysunique[i].{$fkuVar}";
+        }
+
+        // Keys variables (inside nmaxkeys loops) — keys[i] is a constraint entry
+        if (strpos($variable, 'keys.') === 0) {
+            $keysVar = substr($variable, 5);
+            return "{$tableRef}.keys[i].{$keysVar}";
         }
 
         // Table variables (inside nmaxtables loops)
@@ -1684,6 +1976,75 @@ class UltimateTemplateEngine
             // Convert all dots to optional chaining for safe access
             $safeFormsetPath = str_replace('.', '?.', $formsetPath);
             return "' + (gtree[0].project[0].formset?.{$safeFormsetPath} || '') + '";
+        }
+
+        // 🎯 LAYOUT VARIABLES — resolve table reference (fixed index or tableIdx loop var)
+        $layoutTableRef = $tableIndex !== null ? "tables[{$tableIndex}]" : "tables[tableIdx]";
+
+        // LAYOUT SINGLE VARIABLES (innerhalb {:for nmaxlayoutsingles:} Loop)
+        if (strpos($variable, 'layoutsingle.') === 0) {
+            $layoutVar = substr($variable, 13);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutsingles[loopIndex_layoutsingles].{$layoutVar} || '') + '";
+        }
+
+        // LAYOUT COLUMN VARIABLES (innerhalb {:for nmaxlayoutcolumns:} Loop)
+        if (strpos($variable, 'layoutcolumn.') === 0) {
+            $layoutVar = substr($variable, 13);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutcolumns[loopIndex_layoutcolumns].{$layoutVar} || '') + '";
+        }
+
+        // LAYOUT BUTTON VARIABLES (innerhalb {:for nmaxlayoutbuttons:} Loop)
+        if (strpos($variable, 'layoutbutton.') === 0) {
+            $layoutVar = substr($variable, 13);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutbuttons[loopIndex_layoutbuttons].{$layoutVar} || '') + '";
+        }
+
+        // LAYOUT MENU VARIABLES (innerhalb {:for nmaxlayoutmenus:} Loop)
+        if (strpos($variable, 'layoutmenu.') === 0) {
+            $layoutVar = substr($variable, 11);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutmenus[loopIndex_layoutmenus].{$layoutVar} || '') + '";
+        }
+
+        // 🎯 REPORT VARIABLES — IMPORTANT: longer prefixes must be checked BEFORE
+        // their shorter siblings, otherwise `reportsingleelement.x` would
+        // accidentally match `reportsingle.element.x` and break.
+
+        // LAYOUT REPORT SINGLE VARIABLES (innerhalb {:for nmaxlayoutreportsingle:} Loop)
+        if (strpos($variable, 'layoutreportsingle.') === 0) {
+            $layoutVar = substr($variable, strlen('layoutreportsingle.'));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutreportsingles[loopIndex_layoutreportsingles].{$layoutVar} || '') + '";
+        }
+        // LAYOUT REPORT LIST VARIABLES (innerhalb {:for nmaxlayoutreportlist:} Loop)
+        if (strpos($variable, 'layoutreportlist.') === 0) {
+            $layoutVar = substr($variable, strlen('layoutreportlist.'));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutreportlists[loopIndex_layoutreportlists].{$layoutVar} || '') + '";
+        }
+        // REPORT-SINGLE ELEMENT VARIABLES (innerhalb {:for nmaxreportsingleelements:} Loop)
+        if (strpos($variable, 'reportsingleelement.') === 0) {
+            $elementVar = substr($variable, strlen('reportsingleelement.'));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportsingle?.elements[loopIndex_reportsingleelements]?.{$elementVar} || '') + '";
+        }
+        // REPORT-LIST ELEMENT VARIABLES (innerhalb {:for nmaxreportlistelements:} Loop)
+        if (strpos($variable, 'reportlistelement.') === 0) {
+            $elementVar = substr($variable, strlen('reportlistelement.'));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportlist?.elements[loopIndex_reportlistelements]?.{$elementVar} || '') + '";
+        }
+        // REPORT-PATTERN scalar (design template — single, no loop)
+        if (strpos($variable, 'reportsingle.') === 0) {
+            $patternVar = substr($variable, strlen('reportsingle.'));
+            $safePath = str_replace('.', '?.', $patternVar);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportsingle?.{$safePath} || '') + '";
+        }
+        if (strpos($variable, 'reportlist.') === 0) {
+            $patternVar = substr($variable, strlen('reportlist.'));
+            $safePath = str_replace('.', '?.', $patternVar);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportlist?.{$safePath} || '') + '";
+        }
+        // REPORT PATTERN identity meta
+        if (strpos($variable, 'reportpattern.') === 0) {
+            $patternVar = substr($variable, strlen('reportpattern.'));
+            $safePath = str_replace('.', '?.', $patternVar);
+            return "' + (gtree[0].project[0].{$layoutTableRef}.{$safePath} || '') + '";
         }
 
         // 🎯 FILE-LEVEL VARIABLES (innerhalb {for {nmaxfiles}} / {for nmaxtables} Loop)
@@ -1746,6 +2107,7 @@ class UltimateTemplateEngine
             // PROJECT BASICS
             'projectname' => "gtree[0].project[0].projectname",
             'projectcaption' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].caption",
+            'projectdescription' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].filedescription",
             'projectid' => "gtree[0].project[0].projectid",
             'projectdatabase' => "gtree[0].project[0].projectdatabase",
             'projecturl' => "gtree[0].project[0].projecturl",
@@ -1763,11 +2125,17 @@ class UltimateTemplateEngine
             'selectedlanguage' => "gtree[0].project[0].selectedlanguage", // Alias for languagetoken
             'selectedlanguageindex' => "gtree[0].project[0].selectedlanguageindex", // Current language index
 
-            // DATABASE CONNECTION VARIABLES (without passwords/credentials)
+            // DATABASE CONNECTION VARIABLES
+            // Intentionally includes username/password/port — these are needed for
+            // generated config files (appsettings.json, .env, docker-compose.yml, etc.).
+            // Keep this block in sync with the legacyMappings whitelist in isKnownVariable().
             'projectdbid' => "gtree[0].project[0].projectdbid", // Database/Schema ID
             'projectdbtype' => "gtree[0].project[0].projectdbtype", // Database type (MySQL, PostgreSQL, etc.)
             'projectdbserver' => "gtree[0].project[0].projectdbserver", // Database server host
+            'projectdbport' => "gtree[0].project[0].projectdbport", // Database server port (e.g. 5432, 3306)
             'projectdbname' => "gtree[0].project[0].projectdbname", // Schema/Database name
+            'projectdbusername' => "gtree[0].project[0].projectdbusername", // Database user
+            'projectdbpassword' => "gtree[0].project[0].projectdbpassword", // Database password
 
             // LOCALIZATION SETTINGS (short template-friendly names)
             'decimalsep' => "gtree[0].project[0].decimal_separator",
@@ -1809,20 +2177,64 @@ class UltimateTemplateEngine
             'filedetailfilename' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filedetailfilename" : "gtree[0].project[0].tables[tableIdx].filedetailfilename",
             'filedetailkey' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filedetailkey" : "gtree[0].project[0].tables[tableIdx].filedetailkey",
 
+            // Table naming variants
+            'filecamelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filecamelcase" : "gtree[0].project[0].tables[tableIdx].filecamelcase",
+            'filepascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filepascalcase" : "gtree[0].project[0].tables[tableIdx].filepascalcase",
+            'filenamerenamed' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filenamerenamed" : "gtree[0].project[0].tables[tableIdx].filenamerenamed",
+
+            // Singular variants
+            'filesingular' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingular" : "gtree[0].project[0].tables[tableIdx].filesingular",
+            'filesingularpascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingularpascalcase" : "gtree[0].project[0].tables[tableIdx].filesingularpascalcase",
+            'filesingularcamelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingularcamelcase" : "gtree[0].project[0].tables[tableIdx].filesingularcamelcase",
+
+            // TABLE FLAGS (boolean)
+            'hastimestamps' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].hastimestamps" : "gtree[0].project[0].tables[tableIdx].hastimestamps",
+            'hasprimarykey' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].hasprimarykey" : "gtree[0].project[0].tables[tableIdx].hasprimarykey",
+            'hasblob' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].hasblob" : "gtree[0].project[0].tables[tableIdx].hasblob",
+            'hasbinaryblob' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].hasbinaryblob" : "gtree[0].project[0].tables[tableIdx].hasbinaryblob",
+            'hasforeignkeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].hasforeignkeys" : "gtree[0].project[0].tables[tableIdx].hasforeignkeys",
+
             // COUNTERS
             'nmaxitems' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitems" : "gtree[0].project[0].tables[tableIdx].nmaxitems",
+            // fieldsgen[] per-table index array for {:for nmaxitems:} indirection.
+            // Parallel to tablesgen[] at project level.
+            'fieldsgen' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fieldsgen" : "gtree[0].project[0].tables[tableIdx].fieldsgen",
             'nmaxitemsnokey' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnokey" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnokey",
             'nmaxitemsnokeyall' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnokeyall" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnokeyall",
             'nmaxitemsnoblob' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnoblob" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnoblob",
             'nmaxitemsnobloball' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobloball" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnobloball",
+            'nmaxitemsnobinaryblob' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobinaryblob" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnobinaryblob",
+            'nmaxitemsnobinarybloball' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobinarybloball" : "gtree[0].project[0].tables[tableIdx].nmaxitemsnobinarybloball",
             'nmaxkeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxkeys" : "gtree[0].project[0].tables[tableIdx].nmaxkeys",
             'nmaxforeignkeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeys" : "gtree[0].project[0].tables[tableIdx].nmaxforeignkeys",
+            'nmaxforeignkeysunique' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeysunique" : "gtree[0].project[0].tables[tableIdx].nmaxforeignkeysunique",
             'nmaxitemsmasterdetail' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsmasterdetail" : "gtree[0].project[0].tables[tableIdx].nmaxitemsmasterdetail",
             'nmaxitemsmasterdetailnokeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxitemsmasterdetailnokeys" : "gtree[0].project[0].tables[tableIdx].nmaxitemsmasterdetailnokeys",
-            'nmaxfiles' => "gtree[0].project[0].nmaxfiles",
+            // nmaxfiles is a legacy alias — always maps to nmaxtables in the gtree data.
+            'nmaxfiles' => "gtree[0].project[0].nmaxtables",
             'nmaxtables' => "gtree[0].project[0].nmaxtables",
+            // tablesgen[] exposes the index array of iterable tables (full/code_only).
+            // tables[tablesgen[i]] is the table iterated at position i in a
+            // {:for nmaxtables:} loop. Available for templates that want to
+            // manually iterate without the {:for:} directive.
+            'tablesgen' => "gtree[0].project[0].tablesgen",
             'nmaxlanguages' => "gtree[0].project[0].nmaxlanguages",
             'nmaxsearchkeys' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxsearchkeys" : "gtree[0].project[0].tables[tableIdx].nmaxsearchkeys",
+
+            // FORM/REPORT layout counters (per table)
+            'nmaxlayoutsingles' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutsingles" : "gtree[0].project[0].tables[tableIdx].nmaxlayoutsingles",
+            'layoutsinglecount' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].layoutsinglecount" : "gtree[0].project[0].tables[tableIdx].layoutsinglecount",
+            'nmaxlayoutcolumns' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutcolumns" : "gtree[0].project[0].tables[tableIdx].nmaxlayoutcolumns",
+            'nmaxlayoutbuttons' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutbuttons" : "gtree[0].project[0].tables[tableIdx].nmaxlayoutbuttons",
+            'nmaxlayoutmenus' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutmenus" : "gtree[0].project[0].tables[tableIdx].nmaxlayoutmenus",
+
+            // REPORT pattern + layout counters / per-table report metadata
+            'nmaxreportsingleelements' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxreportsingleelements || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxreportsingleelements || 0)",
+            'nmaxreportlistelements' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxreportlistelements || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxreportlistelements || 0)",
+            'nmaxlayoutreportsingle' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutreportsingle || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxlayoutreportsingle || 0)",
+            'nmaxlayoutreportlist' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutreportlist || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxlayoutreportlist || 0)",
+            'report_pattern_id' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].report_pattern_id || '')" : "(gtree[0].project[0].tables[tableIdx].report_pattern_id || '')",
+            'report_pattern_name' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].report_pattern_name || '')" : "(gtree[0].project[0].tables[tableIdx].report_pattern_name || '')",
         ];
 
         if (isset($legacyMappings[$variable])) {
@@ -1832,6 +2244,8 @@ class UltimateTemplateEngine
         // 🎯 ENHANCED ITEM VARIABLES
         $itemMappings = [
             'item.name' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].name" : "gtree[0].project[0].tables[tableIdx].fields[i].name",
+            'item.pascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].pascalcase" : "gtree[0].project[0].tables[tableIdx].fields[i].pascalcase",
+            'item.camelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].camelcase" : "gtree[0].project[0].tables[tableIdx].fields[i].camelcase",
             'item.type' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].type" : "gtree[0].project[0].tables[tableIdx].fields[i].type",
             'item.controltype' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].controltype" : "gtree[0].project[0].tables[tableIdx].fields[i].controltype",
             'item.typecast' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].typecast" : "gtree[0].project[0].tables[tableIdx].fields[i].typecast",
@@ -1854,11 +2268,18 @@ class UltimateTemplateEngine
         }
 
         // 🎯 KEYS VARIABLES (for {for {nmaxkeys}} loops)
+        $keysRef = $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].keys[i]" : "gtree[0].project[0].tables[tableIdx].keys[i]";
         $keysMappings = [
-            'keys.name' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].keys[i].name" : "gtree[0].project[0].tables[tableIdx].keys[i].name",
-            'keys.id' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].keys[i].id" : "gtree[0].project[0].tables[tableIdx].keys[i].id",
-            'keys.type' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].keys[i].type" : "gtree[0].project[0].tables[tableIdx].keys[i].type",
-            'keys.typecast' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].keys[i].typecast" : "gtree[0].project[0].tables[tableIdx].keys[i].typecast",
+            'keys.name' => "{$keysRef}.name",
+            'keys.id' => "{$keysRef}.id",
+            'keys.type' => "{$keysRef}.type",
+            'keys.typecast' => "{$keysRef}.typecast",
+            'keys.constrainttype' => "{$keysRef}.constrainttype",
+            'keys.constraintname' => "{$keysRef}.constraintname",
+            'keys.column' => "{$keysRef}.column",
+            'keys.isprimary' => "{$keysRef}.isprimary",
+            'keys.isunique' => "{$keysRef}.isunique",
+            'keys.isindex' => "{$keysRef}.isindex",
         ];
 
         if (isset($keysMappings[$variable])) {
@@ -1871,7 +2292,10 @@ class UltimateTemplateEngine
             'foreign.id' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].id" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].id",
             'foreign.type' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].type" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].type",
             'foreign.typecast' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].typecast" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].typecast",
+            'foreign.constraintname' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].constraintname" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].constraintname",
             'foreign.referencedtable' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedtable" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedtable",
+            'foreign.referencedtablepascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedtablepascalcase" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedtablepascalcase",
+            'foreign.referencedtablecamelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedtablecamelcase" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedtablecamelcase",
             'foreign.referencedcolumn' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedcolumn" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedcolumn",
             'foreign.ondelete' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].ondelete" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].ondelete",
             'foreign.onupdate' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].onupdate" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].onupdate",
@@ -1879,6 +2303,28 @@ class UltimateTemplateEngine
 
         if (isset($foreignKeysMappings[$variable])) {
             return "' + " . $foreignKeysMappings[$variable] . " + '";
+        }
+
+        // 🎯 FOREIGN KEYS UNIQUE VARIABLES (for {:for nmaxforeignkeysunique:} loops)
+        $fkuRef = $tableIndex !== null
+            ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeysunique[i]"
+            : "gtree[0].project[0].tables[tableIdx].foreignkeysunique[i]";
+        $foreignKeysUniqueMappings = [
+            'foreignunique.name' => "{$fkuRef}.name",
+            'foreignunique.id' => "{$fkuRef}.id",
+            'foreignunique.type' => "{$fkuRef}.type",
+            'foreignunique.typecast' => "{$fkuRef}.typecast",
+            'foreignunique.constraintname' => "{$fkuRef}.constraintname",
+            'foreignunique.referencedtable' => "{$fkuRef}.referencedtable",
+            'foreignunique.referencedtablepascalcase' => "{$fkuRef}.referencedtablepascalcase",
+            'foreignunique.referencedtablecamelcase' => "{$fkuRef}.referencedtablecamelcase",
+            'foreignunique.referencedcolumn' => "{$fkuRef}.referencedcolumn",
+            'foreignunique.ondelete' => "{$fkuRef}.ondelete",
+            'foreignunique.onupdate' => "{$fkuRef}.onupdate",
+        ];
+
+        if (isset($foreignKeysUniqueMappings[$variable])) {
+            return "' + " . $foreignKeysUniqueMappings[$variable] . " + '";
         }
 
         // 🎯 LANGUAGE VARIABLES (for {for {nmaxlanguages}} loops)
@@ -1901,23 +2347,33 @@ class UltimateTemplateEngine
         $tableMappings = [
             'table.tablename' => "gtree[0].project[0].tables[tableIdx].filename", // tablename = filename in gtree structure
             'table.filename' => "gtree[0].project[0].tables[tableIdx].filename",
+            'table.filecamelcase' => "gtree[0].project[0].tables[tableIdx].filecamelcase",
+            'table.filepascalcase' => "gtree[0].project[0].tables[tableIdx].filepascalcase",
+            'table.filesingular' => "gtree[0].project[0].tables[tableIdx].filesingular",
+            'table.filesingularpascalcase' => "gtree[0].project[0].tables[tableIdx].filesingularpascalcase",
+            'table.filesingularcamelcase' => "gtree[0].project[0].tables[tableIdx].filesingularcamelcase",
             'table.filenameshort' => "gtree[0].project[0].tables[tableIdx].filenameshort",
+            'table.filenamerenamed' => "gtree[0].project[0].tables[tableIdx].filenamerenamed",
             'table.fileid' => "gtree[0].project[0].tables[tableIdx].fileid",
             'table.caption' => "gtree[0].project[0].tables[tableIdx].lang[gtree[0].project[0].selectedlanguageindex].caption",
             'table.primarykey' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
             'table.primarykeyfield' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
+            'table.hasforeignkeys' => "gtree[0].project[0].tables[tableIdx].hasforeignkeys",
             'table.nmaxitems' => "gtree[0].project[0].tables[tableIdx].nmaxitems",
             'table.nmaxitemsnokey' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnokey",
             'table.nmaxitemsnokeyall' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnokeyall",
             'table.nmaxitemsnoblob' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnoblob",
             'table.nmaxitemsnobloball' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnobloball",
+            'table.nmaxitemsnobinaryblob' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnobinaryblob",
+            'table.nmaxitemsnobinarybloball' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnobinarybloball",
             'table.nmaxkeys' => "gtree[0].project[0].tables[tableIdx].nmaxkeys",
             'table.nmaxforeignkeys' => "gtree[0].project[0].tables[tableIdx].nmaxforeignkeys",
+            'table.nmaxforeignkeysunique' => "gtree[0].project[0].tables[tableIdx].nmaxforeignkeysunique",
             'table.nmaxsearchkeys' => "gtree[0].project[0].tables[tableIdx].nmaxsearchkeys",
             'table.index' => "tableIdx",
         ];
 
-        if (isset($tableMappings[$variable]) && $this->getCurrentLoopContext() === 'tables') {
+        if (isset($tableMappings[$variable])) {
             return "' + " . $tableMappings[$variable] . " + '";
         }
 
@@ -2067,10 +2523,20 @@ class UltimateTemplateEngine
 
         $trimmedCode = trim($codeContent);
 
-        // Auto-inject 'var res = "";' and 'return res;' if the user uses 'res' but didn't declare/return it
-        $usesRes = (strpos($trimmedCode, 'res') !== false);
+        // Detect if code uses sContentResult += directly (closure pattern)
+        $usesDirectAppend = (strpos($trimmedCode, 'sContentResult') !== false);
+
+        // Auto-inject 'var res = "";' and 'return res;' if the user uses 'res' as a standalone variable
+        // Use word-boundary check to avoid false positives from words like 'reset', 'resizable', 'response', etc.
+        $usesRes = (bool)preg_match('/\bres\b/', $trimmedCode);
         $hasResDeclaration = (bool)preg_match('/\b(var|let|const)\s+res\b/', $trimmedCode);
         $hasReturn = (strpos($trimmedCode, 'return') !== false);
+
+        // If code uses sContentResult += directly (closure to outer scope),
+        // don't auto-inject res handling — the closure handles output
+        if ($usesDirectAppend) {
+            $usesRes = false;
+        }
 
         // Define user_code_N function inline
         $jsCode .= "  function user_code_{$funcIndex}() {\n";
@@ -2086,15 +2552,27 @@ class UltimateTemplateEngine
             $jsCode .= "    " . $codeLine . "\n";
         }
 
-        // Auto-return res if user uses it but didn't write a return statement
-        if ($usesRes && !$hasReturn) {
+        // Auto-return:
+        // - sContentResult direct append: ALWAYS add return sContentResult (inner returns
+        //   inside helper functions like toSingular() don't count as the main return)
+        // - res pattern: only add return res if no return exists
+        if ($usesDirectAppend) {
+            $jsCode .= "    return sContentResult;\n";
+        } elseif ($usesRes && !$hasReturn) {
             $jsCode .= "    return res;\n";
         }
 
         $jsCode .= "  }\n";
 
-        // Call the function and add result to sContentResult
-        $jsCode .= "  sContentResult += (user_code_{$funcIndex}() || '');\n";
+        // Call the function:
+        // - If code uses sContentResult directly, the function returns the accumulated content
+        //   and we ASSIGN (not append) to avoid double content
+        // - Otherwise, append the return value as before
+        if ($usesDirectAppend) {
+            $jsCode .= "  sContentResult = (user_code_{$funcIndex}() || '');\n";
+        } else {
+            $jsCode .= "  sContentResult += (user_code_{$funcIndex}() || '');\n";
+        }
 
         return $jsCode;
     }

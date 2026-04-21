@@ -1,23 +1,24 @@
 import React, { useEffect } from 'react';
 import { loadFont, fontClasses } from '@/styles/fonts';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface FontProviderProps {
   children: React.ReactNode;
   className?: string;
 }
 
+// Font identifier is a technical key (matches fontConfig in @/styles/fonts),
+// not a UI string — must not be translated. A prior version read the name
+// from i18n (`t.fontprovider16`) which meant ES/IT users got `instrumentoSans`
+// / `strumentoSans` back, which isn't a registered font, so no font loaded.
+const FONT_NAME = 'instrumentSans' as const;
+
 // FontProvider component ensures fonts are loaded before components render
-export const FontProvider: React.FC<FontProviderProps> = ({ 
-  children, 
-  className = fontClasses.instrumentSans 
+export const FontProvider: React.FC<FontProviderProps> = ({
+  children,
+  className = fontClasses.instrumentSans
 }) => {
-  // i18n setup
-  const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
-  const { t } = useTranslation(currentLanguage);
   useEffect(() => {
-    // Ensure fonts are loaded
-    loadFont(t.fontprovider16);
+    loadFont(FONT_NAME);
   }, []);
 
   return (
@@ -30,7 +31,7 @@ export const FontProvider: React.FC<FontProviderProps> = ({
 // Hook to use font classes in components
 export const useFontClasses = () => {
   useEffect(() => {
-    loadFont(t.fontprovider16);
+    loadFont(FONT_NAME);
   }, []);
 
   return fontClasses;

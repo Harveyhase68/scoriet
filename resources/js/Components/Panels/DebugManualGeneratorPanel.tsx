@@ -272,6 +272,11 @@ interface SchemaTable {
   database_name?: string;
   schema_id?: number;
   is_schema_locked?: boolean;
+  // Global schema-level generation mode. Tables with 'excluded' or
+  // 'reference_only' / 'code_only' are hidden from the per-table-file
+  // dropdown because the backend will skip them (see the 'skipped'
+  // marker in UltimateTemplateController::processTemplateFile).
+  generation_mode?: 'full' | 'code_only' | 'template_only' | 'reference_only' | 'excluded';
   items?: Array<{
     name: string;
     type: string;
@@ -624,6 +629,7 @@ export default function DebugManualGeneratorPanel({
                             database_name: schemaName,
                             schema_id: schema.id,
                             is_schema_locked: schema.is_soft_locked === true,
+                            generation_mode: table.generation_mode,
                             items: tableFields
                           });
                         });
@@ -1572,8 +1578,18 @@ function ${functionName}() {
     value: p.id
   })) : [];
 
+  // Tables whose generation_mode excludes them from per-table file output are
+  // hidden from this dropdown — the backend would reject them anyway with the
+  // "file not found for selected configuration" fallback. Only 'full' and
+  // 'template_only' tables produce per-table files; undefined (legacy/missing)
+  // is treated as 'full' for backwards compatibility.
+  const tableProducesFiles = (mode?: string) =>
+    !mode || mode === 'full' || mode === 'template_only';
+
   const tableOptions = Array.isArray(schemaTables) ? schemaTables
-    .map((table, index) => ({
+    .map((table, index) => ({ table, index }))
+    .filter(({ table }) => tableProducesFiles(table.generation_mode))
+    .map(({ table, index }) => ({
       label: table.database_name
         ? `${table.database_name} - ${table.tablename} (${table.nmaxitems} fields)`
         : `${table.tablename} (${table.nmaxitems} fields)`,

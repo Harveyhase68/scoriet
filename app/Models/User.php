@@ -102,6 +102,11 @@ class User extends Authenticatable implements MustVerifyEmail
             'inactivity_warning_final_sent_at' => 'datetime',
             'is_seller' => 'boolean',
             'seller_verified' => 'boolean',
+            // Inner Core flag — without this cast MariaDB/PDO returns "0"/"1"
+            // as strings on some configs. PHP truthy checks still work for
+            // booleans cast from those strings, but having the explicit cast
+            // makes any future strict comparison (=== true / === false) safe.
+            'is_inner_core' => 'boolean',
             'seller_verified_at' => 'datetime',
             'pending_earnings' => 'decimal:2',
             'total_earnings' => 'decimal:2',
@@ -276,6 +281,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasGitIntegrationAccess(): bool
     {
+        // System/Admin users always have full access
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         // Patrons always have access
         if ($this->isPatron()) {
             return true;
@@ -290,6 +300,17 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getGitIntegrationAccessStatus(): array
     {
+        // System/Admin users always have full access
+        if ($this->isAdmin()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'system',
+                'is_patron' => false,
+                'is_expired' => false,
+                'can_renew' => false,
+            ];
+        }
+
         // Patrons always have access
         if ($this->isPatron()) {
             return [
@@ -310,6 +331,11 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function hasCodeAdjustmentsAccess(): bool
     {
+        // System/Admin users always have full access
+        if ($this->isAdmin()) {
+            return true;
+        }
+
         // Patrons always have access
         if ($this->isPatron()) {
             return true;
@@ -324,6 +350,17 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getCodeAdjustmentsAccessStatus(): array
     {
+        // System/Admin users always have full access
+        if ($this->isAdmin()) {
+            return [
+                'has_access' => true,
+                'access_type' => 'system',
+                'is_patron' => false,
+                'is_expired' => false,
+                'can_renew' => false,
+            ];
+        }
+
         // Patrons always have access
         if ($this->isPatron()) {
             return [

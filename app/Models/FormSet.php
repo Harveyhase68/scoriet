@@ -32,55 +32,44 @@ class FormSet extends Model
     /**
      * Standard-Layouts für Fenster-Typen
      */
+    // Window header is 32px, usable area = height - 32
+    // All y positions are relative to the area BELOW the header
+    // Bottom padding: 10px, so max element bottom = height - 32 - 10 = 558 for 600px window
     public const DEFAULT_LAYOUTS = [
         'main_menu' => [
             'min_width' => 800,
             'min_height' => 600,
             'elements' => [
-                ['element_type' => 'menu_container', 'x_position' => 20, 'y_position' => 20, 'width' => 200, 'height' => 500, 'container_orientation' => 'vertical'],
+                ['element_type' => 'menu_container', 'x_position' => 20, 'y_position' => 10, 'width' => 200, 'height' => 508, 'container_orientation' => 'vertical'],
             ],
         ],
         'create_edit' => [
             'min_width' => 800,
             'min_height' => 600,
             'elements' => [
-                ['element_type' => 'container', 'x_position' => 20, 'y_position' => 20, 'width' => 760, 'height' => 400],
-                ['element_type' => 'button_nav_first', 'x_position' => 20, 'y_position' => 440, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-double-left'],
-                ['element_type' => 'button_nav_prev', 'x_position' => 70, 'y_position' => 440, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-left'],
-                ['element_type' => 'button_nav_next', 'x_position' => 120, 'y_position' => 440, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-right'],
-                ['element_type' => 'button_nav_last', 'x_position' => 170, 'y_position' => 440, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-double-right'],
-                ['element_type' => 'spacer', 'x_position' => 220, 'y_position' => 440, 'width' => 380, 'height' => 40],
-                ['element_type' => 'button_save', 'x_position' => 610, 'y_position' => 440, 'width' => 100, 'height' => 40, 'button_label' => 'Speichern', 'button_icon' => 'pi-save'],
-                ['element_type' => 'button_cancel', 'x_position' => 720, 'y_position' => 440, 'width' => 100, 'height' => 40, 'button_label' => 'Abbrechen', 'button_icon' => 'pi-times'],
+                ['element_type' => 'container', 'x_position' => 20, 'y_position' => 10, 'width' => 760, 'height' => 400],
+                ['element_type' => 'button_nav_first', 'x_position' => 20, 'y_position' => 420, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-double-left'],
+                ['element_type' => 'button_nav_prev', 'x_position' => 70, 'y_position' => 420, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-left'],
+                ['element_type' => 'button_nav_next', 'x_position' => 120, 'y_position' => 420, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-right'],
+                ['element_type' => 'button_nav_last', 'x_position' => 170, 'y_position' => 420, 'width' => 40, 'height' => 40, 'button_icon' => 'pi-angle-double-right'],
+                ['element_type' => 'spacer', 'x_position' => 220, 'y_position' => 420, 'width' => 380, 'height' => 40],
+                ['element_type' => 'button_save', 'x_position' => 610, 'y_position' => 420, 'width' => 100, 'height' => 40, 'button_label' => 'Speichern', 'button_icon' => 'pi-save'],
+                ['element_type' => 'button_cancel', 'x_position' => 720, 'y_position' => 420, 'width' => 100, 'height' => 40, 'button_label' => 'Abbrechen', 'button_icon' => 'pi-times'],
             ],
         ],
         'data_table' => [
             'min_width' => 800,
             'min_height' => 600,
             'elements' => [
-                ['element_type' => 'container', 'x_position' => 20, 'y_position' => 20, 'width' => 760, 'height' => 450],
-                ['element_type' => 'button_new', 'x_position' => 20, 'y_position' => 490, 'width' => 100, 'height' => 40, 'button_label' => 'Neu', 'button_icon' => 'pi-plus'],
-                ['element_type' => 'button_delete', 'x_position' => 130, 'y_position' => 490, 'width' => 100, 'height' => 40, 'button_label' => 'Löschen', 'button_icon' => 'pi-trash'],
-                ['element_type' => 'spacer', 'x_position' => 240, 'y_position' => 490, 'width' => 480, 'height' => 40],
-                ['element_type' => 'button_close', 'x_position' => 720, 'y_position' => 490, 'width' => 100, 'height' => 40, 'button_label' => 'Schließen', 'button_icon' => 'pi-times'],
+                ['element_type' => 'container', 'x_position' => 20, 'y_position' => 10, 'width' => 760, 'height' => 448],
+                ['element_type' => 'button_new', 'x_position' => 20, 'y_position' => 468, 'width' => 100, 'height' => 40, 'button_label' => 'Neu', 'button_icon' => 'pi-plus'],
+                ['element_type' => 'button_delete', 'x_position' => 130, 'y_position' => 468, 'width' => 100, 'height' => 40, 'button_label' => 'Löschen', 'button_icon' => 'pi-trash'],
+                ['element_type' => 'spacer', 'x_position' => 240, 'y_position' => 468, 'width' => 480, 'height' => 40],
+                ['element_type' => 'button_close', 'x_position' => 720, 'y_position' => 468, 'width' => 100, 'height' => 40, 'button_label' => 'Schließen', 'button_icon' => 'pi-times'],
             ],
         ],
-        'report_single' => [
-            'min_width' => 800,
-            'min_height' => 600,
-            'elements' => [
-                ['element_type' => 'container', 'x_position' => 20, 'y_position' => 20, 'width' => 760, 'height' => 450],
-                ['element_type' => 'button_close', 'x_position' => 720, 'y_position' => 490, 'width' => 100, 'height' => 40, 'button_label' => 'Schließen', 'button_icon' => 'pi-times'],
-            ],
-        ],
-        'report_list' => [
-            'min_width' => 800,
-            'min_height' => 600,
-            'elements' => [
-                ['element_type' => 'container', 'x_position' => 20, 'y_position' => 20, 'width' => 760, 'height' => 450],
-                ['element_type' => 'button_close', 'x_position' => 720, 'y_position' => 490, 'width' => 100, 'height' => 40, 'button_label' => 'Schließen', 'button_icon' => 'pi-times'],
-            ],
-        ],
+        // Report types (report_single / report_list) were removed — reports
+        // are now handled by ReportPattern, not FormWindow.
     ];
 
     // ========== RELATIONSHIPS ==========
@@ -157,7 +146,8 @@ class FormSet extends Model
     // ========== METHODS ==========
 
     /**
-     * Bei Erstellung automatisch alle 5 Fenster-Vorlagen erstellen
+     * Bei Erstellung automatisch die 3 Standard-Fenster-Vorlagen erstellen.
+     * (Reports werden separat über ReportPattern verwaltet, nicht über FormWindow.)
      */
     public static function boot()
     {
@@ -169,23 +159,23 @@ class FormSet extends Model
     }
 
     /**
-     * Erstellt alle 5 Standard-Fenster mit Default-Layouts
+     * Erstellt die 3 Standard-Fenster mit Default-Layouts.
+     * Reports (report_single / report_list) leben nicht hier, sondern in
+     * report_patterns / report_pattern_forms.
      */
     public function createDefaultWindows(): void
     {
-        $windowTypes = ['main_menu', 'create_edit', 'data_table', 'report_single', 'report_list'];
+        $windowTypes = ['main_menu', 'create_edit', 'data_table'];
         $displayNames = [
             'main_menu' => 'Main Menu',
             'create_edit' => 'Create/Edit Form',
             'data_table' => 'Data Table',
-            'report_single' => 'Single Report',
-            'report_list' => 'List Report',
         ];
 
         foreach ($windowTypes as $index => $type) {
             $layout = self::DEFAULT_LAYOUTS[$type];
 
-            $window = $this->windows()->create([
+            $windowData = [
                 'name' => $type,
                 'display_name' => $displayNames[$type],
                 'window_type' => $type,
@@ -194,7 +184,9 @@ class FormSet extends Model
                 'default_width' => $layout['min_width'],
                 'default_height' => $layout['min_height'],
                 'sort_order' => $index,
-            ]);
+            ];
+
+            $window = $this->windows()->create($windowData);
 
             // Standard-Elemente erstellen
             foreach ($layout['elements'] as $elementIndex => $element) {

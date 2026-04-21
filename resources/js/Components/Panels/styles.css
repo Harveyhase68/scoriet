@@ -688,6 +688,17 @@
 .nav-popup-menu {
   background-color: var(--theme-bg-secondary) !important;
   border: 1px solid var(--theme-border-secondary) !important;
+  /* Must stay above rc-dock floating (z:200) and maximized (z:250) panels.
+     Matches PrimeReact's default overlay z-index (1050) to stay consistent
+     with dropdowns / dialogs layered on top of panels. */
+  z-index: 1100 !important;
+}
+
+/* Make sure PrimeReact TieredMenu popup submenus from the nav sidebar also
+   render above rc-dock floating / maximized panels. */
+.tiered-menu-sidebar .p-submenu-list,
+.p-tieredmenu-overlay {
+  z-index: 1100 !important;
 }
 
 /* Navigation Panel Menu Item */

@@ -36,6 +36,7 @@ interface TemplateModalProps {
     onCreateFile: () => void;
     onEditFile: (file: any) => void;
     onDeleteFile: (index: number) => void;
+    onFilesChange?: (files: any[]) => void;
     fileTypes: any[];
     userType?: string;
     templateVariables?: TemplateVariable[];
@@ -94,7 +95,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             tags: [],
             is_active: true,
             visibility: 'public',
-            is_system_template: false
+            is_system_template: false,
+            compatibility_tag: '',
+            generation_order: 0
         }
     });
 
@@ -102,6 +105,92 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [hasFormChanges, setHasFormChanges] = useState(false);
     const [originalFormValues, setOriginalFormValues] = useState<any>(null);
+
+    // Template files table sorting and search
+    const [fileSortField, setFileSortField] = useState<string>('file_order');
+    const [fileSortDirection, setFileSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [fileSearchTerm, setFileSearchTerm] = useState('');
+
+    const sortedTemplateFiles = React.useMemo(() => {
+        const searchInput = fileSearchTerm.replace(/%/g, '*').toLowerCase().trim();
+        const hasWildcard = searchInput.includes('*');
+        const searchParts = hasWildcard ? searchInput.split('*').filter(Boolean) : [];
+
+        const matchesSearch = (value: string): boolean => {
+            const val = value.toLowerCase();
+            if (!hasWildcard) return val.includes(searchInput);
+            // Wildcard: all parts must appear in order
+            let pos = 0;
+            for (const part of searchParts) {
+                const idx = val.indexOf(part, pos);
+                if (idx === -1) return false;
+                pos = idx + part.length;
+            }
+            return true;
+        };
+
+        const filtered = searchInput
+            ? templateFiles.filter(file =>
+                matchesSearch(file.file_name || '') ||
+                matchesSearch(file.file_type || '') ||
+                matchesSearch(file.output_path || '')
+            )
+            : templateFiles;
+        const sorted = [...filtered];
+        sorted.sort((a, b) => {
+            let valA: string | number = '';
+            let valB: string | number = '';
+            switch (fileSortField) {
+                case 'file_order': {
+                    // Files with explicit order (>0) come first, then 0/null sorted by name
+                    const aOrder = a.file_order ?? 0;
+                    const bOrder = b.file_order ?? 0;
+                    const aHasOrder = aOrder > 0 ? 0 : 1;
+                    const bHasOrder = bOrder > 0 ? 0 : 1;
+                    if (aHasOrder !== bHasOrder) return aHasOrder - bHasOrder;
+                    if (aHasOrder === 0 && bHasOrder === 0) { valA = aOrder; valB = bOrder; }
+                    else { valA = (a.file_name || '').toLowerCase(); valB = (b.file_name || '').toLowerCase(); }
+                    break;
+                }
+                case 'file_name':
+                    valA = (a.file_name || '').toLowerCase();
+                    valB = (b.file_name || '').toLowerCase();
+                    break;
+                case 'file_type':
+                    valA = (a.file_type || '').toLowerCase();
+                    valB = (b.file_type || '').toLowerCase();
+                    break;
+                case 'output_path':
+                    valA = (a.output_path || '/').toLowerCase();
+                    valB = (b.output_path || '/').toLowerCase();
+                    break;
+                case 'size':
+                    valA = a.file_content?.length || 0;
+                    valB = b.file_content?.length || 0;
+                    break;
+            }
+            if (valA < valB) return fileSortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return fileSortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+        return sorted;
+    }, [templateFiles, fileSortField, fileSortDirection, fileSearchTerm]);
+
+    const handleFileSort = (field: string) => {
+        if (fileSortField === field) {
+            setFileSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setFileSortField(field);
+            setFileSortDirection('asc');
+        }
+    };
+
+    const renderFileSortIcon = (field: string) => {
+        if (fileSortField !== field) return <i className="pi pi-sort-alt ml-1" style={{ fontSize: '0.7rem', opacity: 0.4 }}></i>;
+        return fileSortDirection === 'asc'
+            ? <i className="pi pi-sort-amount-up ml-1" style={{ fontSize: '0.7rem' }}></i>
+            : <i className="pi pi-sort-amount-down ml-1" style={{ fontSize: '0.7rem' }}></i>;
+    };
 
     // Protected files and deployment scripts state
     const [protectedFiles, setProtectedFiles] = useState<string[]>([]);
@@ -230,6 +319,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 is_active: editingTemplate.is_active,
                 visibility: editingTemplate.visibility || 'public',
                 is_system_template: editingTemplate.is_system_template || false,
+                compatibility_tag: editingTemplate.compatibility_tag || '',
+                generation_order: editingTemplate.generation_order ?? 0,
             };
             // Set form values when editing
             reset(initialValues);
@@ -271,7 +362,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 tags: [],
                 is_active: true,
                 visibility: 'public',
-                is_system_template: userType === 'system' ? false : false
+                is_system_template: userType === 'system' ? false : false,
+                compatibility_tag: '',
+                generation_order: 0
             };
             reset(initialValues);
             setOriginalFormValues(initialValues);
@@ -312,7 +405,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         if (!originalFormValues) return;
 
         const currentValues = getValues();
-        const fieldsToCheck: (keyof typeof currentValues)[] = ['name', 'description', 'category', 'language', 'tags', 'is_active', 'visibility', 'is_system_template'];
+        const fieldsToCheck: (keyof typeof currentValues)[] = ['name', 'description', 'category', 'language', 'tags', 'is_active', 'visibility', 'is_system_template', 'compatibility_tag', 'generation_order'];
 
         const formFieldsChanged = fieldsToCheck.some(field => {
             const original = originalFormValues[field];
@@ -376,7 +469,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             header={editingTemplate ? t.templatemodal186 : t.templatemodal147}
             visible={visible}
             onHide={onCancel}
-            style={{ width: '800px' }}
+            style={{ width: '950px' }}
             contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
             headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
             modal
@@ -557,6 +650,62 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             />
                         )}
                     />
+                </div>
+
+                {/* Plug & Play Section */}
+                <div className="flex gap-4">
+                    {/* Compatibility Tag */}
+                    <div className="flex-1">
+                        <label htmlFor="compatibility_tag" className="block text-sm font-medium mb-2">
+                            {t.templatemodal_compatibility_tag}
+                        </label>
+                        <Controller
+                            name="compatibility_tag"
+                            control={control}
+                            render={({ field }) => (
+                                <InputText
+                                    id="compatibility_tag"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                        field.onChange(e.target.value);
+                                        checkFormChanges();
+                                    }}
+                                    placeholder="username/template_slug"
+                                    className="w-full"
+                                />
+                            )}
+                        />
+                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                            {t.templatemodal_compatibility_tag_help}
+                        </div>
+                    </div>
+
+                    {/* Generation Order */}
+                    <div style={{ width: '140px' }}>
+                        <label htmlFor="generation_order" className="block text-sm font-medium mb-2">
+                            {t.templatemodal_generation_order}
+                        </label>
+                        <Controller
+                            name="generation_order"
+                            control={control}
+                            render={({ field }) => (
+                                <InputText
+                                    id="generation_order"
+                                    type="number"
+                                    value={String(field.value ?? 0)}
+                                    onChange={(e) => {
+                                        field.onChange(parseInt(e.target.value) || 0);
+                                        checkFormChanges();
+                                    }}
+                                    className="w-full"
+                                    min={0}
+                                />
+                            )}
+                        />
+                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                            {t.templatemodal_generation_order_help}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex gap-4">
@@ -767,7 +916,24 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 {/* Template Files Section */}
                 <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold" style={{ color: colors.textSecondary }}>{t.templatemodal362}</h3>
+                        <div className="flex items-center gap-3">
+                            <h3 className="text-lg font-semibold" style={{ color: colors.textSecondary }}>{t.templatemodal362}</h3>
+                            {templateFiles.length > 0 && (
+                                <span className="relative">
+                                    <i className="pi pi-search" style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: colors.textSecondary }}></i>
+                                    <InputText
+                                        value={fileSearchTerm}
+                                        onChange={(e) => setFileSearchTerm(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                                        placeholder={t.templatemodal808}
+                                        style={{ paddingLeft: '28px', height: '28px', fontSize: '0.8rem', width: '200px', backgroundColor: colors.bgSecondary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                                    />
+                                    {fileSearchTerm && (
+                                        <i className="pi pi-times" onClick={() => setFileSearchTerm('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: colors.textSecondary, cursor: 'pointer' }}></i>
+                                    )}
+                                </span>
+                            )}
+                        </div>
                         <Button
                             size="small"
                             icon="pi pi-plus"
@@ -798,17 +964,28 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     {templateFiles.length > 0 ? (
                         <div className="max-h-60 overflow-y-auto rounded" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                             <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
-                                <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
+                                <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}`, position: 'sticky', top: 0, zIndex: 1 }}>
                                     <tr>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal803}</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal804}</th>
-                                        <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal805}</th>
+                                        <th className="px-3 py-2 text-left cursor-pointer select-none" style={{ color: colors.textPrimary }} onClick={() => handleFileSort('file_name')}>
+                                            {t.templatemodal803}{renderFileSortIcon('file_name')}
+                                        </th>
+                                        <th className="px-3 py-2 text-left cursor-pointer select-none" style={{ color: colors.textPrimary }} onClick={() => handleFileSort('file_type')}>
+                                            {t.templatemodal804}{renderFileSortIcon('file_type')}
+                                        </th>
+                                        <th className="px-3 py-2 text-left cursor-pointer select-none" style={{ color: colors.textPrimary }} onClick={() => handleFileSort('output_path')}>
+                                            {t.templatemodal805}{renderFileSortIcon('output_path')}
+                                        </th>
+                                        <th className="px-3 py-2 text-left cursor-pointer select-none" style={{ color: colors.textPrimary }} onClick={() => handleFileSort('size')}>
+                                            {t.templatemodal807}{renderFileSortIcon('size')}
+                                        </th>
                                         <th className="px-3 py-2 text-left" style={{ color: colors.textPrimary }}>{t.templatemodal806}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {templateFiles.map((file, index) => (
-                                        <tr key={file.id || index} className="transition-colors" style={{ borderTop: `1px solid ${colors.borderPrimary}` }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                    {sortedTemplateFiles.map((file) => {
+                                        const originalIndex = templateFiles.indexOf(file);
+                                        return (
+                                        <tr key={file.id || originalIndex} className="transition-colors" style={{ borderTop: `1px solid ${colors.borderPrimary}` }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <td className="px-3 py-2">
                                                 <div className="flex items-center" style={{ color: colors.textPrimary }}>
                                                     <i className="pi pi-file mr-2" style={{ color: colors.textSecondary }}></i>
@@ -819,6 +996,10 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                 <span className="px-2 py-1 bg-blue-500 text-white rounded text-xs">
                                                     {fileTypes.find(ft => ft.value === file.file_type)?.label || file.file_type}
                                                 </span>
+                                            </td>
+                                            <td className="px-3 py-2" style={{ color: colors.textSecondary, fontSize: '0.8rem' }}>
+                                                <i className="pi pi-folder mr-1" style={{ fontSize: '0.7rem' }}></i>
+                                                {file.output_path || '/'}
                                             </td>
                                             <td className="px-3 py-2" style={{ color: colors.textPrimary }}>
                                                 {file.file_content?.length || 0} {t.templatemodal480}
@@ -841,14 +1022,15 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             e.preventDefault();
-                                                            onDeleteFile(index);
+                                                            onDeleteFile(originalIndex);
                                                         }}
                                                         className="p-button-text p-button-danger p-button-sm text-red-400 hover:text-red-300"
                                                     />
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

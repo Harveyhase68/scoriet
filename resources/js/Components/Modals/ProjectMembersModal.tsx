@@ -153,6 +153,9 @@ export default function ProjectMembersModal({ visible, onHide, project }: Projec
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

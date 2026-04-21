@@ -38,9 +38,12 @@ class TemplateFileFieldAssignmentController extends Controller
             return response()->json(['error' => 'Project not found or access denied'], 404);
         }
 
-        // Get table with fields
+        // Get table with fields — skip fields with generation_mode='excluded',
+        // those are globally removed from generation and shouldn't appear in the matrix.
         $table = SchemaTable::with(['fields' => function ($q) {
-            $q->orderBy('field_order');
+            $q->where(function ($qq) {
+                $qq->whereNull('generation_mode')->orWhere('generation_mode', '!=', 'excluded');
+            })->orderBy('field_order');
         }])->find($tableId);
 
         if (!$table) {
@@ -114,6 +117,10 @@ class TemplateFileFieldAssignmentController extends Controller
                     'control_type' => $field->control_type ?? 'TEXT',
                     'is_primary_key' => $field->is_primary_key,
                     'is_nullable' => $field->is_nullable,
+                    // Global schema states — shown as badges in the matrix so the user
+                    // knows why a field's baseline visibility might differ.
+                    'schema_display_state'   => $field->display_state ?? 'enabled',
+                    'schema_generation_mode' => $field->generation_mode ?? 'full',
                 ];
             })->values(),
             'assignments' => $assignmentsMap,

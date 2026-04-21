@@ -13,13 +13,18 @@ class TemplateReviewController extends Controller
 {
     /**
      * Get all templates pending review (only for Inner Core users)
+     *
+     * System admins bypass the is_inner_core flag — they're expected to have
+     * full access to every review queue without needing the inner-core role
+     * toggled on their user row. Without this bypass a system admin still
+     * gets "Only Inner Core members can access pending reviews" even though
+     * isAdmin() returns true everywhere else in the app.
      */
     public function getPendingReviews(Request $request)
     {
         $user = $request->user();
 
-        // Check if user is Inner Core
-        if (!$user->is_inner_core) {
+        if (!$user->is_inner_core && !$user->isAdmin()) {
             return response()->json([
                 'message' => 'Unauthorized. Only Inner Core members can access pending reviews.',
             ], 403);
@@ -55,13 +60,15 @@ class TemplateReviewController extends Controller
 
     /**
      * Submit a review for a template
+     *
+     * Same admin-bypass rationale as getPendingReviews(): a system admin
+     * must be allowed to submit reviews regardless of is_inner_core.
      */
     public function submitReview(Request $request, $templateId)
     {
         $user = $request->user();
 
-        // Check if user is Inner Core
-        if (!$user->is_inner_core) {
+        if (!$user->is_inner_core && !$user->isAdmin()) {
             return response()->json([
                 'message' => 'Unauthorized. Only Inner Core members can review templates.',
             ], 403);
@@ -187,8 +194,8 @@ class TemplateReviewController extends Controller
             ], 404);
         }
 
-        // Only Inner Core or template creator can see reviews
-        if (!$user->is_inner_core && $template->creator_user_id != $user->id) {
+        // Only Inner Core, template creator, or system admin can see reviews
+        if (!$user->is_inner_core && !$user->isAdmin() && (int) $template->creator_user_id !== (int) $user->id) {
             return response()->json([
                 'message' => 'Unauthorized to view reviews.',
             ], 403);

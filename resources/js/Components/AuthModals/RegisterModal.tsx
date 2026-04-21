@@ -63,6 +63,31 @@ export default function RegisterModal({
   }), []);
   const [honeypotValue, setHoneypotValue] = useState('');
 
+  // Reset form state when the modal is hidden. Previously this happened in
+  // handleHide() which was called before switching to Login — that produced a
+  // brief null-modal state that could leave PrimeReact's mask stuck. Now we
+  // switch directly and rely on this effect to clean up stale form state.
+  React.useEffect(() => {
+    if (!visible) {
+      setFormData({
+        name: '',
+        username: '',
+        email: '',
+        password: '',
+        password_confirmation: '',
+        language: selectedLanguage || getStoredLanguage(),
+      });
+      setHoneypotValue('');
+      setError('');
+      setSuccess('');
+      setLoading(false);
+      setInviteInfo(null);
+      setRegistrationOpen(null);
+      setCheckingStatus(false);
+    }
+     
+  }, [visible]);
+
   // Update language when currentLanguage prop changes
   React.useEffect(() => {
     if (currentLanguage && visible) {
@@ -573,10 +598,7 @@ export default function RegisterModal({
             type="button"
             label={t.authmodalsegistermodal388}
             className="p-button-link p-button-sm"
-            onClick={() => {
-              handleHide();
-              onSwitchToLogin();
-            }}
+            onClick={onSwitchToLogin}
           />
         </div>
       </form>

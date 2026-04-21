@@ -43,6 +43,8 @@ interface FieldInfo {
   control_type?: string;
   is_primary_key?: boolean;
   is_nullable?: boolean;
+  schema_display_state?: string;   // Global schema-level display state
+  schema_generation_mode?: string; // Global schema-level generation mode
 }
 
 interface TableInfo {
@@ -513,6 +515,21 @@ export default function FieldAssignmentPanel() {
                           <Tag value={field.field_type} severity="success" />
                           {field.control_type && field.control_type.toUpperCase() === 'COMBOBOX' && (
                             <Tag value="CB" severity="warning" />
+                          )}
+                          {/* Schema-level state hints — only rendered when non-default */}
+                          {field.schema_display_state && field.schema_display_state !== 'enabled' && (
+                            <Tag
+                              value={`display: ${field.schema_display_state}`}
+                              severity="info"
+                              title={(t as unknown as Record<string, string>).fieldassignmentpanel_schema_display_hint || 'Global schema display_state — per-file assignment overrides this'}
+                            />
+                          )}
+                          {field.schema_generation_mode && field.schema_generation_mode !== 'full' && (
+                            <Tag
+                              value={`gen: ${field.schema_generation_mode}`}
+                              severity="danger"
+                              title={(t as unknown as Record<string, string>).fieldassignmentpanel_schema_gen_hint || 'Global schema generation_mode — affects whether this field generates'}
+                            />
                           )}
                           {templateFiles.length >= 2 && (
                             <button

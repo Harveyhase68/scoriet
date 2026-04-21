@@ -21,7 +21,7 @@ return new class extends Migration
             $table->enum('content_type', ['text', 'zip'])->default('text');
             $table->string('zip_filename')->nullable();
             $table->string('output_path')->nullable();
-            $table->integer('file_order')->default(0);
+            $table->integer('file_order')->nullable();
             $table->tinyInteger('form_window_type')->nullable()->default(0)->comment('0=None, 1=MainMenu, 2=CreateEdit, 3=DataTable, 4=ReportSingle, 5=ReportList');
             $table->boolean('is_include_only')->default(false);
             $table->timestamps();

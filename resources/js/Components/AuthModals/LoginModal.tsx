@@ -82,6 +82,23 @@ export default function LoginModal({
   // Outside demo mode: can be disabled via VITE_SHOW_DEMO_USERS=false in .env
   const showDemoUsers = isDemoMode || import.meta.env.VITE_SHOW_DEMO_USERS !== 'false';
 
+  // Reset local form state whenever the modal is hidden. This replaces the
+  // previous pattern of calling handleHide() right before onSwitchToXxx(),
+  // which produced a transient null-modal state that could leave PrimeReact's
+  // mask overlay stuck when switching rapidly between auth modals.
+  useEffect(() => {
+    if (!visible) {
+      setFormData({ email: '', password: '', rememberMe: false });
+      setError('');
+      setLoading(false);
+      setShowResendVerification(false);
+      setVerificationMessage('');
+      setShow2FA(false);
+      setTwoFactorToken('');
+      setNeeds2FAReverification(false);
+    }
+  }, [visible]);
+
   // Listen for language changes
   useEffect(() => {
     const handleLanguageChange = (event: CustomEvent) => {
@@ -519,10 +536,7 @@ export default function LoginModal({
                   type="button"
                   label={t.LoginRegister}
                   className="p-button-link p-button-sm"
-                  onClick={() => {
-                    handleHide();
-                    onSwitchToRegister();
-                  }}
+                  onClick={onSwitchToRegister}
                 />
               </div>
               <div>
@@ -530,10 +544,7 @@ export default function LoginModal({
                   type="button"
                   label={t.LoginForgotPassword}
                   className="p-button-link p-button-sm"
-                  onClick={() => {
-                    handleHide();
-                    onSwitchToForgotPassword();
-                  }}
+                  onClick={onSwitchToForgotPassword}
                 />
               </div>
             </div>

@@ -7,6 +7,7 @@ import { Button } from 'primereact/button';
 import { NavigationPanelProps } from '@/types';
 import { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
 import { useProject } from '@/contexts/ProjectContext';
+import { useToast } from '@/contexts/ToastContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ProjectWizardModal from '@/Components/ProjectWizardModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
@@ -25,6 +26,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
   const { selectedProject, loadProjects, setSelectedProject } = useProject();
   const { colors } = useTheme();
+  const toast = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>('');
   const [userType, setUserType] = useState<string>('');
@@ -32,16 +34,30 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   const [patronType, setPatronType] = useState<string | null>(null);
   const [isInnerCore, setIsInnerCore] = useState<boolean>(false);
   const [showWizard, setShowWizard] = useState<boolean>(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Collapsed menu handlers - state-based to prevent overlapping menus
+  // Works on both desktop (hover) and mobile (touch/click)
+  const handleMenuEnter = (menuId: string) => {
+    if (menuCloseTimer.current) { clearTimeout(menuCloseTimer.current); menuCloseTimer.current = null; }
+    setOpenMenuId(menuId);
+  };
+  const handleMenuLeave = () => {
+    menuCloseTimer.current = setTimeout(() => setOpenMenuId(null), 150);
+  };
+
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Load from localStorage, default to true (collapsed)
     const saved = localStorage.getItem('navigation_collapsed');
     return saved === null ? true : JSON.parse(saved);
   });
 
-  // Helper: blur active element to close focus-within submenus after clicking a menu item
+  // Helper: blur active element and close collapsed menu after clicking a menu item
   const blurAndRun = useCallback((fn: () => void) => {
     return () => {
       fn();
+      setOpenMenuId(null);
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
@@ -50,7 +66,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
   // Form Designer Paywall States
   const [showFormPaywall, setShowFormPaywall] = useState(false);
-  const [formPaywallTarget, setFormPaywallTarget] = useState<'formset-management' | 'form-designer' | null>(null);
+  const [formPaywallTarget, setFormPaywallTarget] = useState<'formset-management' | 'form-designer' | 'form-layout-designer' | 'report-management' | 'report-pattern-designer' | 'report-layout-designer' | null>(null);
   const [formPaywallLoading, setFormPaywallLoading] = useState(false);
   const [formAccessInfo, setFormAccessInfo] = useState<{
     hasAccess: boolean;
@@ -141,7 +157,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   }, [isCollapsed]);
 
   // Check form designer access and show paywall if needed
-  const checkFormDesignerAccess = useCallback(async (target: 'formset-management' | 'form-designer') => {
+  const checkFormDesignerAccess = useCallback(async (target: 'formset-management' | 'form-designer' | 'form-layout-designer' | 'report-management' | 'report-pattern-designer' | 'report-layout-designer') => {
     setFormPaywallLoading(true);
     setFormPaywallTarget(target);
 
@@ -422,51 +438,139 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         }
       ]
     },
+    // ── New top-level: "Vorlagen" — unifies Code / Forms / Reports under
+    // a consistent Vorlage → Profil → Anpassung structure.
     {
-      label: t.panelsewnavigationpanel184,
-      icon: 'pi pi-cog',
+      label: t.menu_vorlagen,
+      icon: 'pi pi-folder',
       items: [
+        // ── Code ──
         {
-          label: t.panelsewnavigationpanel188,
-          icon: 'pi pi-list',
-          command: () => onOpenPanel('template-management')
+          label: t.menu_vorlagen_code,
+          icon: 'pi pi-code',
+          items: [
+            {
+              label: t.menu_vorlagen_code_vorlagen,
+              icon: 'pi pi-list',
+              items: [
+                {
+                  label: t.menu_code_vorlagen_verwaltung,
+                  icon: 'pi pi-list',
+                  command: () => onOpenPanel('template-management'),
+                },
+                {
+                  label: t.menu_code_vorlagen_shop,
+                  icon: 'pi pi-shopping-cart',
+                  command: () => onOpenPanel('template-store'),
+                },
+                ...(isInnerCore ? [{
+                  label: t.menu_code_vorlagen_review,
+                  icon: 'pi pi-star-fill',
+                  command: () => onOpenPanel('template-review'),
+                }] : []),
+                { separator: true },
+                {
+                  label: t.menu_code_vorlagen_schema_deps,
+                  icon: 'pi pi-link',
+                  command: () => onOpenPanel('template-db-schema-dependencies'),
+                },
+              ],
+            },
+            {
+              label: t.menu_vorlagen_code_profile,
+              icon: 'pi pi-clock',
+              // Coming-soon placeholder — clickable, shows an info toast.
+              command: () => {
+                toast.showInfo(t.menu_coming_soon_code_profile);
+              },
+              className: 'opacity-60',
+            },
+            {
+              label: t.menu_vorlagen_code_anpassungen,
+              icon: 'pi pi-sliders-h',
+              command: () => onOpenPanel('code-adjustments'),
+            },
+          ],
         },
+        // ── Formulare ──
         {
-          label: t.newnavigationpanel425,
-          icon: 'pi pi-shopping-cart',
-          command: () => onOpenPanel('template-store')
+          label: t.menu_vorlagen_formulare,
+          icon: 'pi pi-window-maximize',
+          items: [
+            {
+              label: t.menu_vorlagen_formulare_vorlagen,
+              icon: 'pi pi-list',
+              items: [
+                {
+                  label: t.menu_form_vorlagen_verwaltung,
+                  icon: 'pi pi-list',
+                  command: () => checkFormDesignerAccess('formset-management'),
+                },
+                {
+                  label: t.menu_form_vorlagen_designer,
+                  icon: 'pi pi-pencil',
+                  command: () => checkFormDesignerAccess('form-designer'),
+                },
+              ],
+            },
+            {
+              label: t.menu_vorlagen_formulare_profil,
+              icon: 'pi pi-th-large',
+              items: [
+                {
+                  label: t.menu_form_profil_designer,
+                  icon: 'pi pi-th-large',
+                  command: () => checkFormDesignerAccess('form-layout-designer'),
+                },
+              ],
+            },
+            {
+              label: t.fieldassignmentpanel_title,
+              icon: 'pi pi-sliders-h',
+              command: () => onOpenPanel('field-assignments'),
+            },
+          ],
         },
-        // Only show Template Review for Inner Core members
-        ...(isInnerCore ? [{
-          label: t.newnavigationpanel431,
-          icon: 'pi pi-star-fill',
-          command: () => onOpenPanel('template-review')
-        }] : []),
+        // ── Reports ──
         {
-          separator: true
+          label: t.menu_vorlagen_reports,
+          icon: 'pi pi-print',
+          items: [
+            {
+              label: t.menu_vorlagen_reports_vorlagen,
+              icon: 'pi pi-list',
+              items: [
+                {
+                  label: t.menu_report_vorlagen_verwaltung,
+                  icon: 'pi pi-list',
+                  command: () => checkFormDesignerAccess('report-management'),
+                },
+                {
+                  label: t.menu_report_vorlagen_designer,
+                  icon: 'pi pi-pencil',
+                  command: () => checkFormDesignerAccess('report-pattern-designer'),
+                },
+              ],
+            },
+            {
+              label: t.menu_vorlagen_reports_profil,
+              icon: 'pi pi-th-large',
+              items: [
+                {
+                  label: t.menu_report_profil_designer,
+                  icon: 'pi pi-th-large',
+                  command: () => checkFormDesignerAccess('report-layout-designer'),
+                },
+              ],
+            },
+            {
+              label: (t as unknown as Record<string, string>).reportfieldassignmentpanel_title || 'Report Field Assignments',
+              icon: 'pi pi-sliders-h',
+              command: () => onOpenPanel('report-field-assignments'),
+            },
+          ],
         },
-        {
-          label: t.panelsewnavigationpanel201,
-          icon: 'pi pi-link',
-          command: () => onOpenPanel('template-db-schema-dependencies')
-        }
-      ]
-    },
-    {
-      label: t.newnavigationpanel446,
-      icon: 'pi pi-window-maximize',
-      items: [
-        {
-          label: t.newnavigationpanel450,
-          icon: 'pi pi-list',
-          command: () => checkFormDesignerAccess('formset-management')
-        },
-        {
-          label: t.newnavigationpanel455,
-          icon: 'pi pi-pencil',
-          command: () => checkFormDesignerAccess('form-designer')
-        }
-      ]
+      ],
     },
     {
       label: t.panelsewnavigationpanel223,
@@ -528,14 +632,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-play',
           command: () => onOpenPanel('code-generation')
         },
-        {
-          separator: true
-        },
-        {
-          label: t.newnavigationpanel520,
-          icon: 'pi pi-sliders-h',
-          command: () => onOpenPanel('code-adjustments')
-        },
+        // "Code adjustments" was moved to Vorlagen → Code → Anpassungen
         ...(userType === 'system' ? [
           {
             separator: true
@@ -674,7 +771,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
   return (
     <div
-      className={`${isCollapsed ? 'w-16' : 'w-64'} flex flex-col h-full transition-all duration-300`}
+      className={`${isCollapsed ? 'w-16' : 'w-auto whitespace-nowrap'} flex flex-col h-full transition-all duration-300`}
       style={{
         backgroundColor: colors.bgSecondary,
         borderRight: `1px solid ${colors.borderPrimary}`
@@ -750,12 +847,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               </button>
             </div>
             {/* Icon-only navigation with TieredMenu - only 3 main categories */}
-            <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+            <div className="relative" onMouseEnter={() => handleMenuEnter('project')} onMouseLeave={handleMenuLeave}>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors" onClick={() => setOpenMenuId(openMenuId === 'project' ? null : 'project')}>
                 <i className="pi pi-briefcase nav-icon-color" title={t.manageteammodal316}></i>
               </button>
               {/* Popup submenu for Project */}
-              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+              <div className={`absolute left-full top-0 ml-2 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'project' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                 <div className="p-2">
                   <button onClick={blurAndRun(() => onOpenPanel('project'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-home"></i>
@@ -769,7 +866,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Settings */}
-                    <div className="absolute left-full top-0 ml-1 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/settings:opacity-100 group-hover/settings:visible group-focus-within/settings:opacity-100 group-focus-within/settings:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/settings:opacity-100 group-hover/settings:visible transition-all duration-200 z-50">
                       <div className="p-2">
                         <button onClick={blurAndRun(() => {
                           if (selectedProject) {
@@ -795,7 +892,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Teams */}
-                    <div className="absolute left-full top-0 ml-1 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible group-focus-within/teams:opacity-100 group-focus-within/teams:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/teams:opacity-100 group-hover/teams:visible transition-all duration-200 z-50">
                       <div className="p-2">
                         <button onClick={blurAndRun(() => onOpenPanel('team-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-cog"></i>
@@ -814,7 +911,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                       <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
                     {/* Sub-submenu for Agile Methods */}
-                    <div className="absolute left-full top-0 ml-1 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/agile:opacity-100 group-hover/agile:visible group-focus-within/agile:opacity-100 group-focus-within/agile:visible transition-all duration-200 z-50">
+                    <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/agile:opacity-100 group-hover/agile:visible transition-all duration-200 z-50">
                       <div className="p-2">
                         <button onClick={blurAndRun(() => onOpenPanel('kanban-board'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-th-large"></i>
@@ -837,64 +934,178 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               </div>
             </div>
 
-            {/* Templates - Top Level */}
-            <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
-                <i className="pi pi-cog nav-icon-color" title={t.panelsewnavigationpanel184}></i>
+            {/* Vorlagen - Top Level (Code / Formulare / Reports) */}
+            <div className="relative" onMouseEnter={() => handleMenuEnter('vorlagen')} onMouseLeave={handleMenuLeave}>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors" onClick={() => setOpenMenuId(openMenuId === 'vorlagen' ? null : 'vorlagen')}>
+                <i className="pi pi-folder nav-icon-color" title={t.menu_vorlagen}></i>
               </button>
-              {/* Popup submenu for Templates */}
-              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+              {/* Popup submenu for Vorlagen */}
+              <div className={`absolute left-full top-0 ml-2 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'vorlagen' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                 <div className="p-2">
-                  <button onClick={blurAndRun(() => onOpenPanel('template-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                    <i className="pi pi-list"></i>
-                    <span>{t.panelsewnavigationpanel188}</span>
-                  </button>
-                  <button onClick={blurAndRun(() => onOpenPanel('template-store'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                    <i className="pi pi-shopping-cart"></i>
-                    <span>{t.newnavigationpanel830}</span>
-                  </button>
-                  {/* Only show Template Review for Inner Core members */}
-                  {isInnerCore && (
-                    <button onClick={blurAndRun(() => onOpenPanel('template-review'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                      <i className="pi pi-star-fill text-yellow-400"></i>
-                      <span>{t.newnavigationpanel836}</span>
+                  {/* ── Code ── */}
+                  <div className="relative group/vcode">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                      <i className="pi pi-code"></i>
+                      <span>{t.menu_vorlagen_code}</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
                     </button>
-                  )}
-                  <div className="border-t nav-separator my-2"></div>
-                  <button onClick={blurAndRun(() => onOpenPanel('template-db-schema-dependencies'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                    <i className="pi pi-link"></i>
-                    <span>{t.panelsewnavigationpanel201}</span>
-                  </button>
+                    <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vcode:opacity-100 group-hover/vcode:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        {/* Code → Vorlagen */}
+                        <div className="relative group/vcodev">
+                          <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                            <i className="pi pi-list"></i>
+                            <span>{t.menu_vorlagen_code_vorlagen}</span>
+                            <i className="pi pi-angle-right ml-auto text-xs"></i>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vcodev:opacity-100 group-hover/vcodev:visible transition-all duration-200 z-50">
+                            <div className="p-2">
+                              <button onClick={blurAndRun(() => onOpenPanel('template-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-list"></i>
+                                <span>{t.menu_code_vorlagen_verwaltung}</span>
+                              </button>
+                              <button onClick={blurAndRun(() => onOpenPanel('template-store'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-shopping-cart"></i>
+                                <span>{t.menu_code_vorlagen_shop}</span>
+                              </button>
+                              {isInnerCore && (
+                                <button onClick={blurAndRun(() => onOpenPanel('template-review'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                  <i className="pi pi-star-fill text-yellow-400"></i>
+                                  <span>{t.menu_code_vorlagen_review}</span>
+                                </button>
+                              )}
+                              <div className="border-t nav-separator my-2"></div>
+                              <button onClick={blurAndRun(() => onOpenPanel('template-db-schema-dependencies'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-link"></i>
+                                <span>{t.menu_code_vorlagen_schema_deps}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Code → Profile (Coming Soon) */}
+                        <button
+                          onClick={blurAndRun(() => window.alert(`${t.menu_coming_soon_title}\n\n${t.menu_coming_soon_code_profile}`))}
+                          className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded opacity-60"
+                        >
+                          <i className="pi pi-clock"></i>
+                          <span>{t.menu_vorlagen_code_profile}</span>
+                        </button>
+                        {/* Code → Anpassungen */}
+                        <button onClick={blurAndRun(() => onOpenPanel('code-adjustments'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                          <i className="pi pi-sliders-h"></i>
+                          <span>{t.menu_vorlagen_code_anpassungen}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Formulare ── */}
+                  <div className="relative group/vform">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                      <i className="pi pi-window-maximize"></i>
+                      <span>{t.menu_vorlagen_formulare}</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vform:opacity-100 group-hover/vform:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        {/* Formulare → Vorlagen */}
+                        <div className="relative group/vformv">
+                          <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                            <i className="pi pi-list"></i>
+                            <span>{t.menu_vorlagen_formulare_vorlagen}</span>
+                            <i className="pi pi-angle-right ml-auto text-xs"></i>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vformv:opacity-100 group-hover/vformv:visible transition-all duration-200 z-50">
+                            <div className="p-2">
+                              <button onClick={blurAndRun(() => checkFormDesignerAccess('formset-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-list"></i>
+                                <span>{t.menu_form_vorlagen_verwaltung}</span>
+                              </button>
+                              <button onClick={blurAndRun(() => checkFormDesignerAccess('form-designer'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-pencil"></i>
+                                <span>{t.menu_form_vorlagen_designer}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Formulare → Profil */}
+                        <div className="relative group/vformp">
+                          <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                            <i className="pi pi-th-large"></i>
+                            <span>{t.menu_vorlagen_formulare_profil}</span>
+                            <i className="pi pi-angle-right ml-auto text-xs"></i>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vformp:opacity-100 group-hover/vformp:visible transition-all duration-200 z-50">
+                            <div className="p-2">
+                              <button onClick={blurAndRun(() => checkFormDesignerAccess('form-layout-designer'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-th-large"></i>
+                                <span>{t.menu_form_profil_designer}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Reports ── */}
+                  <div className="relative group/vrep">
+                    <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                      <i className="pi pi-print"></i>
+                      <span>{t.menu_vorlagen_reports}</span>
+                      <i className="pi pi-angle-right ml-auto text-xs"></i>
+                    </button>
+                    <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vrep:opacity-100 group-hover/vrep:visible transition-all duration-200 z-50">
+                      <div className="p-2">
+                        {/* Reports → Vorlagen */}
+                        <div className="relative group/vrepv">
+                          <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                            <i className="pi pi-list"></i>
+                            <span>{t.menu_vorlagen_reports_vorlagen}</span>
+                            <i className="pi pi-angle-right ml-auto text-xs"></i>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vrepv:opacity-100 group-hover/vrepv:visible transition-all duration-200 z-50">
+                            <div className="p-2">
+                              <button onClick={blurAndRun(() => checkFormDesignerAccess('report-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-list"></i>
+                                <span>{t.menu_report_vorlagen_verwaltung}</span>
+                              </button>
+                              <button onClick={blurAndRun(() => checkFormDesignerAccess('report-pattern-designer'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-pencil"></i>
+                                <span>{t.menu_report_vorlagen_designer}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Reports → Profil */}
+                        <div className="relative group/vrepp">
+                          <button className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                            <i className="pi pi-th-large"></i>
+                            <span>{t.menu_vorlagen_reports_profil}</span>
+                            <i className="pi pi-angle-right ml-auto text-xs"></i>
+                          </button>
+                          <div className="absolute left-full top-0 ml-1 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/vrepp:opacity-100 group-hover/vrepp:visible transition-all duration-200 z-50">
+                            <div className="p-2">
+                              <button onClick={blurAndRun(() => checkFormDesignerAccess('report-layout-designer'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                                <i className="pi pi-th-large"></i>
+                                <span>{t.menu_report_profil_designer}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Formulare - Top Level */}
-            <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
-                <i className="pi pi-window-maximize nav-icon-color" title={t.newnavigationpanel851}></i>
-              </button>
-              {/* Popup submenu for Formulare */}
-              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
-                <div className="p-2">
-                  <button onClick={blurAndRun(() => checkFormDesignerAccess('formset-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                    <i className="pi pi-list"></i>
-                    <span>{t.newnavigationpanel858}</span>
-                  </button>
-                  <button onClick={blurAndRun(() => checkFormDesignerAccess('form-designer'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                    <i className="pi pi-pencil"></i>
-                    <span>{t.newnavigationpanel862}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+            <div className="relative" onMouseEnter={() => handleMenuEnter('database')} onMouseLeave={handleMenuLeave}>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors" onClick={() => setOpenMenuId(openMenuId === 'database' ? null : 'database')}>
                 <i className="pi pi-database nav-icon-color" title={t.panelsewnavigationpanel223}></i>
               </button>
               {/* Popup submenu for Database */}
-              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+              <div className={`absolute left-full top-0 ml-2 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'database' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                 <div className="p-2">
                   <button onClick={blurAndRun(() => onOpenPanel('database-management'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-cog"></i>
@@ -929,12 +1140,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
               </div>
             </div>
 
-            <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+            <div className="relative" onMouseEnter={() => handleMenuEnter('generator')} onMouseLeave={handleMenuLeave}>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors" onClick={() => setOpenMenuId(openMenuId === 'generator' ? null : 'generator')}>
                 <i className="pi pi-wrench nav-icon-color" title={t.panelsewnavigationpanel258}></i>
               </button>
               {/* Popup submenu for Generator */}
-              <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+              <div className={`absolute left-full top-0 ml-2 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'generator' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                 <div className="p-2">
                   <button onClick={blurAndRun(() => onOpenPanel('debug-manual-generator'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-wrench"></i>
@@ -943,11 +1154,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <button onClick={blurAndRun(() => onOpenPanel('code-generation'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-play"></i>
                     <span>{t.panelsewnavigationpanel576}</span>
-                  </button>
-                  <div className="border-t nav-separator my-2"></div>
-                  <button onClick={blurAndRun(() => onOpenPanel('code-adjustments'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
-                    <i className="pi pi-sliders-h"></i>
-                    <span>{t.newnavigationpanel912}</span>
                   </button>
                   {userType === 'system' && (
                     <>
@@ -963,12 +1169,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             </div>
 
             {userType === 'system' && (
-              <div className="relative group">
-                <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+              <div className="relative" onMouseEnter={() => handleMenuEnter('admin')} onMouseLeave={handleMenuLeave}>
+                <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors" onClick={() => setOpenMenuId(openMenuId === 'admin' ? null : 'admin')}>
                   <i className="pi pi-cog nav-icon-color" title={t.panelsewnavigationpanel281}></i>
                 </button>
                 {/* Popup submenu for Administration */}
-                <div className="absolute left-full top-0 ml-2 w-64 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+                <div className={`absolute left-full top-0 ml-2 w-auto whitespace-nowrap nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'admin' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                   <div className="p-2">
                     <button onClick={blurAndRun(() => onOpenPanel('system-settings'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                       <i className="pi pi-cog"></i>
@@ -1061,12 +1267,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           <div className="flex flex-col items-center space-y-2">
             {/* Credits Badge in Collapsed Mode */}
             {isLoggedIn && (
-              <div className="relative group/credits">
-                <div className="w-8 h-8 flex items-center justify-center rounded nav-credits-box">
+              <div className="relative" onMouseEnter={() => handleMenuEnter('credits')} onMouseLeave={handleMenuLeave}>
+                <div className="w-8 h-8 flex items-center justify-center rounded nav-credits-box cursor-pointer" onClick={() => setOpenMenuId(openMenuId === 'credits' ? null : 'credits')}>
                   <i className="pi pi-wallet text-xs" style={{ color: colors.warningText }}></i>
                 </div>
                 {/* Popup for credits */}
-                <div className="absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover/credits:opacity-100 group-hover/credits:visible group-focus-within/credits:opacity-100 group-focus-within/credits:visible transition-all duration-200 z-50">
+                <div className={`absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'credits' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                   <div className="p-3">
                     <div className="text-xs mb-1" style={{ color: colors.textMuted }}>{t.newnavigationpanel1043}</div>
                     <div className="flex items-center justify-between mb-2">
@@ -1095,12 +1301,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
             )}
 
             {/* Profile icon with popup menu */}
-            <div className="relative group">
-              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors">
+            <div className="relative" onMouseEnter={() => handleMenuEnter('profile')} onMouseLeave={handleMenuLeave}>
+              <button className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors" onClick={() => setOpenMenuId(openMenuId === 'profile' ? null : 'profile')}>
                 <i className={`pi ${isLoggedIn ? 'pi-user' : 'pi-sign-in'} nav-icon-color`} title={isLoggedIn ? userName : t.panelsewnavigationpanel359}></i>
               </button>
               {/* Popup submenu for Profile */}
-              <div className="absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
+              <div className={`absolute left-full bottom-0 ml-2 w-48 nav-popup-menu rounded-lg shadow-xl transition-all duration-200 z-50 ${openMenuId === 'profile' ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
                 <div className="p-2">
                   {isLoggedIn ? (
                     <>

@@ -182,6 +182,11 @@ Route::get('/pricing', function () {
 // Code Adjustments - Public utility endpoints (no auth needed, just static variable list)
 Route::get('/code-adjustments/variables', [\App\Http\Controllers\Api\CodeAdjustmentController::class, 'getVariables'])->name('api.code-adjustments.variables.public');
 
+// Broadcasting auth endpoint (Passport token-based)
+Route::middleware('auth:api')->post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
+    return \Illuminate\Support\Facades\Broadcast::auth($request);
+});
+
 // Protected Routes (require authentication)
 Route::middleware('auth:api')->group(function () {
     // Generated Project Upload/Download (for deployment)
@@ -516,17 +521,17 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/schema-versions/{id}/templates', [TemplateController::class, 'assignToProject']);
     Route::delete('/schema-versions/{schemaId}/templates/{templateId}', [TemplateController::class, 'removeFromProject']);
 
-    // Template-DB Schema Dependencies Management
+    // Template-Schema Dependencies Management
     Route::prefix('template-db-schema')->group(function () {
-        // Global DB Schemas (public schemas from system)
+        // Global Schemas (public schemas from system)
         Route::get('/global-schemas', [DbSchemaController::class, 'getGlobalSchemas']);
 
-        // DB Schema Management
+        // Schema Management
         Route::get('/schemas', [DbSchemaController::class, 'index']);
         Route::get('/schemas/{id}', [DbSchemaController::class, 'show']);
         Route::post('/schemas/{id}/copy', [DbSchemaController::class, 'copySchema']);
 
-        // DB Schema Dependencies
+        // Schema Dependencies
         Route::get('/schemas/{id}/templates', [DbSchemaController::class, 'getDependentTemplates']);
         Route::post('/schemas/{id}/link-template', [DbSchemaController::class, 'linkTemplate']);
         Route::delete('/schemas/{id}/templates/{templateId}', [DbSchemaController::class, 'unlinkTemplate']);
@@ -583,10 +588,28 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/projects/{project}/settings', [ProjectController::class, 'updateSettings']);
     Route::get('/projects/{project}/templates-with-protected-files', [ProjectController::class, 'getTemplatesWithProtectedFiles']);
 
+    // Project Translations
+    Route::get('/projects/{project}/translations', [ProjectController::class, 'getTranslations']);
+    Route::post('/projects/{project}/translations', [ProjectController::class, 'saveTranslation']);
+    Route::get('/locale-defaults', [ProjectController::class, 'getLocaleDefaults']);
+
+    // Edit Mask Presets
+    Route::get('/editmask-presets', function (\Illuminate\Http\Request $request) {
+        $language = $request->query('language', 'html');
+        $presets = config("editmasks.presets.{$language}", []);
+        $languages = config('editmasks.languages', []);
+        return response()->json(['presets' => $presets, 'languages' => $languages]);
+    });
+
     // Project Git Integration Settings
     Route::get('/projects/{project}/git-settings', [ProjectController::class, 'getGitSettings']);
     Route::put('/projects/{project}/git-settings', [ProjectController::class, 'updateGitSettings']);
     Route::delete('/projects/{project}/git-settings', [ProjectController::class, 'removeGitIntegration']);
+
+    // Project Edit Locking (real-time collaboration)
+    Route::post('/projects/{project}/lock', [ProjectController::class, 'lockProject']);
+    Route::post('/projects/{project}/unlock', [ProjectController::class, 'unlockProject']);
+    Route::post('/projects/{project}/heartbeat', [ProjectController::class, 'heartbeatLock']);
 
     // FTP/SSH Deployment
     Route::get('/projects/{project}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'getSettings']);
@@ -733,6 +756,12 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/template-file-field-assignments/bulk-update', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'bulkUpdate']);
     Route::delete('/template-file-field-assignments/{id}', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'destroy']);
     Route::post('/template-file-field-assignments/reset-table', [\App\Http\Controllers\Api\TemplateFileFieldAssignmentController::class, 'resetTable']);
+
+    // Report Pattern Field Assignments (per-report-pattern visibility control)
+    Route::get('/report-pattern-field-assignments/matrix', [\App\Http\Controllers\Api\ReportPatternFieldAssignmentController::class, 'getMatrix']);
+    Route::post('/report-pattern-field-assignments/bulk-update', [\App\Http\Controllers\Api\ReportPatternFieldAssignmentController::class, 'bulkUpdate']);
+    Route::delete('/report-pattern-field-assignments/{id}', [\App\Http\Controllers\Api\ReportPatternFieldAssignmentController::class, 'destroy']);
+    Route::post('/report-pattern-field-assignments/reset-table', [\App\Http\Controllers\Api\ReportPatternFieldAssignmentController::class, 'resetTable']);
 
     // Translation Export/Import
     Route::get('/translations/export', [TranslationExportController::class, 'export']);
@@ -1541,7 +1570,7 @@ Route::get('/gtree-test/{schemaVersionId}', function ($schemaVersionId) {
 
         $projectData = [
             'projectname' => 'GlobalProject',
-            'nmaxfiles' => $schemaTables->count(),
+            'nmaxtables' => $schemaTables->count(),
             'tables' => []
         ];
 
@@ -1680,7 +1709,7 @@ Route::get('/schemas/{schemaId}/gtree', function ($schemaId) {
 
         $projectData = [
             'projectname' => 'GlobalProject',
-            'nmaxfiles' => $schemaTables->count(),
+            'nmaxtables' => $schemaTables->count(),
             'tables' => []
         ];
 
@@ -1747,6 +1776,12 @@ Route::get('/schemas/{schemaId}/gtree', function ($schemaId) {
                 'filedetailfileid' => '',
                 'filedetailfilename' => '',
                 'filedetailkey' => '',
+                'hastimestamps' => $fields->whereIn('field_name', ['created_at', 'updated_at'])->count() >= 2,
+                'hasprimarykey' => $fields->where('field_name', 'id')->count() > 0,
+                'hasblob' => $fields->contains(fn($f) => in_array(
+                    strtolower(strpos($f->field_type, '(') !== false ? substr($f->field_type, 0, strpos($f->field_type, '(')) : $f->field_type),
+                    ['tinyblob', 'blob', 'mediumblob', 'longblob', 'image']
+                )),
                 'primarykeyfield' => $fields->where('field_name', 'id')->first()?->field_name
                                  ?? $fields->where('field_name', 'like', '%_id')->first()?->field_name
                                  ?? $fields->first()?->field_name
@@ -2029,7 +2064,7 @@ Route::get('/template-process/{templateId}', function (Request $request, $templa
             'projectdbport' => $actualProject ? ($actualProject->database_port ?? '3306') : '3306',
 
             // Counts and metrics
-            'nmaxfiles' => $schemaTables->count(),
+            'nmaxtables' => $schemaTables->count(),
             'nmaxlanguages' => 1, // Default to 1 language
 
             // Template info
@@ -2328,6 +2363,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/cache/stats', [App\Http\Controllers\Api\CacheController::class, 'stats']);
     Route::get('/cache/config', [App\Http\Controllers\Api\CacheController::class, 'config']);
     Route::post('/cache/clear', [App\Http\Controllers\Api\CacheController::class, 'clear']);
+    // Per-project cache clear (available to project owners/team members,
+    // not system-only). Used by the "Cache vor Generierung leeren" checkbox.
+    Route::post('/projects/{projectId}/cache/clear', [App\Http\Controllers\Api\CacheController::class, 'clearProjectCache']);
     Route::post('/cache/cleanup', [App\Http\Controllers\Api\CacheController::class, 'cleanup']);
     Route::post('/cache/test-generation', [App\Http\Controllers\Api\CacheController::class, 'testGeneration']);
 
@@ -2360,6 +2398,7 @@ Route::middleware('auth:api')->group(function () {
     // FormSet Windows
     Route::get('/form-sets/{id}/windows', [FormDesignerController::class, 'windows']);
     Route::get('/form-sets/{id}/linked-projects', [FormDesignerController::class, 'getLinkedProjects']);
+    Route::get('/form-sets/{id}/usage', [FormDesignerController::class, 'usage']);
 
     // FormWindows
     Route::put('/form-windows/{id}', [FormDesignerController::class, 'updateWindow']);
@@ -2372,10 +2411,68 @@ Route::middleware('auth:api')->group(function () {
     // FormElements
     Route::delete('/form-elements/{id}', [FormDesignerController::class, 'deleteElement']);
 
-    // Project Integration
+    // Project Integration — FormSet defaults
     Route::post('/projects/{projectId}/form-set', [FormDesignerController::class, 'activateForProject']);
     Route::get('/projects/{projectId}/form-set', [FormDesignerController::class, 'getProjectFormSet']);
+    Route::delete('/projects/{projectId}/form-set', [FormDesignerController::class, 'deactivateForProject']);
+
+    // Project Integration — ReportPattern defaults
+    Route::post('/projects/{projectId}/report-pattern', [\App\Http\Controllers\Api\ReportPatternController::class, 'activateForProject']);
+    Route::get('/projects/{projectId}/report-pattern', [\App\Http\Controllers\Api\ReportPatternController::class, 'getProjectReportPattern']);
+    Route::delete('/projects/{projectId}/report-pattern', [\App\Http\Controllers\Api\ReportPatternController::class, 'deactivateForProject']);
+
+    // Form Layout Designer (field placements)
+    Route::get('/form-layout/{windowId}/placements', [\App\Http\Controllers\Api\FormLayoutController::class, 'index']);
+    Route::put('/form-layout/{windowId}/placements', [\App\Http\Controllers\Api\FormLayoutController::class, 'savePlacements']);
+    Route::post('/form-layout/{windowId}/auto-place', [\App\Http\Controllers\Api\FormLayoutController::class, 'autoPlace']);
+    Route::delete('/form-layout/placements/{id}', [\App\Http\Controllers\Api\FormLayoutController::class, 'destroy']);
+
+    // Form Layout Designer (button placements)
+    Route::get('/form-layout/{windowId}/buttons', [\App\Http\Controllers\Api\FormLayoutController::class, 'getButtonPlacements']);
+    Route::put('/form-layout/{windowId}/buttons', [\App\Http\Controllers\Api\FormLayoutController::class, 'saveButtonPlacements']);
+    Route::post('/form-layout/{windowId}/auto-place-buttons', [\App\Http\Controllers\Api\FormLayoutController::class, 'autoPlaceButtons']);
+
+    // Form Layout Designer (menu item placements)
+    Route::get('/form-layout/{windowId}/menu-items', [\App\Http\Controllers\Api\FormLayoutController::class, 'getMenuPlacements']);
+    Route::put('/form-layout/{windowId}/menu-items', [\App\Http\Controllers\Api\FormLayoutController::class, 'saveMenuPlacements']);
+    Route::post('/form-layout/{windowId}/auto-place-menu', [\App\Http\Controllers\Api\FormLayoutController::class, 'autoPlaceMenu']);
+
+    // ===== REPORT PATTERNS =====
+    Route::get('/report-patterns/access', [\App\Http\Controllers\Api\ReportPatternController::class, 'checkAccess']);
+    Route::get('/report-patterns', [\App\Http\Controllers\Api\ReportPatternController::class, 'index']);
+    Route::get('/report-patterns/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'show']);
+    Route::post('/report-patterns', [\App\Http\Controllers\Api\ReportPatternController::class, 'store']);
+    Route::put('/report-patterns/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'update']);
+    Route::delete('/report-patterns/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'destroy']);
+    Route::get('/report-patterns/{id}/usage', [\App\Http\Controllers\Api\ReportPatternController::class, 'usage']);
+    Route::post('/report-patterns/{id}/clone', [\App\Http\Controllers\Api\ReportPatternController::class, 'clone']);
+
+    // Report Pattern Forms
+    Route::get('/report-patterns/{id}/forms', [\App\Http\Controllers\Api\ReportPatternController::class, 'forms']);
+    Route::put('/report-pattern-forms/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'updateForm']);
+
+    // Report Pattern Elements (containers/sections on paper)
+    Route::get('/report-pattern-forms/{id}/elements', [\App\Http\Controllers\Api\ReportPatternController::class, 'elements']);
+    Route::put('/report-pattern-forms/{id}/elements', [\App\Http\Controllers\Api\ReportPatternController::class, 'saveElements']);
+    Route::post('/report-pattern-forms/{id}/elements', [\App\Http\Controllers\Api\ReportPatternController::class, 'addElement']);
+    Route::delete('/report-pattern-elements/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'deleteElement']);
+
+    // Report Layout Elements (placed fields/controls on paper)
+    Route::get('/report-layout/{formId}/elements', [\App\Http\Controllers\Api\ReportLayoutController::class, 'index']);
+    Route::put('/report-layout/{formId}/elements', [\App\Http\Controllers\Api\ReportLayoutController::class, 'savePlacements']);
+    Route::post('/report-layout/{formId}/auto-place', [\App\Http\Controllers\Api\ReportLayoutController::class, 'autoPlace']);
+    Route::post('/report-layout/{formId}/copy-pattern-controls', [\App\Http\Controllers\Api\ReportLayoutController::class, 'copyPatternControls']);
+    Route::delete('/report-layout/elements/{id}', [\App\Http\Controllers\Api\ReportLayoutController::class, 'destroy']);
+
+    // Report Images (auth-protected CRUD)
+    Route::get('/report-patterns/{patternId}/images', [\App\Http\Controllers\Api\ReportImageController::class, 'index']);
+    Route::post('/report-patterns/{patternId}/images', [\App\Http\Controllers\Api\ReportImageController::class, 'upload']);
+    Route::get('/report-images/{id}', [\App\Http\Controllers\Api\ReportImageController::class, 'show']);
+    Route::delete('/report-images/{id}', [\App\Http\Controllers\Api\ReportImageController::class, 'destroy']);
 });
+
+// Report Image serving (public — no auth required for <img src="..."> tags)
+Route::get('/report-images/{id}/data', [\App\Http\Controllers\Api\ReportImageController::class, 'serveImage']);
 
 // Service (scoriet-svc) Routes
 Route::middleware('auth:api')->prefix('svc')->group(function () {

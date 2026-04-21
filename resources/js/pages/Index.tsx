@@ -68,6 +68,7 @@ const DeploymentLogPanel = lazy(() => import('@/Components/Panels/DeploymentLogP
 const LanguageManagementPanel = lazy(() => import('@/Components/Panels/LanguageManagementPanel'));
 const SchemaTranslationPanel = lazy(() => import('@/Components/Panels/SchemaTranslationPanel'));
 const FieldAssignmentPanel = lazy(() => import('@/Components/Panels/FieldAssignmentPanel'));
+const ReportFieldAssignmentPanel = lazy(() => import('@/Components/Panels/ReportFieldAssignmentPanel'));
 const SystemSettingsPanel = lazy(() => import('@/Components/Panels/SystemSettingsPanel'));
 const PayoutAdminPanel = lazy(() => import('@/Components/Panels/PayoutAdminPanel'));
 const PerformanceMetricsPanel = lazy(() => import('@/Components/Panels/PerformanceMetricsPanel'));
@@ -81,6 +82,10 @@ const QueryBuilderPanel = lazy(() => import('@/Components/Panels/QueryBuilderPan
 const CacheDebugPanel = lazy(() => import('@/Components/Panels/CacheDebugPanel'));
 const FormDesignerPanel = lazy(() => import('@/Components/Panels/FormDesignerPanel'));
 const FormSetManagementPanel = lazy(() => import('@/Components/Panels/FormSetManagementPanel'));
+const FormLayoutDesignerPanel = lazy(() => import('@/Components/Panels/FormLayoutDesignerPanel'));
+const ReportManagementPanel = lazy(() => import('@/Components/Panels/ReportManagementPanel'));
+const ReportPatternDesignerPanel = lazy(() => import('@/Components/Panels/ReportPatternDesignerPanel'));
+const ReportLayoutDesignerPanel = lazy(() => import('@/Components/Panels/ReportLayoutDesignerPanel'));
 const CodeAdjustmentsPanel = lazy(() => import('@/Components/Panels/CodeAdjustmentsPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
@@ -637,7 +642,7 @@ const loadTab = (
 
       return {
         id,
-        title: data.title || t.index590,
+        title: data.title || t.tab_code_vorlagen_verwaltung || t.index590,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateManagementPanel filterByProject={shouldShowProjectFilter} updateTabTitle={actualUpdateTitleCallback} />
@@ -651,7 +656,7 @@ const loadTab = (
     case 'template-review':
       return {
         id,
-        title: t.index653,
+        title: t.tab_code_vorlagen_review || t.index653,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateReviewPanel />
@@ -664,7 +669,7 @@ const loadTab = (
     case 'template-store':
       return {
         id,
-        title: t.index666,
+        title: t.tab_code_vorlagen_shop || t.index666,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateStorePanel />
@@ -813,7 +818,7 @@ const loadTab = (
     case 'template-db-schema-dependencies':
       return {
         id,
-        title: data.title || t.index815,
+        title: data.title || t.tab_code_vorlagen_schema_deps || t.index815,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <TemplateDbSchemaDependenciesPanel />
@@ -904,6 +909,19 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <FieldAssignmentPanel />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'report-field-assignments':
+      return {
+        id,
+        title: data.title || (t as unknown as Record<string, string>).reportfieldassignmentpanel_title || 'Report Field Assignments',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ReportFieldAssignmentPanel />
           </Suspense>
         ),
         closable: true,
@@ -1043,7 +1061,7 @@ const loadTab = (
     case 'form-designer':
       return {
         id,
-        title: data.title || t.index1032,
+        title: data.title || t.tab_form_vorlagen_designer || t.index1032,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <FormDesignerPanel
@@ -1056,10 +1074,25 @@ const loadTab = (
         group: 'card custom'
       };
 
+    case 'form-layout-designer':
+      return {
+        id,
+        title: data.title || t.tab_form_profil_designer || t.index_form_layout_designer || 'Form Layout Designer',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <FormLayoutDesignerPanel
+              onOpenPanel={openPanelFn}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'code-adjustments':
       return {
         id,
-        title: data.title || t.index1048,
+        title: data.title || t.tab_code_anpassungen || t.index1048,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <CodeAdjustmentsPanel />
@@ -1072,10 +1105,59 @@ const loadTab = (
     case 'formset-management':
       return {
         id,
-        title: data.title || t.index1061,
+        title: data.title || t.tab_form_vorlagen_verwaltung || t.index1061,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <FormSetManagementPanel
+              onOpenPanel={openPanelFn}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'report-management':
+      return {
+        id,
+        title: data.title || t.tab_report_vorlagen_verwaltung || t.reportmanagement_title || 'Report Management',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ReportManagementPanel
+              onOpenPanel={openPanelFn}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'report-pattern-designer':
+      return {
+        id,
+        title: data.title || t.tab_report_vorlagen_designer || t.reportpatterndesigner_title || 'Report Pattern Designer',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ReportPatternDesignerPanel
+              reportPatternId={data.reportPatternId as number}
+              onOpenPanel={openPanelFn}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
+    case 'report-layout-designer':
+      return {
+        id,
+        title: data.title || t.tab_report_profil_designer || t.reportlayoutdesigner_title || 'Report Layout Designer',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <ReportLayoutDesignerPanel
+              reportPatternId={data.reportPatternId as number}
+              formType={data.formType as string}
+              language={data.language as string}
               onOpenPanel={openPanelFn}
             />
           </Suspense>
@@ -2165,18 +2247,26 @@ export default function Index(props: IndexProps = {}) {
 
       const existingTab = ref.current.find(uniqueTabId);
 
+      // If forceNew is set, remove existing tab and reopen after a short delay
+      if (existingTab && data?.forceNew) {
+        ref.current.dockMove(existingTab, null, 'remove');
+        // Re-call openPanel after DOM processes the removal
+        const cleanData = { ...data, forceNew: false };
+        setTimeout(() => openPanel(panelId, cleanData), 300);
+        return;
+      }
+
       if (existingTab) {
         // Tab exists, just activate it within the tabset without moving
         if (existingTab.parent && existingTab.parent.activeId !== uniqueTabId) {
-          // Update the parent tabset to make this tab active
           existingTab.parent.activeId = uniqueTabId;
-          // Force re-render by updating layout
           const currentLayout = ref.current.saveLayout();
           updateLayout({...currentLayout});
         }
-        // Tab is already active, do nothing
         return;
-      } else {
+      }
+
+      {
         // Create new tab with updateTabTitle callback
         const updateTitleCallback = (newTitle: string) => {
           updateTabTitle(ref, setLayout, uniqueTabId, newTitle);

@@ -1,9 +1,12 @@
 // resources/js/Components/Panels/FormDesignerPanel.tsx - Visual Form/Window Designer
 import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import AnchorSection from './AnchorSection';
+import TabOrderModal from '../Modals/TabOrderModal';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { ConfirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
+import { Menu } from 'primereact/menu';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -54,7 +57,7 @@ interface FormWindow {
   form_set_id: number;
   name: string;
   display_name?: string;
-  window_type: 'main_menu' | 'create_edit' | 'data_table' | 'report_single' | 'report_list';
+  window_type: 'main_menu' | 'create_edit' | 'data_table';
   min_width: number;
   min_height: number;
   default_width: number;
@@ -75,11 +78,17 @@ interface FormElement {
   y_position: number;
   width: number;
   height: number;
+  // Anchor
+  anchor_right?: number | null;
+  anchor_bottom?: number | null;
+  anchor_width?: number | null;
+  anchor_height?: number | null;
   // Container-spezifisch
   container_orientation?: 'vertical' | 'horizontal';
   max_fields?: number;
   container_gap?: number;
   container_columns?: number;
+  default_control_height?: number;
   // Button-spezifisch
   button_label?: string;
   button_icon?: string;
@@ -91,6 +100,7 @@ interface FormElement {
   parent_tab_container_id?: number;
   custom_style?: Record<string, unknown>;
   sort_order: number;
+  tab_order?: number;
   is_visible: boolean;
 }
 
@@ -120,6 +130,10 @@ const DEFAULT_ICONS: Record<string, string> = {
   button_new: 'pi-plus',
   button_delete: 'pi-trash',
 };
+
+// Stable reference for ReactFlow's multiSelectionKeyCode prop — must NOT be
+// recreated each render, otherwise the internal store loops on updates.
+const MULTI_SELECTION_KEYS = ['Control', 'Shift', 'Meta'];
 
 // ========== HELPER FUNCTIONS ==========
 
@@ -349,6 +363,7 @@ interface WindowFrameNodeData {
 
 const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
   const { t } = useTranslation(getStoredLanguage());
+  const HEADER_H = 32;
   return (
     <div
       className="pointer-events-none"
@@ -360,14 +375,22 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
         backgroundColor: data.windowColor || '#374151',
         position: 'relative',
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+        overflow: 'hidden',
       }}
     >
-      {/* Window title bar */}
+      {/* Window title bar — INSIDE the window (32px), elements start below this */}
       <div
-        className="absolute -top-7 left-0 right-0 flex items-center justify-between px-2 py-1 rounded-t text-xs"
         style={{
+          height: HEADER_H,
           backgroundColor: '#6366f1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 8px',
+          borderTopLeftRadius: 6,
+          borderTopRightRadius: 6,
           color: 'white',
+          fontSize: 12,
         }}
       >
         <span className="font-medium">
@@ -379,13 +402,15 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
         </span>
       </div>
 
-      {/* Min size indicator (inner dashed rectangle) */}
+      {/* Min size indicator (inner dashed rectangle, offset by header) */}
       {(data.minWidth < data.defaultWidth || data.minHeight < data.defaultHeight) && (
         <div
-          className="absolute top-0 left-0 pointer-events-none"
+          className="absolute pointer-events-none"
           style={{
+            top: HEADER_H,
+            left: 0,
             width: data.minWidth,
-            height: data.minHeight,
+            height: data.minHeight - HEADER_H,
             border: '1px dashed rgba(255,255,255,0.3)',
             borderRadius: '4px',
           }}
@@ -396,8 +421,6 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
       {/* Corner indicators */}
       <div className="absolute -bottom-1 -right-1 w-3 h-3 border-r-2 border-b-2 border-indigo-500 rounded-br"></div>
       <div className="absolute -bottom-1 -left-1 w-3 h-3 border-l-2 border-b-2 border-indigo-500 rounded-bl"></div>
-      <div className="absolute -top-1 -right-1 w-3 h-3 border-r-2 border-t-2 border-indigo-500 rounded-tr"></div>
-      <div className="absolute -top-1 -left-1 w-3 h-3 border-l-2 border-t-2 border-indigo-500 rounded-tl"></div>
 
       {/* Size labels at edges */}
       <div
@@ -497,6 +520,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const [edges, _setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedElement, setSelectedElement] = useState<FormElement | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  // Tab Order: ordered multi-selection of element ids in the order they were clicked
+  const [orderedSelection, setOrderedSelection] = useState<number[]>([]);
+  const [tabOrderModalVisible, setTabOrderModalVisible] = useState(false);
+  const tabOrderMenuRef = useRef<Menu>(null);
 
   // State - Modals
   const [createFormSetModalVisible, setCreateFormSetModalVisible] = useState(false);
@@ -521,8 +548,6 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     main_menu: t.formdesignerpanel520,
     create_edit: t.formdesignerpanel521,
     data_table: t.formdesignerpanel522,
-    report_single: t.formdesignerpanel523,
-    report_list: t.formdesignerpanel524,
   };
 
   // ========== ELEMENT TYPE DEFINITIONS ==========
@@ -712,6 +737,45 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
         // Reload list after setting localStorage
         await loadFormSets();
+
+        // Offer to set the new FormSet as project default — but only if no
+        // default is currently set, so we don't pester the user on every create.
+        if (data.data?.id && selectedProject?.id) {
+          const newId = data.data.id as number;
+          const projectId = selectedProject.id;
+          try {
+            const checkRes = await fetch(`/api/projects/${projectId}/form-set`, {
+              headers: getAuthHeaders(),
+            });
+            if (checkRes.ok) {
+              const checkData = await checkRes.json();
+              if (!checkData?.data?.id) {
+                confirmDialog({
+                  group: 'form-designer',
+                  header: (t as unknown as Record<string, string>).formsetdefault_prompt_title || 'Set as project default?',
+                  message: (t as unknown as Record<string, string>).formsetdefault_prompt_message
+                    || 'This is the first Form Set in this project. Use it as the default? You can change this anytime in the project settings.',
+                  icon: 'pi pi-question-circle',
+                  acceptLabel: (t as unknown as Record<string, string>).formdesignerpanel_yes || 'Yes',
+                  rejectLabel: (t as unknown as Record<string, string>).formdesignerpanel_no || 'No',
+                  accept: async () => {
+                    try {
+                      await fetch(`/api/projects/${projectId}/form-set`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ form_set_id: newId }),
+                      });
+                    } catch {
+                      // ignore — user can always set it manually in project settings
+                    }
+                  },
+                });
+              }
+            }
+          } catch {
+            // ignore — fallback path: user sets default manually in project settings
+          }
+        }
       } else {
         showToast('error', t.messageError, data.error || t.formdesignerpanel715);
       }
@@ -721,7 +785,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     } finally {
       setSaving(false);
     }
-  }, [newFormSetName, newFormSetDescription, newFormSetVisibility, loadFormSets, showToast]);
+  }, [newFormSetName, newFormSetDescription, newFormSetVisibility, loadFormSets, showToast, selectedProject?.id, t]);
 
   const saveElements = useCallback(async () => {
     if (!selectedWindow) return;
@@ -750,14 +814,20 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           form_window_id: selectedWindow.id,
           element_type: node.data.element.element_type,
           x_position: Math.round(node.position.x),
-          y_position: Math.round(node.position.y),
+          y_position: Math.round(node.position.y - 32), // Subtract header offset (elements are displayed +32px)
           width: Math.round(width),
           height: Math.round(height),
+          // Anchor
+          anchor_right: node.data.element.anchor_right ?? null,
+          anchor_bottom: node.data.element.anchor_bottom ?? null,
+          anchor_width: node.data.element.anchor_width ?? null,
+          anchor_height: node.data.element.anchor_height ?? null,
           // Container-spezifisch
           container_orientation: node.data.element.container_orientation,
           max_fields: node.data.element.max_fields,
           container_gap: node.data.element.container_gap,
           container_columns: node.data.element.container_columns,
+          default_control_height: node.data.element.default_control_height,
           // Button-spezifisch
           button_label: node.data.element.button_label,
           button_icon: node.data.element.button_icon,
@@ -769,6 +839,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           parent_tab_container_id: node.data.element.parent_tab_container_id,
           custom_style: node.data.element.custom_style,
           sort_order: index,
+          tab_order: node.data.element.tab_order ?? 0,
           is_visible: node.data.element.is_visible ?? true,
         };
       });
@@ -823,10 +894,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 return {
                   ...node,
                   id: newNodeId,
-                  // Use server-returned positions to ensure consistency
+                  // Use server-returned positions + header offset for display
                   position: {
                     x: serverElement.x_position,
-                    y: serverElement.y_position,
+                    y: serverElement.y_position + 32,
                   },
                   // Update dimensions from server
                   width: serverElement.width,
@@ -882,6 +953,101 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       setSaving(false);
     }
   }, [selectedWindow, nodes, selectedNodeId, showToast]);
+
+  // ========== TAB ORDER HELPERS ==========
+
+  // Apply a mapping of {elementId -> tab_order} to the element nodes and selectedElement.
+  const applyTabOrderMap = useCallback((map: Map<number, number>) => {
+    setNodes(prev => prev.map(n => {
+      if (n.type !== 'formElement') return n;
+      const el = n.data?.element as FormElement | undefined;
+      if (!el || el.id == null) return n;
+      const newOrder = map.get(el.id);
+      if (newOrder == null) return n;
+      const updatedEl = { ...el, tab_order: newOrder };
+      return { ...n, data: { ...n.data, element: updatedEl } };
+    }));
+    setSelectedElement(prev => {
+      if (!prev || prev.id == null) return prev;
+      const newOrder = map.get(prev.id);
+      if (newOrder == null) return prev;
+      return { ...prev, tab_order: newOrder };
+    });
+    setHasUnsavedChanges(true);
+  }, [setNodes]);
+
+  // Assign 1..N to ids in orderedSelection in click order.
+  const tabOrderFromSelection = useCallback(() => {
+    if (orderedSelection.length < 2) {
+      showToast('warn', t.formdesignerpanel_taborder_from_selection,
+        'Please Ctrl/Shift+Click at least two elements first.');
+      return;
+    }
+    const map = new Map<number, number>();
+    orderedSelection.forEach((id, idx) => map.set(id, idx + 1));
+    applyTabOrderMap(map);
+  }, [orderedSelection, applyTabOrderMap, showToast, t]);
+
+  // Assign tab order automatically by visual order: top→bottom (row buckets), then left→right.
+  // Elements with tab_order === -1 (no tab stop) are skipped and stay at -1.
+  const tabOrderAuto = useCallback(() => {
+    const elementNodes = nodes.filter(n => n.type === 'formElement');
+    const ROW_BUCKET = 20; // group elements within 20px Y-distance into the same row
+    const sorted = [...elementNodes]
+      .map(n => {
+        const el = n.data.element as FormElement;
+        // n.position.y has +32 header offset; use actual element y
+        const y = (typeof n.position?.y === 'number') ? n.position.y - 32 : el.y_position;
+        const x = (typeof n.position?.x === 'number') ? n.position.x : el.x_position;
+        return { id: el.id, tab_order: el.tab_order ?? 0, x, y, rowBucket: Math.round(y / ROW_BUCKET) };
+      })
+      .filter(item => item.id != null && item.tab_order !== -1)
+      .sort((a, b) => {
+        if (a.rowBucket !== b.rowBucket) return a.rowBucket - b.rowBucket;
+        if (a.x !== b.x) return a.x - b.x;
+        return a.y - b.y;
+      });
+    const map = new Map<number, number>();
+    sorted.forEach((item, idx) => map.set(item.id as number, idx + 1));
+    applyTabOrderMap(map);
+  }, [nodes, applyTabOrderMap]);
+
+  // Memoized SplitButton menu model — must be stable across renders to avoid
+  // PrimeReact TieredMenu's "Maximum update depth exceeded" loop.
+  const tabOrderMenuModel = useMemo(() => ([
+    {
+      label: t.formdesignerpanel_taborder_from_selection,
+      icon: 'pi pi-list',
+      disabled: orderedSelection.length < 2,
+      command: () => tabOrderFromSelection(),
+    },
+    {
+      label: t.formdesignerpanel_taborder_auto,
+      icon: 'pi pi-sort-numeric-down',
+      command: () => tabOrderAuto(),
+    },
+    {
+      label: t.formdesignerpanel_taborder_edit,
+      icon: 'pi pi-pencil',
+      command: () => setTabOrderModalVisible(true),
+    },
+  ]), [
+    t.formdesignerpanel_taborder_from_selection,
+    t.formdesignerpanel_taborder_auto,
+    t.formdesignerpanel_taborder_edit,
+    orderedSelection.length,
+    tabOrderFromSelection,
+    tabOrderAuto,
+  ]);
+
+  // Modal apply: activeIds get 1..N (in array order); excludedIds get -1 (no tab stop).
+  const tabOrderApplyFromModal = useCallback((activeIds: number[], excludedIds: number[]) => {
+    const map = new Map<number, number>();
+    activeIds.forEach((id, idx) => map.set(id, idx + 1));
+    excludedIds.forEach(id => map.set(id, -1));
+    applyTabOrderMap(map);
+    setTabOrderModalVisible(false);
+  }, [applyTabOrderMap]);
 
   // Update window property and refresh the window frame node
   const updateWindowProperty = useCallback((property: string, value: number | string | null) => {
@@ -994,7 +1160,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     const newNode = {
       id: `new-${Date.now()}`,
       type: 'formElement',
-      position: { x, y },
+      position: { x, y: y + 32 }, // Offset by header height
       data: {
         element: newElement,
         onSelect: setSelectedElement,
@@ -1224,13 +1390,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       },
     };
 
-    // Create element nodes - mit default Button-Farben aus dem FormSet
+    // Create element nodes - offset by header height (32px) so elements appear below the title bar
+    const HEADER_OFFSET = 32;
     const defaultButtonColor = selectedFormSet?.default_button_color || '#3b82f6';
     const defaultButtonTextColor = selectedFormSet?.default_button_text_color || '#ffffff';
     const elementNodes = (selectedWindow.elements || []).map((element, index) => ({
       id: `element-${element.id || index}`,
       type: 'formElement',
-      position: { x: element.x_position, y: element.y_position },
+      position: { x: element.x_position, y: element.y_position + HEADER_OFFSET },
       data: {
         element,
         onSelect: setSelectedElement,
@@ -1274,7 +1441,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
     return {
       x: Math.round(node.position.x),
-      y: Math.round(node.position.y),
+      y: Math.round(node.position.y - 32), // Subtract header offset for display
       width: parseSize(node.measured?.width ?? node.width ?? node.style?.width, selectedElement?.width ?? 100),
       height: parseSize(node.measured?.height ?? node.height ?? node.style?.height, selectedElement?.height ?? 40),
     };
@@ -1386,6 +1553,38 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 {t.formdesignerpanel1381}
               </span>
             )}
+            {selectedFormSet && (
+              <Button
+                icon="pi pi-th-large"
+                className="p-button-help p-button-sm p-button-outlined"
+                tooltip={t.formsetmanagementpanel_open_layout || 'Open in Layout Designer'}
+                tooltipOptions={{ position: 'bottom' }}
+                onClick={() => {
+                  localStorage.setItem('form_layout_preselect', JSON.stringify({
+                    formSetId: selectedFormSet.id,
+                    windowType: selectedWindow?.window_type,
+                    timestamp: Date.now(),
+                  }));
+                  onOpenPanel?.('form-layout-designer', {
+                    title: `Form Layout: ${selectedFormSet.name}`,
+                    forceNew: true,
+                  });
+                }}
+              />
+            )}
+            {selectedWindow && (
+              <>
+                <Menu model={tabOrderMenuModel} popup ref={tabOrderMenuRef} id="tab-order-menu" />
+                <Button
+                  label={t.formdesignerpanel_taborder_menu}
+                  icon="pi pi-sort-numeric-down"
+                  className="p-button-info p-button-sm p-button-outlined"
+                  onClick={(e) => tabOrderMenuRef.current?.toggle(e)}
+                  aria-controls="tab-order-menu"
+                  aria-haspopup
+                />
+              </>
+            )}
             <Button
               icon="pi pi-save"
               label={t.formdesignerpanel1386}
@@ -1481,14 +1680,54 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 nodes={nodes}
                 edges={edges}
                 onNodesChange={(changes) => {
-                  onNodesChange(changes);
+                  // Clamp element positions and dimensions to window inner bounds
+                  // Window = 800x600 total, Header = 32px, usable area = 800x568
+                  const HEADER_HEIGHT = 32;
+                  const maxW = selectedWindow?.default_width || 800;
+                  const windowH = selectedWindow?.default_height || 600;
+
+                  // Check if any position change is part of a resize (drag flag on position during resize)
+                  const isResizeInProgress = changes.some((c) => c.type === 'dimensions');
+
+                  const clampedChanges = changes.map((change) => {
+                    if (change.type === 'position' && change.position && !change.id.startsWith('window-')) {
+                      const node = nodes.find((n) => n.id === change.id);
+                      const nodeW = (node?.style as Record<string, number>)?.width || node?.measured?.width || 100;
+                      const nodeH = (node?.style as Record<string, number>)?.height || node?.measured?.height || 40;
+                      return {
+                        ...change,
+                        position: {
+                          x: Math.max(0, Math.min(change.position.x, maxW - nodeW)),
+                          // During resize from top: allow y to change freely within window bounds
+                          // During drag: keep above header
+                          y: isResizeInProgress
+                            ? Math.max(HEADER_HEIGHT, Math.min(change.position.y, windowH - 20))
+                            : Math.max(HEADER_HEIGHT, Math.min(change.position.y, windowH - nodeH)),
+                        },
+                      };
+                    }
+                    if (change.type === 'dimensions' && change.dimensions && !change.id.startsWith('window-')) {
+                      const node = nodes.find((n) => n.id === change.id);
+                      const nodeX = node?.position?.x || 0;
+                      const nodeY = node?.position?.y || HEADER_HEIGHT;
+                      return {
+                        ...change,
+                        dimensions: {
+                          width: Math.min(change.dimensions.width, maxW - nodeX),
+                          height: Math.min(change.dimensions.height, windowH - nodeY),
+                        },
+                      };
+                    }
+                    return change;
+                  });
+                  onNodesChange(clampedChanges);
                   // Track drag/resize state to detect when operations complete
                   // On initial load: dragging/resizing are undefined (we ignore these)
                   // During mouse drag/resize: dragging/resizing are true, then false at end
                   // Keyboard moves: dragging is false with position (no true beforehand)
                   let hasRealChange = false;
 
-                  for (const change of changes) {
+                  for (const change of clampedChanges) {
                     if (change.type === 'position') {
                       const posChange = change as { type: 'position'; dragging?: boolean; position?: { x: number; y: number } };
                       if (posChange.dragging === true) {
@@ -1525,9 +1764,33 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 }}
                 onEdgesChange={onEdgesChange}
                 nodeTypes={nodeTypes}
+                multiSelectionKeyCode={MULTI_SELECTION_KEYS}
+                onPaneClick={() => {
+                  setOrderedSelection([]);
+                }}
                 onSelectionChange={({ nodes: selectedNodes }) => {
                   // Filter to only formElement nodes (exclude window-frame)
                   const elementNodes = selectedNodes.filter(n => n.type === 'formElement');
+
+                  // Sync orderedSelection from the authoritative ReactFlow selection.
+                  // Keep elements already in our list (preserving click order),
+                  // append newly-selected elements at the end, drop removed ones.
+                  const currentlySelectedIds = elementNodes
+                    .map(n => (n.data?.element as FormElement | undefined)?.id)
+                    .filter((id): id is number => typeof id === 'number');
+                  setOrderedSelection(prev => {
+                    const stillSelected = prev.filter(id => currentlySelectedIds.includes(id));
+                    const newlyAdded = currentlySelectedIds.filter(id => !prev.includes(id));
+                    const next = [...stillSelected, ...newlyAdded];
+                    // Bail out if nothing actually changed — returning a new
+                    // array reference here would re-render and feed ReactFlow
+                    // a new onSelectionChange ref, triggering an update loop.
+                    if (next.length === prev.length && next.every((id, i) => id === prev[i])) {
+                      return prev;
+                    }
+                    return next;
+                  });
+
                   if (elementNodes.length > 0) {
                     // Only update selectedElement if the selection actually changed (different node)
                     // This prevents overwriting property changes made via the Properties Panel
@@ -1605,7 +1868,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                       {selectedElement.element_type.startsWith('button_') && (
                         <>
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1603}</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                              {t.formdesignerpanel1603} {selectedProject?.enabled_languages && selectedProject.enabled_languages.length > 0 ? `(Default)` : ''}
+                            </label>
                             <InputText
                               value={selectedElement.button_label || ''}
                               onChange={(e) => {
@@ -1623,6 +1888,40 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               className="w-full p-inputtext-sm"
                             />
                           </div>
+                          {/* Per-language button labels */}
+                          {selectedProject?.enabled_languages && selectedProject.enabled_languages.length > 0 && (
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Label per Language</label>
+                              {selectedProject.enabled_languages.map((langCode: string) => {
+                                const labels = (selectedElement.custom_style?.button_labels || {}) as Record<string, string>;
+                                return (
+                                  <div key={langCode} className="flex items-center gap-2 mb-1">
+                                    <span style={{ fontSize: 10, width: 24, textAlign: 'right', color: colors.textMuted, fontWeight: 600 }}>{langCode.toUpperCase()}</span>
+                                    <InputText
+                                      value={labels[langCode] || ''}
+                                      onChange={(e) => {
+                                        const newLabels = { ...labels };
+                                        if (e.target.value) newLabels[langCode] = e.target.value;
+                                        else delete newLabels[langCode];
+                                        const newStyle = { ...(selectedElement.custom_style || {}), button_labels: Object.keys(newLabels).length > 0 ? newLabels : undefined };
+                                        const newElement = { ...selectedElement, custom_style: newStyle };
+                                        setSelectedElement(newElement);
+                                        if (selectedNodeId) {
+                                          setNodes(prev => prev.map(n =>
+                                            n.id === selectedNodeId ? { ...n, data: { ...n.data, element: newElement } } : n
+                                          ));
+                                        }
+                                        setHasUnsavedChanges(true);
+                                      }}
+                                      placeholder={selectedElement.button_label || ''}
+                                      className="flex-1 p-inputtext-sm"
+                                      style={{ fontSize: 11 }}
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                           <div>
                             <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Icon (pi-xxx)</label>
                             <InputText
@@ -1777,7 +2076,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
                       {selectedElement.element_type === 'container' && (
                         <div>
-                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1776}</label>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                            {selectedWindow?.window_type === 'data_table'
+                              ? (t.formdesignerpanel_max_columns || 'Max. Anzahl Spalten')
+                              : t.formdesignerpanel1776}
+                          </label>
                           <InputNumber
                             value={selectedElement.max_fields || null}
                             onChange={(e) => {
@@ -1794,20 +2097,78 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             }}
                             className="w-full"
                             min={0}
-                            placeholder={t.formdesignerpanel1793}
+                            placeholder={selectedWindow?.window_type === 'data_table'
+                              ? (t.formdesignerpanel_all_columns || 'Alle Spalten')
+                              : t.formdesignerpanel1793}
                           />
                         </div>
                       )}
 
-                      {/* Container-Eigenschaften: Gap und Columns */}
+                      {/* Container-Eigenschaften: Gap, Columns, Control Height */}
                       {['container', 'menu_container', 'tab_container'].includes(selectedElement.element_type) && (
                         <>
+                          {/* Gap - hidden for data_table */}
+                          {selectedWindow?.window_type !== 'data_table' && (
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1801}</label>
+                              <InputNumber
+                                value={selectedElement.container_gap ?? 8}
+                                onChange={(e) => {
+                                  const newElement = { ...selectedElement, container_gap: e.value ?? 8 };
+                                  setSelectedElement(newElement);
+                                  if (selectedNodeId) {
+                                    setNodes(prev => prev.map(n =>
+                                      n.id === selectedNodeId
+                                        ? { ...n, data: { ...n.data, element: newElement } }
+                                        : n
+                                    ));
+                                  }
+                                  setHasUnsavedChanges(true);
+                                }}
+                                className="w-full"
+                                min={0}
+                                max={50}
+                                suffix=" px"
+                              />
+                            </div>
+                          )}
+                          {/* Columns - hidden for data_table */}
+                          {selectedWindow?.window_type !== 'data_table' && (
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1823}</label>
+                              <select
+                                value={selectedElement.container_columns ?? 1}
+                                onChange={(e) => {
+                                  const newElement = { ...selectedElement, container_columns: parseInt(e.target.value) };
+                                  setSelectedElement(newElement);
+                                  if (selectedNodeId) {
+                                    setNodes(prev => prev.map(n =>
+                                      n.id === selectedNodeId
+                                        ? { ...n, data: { ...n.data, element: newElement } }
+                                        : n
+                                    ));
+                                  }
+                                  setHasUnsavedChanges(true);
+                                }}
+                                className="w-full p-2 rounded text-sm focus:outline-none"
+                                style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                              >
+                                <option value={1}>1 Spalte</option>
+                                <option value={2}>2 Spalten</option>
+                                <option value={3}>3 Spalten</option>
+                              </select>
+                            </div>
+                          )}
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1801}</label>
+                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                              {selectedWindow?.window_type === 'data_table'
+                                ? (t.formdesignerpanel_row_height || 'Standard Zeilenhoehe (px)')
+                                : (t.formdesignerpanel_default_control_height || 'Standard Feldhoehe (px)')}
+                            </label>
                             <InputNumber
-                              value={selectedElement.container_gap ?? 8}
-                              onChange={(e) => {
-                                const newElement = { ...selectedElement, container_gap: e.value ?? 8 };
+                              value={selectedElement.default_control_height ?? 56}
+                              onValueChange={(e) => {
+                                const newElement = { ...selectedElement, default_control_height: e.value ?? 56 };
                                 setSelectedElement(newElement);
                                 if (selectedNodeId) {
                                   setNodes(prev => prev.map(n =>
@@ -1819,34 +2180,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                                 setHasUnsavedChanges(true);
                               }}
                               className="w-full"
-                              min={0}
-                              max={50}
+                              min={10}
+                              max={200}
                               suffix=" px"
                             />
-                          </div>
-                          <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1823}</label>
-                            <select
-                              value={selectedElement.container_columns ?? 1}
-                              onChange={(e) => {
-                                const newElement = { ...selectedElement, container_columns: parseInt(e.target.value) };
-                                setSelectedElement(newElement);
-                                if (selectedNodeId) {
-                                  setNodes(prev => prev.map(n =>
-                                    n.id === selectedNodeId
-                                      ? { ...n, data: { ...n.data, element: newElement } }
-                                      : n
-                                  ));
-                                }
-                                setHasUnsavedChanges(true);
-                              }}
-                              className="w-full p-2 rounded text-sm focus:outline-none"
-                              style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
-                            >
-                              <option value={1}>1 Spalte</option>
-                              <option value={2}>2 Spalten</option>
-                              <option value={3}>3 Spalten</option>
-                            </select>
                           </div>
                         </>
                       )}
@@ -1904,7 +2241,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>X</label>
                           <InputNumber
                             value={selectedNodeData?.x ?? selectedElement.x_position}
-                            onChange={(e) => {
+                            onValueChange={(e) => {
                               const newX = snapToGrid
                                 ? Math.round((e.value ?? 0) / gridSize) * gridSize
                                 : e.value ?? 0;
@@ -1919,7 +2256,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               }
                               setHasUnsavedChanges(true);
                             }}
-                            className="w-full"
+                            useGrouping={false}
+                            inputStyle={{ width: '110px' }}
                             min={0}
                             step={snapToGrid ? gridSize : 1}
                           />
@@ -1928,7 +2266,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Y</label>
                           <InputNumber
                             value={selectedNodeData?.y ?? selectedElement.y_position}
-                            onChange={(e) => {
+                            onValueChange={(e) => {
                               const newY = snapToGrid
                                 ? Math.round((e.value ?? 0) / gridSize) * gridSize
                                 : e.value ?? 0;
@@ -1937,13 +2275,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               if (selectedNodeId) {
                                 setNodes(prev => prev.map(n =>
                                   n.id === selectedNodeId
-                                    ? { ...n, position: { ...n.position, y: newY }, data: { ...n.data, element: newElement } }
+                                    ? { ...n, position: { ...n.position, y: newY + 32 }, data: { ...n.data, element: newElement } }
                                     : n
                                 ));
                               }
                               setHasUnsavedChanges(true);
                             }}
-                            className="w-full"
+                            useGrouping={false}
+                            inputStyle={{ width: '110px' }}
                             min={0}
                             step={snapToGrid ? gridSize : 1}
                           />
@@ -1955,7 +2294,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1950}</label>
                           <InputNumber
                             value={selectedNodeData?.width ?? selectedElement.width}
-                            onChange={(e) => {
+                            onValueChange={(e) => {
                               const newWidth = snapToGrid
                                 ? Math.round((e.value ?? 40) / gridSize) * gridSize
                                 : e.value ?? 40;
@@ -1975,7 +2314,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               }
                               setHasUnsavedChanges(true);
                             }}
-                            className="w-full"
+                            useGrouping={false}
+                            inputStyle={{ width: '110px' }}
                             min={20}
                             step={snapToGrid ? gridSize : 1}
                           />
@@ -1984,7 +2324,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1979}</label>
                           <InputNumber
                             value={selectedNodeData?.height ?? selectedElement.height}
-                            onChange={(e) => {
+                            onValueChange={(e) => {
                               const newHeight = snapToGrid
                                 ? Math.round((e.value ?? 20) / gridSize) * gridSize
                                 : e.value ?? 20;
@@ -2004,12 +2344,59 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               }
                               setHasUnsavedChanges(true);
                             }}
-                            className="w-full"
+                            useGrouping={false}
+                            inputStyle={{ width: '110px' }}
                             min={10}
                             step={snapToGrid ? gridSize : 1}
                           />
                         </div>
                       </div>
+
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel_taborder}</label>
+                        <InputNumber
+                          value={selectedElement.tab_order ?? 0}
+                          onValueChange={(e) => {
+                            const newTabOrder = Math.max(-1, Math.min(9999, e.value ?? 0));
+                            const newElement = { ...selectedElement, tab_order: newTabOrder };
+                            setSelectedElement(newElement);
+                            if (selectedNodeId) {
+                              setNodes(prev => prev.map(n =>
+                                n.id === selectedNodeId
+                                  ? { ...n, data: { ...n.data, element: newElement } }
+                                  : n
+                              ));
+                            }
+                            setHasUnsavedChanges(true);
+                          }}
+                          useGrouping={false}
+                          inputStyle={{ width: '110px' }}
+                          min={-1}
+                          max={9999}
+                          step={1}
+                        />
+                      </div>
+
+                      {/* Anchor */}
+                      <AnchorSection
+                        values={{
+                          anchor_right: selectedElement.anchor_right ?? null,
+                          anchor_bottom: selectedElement.anchor_bottom ?? null,
+                          anchor_width: selectedElement.anchor_width ?? null,
+                          anchor_height: selectedElement.anchor_height ?? null,
+                        }}
+                        onChange={(updates) => {
+                          const newElement = { ...selectedElement, ...updates };
+                          setSelectedElement(newElement);
+                          if (selectedNodeId) {
+                            setNodes(prev => prev.map(n =>
+                              n.id === selectedNodeId ? { ...n, data: { ...n.data, element: newElement } } : n
+                            ));
+                          }
+                          setHasUnsavedChanges(true);
+                        }}
+                        colors={colors}
+                      />
                     </div>
                   </div>
                 ) : selectedWindow ? (
@@ -2043,58 +2430,66 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         />
                       </div>
 
-                      {/* Window Sizes */}
-                      <div className="border-t pt-3" style={{ borderColor: colors.borderPrimary }}>
-                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2044}</h5>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2047}</label>
-                            <InputNumber
-                              value={selectedWindow.default_width}
-                              onChange={(e) => updateWindowProperty('default_width', e.value ?? 800)}
-                              className="w-full"
-                              min={100}
-                              step={10}
-                            />
+                      {/* Standard Window Sizes (paper/margin block removed —
+                          legacy report_single/report_list FormWindow types are
+                          gone; reports now live under ReportPattern). */}
+                      <>
+                          <div className="border-t pt-3" style={{ borderColor: colors.borderPrimary }}>
+                            <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2044}</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2047}</label>
+                                <InputNumber
+                                  value={selectedWindow.default_width}
+                                  onValueChange={(e) => updateWindowProperty('default_width', e.value ?? 800)}
+                                  useGrouping={false}
+                                  inputStyle={{ width: '110px' }}
+                                  min={100}
+                                  step={10}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Höhe</label>
+                                <InputNumber
+                                  value={selectedWindow.default_height}
+                                  onValueChange={(e) => updateWindowProperty('default_height', e.value ?? 600)}
+                                  useGrouping={false}
+                                  inputStyle={{ width: '110px' }}
+                                  min={100}
+                                  step={10}
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Höhe</label>
-                            <InputNumber
-                              value={selectedWindow.default_height}
-                              onChange={(e) => updateWindowProperty('default_height', e.value ?? 600)}
-                              className="w-full"
-                              min={100}
-                              step={10}
-                            />
-                          </div>
-                        </div>
-                      </div>
 
-                      <div>
-                        <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2069}</h5>
-                        <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2072}</label>
-                            <InputNumber
-                              value={selectedWindow.min_width}
-                              onChange={(e) => updateWindowProperty('min_width', e.value ?? 400)}
-                              className="w-full"
-                              min={100}
-                              step={10}
-                            />
+                            <h5 className="text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>{t.formdesignerpanel2069}</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2072}</label>
+                                <InputNumber
+                                  value={selectedWindow.min_width}
+                                  onValueChange={(e) => updateWindowProperty('min_width', e.value ?? 400)}
+                                  useGrouping={false}
+                                  inputStyle={{ width: '110px' }}
+                                  min={100}
+                                  step={10}
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2082}</label>
+                                <InputNumber
+                                  value={selectedWindow.min_height}
+                                  onValueChange={(e) => updateWindowProperty('min_height', e.value ?? 300)}
+                                  useGrouping={false}
+                                  inputStyle={{ width: '110px' }}
+                                  min={100}
+                                  step={10}
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel2082}</label>
-                            <InputNumber
-                              value={selectedWindow.min_height}
-                              onChange={(e) => updateWindowProperty('min_height', e.value ?? 300)}
-                              className="w-full"
-                              min={100}
-                              step={10}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      </>
 
                       {/* Window Colors */}
                       <div className="border-t pt-3 mt-3" style={{ borderColor: colors.borderPrimary }}>
@@ -2735,6 +3130,17 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           </div>
         </div>
       </Dialog>
+
+      {/* Tab Order Modal */}
+      <TabOrderModal
+        visible={tabOrderModalVisible}
+        elements={nodes
+          .filter(n => n.type === 'formElement')
+          .map(n => n.data?.element as FormElement)
+          .filter(el => el && el.id != null)}
+        onCancel={() => setTabOrderModalVisible(false)}
+        onApply={tabOrderApplyFromModal}
+      />
     </TabContent>
   );
 }

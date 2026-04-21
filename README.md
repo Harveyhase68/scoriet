@@ -1,6 +1,6 @@
 <div align="center">
 
-# Scoriet V 1.0.0.1 Latest Changes from 24.2.2026
+# Scoriet V 1.0.0.2 Latest Changes from 21.4.2026
 
 ### Enterprise Code Generator with Intelligent Templating
 
@@ -10,7 +10,7 @@
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?style=flat-square&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-purple.svg?style=flat-square)](https://inertiajs.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/agpl-3.0)
 [![Development Status](https://img.shields.io/badge/Status-%20Ready%20For%20Testing-green.svg?style=flat-square)](https://github.com/harveyhase68/scoriet)
 
 [**🧪 Live Demo**](https://demo.scoriet.dev) • [** Application**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
@@ -43,7 +43,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Maintenance Mode**: Professional 503 page for updates
 - ✅ **Responsive Design**: Works on desktop, tablet, and mobile
 - ✅ **Environment-based Features**: Demo vs. Production mode
-- ✅ **Development Tooling**: Full CI/CD, linting, testing setup
+- ✅ **Development Tooling**: Full CI/CD, linting, tsc, testing setup
 - ✅ **Accessibility**: WCAG compliant forms with proper autocomplete attributes
 
 #### 🗄️ **Database & Schema Management**
@@ -52,6 +52,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Link Fields**: Complete foreign key relationship support with display fields and ordering
 - ✅ **Referential Actions**: CASCADE, SET NULL, RESTRICT, NO ACTION for foreign keys
 - ✅ **Edit Masks**: Field-level input masks for data validation
+- ✅ **Per-Table/Field Generation State**: Two orthogonal ENUMs on every schema table and field — `display_state` (enabled, disabled, grayed, invisible, excluded) passes visual metadata into the gtree, and `generation_mode` (full, code_only, template_only, reference_only, excluded) controls which parts of the code-generator iterate a given table or field. Typical use: keep ASP.NET Identity `Users`/`Tenants` in the schema for FK resolution but exclude them from generated Controllers/Models/Forms.
+- ✅ **Resizable Table Modal**: The Database Designer's table editor (`TableModal`) now opens as a draggable, resizable, and maximizable dialog with two tabs — **Table Settings** (name, file key, generation state, FormSet/ReportPattern overrides) and **Fields** (per-field editor including the same state combos). No more cramped layouts when editing large tables.
 - ✅ **Schema Translation**: Multi-language support for table and field descriptions
 - ✅ **Excel Translation Import**: Bulk import translations from Excel files
 - ✅ **SQL Parser Engine**: Advanced MySQL and PostgreSQL schema parsing with relationship detection
@@ -67,12 +69,14 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 #### 🚀 **Code Generation System**
 - ✅ **Template Engine**: Powerful JavaScript-based code generation with conditionals
 - ✅ **Template Includes**: Reusable template snippets with `{:include: path/file.ext:}` syntax
-- ✅ **Template Tester & Debug**: Real-time template debugging and testing
+- ✅ **Template Tester & Debug**: Real-time template debugging and testing (with built-in filter that hides excluded/reference-only tables from the DB Table File dropdown)
 - ✅ **Full Code Generation**: Generate complete projects from multiple templates
 - ✅ **Multi-Template Support**: Stack multiple templates for complex applications
 - ✅ **Multi-Language Generation**: Generate code in multiple languages simultaneously
 - ✅ **Multi-Schema Generation**: Generate code in from multiple database schemas simultaneously
 - ✅ **Multi-Schema-Versioning (Migration) Generation**: Generate code in from multiple database schema versions simultaneously
+- ✅ **Indirection Arrays in gtree**: `gtree[0].project[0].tablesgen[]` and `tables[i].fieldsgen[]` — stable index arrays that drive `{:for nmaxtables:}` and `{:for nmaxitems:}` loops. All tables/fields stay in `tables[]` / `fields[]` for FK and by-name lookups; only iterable ones (mode `full` or `code_only`) are listed in the `*gen` arrays. This mirrors the proven `fieldsnokey` / `fieldsnoblob` pattern and fixes off-by-count iteration when some tables/fields have non-iterable generation modes — templates themselves need no changes, `tableIdx` / `i` still resolve to the actual record index inside the loop body.
+- ✅ **Schema State Metadata in gtree**: Every table and field entry in the generated gtree exposes `state`, `generation_mode`, `in_iteration`, and `generates_files` — user `{:code:}` blocks can branch on these (e.g. `{:if item.state == "grayed":}` or `{:if !table.generates_files:}`).
 - ✅ **Reverse Engineering (Code Adjustments)**: Compare previous generations with your actual code, create code adjustments as needed
 - ✅ **ZIP/tar Template Upload**: Upload complete template structures as ZIP or tar files
 - ✅ **File Path Organization**: Automatic directory structure for generated code
@@ -81,9 +85,34 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Progress Tracking**: Real-time generation progress with file counters
 - ✅ **ZIP/tar Download**: Package generated code with all files and error reports
 - ✅ **Form Designer**: Visual form design with database field integration
+- ✅ **Form Layout Designer**: Drag-and-drop field placement with container, label, and control type configuration
+- ✅ **Form Live Preview**: Real-time form rendering with simulated test data
+- ✅ **Form Set Management**: Create, clone, and share reusable form sets with visibility control
+- ✅ **Anchor System**: Responsive positioning for form elements (horizontal/vertical anchoring)
 - ✅ **Code Adjustments**: Post-generation code customization system
 - ✅ **Template Marketplace**: Share and download community templates
+- ✅ **Template Import Wizard**: Multi-step import workflow with extension presets and file tree browser
 - ✅ **FTP/SSH Upload**: Direct deployment via FTP or SFTP to remote servers
+
+#### 📊 **Report Designer**
+- ✅ **Report Pattern Designer**: Visual report pattern creation with sections (header, detail, footer)
+- ✅ **Report Layout Designer**: Detailed layout design with column resize, reorder, and font styling
+- ✅ **Report Pattern Management**: Create, clone, and share report patterns with visibility control
+- ✅ **Paper Configuration**: A4, A3, A5, Letter, Legal sizes with portrait/landscape orientation
+- ✅ **Report Elements**: Containers, static text, headings, lines, boxes, page numbers, image placeholders
+- ✅ **Container Styling**: Font family/size/weight/style/decoration/alignment/color plus border and background — editable on every container type (Single mode's `container`, List mode's `header_section`, `detail_section`, `footer_section`, `table_header`). Container styles **cascade onto auto-placed fields** via `ReportLayoutElement::inheritContainerStyle()`, so a single "default look" on the container applies to every field without per-field tweaking.
+- ✅ **Schema Translation in Auto-Placement**: "Autom. aufbauen" now pulls captions from `schema_translations` for the selected language AND persists the full per-language map as a snapshot on each layout element's `caption_labels`. Switching the language in the designer toolbar instantly updates the column headers without re-running auto-place.
+- ✅ **Report Image Upload**: Per-element image assets with multi-language variants
+- ✅ **List Report Support**: Row height, column configuration, header/footer sections, table headers
+- ✅ **Typography Control**: Full font stack (family, size, weight, style, decoration, alignment, color)
+- ✅ **Unit System**: Millimeter and inch precision for professional print layouts
+- ✅ **Report Pattern Field Assignments**: New matrix panel (`ReportFieldAssignmentPanel`) that mirrors the Forms field-assignment matrix — rows are schema fields, columns are the report patterns linked to the project. Each cell controls per-pattern `visibility_state` (visible / grayed / inactive / invisible / not_available) and optional `sort_order`. The active ReportPattern's assignments are applied as a global overlay on field metadata in the gtree (`item.report_visibility_state`, `item.report_visible`, `item.report_sort_order`), so report templates can filter and order fields independently of Canvas-level placements.
+- ✅ **Menu Reorganization**: Field-assignment panels now sit where they belong thematically — **Form Field Assignments** is under the Forms menu, **Report Field Assignments** under Reports. Consistent with each panel's domain.
+
+#### 🌐 **Public Project Sharing**
+- ✅ **Public Project Pages**: URL-based public access (`/public/{username}/{projectname}`)
+- ✅ **Project Translations**: Multi-language project metadata (caption, description, formats per language)
+- ✅ **Locale Defaults**: Pre-configured regional formats (decimal/thousands separators, date/time, currency, timezone)
 
 #### 👥 **Project & Team Management**
 - ✅ **Project Management**: Teams, projects, and collaboration tools
@@ -171,7 +200,10 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **Error Reporting** - Comprehensive syntax error detection with ERRORS.txt
 - **Progress Tracking** - Real-time generation progress with file counters
 - **ZIP Download** - Package generated code with all files and error reports
-- **Form Designer** - Visual form creation with database field binding
+- **Form Designer** - Visual form creation with 5 window types, containers, anchoring, and live preview
+- **Form Layout Designer** - Database field placement with control type override and combobox configuration
+- **Report Pattern Designer** - Professional print-ready report layouts with mm precision
+- **Report Layout Designer** - Column-based report design with header/detail grids and multi-language support
 - **Code Adjustments** - Post-generation code customization system
 
 #### 🔐 **Security & Admin**
@@ -193,6 +225,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - **Protected Files** - Mark files as protected from overwrite during regeneration
 - **Messaging System** - In-app messaging with file attachments
 - **Public Gallery** - Clone and share projects with the community
+- **Public Project Pages** - Direct URL sharing (`/public/{username}/{projectname}`)
+- **Project Translations** - Multi-language project metadata with regional locale defaults
 - **Credit System** - Track project clones and give credit to creators
 - **Team Invitations** - Invite members and manage team access
 
@@ -518,14 +552,104 @@ generated_project.zip
 
 ### 🎨 Form Designer
 
-Visual form creation with database integration:
+Comprehensive visual form design system with multiple designers and live preview:
 
-- **Drag & Drop Interface**: Arrange form fields visually
-- **Database Field Binding**: Link form elements to schema fields
-- **Control Type Selection**: Choose appropriate input controls
-- **Layout Options**: Flexible form layout configuration
-- **Preview Mode**: See form appearance before generation
-- **Template Integration**: Generate forms from database schemas
+#### Form Set Management
+- **Form Sets**: Reusable form template containers with pre-defined window types
+- **5 Window Types**: Main Menu, Create/Edit, Data Table, Report Single, Report List
+- **Color Theming**: Default colors for background, window, text, buttons per set
+- **Visibility Control**: Private, team, or public sharing
+- **Clone Capability**: Deep copy of form sets with all windows and elements
+
+#### Visual Form Designer
+- **ReactFlow-Based Editor**: Drag-and-drop form layout with grid background
+- **Element Types**: Containers (vertical/horizontal/tabs), navigation buttons, action buttons, separators, spacers
+- **Color-Coded Elements**: Gray containers, blue navigation, green positive actions, red negative actions
+- **Element Properties**: Live-updating property panels for each element
+- **Tab Support**: Nested tab container structures
+- **MiniMap & Zoom**: Navigation controls for complex forms
+
+#### Form Layout Designer
+- **Field Placement**: Map database fields to form positions within containers
+- **Control Type Override**: Text, integer, float, currency, combobox, checkbox, textarea, date, datetime, file, etc.
+- **Label Configuration**: Position (top/left/right), custom width, multi-language labels
+- **Combobox Configuration**: Lookup table, value field, display field, sort options
+- **Data Table Grid**: Interactive table with column resize, reorder, multi-language headers, sample data preview
+- **Menu Items**: Hierarchical menu structure with role-based visibility
+
+#### Anchor System
+- **Responsive Positioning**: Horizontal (Left, Width, Center, Right) and Vertical (Top, Height, Center, Bottom)
+- **Quick Presets**: One-click anchor configuration dropdowns
+- **Advanced Fine-Tuning**: 4 percentage fields for precise control
+- **Visual Indicator**: SVG preview showing anchor point positions
+
+#### Form Live Preview
+- **Real-Time Rendering**: See form appearance with simulated test data
+- **Field Type Rendering**: Text inputs, number fields, checkboxes, dropdowns, calendars, textareas
+- **Container Layout**: Visual container and tab navigation simulation
+- **Button Actions**: Preview button placement and styling
+- **Responsive Testing**: Test form at different window dimensions
+
+### 📊 Report Designer
+
+Professional report pattern design system for print-ready layouts:
+
+#### Report Pattern Management
+- **Report Patterns**: Top-level report template containers with visibility control
+- **Default Forms**: Automatic creation of report_single and report_list forms
+- **Clone Capability**: Deep copy with all forms, elements, and layout
+- **Visibility Model**: Private, public, or system-level patterns
+
+#### Visual Report Pattern Designer
+- **Section-Based Layout**: Header, detail, and footer sections for list reports
+- **Element Palette**: Containers, static text, headings, horizontal/vertical lines, boxes, page numbers, date fields, image placeholders
+- **Positioning in mm**: Precise millimeter-based placement with visual rulers
+- **Paper Size Visualization**: A4, A3, A5, Letter, Legal with orientation preview
+- **Margin Configuration**: Top, right, bottom, left margins in mm or inches
+- **Full Typography Control**: Font family, size, weight, style, decoration, alignment, color
+- **Element Styling**: Border width/color, background color per element
+
+#### Report Layout Designer
+- **Dual Grid View**: Editable header grid and preview detail grid
+- **Column Management**: Resize and reorder columns with drag interactions
+- **Multi-Language Headers**: Per-language column header text
+- **Font Styling Per Column**: Independent typography settings
+- **Row Alternation**: Even/odd row coloring for readability
+- **Border Configuration**: Per-side border styling (width, color, style) for headers, rows, and columns
+- **Schema Field Binding**: Select table and field for each layout element
+- **Static Elements**: Insert text, lines, boxes, page numbers, date fields
+
+#### Report Images
+- **Per-Element Images**: Upload image assets for specific report elements
+- **Multi-Language Variants**: Language-specific images (e.g., per-language logos)
+- **Format Support**: PNG, JPG, GIF, SVG, WebP, BMP, ICO (max 10MB)
+- **Automatic Dimensions**: Image width/height detection on upload
+- **Caching**: Optimized image delivery with browser caching headers
+
+#### Paper & Print Configuration
+- **Standard Sizes**: A4, A3, A5, Letter, Legal or custom dimensions
+- **Orientation**: Portrait or landscape
+- **Unit System**: Millimeters or inches with automatic conversion
+- **List Settings**: Row height, max columns, header/footer height
+- **Computed Properties**: Effective printable area accounting for margins and orientation
+
+### 🌐 Public Project Sharing
+
+Share projects publicly without authentication:
+
+- **Public URL Access**: `/public/{username}/{projectname}` for direct sharing
+- **Filtered Data**: Only public templates, schemas, and metadata visible
+- **Project Statistics**: Teams count, templates count, schemas count
+- **Multi-Language Support**: Translated project captions and descriptions
+- **Team Overview**: Public team names and descriptions
+
+#### Project Translations
+- **Per-Language Metadata**: Caption, description, and formatting preferences per language
+- **Regional Defaults**: Pre-configured locale settings for German, English, French, Spanish, Italian
+  - Decimal separator (`,` / `.`)
+  - Thousands separator (`.` / `,` / space)
+  - Date/time formats (regional)
+  - Currency symbol and timezone
 
 ### 🔧 Code Adjustments
 
@@ -1066,6 +1190,9 @@ npm run format:check  # Check formatting without changes
 # 🔍 Linting with ESLint
 npm run lint          # Lint and auto-fix issues
 
+# ⚡ Errors live on development
+npx tsc --noEmit --watch
+
 # 📝 TypeScript validation
 npm run types         # Type checking without compilation
 ```
@@ -1172,23 +1299,32 @@ npm run build
 scoriet/
 ├── app/
 │   ├── Http/Controllers/     # Laravel controllers
-│   ├── Models/              # Eloquent models
-│   └── Services/            # Business logic (SQL Parser, etc.)
+│   │   └── Api/             # API controllers (Form, Report, Template, Schema, etc.)
+│   ├── Models/              # Eloquent models (Form*, Report*, Schema*, Template*, etc.)
+│   ├── Services/            # Business logic (SQL Parser, Template Engine, etc.)
+│   └── Observers/           # Model observers (Cache, Schema, etc.)
 ├── resources/
 │   ├── js/
 │   │   ├── Components/      # React components
 │   │   │   ├── AuthModals/  # Authentication modals
-│   │   │   ├── Panels/      # RC Dock panels
-│   │   │   ├── CSSFlag.tsx  # CSS-based flag icons
-│   │   │   └── LanguageSelector.tsx  # i18n language picker
-│   │   ├── pages/          # Inertia.js pages
-│   │   ├── utils/          # Utility functions
-│   │   │   └── i18n.ts     # Internationalization system
-│   │   └── types/          # TypeScript definitions
-│   └── css/                # Stylesheets
-├── routes/                 # Laravel routes
-├── tests/                 # Test files
-└── database/              # Migrations, seeders, factories
+│   │   │   ├── Modals/      # Application modals
+│   │   │   └── Panels/      # RC Dock panels
+│   │   │       ├── FormDesignerPanel.tsx         # Visual form designer
+│   │   │       ├── FormLayoutDesignerPanel.tsx    # Field placement designer
+│   │   │       ├── FormLivePreviewModal.tsx       # Real-time form preview
+│   │   │       ├── ReportPatternDesignerPanel.tsx # Report pattern designer
+│   │   │       ├── ReportLayoutDesignerPanel.tsx  # Report layout designer
+│   │   │       ├── ReportManagementPanel.tsx      # Report pattern management
+│   │   │       └── ...                            # Other panels
+│   │   ├── contexts/        # React contexts (Project, Theme)
+│   │   ├── i18n/            # Internationalization system
+│   │   ├── lib/             # API client and utilities
+│   │   ├── pages/           # Inertia.js pages
+│   │   └── types/           # TypeScript definitions
+│   └── css/                 # Stylesheets
+├── routes/                  # Laravel routes (web, api, channels)
+├── tests/                   # Test files
+└── database/                # Migrations, seeders, factories
 ```
 
 ### Key Technologies
@@ -1230,7 +1366,9 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+
+If you use this software over a network (e.g. as a SaaS), you must make the source code available to users.
 
 ## 🙏 Acknowledgments
 

@@ -16,6 +16,7 @@ class CliTask extends Model
         'priority',
         'user_id',
         'project_id',
+        'target_device_id',
         'payload',
         'result',
         'logs',
@@ -47,6 +48,7 @@ class CliTask extends Model
     const TYPE_TEMPLATE_UPLOAD = 'template_upload';
     const TYPE_FILE_EDIT = 'file_edit';
     const TYPE_CONNECTION_TEST = 'connection_test';
+    const TYPE_DATA_QUERY = 'data_query';
 
     // Status constants
     const STATUS_PENDING = 'pending';

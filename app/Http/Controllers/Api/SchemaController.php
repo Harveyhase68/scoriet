@@ -648,9 +648,14 @@ class SchemaController extends Controller
 
         $request->validate([
             'table_name' => 'required|string|max:255',
+            'singular_name' => 'nullable|string|max:100',
             'filekeyname' => 'nullable|string|max:100',
             'file_name_renamed' => 'nullable|string|max:100',
             'file_name_short' => 'nullable|string|max:50',
+            'form_set_id' => 'nullable|integer|exists:form_sets,id',
+            'report_pattern_id' => 'nullable|integer|exists:report_patterns,id',
+            'display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
+            'generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
             'columns' => 'array',
             'columns.*.column_name' => 'required|string|max:255',
             'columns.*.data_type' => 'required|string|max:255',
@@ -668,17 +673,25 @@ class SchemaController extends Controller
             'columns.*.link_display_field' => 'nullable|string|max:64',
             'columns.*.link_order_field' => 'nullable|string|max:64',
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
+            'columns.*.editmask' => 'nullable|string|max:500',
+            'columns.*.display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
+            'columns.*.generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
         ]);
 
         try {
             // Create the table
             $table = \App\Models\SchemaTable::create([
                 'schema_version_id' => $version->id,
-                'schema_id' => $version->schema_id, // Add the missing schema_id
+                'schema_id' => $version->schema_id,
                 'table_name' => $request->table_name,
+                'singular_name' => $request->singular_name,
                 'filekeyname' => $request->filekeyname,
                 'file_name_renamed' => $request->file_name_renamed,
                 'file_name_short' => $request->file_name_short,
+                'form_set_id' => $request->form_set_id,
+                'report_pattern_id' => $request->report_pattern_id,
+                'display_state' => $request->display_state ?? 'enabled',
+                'generation_mode' => $request->generation_mode ?? 'full',
             ]);
 
             // Create columns if provided
@@ -719,6 +732,9 @@ class SchemaController extends Controller
                         'link_display_field' => $columnData['link_display_field'] ?? null,
                         'link_order_field' => $columnData['link_order_field'] ?? null,
                         'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
+                        'editmask' => $columnData['editmask'] ?? null,
+                        'display_state' => $columnData['display_state'] ?? 'enabled',
+                        'generation_mode' => $columnData['generation_mode'] ?? 'full',
                     ]);
 
                     // Track constraint fields
@@ -833,9 +849,14 @@ class SchemaController extends Controller
 
         $request->validate([
             'table_name' => 'required|string|max:255',
+            'singular_name' => 'nullable|string|max:100',
             'filekeyname' => 'nullable|string|max:100',
             'file_name_renamed' => 'nullable|string|max:100',
             'file_name_short' => 'nullable|string|max:50',
+            'form_set_id' => 'nullable|integer|exists:form_sets,id',
+            'report_pattern_id' => 'nullable|integer|exists:report_patterns,id',
+            'display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
+            'generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
             'columns' => 'array',
             'columns.*.column_name' => 'required|string|max:255',
             'columns.*.data_type' => 'required|string|max:255',
@@ -853,15 +874,23 @@ class SchemaController extends Controller
             'columns.*.link_display_field' => 'nullable|string|max:64',
             'columns.*.link_order_field' => 'nullable|string|max:64',
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
+            'columns.*.editmask' => 'nullable|string|max:500',
+            'columns.*.display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
+            'columns.*.generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
         ]);
 
         try {
             // Update the table
             $table->update([
                 'table_name' => $request->table_name,
+                'singular_name' => $request->singular_name,
                 'filekeyname' => $request->filekeyname,
                 'file_name_renamed' => $request->file_name_renamed,
                 'file_name_short' => $request->file_name_short,
+                'form_set_id' => $request->form_set_id,
+                'report_pattern_id' => $request->report_pattern_id,
+                'display_state' => $request->display_state ?? 'enabled',
+                'generation_mode' => $request->generation_mode ?? 'full',
             ]);
 
             // 🔐 SAVE FOREIGN KEYS before deleting (to restore them after update)
@@ -943,6 +972,9 @@ class SchemaController extends Controller
                         'link_display_field' => $columnData['link_display_field'] ?? null,
                         'link_order_field' => $columnData['link_order_field'] ?? null,
                         'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
+                        'editmask' => $columnData['editmask'] ?? null,
+                        'display_state' => $columnData['display_state'] ?? 'enabled',
+                        'generation_mode' => $columnData['generation_mode'] ?? 'full',
                     ];
 
                     // UPDATE existing field or INSERT new field
@@ -1134,6 +1166,11 @@ class SchemaController extends Controller
             }
 
             // 🔓 RESTORE FOREIGN KEYS after recreating fields
+            // First: DELETE old FK constraints (they were saved above but never deleted!)
+            \App\Models\SchemaConstraint::where('table_id', $table->id)
+                ->where('constraint_type', 'FOREIGN KEY')
+                ->delete();
+
             foreach ($existingForeignKeys as $fkData) {
                 // Map source field names to field IDs (using updated/preserved IDs)
                 $sourceFieldIds = [];

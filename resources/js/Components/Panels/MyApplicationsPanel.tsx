@@ -91,6 +91,9 @@ export default function MyApplicationsPanel({ isActive }: TabPanelProps) {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
     return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',

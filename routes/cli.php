@@ -243,8 +243,14 @@ Route::prefix('svc')->group(function () {
         // Append log to task (for live logging)
         Route::post('/tasks/{id}/log', [SvcController::class, 'appendLog']);
 
+        // Device registration (called by service on startup)
+        Route::post('/devices/register', [SvcController::class, 'registerDevice']);
+
         // Import schema data from service
         Route::post('/schema-import', [SvcController::class, 'importSchema']);
+
+        // Receive data query results from service
+        Route::post('/data-query-result', [SvcController::class, 'submitDataQueryResult']);
 
         // Template upload from service
         Route::post('/template-upload', [SvcController::class, 'receiveTemplateUpload']);
@@ -275,6 +281,11 @@ Route::prefix('svc')->group(function () {
         Route::post('/tasks/project-download', [SvcController::class, 'createProjectDownloadTask']);
         Route::post('/tasks/template-upload', [SvcController::class, 'createTemplateUploadTask']);
         Route::post('/tasks/file-edit', [SvcController::class, 'createFileEditTask']);
+        Route::post('/tasks/data-query', [SvcController::class, 'createDataQueryTask']);
+
+        // Device management (user-facing)
+        Route::get('/devices', [SvcController::class, 'listDevices']);
+        Route::delete('/devices/{deviceId}', [SvcController::class, 'removeDevice']);
 
         // Template upload status (user polling)
         Route::get('/template-upload/{sessionId}/status', [SvcController::class, 'getTemplateUploadStatus']);

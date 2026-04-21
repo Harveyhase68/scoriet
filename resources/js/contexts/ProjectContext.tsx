@@ -1,5 +1,6 @@
 // resources/js/contexts/ProjectContext.tsx
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { getEcho, resetEcho } from '@/lib/echo';
 
 interface ProjectSubscription {
   id: number;
@@ -28,6 +29,7 @@ interface Project {
   is_owner?: boolean;
   can_join?: boolean;
   default_language?: string;
+  target_language?: string;
   enabled_languages?: string[];
   // Subscription / Lock status
   is_soft_locked?: boolean;
@@ -41,6 +43,10 @@ interface Project {
   // Form Designer Settings
   form_designer_snap_to_grid?: boolean;
   form_designer_grid_size?: number;
+  // Report Designer Settings
+  report_designer_snap_to_grid?: boolean;
+  report_designer_grid_unit?: string;
+  report_designer_grid_size?: number;
   // Database Connection Settings
   database_type?: string;
   database_server?: string;
@@ -56,6 +62,13 @@ interface Project {
   };
 }
 
+interface EditLockState {
+  isLocked: boolean;
+  lockedByUserId: number | null;
+  lockedByUserName: string | null;
+  isLockedByMe: boolean;
+}
+
 interface ProjectContextType {
   projects: Project[];
   selectedProject: Project | null;
@@ -64,6 +77,10 @@ interface ProjectContextType {
   loading: boolean;
   clearSavedProject: () => void;
   setPreferredProject: (project: Project | null) => void;
+  // Real-time edit locking
+  editLock: EditLockState | null;
+  acquireLock: (projectId: number) => Promise<boolean>;
+  releaseLock: (projectId: number) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -77,11 +94,14 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
   const [preferredProject, setPreferredProject] = useState<Project | null>(null);
+  const [editLock, setEditLock] = useState<EditLockState | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const subscribedProjectIdRef = useRef<number | null>(null);
 
   // Load saved project from localStorage on mount
   useEffect(() => {
     const savedProjectId = localStorage.getItem('scoriet_selected_project_id');
-    
+
     if (savedProjectId) {
       // We'll set the project after loading projects
     }
@@ -108,7 +128,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
         setSelectedProject(null);
         return;
       }
-      
+
       const response = await fetch('/api/user/projects', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -192,16 +212,194 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     localStorage.removeItem('scoriet_selected_project_id');
   };
 
+  // ── Real-time WebSocket subscriptions ──────────────────────────────────
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (!selectedProject || !token) {
+      // Leave previous channel if project deselected
+      if (subscribedProjectIdRef.current !== null) {
+        try { getEcho().leave(`project.${subscribedProjectIdRef.current}`); } catch { /* ignore */ }
+        subscribedProjectIdRef.current = null;
+      }
+      setEditLock(null);
+      return;
+    }
+
+    const projectId = selectedProject.id;
+
+    // Don't re-subscribe if already on the same channel
+    if (subscribedProjectIdRef.current === projectId) {
+      return;
+    }
+
+    // Leave previous channel
+    if (subscribedProjectIdRef.current !== null) {
+      try { getEcho().leave(`project.${subscribedProjectIdRef.current}`); } catch { /* ignore */ }
+    }
+
+    subscribedProjectIdRef.current = projectId;
+    const currentUserId = Number(localStorage.getItem('user_id'));
+
+    try {
+      const channel = getEcho().private(`project.${projectId}`);
+
+      // Listen for project updates from other users
+      channel.listen('.ProjectUpdated', (data: { project_id: number; updated_by: number }) => {
+        if (Number(data.updated_by) !== currentUserId) {
+          loadProjects();
+          // Notify UI components (e.g., ProjectPanel) about the external update
+          window.dispatchEvent(new CustomEvent('projectUpdatedByOther', {
+            detail: { projectId: data.project_id, updatedBy: data.updated_by }
+          }));
+        }
+      });
+
+      // Listen for lock events
+      channel.listen('.ProjectLocked', (data: { project_id: number; locked_by_user_id: number; locked_by_user_name: string }) => {
+        setEditLock({
+          isLocked: true,
+          lockedByUserId: data.locked_by_user_id,
+          lockedByUserName: data.locked_by_user_name,
+          isLockedByMe: Number(data.locked_by_user_id) === currentUserId,
+        });
+      });
+
+      channel.listen('.ProjectUnlocked', () => {
+        setEditLock(null);
+      });
+    } catch {
+      // Echo not available (e.g., Reverb not running) - graceful degradation
+    }
+
+    return () => {
+      if (subscribedProjectIdRef.current === projectId) {
+        try { getEcho().leave(`project.${projectId}`); } catch { /* ignore */ }
+        subscribedProjectIdRef.current = null;
+      }
+    };
+  }, [selectedProject?.id, loadProjects]);
+
+  // ── Lock acquire / release ─────────────────────────────────────────────
+
+  const acquireLock = useCallback(async (projectId: number): Promise<boolean> => {
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (!token) return false;
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}/lock`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const currentUserId = Number(localStorage.getItem('user_id'));
+        setEditLock({
+          isLocked: true,
+          lockedByUserId: data.locked_by_user_id,
+          lockedByUserName: data.locked_by_user_name,
+          isLockedByMe: Number(data.locked_by_user_id) === currentUserId,
+        });
+
+        // Start heartbeat to keep lock alive (every 5 minutes)
+        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        heartbeatRef.current = setInterval(async () => {
+          try {
+            await fetch(`/api/projects/${projectId}/heartbeat`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+              },
+            });
+          } catch { /* heartbeat failed silently */ }
+        }, 5 * 60 * 1000);
+
+        return true;
+      }
+
+      if (response.status === 409) {
+        // Already locked by someone else
+        const data = await response.json();
+        setEditLock({
+          isLocked: true,
+          lockedByUserId: data.locked_by_user_id,
+          lockedByUserName: data.locked_by_user_name,
+          isLockedByMe: false,
+        });
+        return false;
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const releaseLock = useCallback(async (projectId: number): Promise<void> => {
+    // Stop heartbeat
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      await fetch(`/api/projects/${projectId}/unlock`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+      setEditLock(null);
+    } catch { /* unlock failed silently */ }
+  }, []);
+
+  // Release lock on page unload (best-effort via sendBeacon)
+  useEffect(() => {
+    const handleUnload = () => {
+      if (editLock?.isLockedByMe && selectedProject) {
+        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+        if (token) {
+          // sendBeacon doesn't support custom headers, so we use a small fetch with keepalive
+          fetch(`/api/projects/${selectedProject.id}/unlock`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+            keepalive: true,
+          }).catch(() => { /* best effort */ });
+        }
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [editLock, selectedProject]);
+
+  // ── Auth change handling ───────────────────────────────────────────────
+
   // Listen for authentication changes (login/logout events)
   const handleAuthChange = useCallback(() => {
     const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
     if (token) {
-      // User logged in - reload projects
+      // User logged in - reload projects and reset Echo with new token
+      resetEcho();
       loadProjects();
     } else {
-      // User logged out - clear projects
+      // User logged out - clear projects and disconnect Echo
+      resetEcho();
       setProjects([]);
       setSelectedProject(null);
+      setEditLock(null);
     }
   }, [loadProjects]);
 
@@ -211,7 +409,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 
     // Listen for storage events (triggered by login/logout)
     window.addEventListener('storage', handleAuthChange);
-    
+
     // Listen for custom auth events
     window.addEventListener('auth-change', handleAuthChange);
 
@@ -229,6 +427,9 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     loading,
     clearSavedProject,
     setPreferredProject,
+    editLock,
+    acquireLock,
+    releaseLock,
   };
 
   return (

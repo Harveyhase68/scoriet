@@ -13,12 +13,49 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Services\TemplateCacheService;
 
 class TemplateController extends Controller
 {
+    /**
+     * Generate a unique full_name: username/template_slug
+     * If duplicate exists, append _2, _3, etc.
+     */
+    private function generateFullName(string $username, string $templateName): string
+    {
+        $base = strtolower($username) . '/' . Str::slug($templateName, '_');
+        $fullName = $base;
+        $counter = 2;
+
+        while (Template::where('full_name', $fullName)->exists()) {
+            $fullName = $base . '_' . $counter;
+            $counter++;
+        }
+
+        return $fullName;
+    }
+
+    /**
+     * Generate a compatibility_tag: username/slug_from_source
+     * On import: replaces the original username with the importer's username.
+     * NOT unique — multiple templates share the same tag for grouping.
+     */
+    private function generateCompatibilityTag(string $username, ?string $sourceTag): ?string
+    {
+        if (!$sourceTag) {
+            return null;
+        }
+
+        // Extract the slug part (after the /)
+        $slashPos = strpos($sourceTag, '/');
+        $slug = ($slashPos !== false) ? substr($sourceTag, $slashPos + 1) : $sourceTag;
+
+        return strtolower($username) . '/' . $slug;
+    }
+
     /**
      * Get available templates for a project (system + accessible)
      */
@@ -476,6 +513,8 @@ class TemplateController extends Controller
             'is_active' => 'boolean',
             'visibility' => 'nullable|in:public,private,store',
             'is_system_template' => 'nullable|boolean',
+            'compatibility_tag' => 'nullable|string|max:500',
+            'generation_order' => 'nullable|integer|min:0',
             'protected_files' => 'nullable|array',
             'protected_files.*' => 'string',
             'install_script' => 'nullable|array',
@@ -491,11 +530,15 @@ class TemplateController extends Controller
             'files.*.file_path' => 'nullable|string',
             'files.*.file_content' => 'nullable|string', // 🆕 Nullable for managed_files mode
             'files.*.file_type' => 'required|string',
-            'files.*.file_order' => 'integer',
+            'files.*.file_order' => 'nullable|integer',
             'files.*.output_path' => 'nullable|string',
             'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
             'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
             'files.*.form_window_type' => 'nullable|integer|min:0|max:5', // 🎨 Form window type (0-5)
+            'files.*.is_include_only' => 'nullable|boolean',
+            'files.*.inject_target' => 'nullable|string|max:255',
+            'files.*.inject_tag' => 'nullable|string|max:255',
+            'files.*.language_override' => 'nullable|string|max:10',
             'files.*.managed_files' => 'nullable|array', // 🆕 File Manager mode
             'files.*.managed_files.*.name' => 'required_with:files.*.managed_files|string',
             'files.*.managed_files.*.relativePath' => 'nullable|string',
@@ -550,6 +593,9 @@ class TemplateController extends Controller
         $template = \DB::transaction(function () use ($user, $validated, $isSystemTemplate, $needsPayment, $requiredCredits, $request) {
             $template = Template::create([
                 'name' => $validated['name'],
+                'full_name' => $this->generateFullName($user->username ?? $user->name, $validated['name']),
+                'compatibility_tag' => $validated['compatibility_tag'] ?? null,
+                'generation_order' => $validated['generation_order'] ?? 0,
                 'description' => $validated['description'] ?? null,
                 'category' => $validated['category'],
                 'language' => $validated['language'],
@@ -637,6 +683,7 @@ class TemplateController extends Controller
                     'content_type' => $processedContent['content_type'],
                     'zip_filename' => $processedContent['zip_filename'],
                     'form_window_type' => $fileData['form_window_type'] ?? 0,
+                    'language_override' => $fileData['language_override'] ?? null,
                 ]);
             }
         }
@@ -721,6 +768,8 @@ class TemplateController extends Controller
             'is_active' => 'boolean',
             'visibility' => 'nullable|in:public,private,store',
             'is_system_template' => 'nullable|boolean',
+            'compatibility_tag' => 'nullable|string|max:500',
+            'generation_order' => 'nullable|integer|min:0',
             'protected_files' => 'nullable|array',
             'protected_files.*' => 'string',
             'install_script' => 'nullable|array',
@@ -736,11 +785,15 @@ class TemplateController extends Controller
             'files.*.file_path' => 'nullable|string',
             'files.*.file_content' => 'nullable|string', // 🆕 Nullable for managed_files mode
             'files.*.file_type' => 'required|string',
-            'files.*.file_order' => 'integer',
+            'files.*.file_order' => 'nullable|integer',
             'files.*.output_path' => 'nullable|string',
             'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
             'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
             'files.*.form_window_type' => 'nullable|integer|min:0|max:5', // 🎨 Form window type (0-5)
+            'files.*.is_include_only' => 'nullable|boolean',
+            'files.*.inject_target' => 'nullable|string|max:255',
+            'files.*.inject_tag' => 'nullable|string|max:255',
+            'files.*.language_override' => 'nullable|string|max:10',
             'files.*.managed_files' => 'nullable|array', // 🆕 File Manager mode
             'files.*.managed_files.*.name' => 'required_with:files.*.managed_files|string',
             'files.*.managed_files.*.relativePath' => 'nullable|string',
@@ -756,6 +809,8 @@ class TemplateController extends Controller
             'language' => $validated['language'],
             'tags' => $validated['tags'] ?? [],
             'is_active' => $validated['is_active'] ?? true,
+            'compatibility_tag' => $validated['compatibility_tag'] ?? null,
+            'generation_order' => $validated['generation_order'] ?? 0,
             'protected_files' => $validated['protected_files'] ?? [],
             'install_script' => $validated['install_script'] ?? [],
             'update_script' => $validated['update_script'] ?? [],
@@ -961,13 +1016,19 @@ class TemplateController extends Controller
                     'zip_filename' => $processedContent['zip_filename'],
                     'form_window_type' => $fileData['form_window_type'] ?? 0,
                     'is_include_only' => $fileData['is_include_only'] ?? false,
+                    'inject_target' => $fileData['inject_target'] ?? null,
+                    'inject_tag' => $fileData['inject_tag'] ?? null,
+                    'language_override' => $fileData['language_override'] ?? null,
                 ];
 
                 if ($existingFiles->has($fileName)) {
                     // UPDATE existing file in place (preserves ID + FK relationships)
-                    $existingFiles->get($fileName)->update($fileAttributes);
+                    $existingFile = $existingFiles->get($fileName);
+                    $existingFile->update($fileAttributes);
+                    // Increment version separately (DB::raw conflicts with Eloquent integer cast)
+                    $existingFile->increment('version');
                 } else {
-                    // CREATE new file
+                    // CREATE new file — version starts at 1 (DEFAULT)
                     $template->files()->create($fileAttributes);
                 }
             }
@@ -1207,8 +1268,12 @@ class TemplateController extends Controller
         $visibility = $isFromStore ? 'private' : $validated['visibility'];
 
         // Create the cloned template
+        $username = $user->username ?? $user->name;
         $clonedTemplate = Template::create([
             'name' => $validated['name'],
+            'full_name' => $this->generateFullName($username, $validated['name']),
+            'compatibility_tag' => $this->generateCompatibilityTag($username, $template->compatibility_tag),
+            'generation_order' => $template->generation_order ?? 0,
             'description' => $template->description,
             'category' => $template->category,
             'language' => $template->language,
@@ -1238,6 +1303,9 @@ class TemplateController extends Controller
                 'zip_filename' => $file->zip_filename,
                 'form_window_type' => $file->form_window_type ?? 0,
                 'is_include_only' => $file->is_include_only ?? false,
+                'inject_target' => $file->inject_target,
+                'inject_tag' => $file->inject_tag,
+                'language_override' => $file->language_override,
             ]);
         }
 
@@ -1441,7 +1509,9 @@ class TemplateController extends Controller
      */
     public function getTemplateFiles($id): JsonResponse
     {
-        $template = Template::with('files')->findOrFail($id);
+        $template = Template::with(['files' => function ($query) {
+            $query->orderByRaw('CASE WHEN file_order > 0 THEN 0 ELSE 1 END')->orderBy('file_order')->orderBy('file_name');
+        }])->findOrFail($id);
         $user = Auth::user();
 
         if (!$template->canBeViewedBy($user)) {
@@ -1477,7 +1547,7 @@ class TemplateController extends Controller
             'file_path' => 'nullable|string',
             'file_content' => 'required|string',
             'file_type' => 'required|string',
-            'file_order' => 'integer',
+            'file_order' => 'nullable|integer',
             'output_path' => 'nullable|string',
             'form_window_type' => 'nullable|integer|min:0|max:5',
         ]);
@@ -1499,6 +1569,7 @@ class TemplateController extends Controller
             'content_type' => $contentType,
             'zip_filename' => $request->input('zip_filename'),
             'form_window_type' => $validated['form_window_type'] ?? 0,
+            'language_override' => $request->input('language_override'),
         ]);
 
         // Update file_count
@@ -1526,9 +1597,10 @@ class TemplateController extends Controller
             'file_path' => 'nullable|string',
             'file_content' => 'required|string',
             'file_type' => 'required|string',
-            'file_order' => 'integer',
+            'file_order' => 'nullable|integer',
             'output_path' => 'nullable|string',
             'form_window_type' => 'nullable|integer|min:0|max:5',
+            'language_override' => 'nullable|string|max:10',
         ]);
 
         // Only normalize line endings for text content, not for ZIP/binary Base64 content
@@ -1548,6 +1620,7 @@ class TemplateController extends Controller
             'content_type' => $contentType,
             'zip_filename' => $request->input('zip_filename', $file->zip_filename),
             'form_window_type' => $validated['form_window_type'] ?? $file->form_window_type ?? 0,
+            'language_override' => $request->input('language_override', $file->language_override),
         ]);
 
         return response()->json($file);
@@ -1687,6 +1760,9 @@ class TemplateController extends Controller
         $exportData = [
             'template' => [
                 'name' => $template->name,
+                'full_name' => $template->full_name,
+                'compatibility_tag' => $template->compatibility_tag,
+                'generation_order' => $template->generation_order ?? 0,
                 'description' => $template->description,
                 'category' => $template->category,
                 'language' => $template->language,
@@ -1722,6 +1798,9 @@ class TemplateController extends Controller
                     'zip_filename' => $file->zip_filename,
                     'form_window_type' => $file->form_window_type ?? 0,
                     'is_include_only' => $file->is_include_only ?? false,
+                    'inject_target' => $file->inject_target,
+                    'inject_tag' => $file->inject_tag,
+                    'language_override' => $file->language_override,
                 ];
             }),
             'export_info' => [
@@ -1891,6 +1970,8 @@ class TemplateController extends Controller
                         'zip_filename' => $file->zip_filename,
                         'form_window_type' => $file->form_window_type ?? 0,
                         'is_include_only' => $file->is_include_only ?? false,
+                        'inject_target' => $file->inject_target,
+                        'inject_tag' => $file->inject_tag,
                     ];
                 } else {
                     // No duplicate - no archive_source needed
@@ -1905,6 +1986,8 @@ class TemplateController extends Controller
                         'zip_filename' => $file->zip_filename,
                         'form_window_type' => $file->form_window_type ?? 0,
                         'is_include_only' => $file->is_include_only ?? false,
+                        'inject_target' => $file->inject_target,
+                        'inject_tag' => $file->inject_tag,
                     ];
                 }
             }
@@ -1913,6 +1996,9 @@ class TemplateController extends Controller
             $templateData = [
                 'template' => [
                     'name' => $template->name,
+                    'full_name' => $template->full_name,
+                    'compatibility_tag' => $template->compatibility_tag,
+                    'generation_order' => $template->generation_order ?? 0,
                     'description' => $template->description,
                     'category' => $template->category,
                     'language' => $template->language,
@@ -2098,6 +2184,8 @@ class TemplateController extends Controller
                 'template_data.files.*.output_path' => 'nullable|string',
                 'template_data.files.*.form_window_type' => 'nullable|integer|min:0|max:5',
                 'template_data.files.*.is_include_only' => 'nullable|boolean',
+                'template_data.files.*.inject_target' => 'nullable|string|max:255',
+                'template_data.files.*.inject_tag' => 'nullable|string|max:255',
                 'overwrite_existing' => 'boolean',
             ]);
 
@@ -2122,15 +2210,22 @@ class TemplateController extends Controller
             }
 
             // Create new template
+            $user = Auth::user();
+            $username = $user->username ?? $user->name;
+            $sourceCompatibilityTag = $templateData['compatibility_tag'] ?? null;
+
             $template = Template::create([
                 'name' => $templateData['name'],
+                'full_name' => $this->generateFullName($username, $templateData['name']),
+                'compatibility_tag' => $this->generateCompatibilityTag($username, $sourceCompatibilityTag),
+                'generation_order' => $templateData['generation_order'] ?? 0,
                 'description' => $templateData['description'] ?? null,
                 'category' => $templateData['category'],
                 'language' => $templateData['language'],
                 'tags' => $templateData['tags'] ?? [],
                 'is_active' => $templateData['is_active'] ?? true,
                 'file_count' => count($filesData),
-                'creator_user_id' => Auth::user()->id,
+                'creator_user_id' => $user->id,
                 'protected_files' => $templateData['protected_files'] ?? [],
                 'install_script' => $templateData['install_script'] ?? [],
                 'update_script' => $templateData['update_script'] ?? [],
@@ -2159,6 +2254,9 @@ class TemplateController extends Controller
                     'output_path' => $fileData['output_path'] ?? '/',
                     'form_window_type' => $fileData['form_window_type'] ?? 0,
                     'is_include_only' => $fileData['is_include_only'] ?? false,
+                    'inject_target' => $fileData['inject_target'] ?? null,
+                    'inject_tag' => $fileData['inject_tag'] ?? null,
+                    'language_override' => $fileData['language_override'] ?? null,
                 ]);
             }
 
@@ -2252,15 +2350,22 @@ class TemplateController extends Controller
                 }
 
                 // Create template with metadata from JSON
+                $user = Auth::user();
+                $username = $user->username ?? $user->name;
+                $sourceCompatibilityTag = $templateInfo['compatibility_tag'] ?? null;
+
                 $template = Template::create([
                     'name' => $templateInfo['name'],
+                    'full_name' => $this->generateFullName($username, $templateInfo['name']),
+                    'compatibility_tag' => $this->generateCompatibilityTag($username, $sourceCompatibilityTag),
+                    'generation_order' => $templateInfo['generation_order'] ?? 0,
                     'description' => $templateInfo['description'] ?? '',
                     'category' => $templateInfo['category'] ?? 'Web',
                     'language' => $templateInfo['language'] ?? 'PHP',
                     'tags' => $templateInfo['tags'] ?? [],
                     'is_active' => $templateInfo['is_active'] ?? true,
                     'file_count' => count($filesData),
-                    'creator_user_id' => Auth::user()->id, // Set current user as creator
+                    'creator_user_id' => $user->id,
                     'protected_files' => $templateInfo['protected_files'] ?? [],
                     'install_script' => $templateInfo['install_script'] ?? [],
                     'update_script' => $templateInfo['update_script'] ?? [],
@@ -2334,6 +2439,9 @@ class TemplateController extends Controller
                         'zip_filename' => $zipFilename,
                         'form_window_type' => $fileData['form_window_type'] ?? 0,
                         'is_include_only' => $fileData['is_include_only'] ?? false,
+                        'inject_target' => $fileData['inject_target'] ?? null,
+                        'inject_tag' => $fileData['inject_tag'] ?? null,
+                        'language_override' => $fileData['language_override'] ?? null,
                     ]);
                 }
 
@@ -2365,15 +2473,19 @@ class TemplateController extends Controller
                 }
 
                 // Create template
+                $user = Auth::user();
+                $username = $user->username ?? $user->name;
+
                 $template = Template::create([
                     'name' => $templateName,
+                    'full_name' => $this->generateFullName($username, $templateName),
                     'description' => __('templatecontrollerphp2244') . $filename,
                     'category' => 'Web', // Default category
                     'language' => 'PHP', // Default language
                     'tags' => [],
                     'is_active' => true,
                     'file_count' => count($templateFiles),
-                    'creator_user_id' => Auth::user()->id, // Set current user as creator
+                    'creator_user_id' => $user->id,
                 ]);
 
                 // Create template files
@@ -2388,9 +2500,19 @@ class TemplateController extends Controller
                 }
             }
 
+            // Return template metadata WITHOUT file contents to keep response small.
+            // The full import response was ~1MB for templates with many files (e.g. 76 files),
+            // which caused browser issues. The frontend only needs success + basic template info.
             return response()->json([
                 'success' => true,
-                'template' => $template->load('files'),
+                'template' => [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'full_name' => $template->full_name,
+                    'category' => $template->category,
+                    'language' => $template->language,
+                    'file_count' => $template->files()->count(),
+                ],
                 'message' => __('templatecontrollerphp2268'),
             ], 201);
 

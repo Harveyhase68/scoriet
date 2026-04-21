@@ -289,6 +289,116 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
     });
   };
 
+  const handlePrintMigration = () => {
+    if (!diffResult || !selectedSchema) return;
+    const today = new Date().toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const now = new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
+    const dialectName = dialectOptions.find(d => d.value === selectedDialect)?.label || selectedDialect;
+    const s = diffResult.summary;
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Syntax highlight SQL keywords
+    const highlightSQL = (sql: string): string => {
+      const keywords = ['CREATE', 'ALTER', 'DROP', 'TABLE', 'COLUMN', 'ADD', 'MODIFY', 'CHANGE', 'INDEX', 'PRIMARY', 'KEY', 'FOREIGN', 'REFERENCES', 'CONSTRAINT', 'NOT', 'NULL', 'DEFAULT', 'ON', 'DELETE', 'UPDATE', 'CASCADE', 'SET', 'RESTRICT', 'NO', 'ACTION', 'IF', 'EXISTS', 'UNIQUE', 'INT', 'BIGINT', 'VARCHAR', 'TEXT', 'DECIMAL', 'FLOAT', 'DOUBLE', 'BOOLEAN', 'TINYINT', 'DATETIME', 'TIMESTAMP', 'DATE', 'TIME', 'ENUM', 'UNSIGNED', 'AUTO_INCREMENT', 'AFTER', 'FIRST'];
+      let result = esc(sql);
+      for (const kw of keywords) {
+        result = result.replace(new RegExp('\\b' + kw + '\\b', 'g'), `<span class="kw">${kw}</span>`);
+      }
+      // Strings in single quotes
+      result = result.replace(/'([^']*)'/g, `<span class="str">'$1'</span>`);
+      // Comments
+      result = result.replace(/(--.*?)$/gm, `<span class="cmt">$1</span>`);
+      return result;
+    };
+
+    // Changes table rows
+    const changesRows = diffResult.changes.map(c => {
+      const typeColors: Record<string, string> = {
+        CREATE_TABLE: '#16a34a', DROP_TABLE: '#dc2626', ADD_COLUMN: '#16a34a',
+        DROP_COLUMN: '#dc2626', MODIFY_COLUMN: '#d97706', ADD_PRIMARY_KEY: '#16a34a',
+        DROP_PRIMARY_KEY: '#dc2626', ADD_FOREIGN_KEY: '#16a34a', DROP_FOREIGN_KEY: '#dc2626',
+        ADD_INDEX: '#16a34a', DROP_INDEX: '#dc2626', ADD_UNIQUE_KEY: '#16a34a', DROP_UNIQUE_KEY: '#dc2626',
+      };
+      const color = typeColors[c.type] || '#475569';
+      return `<tr>
+        <td style="color:${color};font-weight:600">${esc(c.type)}</td>
+        <td>${esc(c.table || '')}</td>
+        <td>${esc(c.field || '')}</td>
+        <td>${esc((c.columns || []).join(', '))}</td>
+        <td>${esc(c.constraint_name || '')}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>Schema Migration - ${esc(selectedSchema.name)}</title>
+      <style>
+        @page { size: portrait; margin: 12mm 15mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; line-height: 1.4; }
+        .header { border-bottom: 3px solid #3b82f6; padding-bottom: 8px; margin-bottom: 14px; }
+        .header h1 { font-size: 18px; margin-bottom: 2px; }
+        .header .sub { font-size: 11px; color: #64748b; }
+        .header .meta { font-size: 9px; color: #94a3b8; margin-top: 3px; }
+        .info { margin-bottom: 12px; }
+        .info td { padding: 2px 8px; font-size: 11px; }
+        .info .label { font-weight: 600; color: #475569; width: 120px; }
+        .summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+        .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 12px; text-align: center; }
+        .card .num { font-size: 18px; font-weight: 700; color: #3b82f6; }
+        .card .lbl { font-size: 8px; color: #64748b; text-transform: uppercase; }
+        h2 { font-size: 13px; border-bottom: 2px solid #3b82f6; padding-bottom: 3px; margin-bottom: 8px; }
+        .changes { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 14px; }
+        .changes th { background: #f8fafc; text-align: left; padding: 3px 6px; border: 1px solid #e2e8f0; font-weight: 600; font-size: 9px; text-transform: uppercase; }
+        .changes td { padding: 2px 6px; border: 1px solid #e2e8f0; }
+        .changes tr:nth-child(even) { background: #fafbfc; }
+        .sql { background: #1e293b; color: #e2e8f0; padding: 10px; border-radius: 4px; font-family: Consolas, monospace; font-size: 10px; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4; }
+        .sql .kw { color: #7dd3fc; font-weight: 600; }
+        .sql .str { color: #86efac; }
+        .sql .cmt { color: #6b7280; font-style: italic; }
+        .footer { margin-top: 16px; padding-top: 6px; border-top: 1px solid #e2e8f0; font-size: 8px; color: #94a3b8; text-align: center; }
+        @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+      </style>
+    </head><body>
+      <div class="header">
+        <h1>Schema Migration</h1>
+        <div class="sub">${esc(selectedSchema.name)} · v${diffResult.from_version.version_number} → v${diffResult.to_version.version_number}</div>
+        <div class="meta">Generated: ${today} ${now} · ${dialectName} · ${s.total_changes} changes</div>
+      </div>
+
+      <table class="info">
+        <tr><td class="label">Schema</td><td>${esc(selectedSchema.name)}</td></tr>
+        <tr><td class="label">From Version</td><td>v${diffResult.from_version.version_number} (${esc(diffResult.from_version.schema_name)})</td></tr>
+        <tr><td class="label">To Version</td><td>v${diffResult.to_version.version_number} (${esc(diffResult.to_version.schema_name)})</td></tr>
+        <tr><td class="label">Target Database</td><td>${esc(dialectName)}</td></tr>
+      </table>
+
+      <div class="summary">
+        <div class="card"><div class="num">${s.total_changes}</div><div class="lbl">Total Changes</div></div>
+        ${s.tables_created ? `<div class="card"><div class="num" style="color:#16a34a">${s.tables_created}</div><div class="lbl">Tables Created</div></div>` : ''}
+        ${s.tables_dropped ? `<div class="card"><div class="num" style="color:#dc2626">${s.tables_dropped}</div><div class="lbl">Tables Dropped</div></div>` : ''}
+        ${s.columns_added ? `<div class="card"><div class="num" style="color:#16a34a">${s.columns_added}</div><div class="lbl">Columns Added</div></div>` : ''}
+        ${s.columns_dropped ? `<div class="card"><div class="num" style="color:#dc2626">${s.columns_dropped}</div><div class="lbl">Columns Dropped</div></div>` : ''}
+        ${s.columns_modified ? `<div class="card"><div class="num" style="color:#d97706">${s.columns_modified}</div><div class="lbl">Columns Modified</div></div>` : ''}
+        ${s.foreign_keys_added ? `<div class="card"><div class="num" style="color:#16a34a">${s.foreign_keys_added}</div><div class="lbl">FKs Added</div></div>` : ''}
+        ${s.foreign_keys_dropped ? `<div class="card"><div class="num" style="color:#dc2626">${s.foreign_keys_dropped}</div><div class="lbl">FKs Dropped</div></div>` : ''}
+      </div>
+
+      <h2>Detected Changes (${diffResult.changes.length})</h2>
+      <table class="changes">
+        <thead><tr><th>Type</th><th>Table</th><th>Field</th><th>Columns</th><th>Constraint</th></tr></thead>
+        <tbody>${changesRows}</tbody>
+      </table>
+
+      <h2>SQL Migration Script</h2>
+      <div class="sql">${highlightSQL(diffResult.sql)}</div>
+
+      <div class="footer">Generated by Scoriet · ${esc(selectedSchema.name)} · ${today}</div>
+    </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); w.onload = () => { w.print(); }; }
+  };
+
   const getChangeTypeIcon = (type: string) => {
     switch (type) {
       case 'CREATE_TABLE':
@@ -542,6 +652,13 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
                 icon="pi pi-copy"
                 onClick={copyToClipboard}
                 severity="info"
+                outlined
+              />
+              <Button
+                label="Print"
+                icon="pi pi-print"
+                onClick={handlePrintMigration}
+                severity="secondary"
                 outlined
               />
             </>

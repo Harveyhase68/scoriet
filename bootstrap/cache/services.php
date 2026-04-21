@@ -28,14 +28,16 @@
     24 => 'KitLoong\\MigrationsGenerator\\MigrationsGeneratorServiceProvider',
     25 => 'Laravel\\Pail\\PailServiceProvider',
     26 => 'Laravel\\Passport\\PassportServiceProvider',
-    27 => 'Laravel\\Sail\\SailServiceProvider',
-    28 => 'Laravel\\Tinker\\TinkerServiceProvider',
-    29 => 'Carbon\\Laravel\\ServiceProvider',
-    30 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
-    31 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    32 => 'Pest\\Laravel\\PestServiceProvider',
-    33 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
-    34 => 'App\\Providers\\AppServiceProvider',
+    27 => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
+    28 => 'Laravel\\Reverb\\ReverbServiceProvider',
+    29 => 'Laravel\\Sail\\SailServiceProvider',
+    30 => 'Laravel\\Tinker\\TinkerServiceProvider',
+    31 => 'Carbon\\Laravel\\ServiceProvider',
+    32 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
+    33 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    34 => 'Pest\\Laravel\\PestServiceProvider',
+    35 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
+    36 => 'App\\Providers\\AppServiceProvider',
   ),
   'eager' => 
   array (
@@ -53,12 +55,13 @@
     11 => 'KitLoong\\MigrationsGenerator\\MigrationsGeneratorServiceProvider',
     12 => 'Laravel\\Pail\\PailServiceProvider',
     13 => 'Laravel\\Passport\\PassportServiceProvider',
-    14 => 'Carbon\\Laravel\\ServiceProvider',
-    15 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
-    16 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    17 => 'Pest\\Laravel\\PestServiceProvider',
-    18 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
-    19 => 'App\\Providers\\AppServiceProvider',
+    14 => 'Laravel\\Reverb\\ReverbServiceProvider',
+    15 => 'Carbon\\Laravel\\ServiceProvider',
+    16 => 'NunoMaduro\\Collision\\Adapters\\Laravel\\CollisionServiceProvider',
+    17 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    18 => 'Pest\\Laravel\\PestServiceProvider',
+    19 => 'Srmklive\\PayPal\\Providers\\PayPalServiceProvider',
+    20 => 'App\\Providers\\AppServiceProvider',
   ),
   'deferred' => 
   array (
@@ -216,6 +219,8 @@
     'validator' => 'Illuminate\\Validation\\ValidationServiceProvider',
     'validation.presence' => 'Illuminate\\Validation\\ValidationServiceProvider',
     'Illuminate\\Contracts\\Validation\\UncompromisedVerifier' => 'Illuminate\\Validation\\ValidationServiceProvider',
+    'Laravel\\Reverb\\ApplicationManager' => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
+    'Laravel\\Reverb\\Contracts\\ApplicationProvider' => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
     'Laravel\\Sail\\Console\\InstallCommand' => 'Laravel\\Sail\\SailServiceProvider',
     'Laravel\\Sail\\Console\\PublishCommand' => 'Laravel\\Sail\\SailServiceProvider',
     'command.tinker' => 'Laravel\\Tinker\\TinkerServiceProvider',
@@ -259,6 +264,9 @@
     array (
     ),
     'Illuminate\\Validation\\ValidationServiceProvider' => 
+    array (
+    ),
+    'Laravel\\Reverb\\ApplicationManagerServiceProvider' => 
     array (
     ),
     'Laravel\\Sail\\SailServiceProvider' => 

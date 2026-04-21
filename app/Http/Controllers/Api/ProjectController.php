@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Models\Team;
 use App\Services\ProjectFileTreeGenerator;
+use App\Events\ProjectUpdated;
+use App\Events\ProjectLocked;
+use App\Events\ProjectUnlocked;
 
 class ProjectController extends Controller
 {
@@ -207,21 +210,19 @@ class ProjectController extends Controller
             // Form Designer settings
             'form_designer_snap_to_grid' => 'nullable|boolean',
             'form_designer_grid_size' => 'nullable|integer|min:5|max:100',
+            // Report Designer settings
+            'report_designer_snap_to_grid' => 'nullable|boolean',
+            'report_designer_grid_unit' => 'nullable|string|in:mm,inch',
+            'report_designer_grid_size' => 'nullable|numeric|min:0.1|max:100',
             // Project paths
             'project_directory' => 'nullable|string|max:500',
             'project_url' => 'nullable|string|max:500',
             // Project properties
             'start_page' => 'nullable|string|max:255',
             'default_language' => 'nullable|string|max:10',
+            'target_language' => 'nullable|string|max:30',
             'archive_format' => 'nullable|string|in:zip,tar.gz,tar.xz',
             'filename_short_length' => 'nullable|integer|min:2|max:5',
-            // Localization settings
-            'decimal_separator' => 'nullable|string|max:1',
-            'thousands_separator' => 'nullable|string|max:1',
-            'date_format' => 'nullable|string|max:20',
-            'time_format' => 'nullable|string|max:20',
-            'currency_symbol' => 'nullable|string|max:5',
-            'timezone' => 'nullable|string|max:50',
             // API Keys
             'google_translate_api_key' => 'nullable|string|max:500',
         ]);
@@ -309,13 +310,6 @@ class ProjectController extends Controller
             'start_page' => $validated['start_page'] ?? 'index.php',
             'default_language' => $validated['default_language'] ?? 'en',
             'filename_short_length' => $validated['filename_short_length'] ?? 2,
-            // Localization settings
-            'decimal_separator' => $validated['decimal_separator'] ?? ',',
-            'thousands_separator' => $validated['thousands_separator'] ?? '.',
-            'date_format' => $validated['date_format'] ?? 'd.m.Y',
-            'time_format' => $validated['time_format'] ?? 'H:i:s',
-            'currency_symbol' => $validated['currency_symbol'] ?? '€',
-            'timezone' => $validated['timezone'] ?? 'Europe/Vienna',
             // Language settings - automatically add user's profile language
             'enabled_languages' => [$userLanguage],
             // API Keys
@@ -377,14 +371,9 @@ class ProjectController extends Controller
                 'form_designer_grid_size',
                 'start_page',
                 'default_language',
+                'target_language',
                 'archive_format',
                 'filename_short_length',
-                'decimal_separator',
-                'thousands_separator',
-                'date_format',
-                'time_format',
-                'currency_symbol',
-                'timezone',
                 'enabled_languages',
             ];
 
@@ -500,21 +489,19 @@ class ProjectController extends Controller
             // Form Designer settings
             'form_designer_snap_to_grid' => 'nullable|boolean',
             'form_designer_grid_size' => 'nullable|integer|min:5|max:100',
+            // Report Designer settings
+            'report_designer_snap_to_grid' => 'nullable|boolean',
+            'report_designer_grid_unit' => 'nullable|string|in:mm,inch',
+            'report_designer_grid_size' => 'nullable|numeric|min:0.1|max:100',
             // Project paths
             'project_directory' => 'nullable|string|max:500',
             'project_url' => 'nullable|string|max:500',
             // Project properties
             'start_page' => 'nullable|string|max:255',
             'default_language' => 'nullable|string|max:10',
+            'target_language' => 'nullable|string|max:30',
             'archive_format' => 'nullable|string|in:zip,tar.gz,tar.xz',
             'filename_short_length' => 'nullable|integer|min:2|max:5',
-            // Localization settings
-            'decimal_separator' => 'nullable|string|max:1',
-            'thousands_separator' => 'nullable|string|max:1',
-            'date_format' => 'nullable|string|max:20',
-            'time_format' => 'nullable|string|max:20',
-            'currency_symbol' => 'nullable|string|max:5',
-            'timezone' => 'nullable|string|max:50',
             // API Keys
             'google_translate_api_key' => 'nullable|string|max:500',
             // Git integration fields
@@ -586,6 +573,16 @@ class ProjectController extends Controller
         // Refresh the project with owner
         $project->refresh();
         $project->load('owner');
+
+        // Broadcast project update to all listeners
+        $user = $user ?? Auth::user();
+        ProjectUpdated::dispatch($project, $user->id);
+
+        // Auto-release edit lock after successful save
+        if ($project->isLockedBy($user)) {
+            $project->forceUnlock();
+            ProjectUnlocked::dispatch($project);
+        }
 
         // Add counts
         $counts = $project->getCounts();
@@ -951,6 +948,7 @@ class ProjectController extends Controller
         // Get all schemas linked to the project
         $linkedSchemas = $project->floatingSchemas()
             ->with(['owner', 'subscription'])
+            ->withCount('schemaTables')
             ->get()
             ->map(function ($schema) use ($user) {
                 // Get subscription info for this schema (if user owns it)
@@ -993,6 +991,7 @@ class ProjectController extends Controller
                         'name' => $schema->owner->name,
                         'username' => $schema->owner->username,
                     ] : null,
+                    'tables_count' => $schema->schema_tables_count ?? 0,
                     'is_soft_locked' => $isSoftLocked,
                     'subscription' => $subscriptionData,
                 ];
@@ -1298,6 +1297,10 @@ class ProjectController extends Controller
 
         $project->update($updateData);
 
+        // Note: No separate ProjectUpdated broadcast here — the main update()
+        // endpoint already broadcasts when both are called together from the
+        // settings panel, avoiding duplicate notifications for a single save.
+
         return response()->json([
             'message' => __('projectcontrollerphp1302'),
             'project' => $project
@@ -1323,6 +1326,64 @@ class ProjectController extends Controller
             'install_script' => $project->install_script ?? [],
             'update_script' => $project->update_script ?? [],
         ]);
+    }
+
+    /**
+     * Get project translations for all enabled languages
+     */
+    public function getTranslations(Project $project)
+    {
+        $user = Auth::user();
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $translations = \App\Models\ProjectTranslation::where('project_id', $project->id)->get()
+            ->keyBy('language_code');
+
+        return response()->json($translations);
+    }
+
+    /**
+     * Save project translation for a specific language
+     */
+    public function saveTranslation(Request $request, Project $project)
+    {
+        $user = Auth::user();
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'language_code' => 'required|string|max:10',
+            'caption' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'decimal_separator' => 'nullable|string|max:1',
+            'thousands_separator' => 'nullable|string|max:1',
+            'date_format' => 'nullable|string|max:20',
+            'time_format' => 'nullable|string|max:20',
+            'currency_symbol' => 'nullable|string|max:5',
+            'timezone' => 'nullable|string|max:50',
+        ]);
+
+        $translation = \App\Models\ProjectTranslation::updateOrCreate(
+            ['project_id' => $project->id, 'language_code' => $validated['language_code']],
+            $validated
+        );
+
+        return response()->json([
+            'message' => 'Translation saved',
+            'translation' => $translation,
+        ]);
+    }
+
+    /**
+     * Get locale defaults for a language code (for pre-filling)
+     */
+    public function getLocaleDefaults(Request $request)
+    {
+        $code = $request->query('code', 'en');
+        return response()->json(\App\Models\ProjectTranslation::getLocaleDefaults($code));
     }
 
     /**
@@ -1383,14 +1444,10 @@ class ProjectController extends Controller
             });
 
         // Convert to Eloquent models with relationships loaded
-        $explicitTeamProjectsModels = $explicitTeamProjects->map(function($projectData) use ($user) {
-            $project = new Project($projectData);
-            // IMPORTANT: Manually set the ID because it's not in $fillable
-            $project->id = $projectData['id'];
-            $project->exists = true; // Mark as existing record
-            $project->owner = User::find($projectData['owner_id']);
-            return $project;
-        });
+        $explicitTeamProjectIds = $explicitTeamProjects->pluck('id')->filter()->unique();
+        $explicitTeamProjectsModels = $explicitTeamProjectIds->isNotEmpty()
+            ? Project::with('owner')->whereIn('id', $explicitTeamProjectIds)->get()
+            : collect();
 
         // Merge with the relationship-based query results
         $allTeamProjects = $teamProjects->merge($explicitTeamProjectsModels)->unique('id');
@@ -1624,5 +1681,64 @@ class ProjectController extends Controller
         return response()->json([
             'message' => __('projectcontrollerphp1625'),
         ]);
+    }
+
+    /**
+     * Lock a project for editing (pessimistic locking)
+     */
+    public function lockProject(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$project->userCanAccess($user)) {
+            return response()->json(['message' => __('projectcontrollerphp469')], 403);
+        }
+
+        if ($project->isEditLocked() && !$project->isLockedBy($user)) {
+            $lockedBy = $project->lockedByUser;
+            return response()->json([
+                'locked' => true,
+                'locked_by_user_id' => $project->locked_by_user_id,
+                'locked_by_user_name' => $lockedBy ? $lockedBy->name : 'Unknown',
+                'locked_at' => $project->locked_at?->toISOString(),
+            ], 409);
+        }
+
+        $project->lockForEditing($user);
+        ProjectLocked::dispatch($project, $user->id, $user->name);
+
+        return response()->json([
+            'locked' => true,
+            'locked_by_user_id' => $user->id,
+            'locked_by_user_name' => $user->name,
+        ]);
+    }
+
+    /**
+     * Unlock a project (release edit lock)
+     */
+    public function unlockProject(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$project->isLockedBy($user) && !$project->userCanManage($user)) {
+            return response()->json(['message' => 'Not locked by you'], 403);
+        }
+
+        $project->forceUnlock();
+        ProjectUnlocked::dispatch($project);
+
+        return response()->json(['unlocked' => true]);
+    }
+
+    /**
+     * Heartbeat to keep the edit lock alive
+     */
+    public function heartbeatLock(Project $project): JsonResponse
+    {
+        $user = Auth::user();
+        if ($project->isLockedBy($user)) {
+            $project->update(['locked_at' => now()]);
+            return response()->json(['renewed' => true]);
+        }
+        return response()->json(['renewed' => false], 409);
     }
 }

@@ -1612,6 +1612,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
         <TabPanel header={t.passwordTab} leftIcon="pi pi-lock">
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <input type="text" name="username" autoComplete="username" value={userData?.email ?? ''} readOnly tabIndex={-1} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', border: 'none', padding: 0, margin: 0 }} />
             {passwordError && (
               <Message 
                 severity="error" 
@@ -1643,6 +1644,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 feedback={false}
                 toggleMask
                 required
+                autoComplete="current-password"
               />
             </div>
 
@@ -1661,6 +1663,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 feedback={true}
                 toggleMask
                 required
+                autoComplete="new-password"
               />
             </div>
 
@@ -1679,6 +1682,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 feedback={false}
                 toggleMask
                 required
+                autoComplete="new-password"
               />
             </div>
 
@@ -2426,7 +2430,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
                 {/* VAT / Tax Information */}
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <h4 className="text-lg font-semibold text-sm mb-4 flex items-center gap-2">
                     <i className="pi pi-file text-yellow-400"></i>
                     {t.profilemodal2340}
                   </h4>
@@ -2492,7 +2496,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
                 {/* Payout Method */}
                 <div>
-                  <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <h4 className="text-lg font-semibold text-sm mb-4 flex items-center gap-2">
                     <i className="pi pi-wallet text-green-400"></i>
                     {t.profilemodal2406}
                   </h4>
@@ -2574,7 +2578,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
                 {/* Payout Info */}
                 <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
-                  <h5 className="font-semibold text-white mb-2">{t.profilemodal2486}</h5>
+                  <h5 className="font-semibold text-sm mb-2">{t.profilemodal2486}</h5>
                   <ul className="text-gray-400 text-sm space-y-1">
                     <li>{t.profilemodal2488}</li>
                     <li>{t.profilemodal2489}</li>
@@ -2776,7 +2780,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         </TabPanel>
 
         <TabPanel header={t.deleteTab} leftIcon="pi pi-trash">
-          <form onSubmit={handleDeleteSubmit} className="space-y-4">
+          <form onSubmit={handleDeleteSubmit} className="space-y-4" autoComplete="off">
+            <input type="text" name="username" autoComplete="off" value="" readOnly tabIndex={-1} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', border: 'none', padding: 0, margin: 0 }} />
             {deleteError && (
               <Message
                 severity="error"
@@ -2823,6 +2828,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
                 feedback={false}
                 toggleMask
                 required
+                autoComplete="off"
               />
             </div>
 

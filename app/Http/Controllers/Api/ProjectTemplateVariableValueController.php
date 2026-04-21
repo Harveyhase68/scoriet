@@ -121,8 +121,14 @@ class ProjectTemplateVariableValueController extends Controller
 
         $template = Template::findOrFail($templateId);
 
+        // Use `present|array` instead of `required|array` so that an empty
+        // array is accepted. An empty payload is a legitimate state — it
+        // means "clear all values for this project/template". Previously
+        // `required` rejected `{values: []}` which caused the entire project
+        // save to fail whenever a linked template had no filled variables
+        // yet (e.g. a template with required variables on a fresh project).
         $validated = $request->validate([
-            'values' => 'required|array',
+            'values' => 'present|array',
             'values.*.variable_name' => 'required|string|max:255',
             'values.*.language' => 'required|string|max:10',
             'values.*.value' => 'nullable|string',

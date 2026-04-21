@@ -1042,6 +1042,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                         className="w-full px-3 py-2 rounded focus:outline-none"
                         style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}`, color: colors.textPrimary }}
                         disabled={servicePolling || testingConnection}
+                        autoComplete="new-password"
                       />
                     </div>
                     <div className="flex items-end">

@@ -83,7 +83,7 @@ class SqlParserController extends Controller
     {
         // Increase PHP limits for large SQL import operations
         ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300); // 5 minutes
+        ini_set('max_execution_time', 1200); // 20 minutes — large schemas (100+ tables) need time for constraints
 
         // Optional: JSON with additional parameters
         if ($request->isJson()) {
@@ -310,7 +310,7 @@ class SqlParserController extends Controller
                 'version_number' => $schemaVersion->version_number,
                 'version_name' => $schemaVersion->version_name,
                 'tables_count' => count($parsedTables),
-                'parsed_data' => $parsedTables,
+                'table_names' => array_map(fn($t) => $t['table_name'], $parsedTables),
             ]);
         } catch (\Exception $e) {
             // Log the full error for debugging
@@ -515,7 +515,7 @@ class SqlParserController extends Controller
     {
         // Increase PHP limits for large SQL operations
         ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300); // 5 minutes
+        ini_set('max_execution_time', 1200); // 20 minutes — large schemas (100+ tables) need time for constraints
 
         try {
             // Get SQL script from request
@@ -646,7 +646,7 @@ class SqlParserController extends Controller
     {
         // Increase PHP limits for large SQL operations
         ini_set('memory_limit', '1024M');
-        ini_set('max_execution_time', 300); // 5 minutes
+        ini_set('max_execution_time', 1200); // 20 minutes — large schemas (100+ tables) need time for constraints
 
         try {
             // Get SQL script from request

@@ -69,7 +69,7 @@ interface Language {
 }
 
 interface Warning {
-  type: 'database' | 'language';
+  type: 'database' | 'language' | 'compatibility';
   message: string;
   templates: string[];
 }
@@ -164,12 +164,17 @@ export default function CodeGenerationPanel() {
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<Warning[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [activeGenerateButton, setActiveGenerateButton] = useState<'download' | 'deploy' | 'ftp' | null>(null);
   const [generationErrors, setGenerationErrors] = useState<GenerationError[]>([]);
   const [generationStats, setGenerationStats] = useState<{ errors: number; files: number } | null>(null);
   const [validationWarnings, setValidationWarnings] = useState<ValidationWarning[]>([]);
   const [archiveWarning, setArchiveWarning] = useState<string | null>(null);
   const [fileConflicts, setFileConflicts] = useState<FileConflict[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
+  // 🧹 Clear project's Redis cache before generating — frees a stale cache
+  // (e.g. after a backup restore) so the next generator run sees fresh data
+  // and the cache repopulates with the new content automatically.
+  const [clearCacheBeforeGenerate, setClearCacheBeforeGenerate] = useState(false);
 
   // 🔗 Git Push States
   const [pushToGit, setPushToGit] = useState(false);
@@ -230,6 +235,7 @@ export default function CodeGenerationPanel() {
     templateIds: number[];
     templateNames: string[];
     filesCount: number;
+    filename?: string;  // Set from generation_info.filename in first batch response
   }>({
     tables: [],
     languages: [],
@@ -257,6 +263,46 @@ export default function CodeGenerationPanel() {
   // 🛒 PlanModal for buying credits
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [planModalInitialTab, setPlanModalInitialTab] = useState(1); // Tab 1 = Buy Credits
+
+  // 🔄 Persist last generation selections in localStorage
+  const CODEGEN_STORAGE_KEY = 'scoriet_codegen_selections';
+
+  const saveCodegenSelections = useCallback(() => {
+    if (!selectedProjectId) return;
+    try {
+      const data = {
+        projectId: selectedProjectId,
+        templateIds: Array.from(selectedTemplateIds),
+        schemaIds: Array.from(selectedSchemaIds),
+        languageCodes: Array.from(selectedLanguageCodes),
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(CODEGEN_STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      // localStorage full or unavailable — ignore
+    }
+  }, [selectedProjectId, selectedTemplateIds, selectedSchemaIds, selectedLanguageCodes]);
+
+  const loadCodegenSelections = useCallback((): {
+    projectId: number;
+    templateIds: number[];
+    schemaIds: number[];
+    languageCodes: string[];
+  } | null => {
+    try {
+      const raw = localStorage.getItem(CODEGEN_STORAGE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      // Expire after 30 days
+      if (data.savedAt && Date.now() - data.savedAt > 30 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(CODEGEN_STORAGE_KEY);
+        return null;
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // 📊 Per-schema migration version options
   const getMigrationOptionsForSchema = (schema: Schema): { label: string; value: number }[] => {
@@ -286,8 +332,12 @@ export default function CodeGenerationPanel() {
     };
   }, []);
 
-  // Load user projects and user data on mount
+  // Load user projects and user data on mount, restore last project selection
   useEffect(() => {
+    const saved = loadCodegenSelections();
+    if (saved?.projectId) {
+      setSelectedProjectId(saved.projectId);
+    }
     loadProjects();
     loadCurrentUser();
     loadCodeAdjustmentsAccess();
@@ -904,12 +954,31 @@ export default function CodeGenerationPanel() {
       setSchemas(Array.isArray(schemasArray) ? schemasArray : []);
       setLanguages(projectLanguages);
 
-      // Select all by default (exclude locked templates and schemas)
+      // Restore saved selections or select all by default (exclude locked)
+      const saved = loadCodegenSelections();
       const unlockedTemplates = templatesWithFiles.filter((t: Template) => !t.is_soft_locked);
-      setSelectedTemplateIds(new Set(unlockedTemplates.map((t: Template) => t.id)));
       const unlockedSchemas = (Array.isArray(schemasArray) ? schemasArray : []).filter((s: Schema) => !s.is_soft_locked);
-      setSelectedSchemaIds(new Set(unlockedSchemas.map((s: Schema) => s.id)));
-      setSelectedLanguageCodes(new Set(projectLanguages.map((l: Language) => l.code)));
+
+      if (saved && saved.projectId === selectedProjectId) {
+        // Restore saved selections — only keep IDs/codes that still exist and are not locked
+        const validTemplateIds = saved.templateIds.filter((id: number) =>
+          unlockedTemplates.some((t: Template) => t.id === id)
+        );
+        const validSchemaIds = saved.schemaIds.filter((id: number) =>
+          unlockedSchemas.some((s: Schema) => s.id === id)
+        );
+        const validLangCodes = saved.languageCodes.filter((code: string) =>
+          projectLanguages.some((l: Language) => l.code === code)
+        );
+        setSelectedTemplateIds(new Set(validTemplateIds.length > 0 ? validTemplateIds : unlockedTemplates.map((t: Template) => t.id)));
+        setSelectedSchemaIds(new Set(validSchemaIds.length > 0 ? validSchemaIds : unlockedSchemas.map((s: Schema) => s.id)));
+        setSelectedLanguageCodes(new Set(validLangCodes.length > 0 ? validLangCodes : projectLanguages.map((l: Language) => l.code)));
+      } else {
+        // No saved data for this project — select all by default
+        setSelectedTemplateIds(new Set(unlockedTemplates.map((t: Template) => t.id)));
+        setSelectedSchemaIds(new Set(unlockedSchemas.map((s: Schema) => s.id)));
+        setSelectedLanguageCodes(new Set(projectLanguages.map((l: Language) => l.code)));
+      }
 
       // 🔗 Set "Push to Git" based on localStorage or project settings
       const savedPushToGit = localStorage.getItem(`pushToGit_${project.id}`);
@@ -991,6 +1060,32 @@ export default function CodeGenerationPanel() {
           type: 'language',
           message: t.codegenerationpanel995,
           templates: templatesNeedingLang.map(t => t.name),
+        });
+      }
+    }
+
+    // Check for mixed compatibility tags
+    if (selectedTemplates.length > 1) {
+      const tags = new Set<string>();
+      const templatesWithTag: string[] = [];
+      const templatesWithoutTag: string[] = [];
+
+      selectedTemplates.forEach(tmpl => {
+        const tag = (tmpl as any).compatibility_tag;
+        if (tag) {
+          tags.add(tag);
+          templatesWithTag.push(tmpl.name);
+        } else {
+          templatesWithoutTag.push(tmpl.name);
+        }
+      });
+
+      // Warn if there are multiple different tags or a mix of tagged/untagged
+      if (tags.size > 1 || (tags.size > 0 && templatesWithoutTag.length > 0)) {
+        newWarnings.push({
+          type: 'compatibility',
+          message: t.codegenerationpanel_mixed_compatibility,
+          templates: [...templatesWithTag, ...templatesWithoutTag],
         });
       }
     }
@@ -1218,6 +1313,7 @@ export default function CodeGenerationPanel() {
       setError(t.codegenerationpanel1214);
       return;
     }
+    setActiveGenerateButton('download');
 
     // 🆕 STEP 0: Check for file conflicts BEFORE starting generation
     const conflicts = await checkFileConflicts();
@@ -1374,6 +1470,25 @@ export default function CodeGenerationPanel() {
           currentTask: t.codegenerationpanel1370
         });
         codeAdjustments = await fetchCodeAdjustments(selectedProjectId, token);
+      }
+
+      // ==========================================================================
+      // STEP 0b: Optionally clear Redis cache for this project BEFORE the
+      // generator does its first cache read. The next gtree fetch will then
+      // be a cache miss, the server rebuilds + repopulates, and subsequent
+      // runs (without the checkbox) automatically see the fresh content.
+      // ==========================================================================
+      if (clearCacheBeforeGenerate && selectedProjectId) {
+        try {
+          await fetch(`/api/projects/${selectedProjectId}/cache/clear`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+          });
+        } catch {
+          // Non-fatal — proceed with generation even if the clear failed.
+          // The user will still get fresh content if the cache happened to be empty,
+          // or stale content if not. Either way better than blocking the run.
+        }
       }
 
       // ==========================================================================
@@ -1582,8 +1697,19 @@ export default function CodeGenerationPanel() {
       // Track which files have been added to prevent duplicates
       const addedFiles = new Set<string>();
 
-      // For each template
-      for (const templateId of Array.from(selectedTemplateIds)) {
+      // 🎯 Smart Injection: Collect pending injections (Pass 2)
+      // Key = target file path, Value = array of { tag, code } entries
+      const pendingInjections = new Map<string, { tag: string; code: string; sourceFile: string; template: string }[]>();
+
+      // Sort selected templates by generation_order (0 = Master first, then 1, 2, ...)
+      const sortedTemplateIds = Array.from(selectedTemplateIds).sort((a, b) => {
+        const tA = templates.find(t => t.id === a);
+        const tB = templates.find(t => t.id === b);
+        return ((tA as any)?.generation_order ?? 0) - ((tB as any)?.generation_order ?? 0);
+      });
+
+      // For each template (sorted by generation_order)
+      for (const templateId of sortedTemplateIds) {
         const template = templates.find(t => t.id === templateId);
         if (!template) continue;
 
@@ -1636,6 +1762,11 @@ export default function CodeGenerationPanel() {
             // We'll modify selectedlanguage in browser for other languages
             if (langCode) {
               url.searchParams.set('language_code', langCode);
+            }
+
+            // 🎯 Pass selected schema IDs so backend only includes those tables
+            if (selectedSchemaIds.size > 0) {
+              url.searchParams.set('schema_ids', JSON.stringify(Array.from(selectedSchemaIds)));
             }
 
             // 📊 Add per-schema migration versions if any are set
@@ -1721,7 +1852,9 @@ export default function CodeGenerationPanel() {
           tables: string[],
           langCode: string | null,
           includeGtree: boolean = false,
-          sharedGtreeRef: { current: any } = { current: null }
+          sharedGtreeRef: { current: any } = { current: null },
+          batchOffset: number = 0,
+          totalTables: number = 0
         ): Promise<void> => {
           try {
             // Don't call updateProgress here - progress is tracked per table in processing loops!
@@ -1740,6 +1873,9 @@ export default function CodeGenerationPanel() {
                 compile: true,
                 include_source: false,
                 include_gtree: includeGtree, // 🚀 OPTIMIZATION: Only fetch gtree once!
+                schema_ids: Array.from(selectedSchemaIds), // 🎯 Only include selected schemas
+                batch_offset: batchOffset, // %12/%13: position of first table in this batch within the full table list
+                total_tables: totalTables, // %13: total number of tables across ALL batches
                 migration_from_versions: Object.fromEntries(
                   Object.entries(migrationFromVersions).filter(([, v]) => v !== null)
                 ), // 📊 Per-schema migration versions
@@ -1766,6 +1902,11 @@ export default function CodeGenerationPanel() {
             // Save gtree to cache if this is the first batch
             if (data.gtree && !sharedGtreeRef.current) {
               sharedGtreeRef.current = data.gtree;
+            }
+
+            // Capture filename from first batch response that has generation_info
+            if (data.generation_info?.filename && !generationMetadataRef.current.filename) {
+              generationMetadataRef.current.filename = data.generation_info.filename;
             }
 
             for (const [_tableKey, tableResult] of Object.entries(results)) {
@@ -1831,7 +1972,14 @@ export default function CodeGenerationPanel() {
           sourceGtree: any  // 🎯 NEW: Pass the gtree from the API response
         ) => {
           try {
-            const fileName = compiledFile.filename || compiledFile.original_template || 'unknown.php';
+            // Use original_template for filename (may contain %2 for language)
+            // and replace %2 with current langCode (not the one baked in by backend)
+            // Use backend-processed filename (has %1,%10,%13,%6 etc. already replaced)
+            // Backend keeps %2 unreplaced — frontend replaces it with current langCode
+            let fileName = compiledFile.filename || 'unknown.php';
+            if (langCode) {
+              fileName = fileName.split('%2').join(langCode);
+            }
             const compiledJS = compiledFile.compiled_content;
 
             if (!compiledJS || !sourceGtree) {
@@ -1858,15 +2006,18 @@ export default function CodeGenerationPanel() {
             // Execute compiled JavaScript IN BROWSER with cloned gtree
             let generatedCode = '';
             try {
-              // ✅ SET CLONED GTREE AS GLOBAL VARIABLE (tableIdx already in compiled function)
+              // ✅ SET CLONED GTREE: both window.gtree AND localStorage
+              // Compiled code reads from localStorage, so we must update it there too
               (window as any).gtree = clonedGtree;
+              localStorage.setItem('scoriet_gtree', JSON.stringify(clonedGtree));
 
               // Execute the compiled function
               const globalEval = eval;
               globalEval(compiledJS);
 
-              // The function name is provided by the API
-              const functionName = compiledFile.function_name || 'generate_' + fileName.replace(/[^a-zA-Z0-9]/g, '_');
+              // The function name is provided by the API (use backend name, NOT the language-modified fileName)
+              const backendFileName = compiledFile.filename || compiledFile.original_template || 'unknown.php';
+              const functionName = compiledFile.function_name || 'generate_' + backendFileName.replace(/[^a-zA-Z0-9]/g, '_');
               const generatedFunction = (window as any)[functionName];
 
               if (!generatedFunction) {
@@ -1898,20 +2049,35 @@ export default function CodeGenerationPanel() {
             const generationType = compiledFile.generation_type || 'project_file';
             let outputPath = compiledFile.output_path || '/';
 
-            // ✅ REPLACE PLACEHOLDERS in output_path
-            // %1 = table name, %2 = language code
+            // ✅ REPLACE PLACEHOLDERS in output_path (safety-net, backend does this too)
+            // IMPORTANT: %11, %10 MUST be replaced BEFORE %1 to avoid partial match!
+            const tn = tableName || '';
+            const tnLower = tn.toLowerCase();
             outputPath = outputPath
-              .replace(/%1/g, tableName || '')
-              .replace(/%2/g, langCode || '');
+              .split('%11').join(tn.toUpperCase())
+              .split('%10').join(tnLower.charAt(0).toUpperCase() + tnLower.slice(1))
+              .split('%1').join(tn)
+              .split('%2').join(langCode || '');
 
             // Start with output_path from template (remove leading /)
             let folderPath = outputPath.replace(/^\/+/, '');
 
-            // Add language folder if needed (ONLY if not already in output_path)
+            // Check if _languages type has %2 placeholder in filename or output_path
+            const originalTemplate = compiledFile.original_template || '';
+            const originalOutputPath = compiledFile.output_path || '/';
+            const userPlacedLanguage = originalTemplate.includes('%2') || originalOutputPath.includes('%2');
             if ((generationType === 'project_file_languages' || generationType === 'db_table_file_languages')
                 && langCode
-                && !outputPath.includes(langCode)) {
-              folderPath = folderPath ? `${langCode}/${folderPath}` : langCode;
+                && !userPlacedLanguage) {
+              // No %2 in filename or output_path — configuration error!
+              // File type is "language-enabled" but has no language placeholder → would generate identical duplicates
+              // Only generate once (skip all but first language call) and add error
+              errors.push({
+                file: originalTemplate,
+                template: originalTemplate,
+                error: `File type is "${generationType}" but filename and output_path contain no %2 placeholder. Either add %2 to the filename/path, or change file type to "${generationType.replace('_languages', '')}". Skipping duplicate generation.`
+              });
+              return; // Skip — would overwrite same file with same content
             }
 
             // Note: Table folders are NOT auto-added. Use %1 in output_path
@@ -1923,8 +2089,37 @@ export default function CodeGenerationPanel() {
             // Build full path
             const fullPath = folderPath ? `${folderPath}/${fileName}` : fileName;
 
+            // 🎯 Skip is_include_only files (only used via {:include:}, not output to ZIP)
+            if (compiledFile.is_include_only) {
+              return;
+            }
+
+            // 🎯 Smart Injection: Queue inject files instead of adding to ZIP directly
+            const injectTarget = compiledFile.inject_target;
+            const injectTag = compiledFile.inject_tag;
+            if (injectTarget && injectTag) {
+              // Resolve inject_target path (clean leading slash, normalize)
+              const resolvedTarget = injectTarget.replace(/^\/+/, '').replace(/\/+/g, '/');
+
+              if (!pendingInjections.has(resolvedTarget)) {
+                pendingInjections.set(resolvedTarget, []);
+              }
+              pendingInjections.get(resolvedTarget)!.push({
+                tag: injectTag,
+                code: generatedCode,
+                sourceFile: fileName,
+                template: template.name,
+              });
+              return;
+            }
+
             // ✅ CHECK FOR DUPLICATES - Skip if already added
             if (addedFiles.has(fullPath)) {
+              return;
+            }
+
+            // 🎯 Skip empty files (0 bytes) — e.g. when {:if hasforeignkeys:} produces no content
+            if (!generatedCode || generatedCode.trim().length === 0) {
               return;
             }
 
@@ -2030,19 +2225,42 @@ export default function CodeGenerationPanel() {
           }
         }
 
+        // 🎯 0b. Process static_file (text content) DIRECTLY into ZIP — no generator needed
+        const staticTextFiles = projectFiles.filter(f => f.file_type === 'static_file' && f.content_type !== 'zip');
+        for (const staticFile of staticTextFiles) {
+          try {
+            const outputPath = (staticFile.output_path || '/').replace(/^\/+/, '').replace(/\/+$/, '');
+            const fileName = staticFile.file_name || 'unknown';
+            const fullPath = outputPath ? `${outputPath}/${fileName}` : fileName;
+
+            if (addedFiles.has(fullPath)) continue;
+
+            // Add raw content directly — no template processing, no escaping
+            zip.file(fullPath, staticFile.file_content || '');
+            addedFiles.add(fullPath);
+            fileCount++;
+          } catch (error: any) {
+            errors.push({
+              file: staticFile.file_name || 'static_file',
+              error: `Static file error: ${error.message}`,
+              template: template.name
+            });
+          }
+        }
+
         // 🚀 Step B: Execute compiled templates with caching
         // - Project files: Fetch once, execute once
         // - Project language files: Fetch once, execute per language
         // - Table files: Fetch per table, execute per table
         // - Table language files: Fetch per table (first lang), execute per table×language
 
-        // 1. Process project_file and static_file (fetch once, execute once)
-        const nonZipProjectFiles = projectFiles.filter(f => f.content_type !== 'zip');
+        // 1. Process project_file (fetch once, execute once) — static_file already handled above
+        const nonZipProjectFiles = projectFiles.filter(f => f.content_type !== 'zip' && f.file_type !== 'static_file');
         if (nonZipProjectFiles.length > 0) {
           await updateProgress(`[${template.name}]${t.codegenerationpanel1981}`);
           const { compiled, gtree } = await fetchCompiledTemplates(null, null);
           const projectFileTemplates = compiled.filter(t =>
-            t.generation_type === 'project_file' || t.generation_type === 'static_file'
+            t.generation_type === 'project_file'
           );
           for (const compiledFile of projectFileTemplates) {
             executeCompiledTemplate(compiledFile, null, null, compiledFile.overlaid_gtree || gtree);
@@ -2081,7 +2299,7 @@ export default function CodeGenerationPanel() {
             const isFirstBatch = (i === 0);
 
             // Don't call updateProgress here - we update per table in processing loop below!
-            await fetchCompiledTemplatesBatch(batchTableNames, null, isFirstBatch, gtreeCache);
+            await fetchCompiledTemplatesBatch(batchTableNames, null, isFirstBatch, gtreeCache, i, tableNames.length);
           }
 
           // Now process all tables from cache (already loaded!)
@@ -2125,7 +2343,7 @@ export default function CodeGenerationPanel() {
             const isFirstBatch = (i === 0);
 
             // Don't call updateProgress here - we update per table in processing loop below!
-            await fetchCompiledTemplatesBatch(batchTableNames, firstLang, isFirstBatch, gtreeCache);
+            await fetchCompiledTemplatesBatch(batchTableNames, firstLang, isFirstBatch, gtreeCache, i, tableNames.length);
           }
 
           // Now process all tables from cache (already loaded!)
@@ -2152,6 +2370,350 @@ export default function CodeGenerationPanel() {
             processedCount++;
             // 🎯 Update progress for EVERY table (not just every 5)
             await updateProgress(`[${template.name}]${t.codegenerationpanel2093}${processedCount}/${allTables.length}: ${tableName}`);
+          }
+        }
+      }
+
+      // ==========================================================================
+      // STEP 3: Apply Smart Injections (Pass 2)
+      //
+      // Supports two modes per injection:
+      //   NORMAL MODE:  No {:section:} blocks in generated code
+      //                 → Entire code inserted before // {:inject tag:}
+      //   SECTION MODE: Code contains {:section name:}...{:sectionend:} blocks
+      //                 → Each section inserted before // {:inject tag;name:}
+      //                 → Code outside sections is discarded
+      //
+      // Both modes can coexist in the same target file:
+      //   Template A (sections) → fills // {:inject routes;imports:}
+      //   Template B (normal)   → fills // {:inject routes:}
+      //
+      // Missing markers are silently skipped (no error, no abort).
+      // ==========================================================================
+      if (pendingInjections.size > 0) {
+        await updateProgress(t.codegenerationpanel_smartinject || 'Applying Smart Injections...');
+
+        // Helper: Parse {:section name:}...{:sectionend:} blocks from generated code.
+        // Returns Map of sectionName → sectionContent. Empty map = normal mode.
+        const parseSections = (code: string): Map<string, string> => {
+          const sections = new Map<string, string>();
+          const lines = code.split('\n');
+
+          let currentSection: string | null = null;
+          let currentContent: string[] = [];
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+
+            // Check for {:section name:}
+            const sectionStart = '{:section ';
+            const tagClose = ':}';
+            const startPos = trimmed.indexOf(sectionStart);
+            if (startPos !== -1) {
+              const nameStart = startPos + sectionStart.length;
+              const nameEnd = trimmed.indexOf(tagClose, nameStart);
+              if (nameEnd !== -1) {
+                const sectionName = trimmed.substring(nameStart, nameEnd).trim();
+                if (sectionName) {
+                  // Save previous section if open (safety)
+                  if (currentSection) {
+                    sections.set(currentSection, currentContent.join('\n'));
+                  }
+                  currentSection = sectionName;
+                  currentContent = [];
+                  continue;
+                }
+              }
+            }
+
+            // Check for {:sectionend:}
+            if (trimmed.indexOf('{:sectionend:}') !== -1 && currentSection) {
+              sections.set(currentSection, currentContent.join('\n'));
+              currentSection = null;
+              currentContent = [];
+              continue;
+            }
+
+            // Collect content within a section
+            if (currentSection) {
+              currentContent.push(line);
+            }
+          }
+
+          // Close unclosed section (robustness)
+          if (currentSection && currentContent.length > 0) {
+            sections.set(currentSection, currentContent.join('\n'));
+          }
+
+          return sections;
+        };
+
+        // Helper: Find a marker line and insert code before it.
+        // Supports two modes:
+        //   LINE mode:   Marker alone on line (e.g. "// {:inject tag:}")
+        //                → Insert code BEFORE the marker line
+        //   INLINE mode: Marker wrapped in comment with other code on the same line
+        //                (e.g. "if (!x /* {:inject tag;section:} */) {")
+        //                → REPLACE the comment+marker with the injected code
+        // Auto-detects: /* */ (C/JS/PHP), {/* */} (JSX), <!-- --> (HTML)
+        const insertBeforeMarker = (fileContent: string, marker: string, codeToInsert: string): { content: string; applied: boolean } => {
+          const lines = fileContent.split('\n');
+          for (let i = 0; i < lines.length; i++) {
+            const markerPos = lines[i].indexOf(marker);
+            if (markerPos === -1) continue;
+
+            const line = lines[i];
+            const markerEnd = markerPos + marker.length;
+
+            // Check for inline comment wrappers around the marker
+            const beforeMarker = line.substring(0, markerPos).trimEnd();
+            const afterMarker = line.substring(markerEnd).trimStart();
+
+            let commentStart = -1;
+            let commentEnd = -1;
+
+            // JSX: {/* {:inject ...:} */}
+            if (beforeMarker.endsWith('{/*') && afterMarker.startsWith('*/}')) {
+              commentStart = line.lastIndexOf('{/*', markerPos);
+              commentEnd = line.indexOf('*/}', markerEnd) + 3;
+            }
+            // C-style: /* {:inject ...:} */
+            else if (beforeMarker.endsWith('/*') && afterMarker.startsWith('*/')) {
+              commentStart = line.lastIndexOf('/*', markerPos);
+              commentEnd = line.indexOf('*/', markerEnd) + 2;
+            }
+            // HTML: <!-- {:inject ...:} -->
+            else if (beforeMarker.endsWith('<!--') && afterMarker.startsWith('-->')) {
+              commentStart = line.lastIndexOf('<!--', markerPos);
+              commentEnd = line.indexOf('-->', markerEnd) + 3;
+            }
+            // Pascal/Delphi: (* {:inject ...:} *)
+            else if (beforeMarker.endsWith('(*') && afterMarker.startsWith('*)')) {
+              commentStart = line.lastIndexOf('(*', markerPos);
+              commentEnd = line.indexOf('*)', markerEnd) + 2;
+            }
+
+            if (commentStart !== -1 && commentEnd !== -1) {
+              // Check if there's other code on this line (not just the comment)
+              const beforeComment = line.substring(0, commentStart).trim();
+              const afterComment = line.substring(commentEnd).trim();
+
+              if (beforeComment || afterComment) {
+                // INLINE mode: replace the comment+marker with the injected code
+                lines[i] = line.substring(0, commentStart) + codeToInsert + line.substring(commentEnd);
+                return { content: lines.join('\n'), applied: true };
+              }
+            }
+
+            // LINE mode: insert code before the marker line
+            lines.splice(i, 0, codeToInsert);
+            return { content: lines.join('\n'), applied: true };
+          }
+          return { content: fileContent, applied: false };
+        };
+
+        for (const [targetPath, injections] of pendingInjections.entries()) {
+          // Find target file in ZIP
+          const targetFile = zip.file(targetPath);
+          if (!targetFile) {
+            // Target file not found — silently skip.
+            // (Target might come from a template that wasn't selected)
+            continue;
+          }
+
+          // Read target file content
+          let content = await targetFile.async('string');
+          let anyInjectionApplied = false;
+
+          // Classify each injection: normal (no sections) or section-based
+          // normalByTag:   tag → code[]  (goes to {:inject tag:})
+          // sectionByKey:  "tag;section" → code[]  (goes to {:inject tag;section:})
+          const normalByTag = new Map<string, string[]>();
+          const sectionByKey = new Map<string, string[]>();
+
+          for (const inj of injections) {
+            const sections = parseSections(inj.code);
+
+            if (sections.size > 0) {
+              // Section mode: distribute each section to its tag;section key
+              for (const [sectionName, sectionCode] of sections.entries()) {
+                const key = `${inj.tag};${sectionName}`;
+                if (!sectionByKey.has(key)) {
+                  sectionByKey.set(key, []);
+                }
+                sectionByKey.get(key)!.push(sectionCode);
+              }
+            } else {
+              // Normal mode: entire code goes to base tag
+              if (!normalByTag.has(inj.tag)) {
+                normalByTag.set(inj.tag, []);
+              }
+              normalByTag.get(inj.tag)!.push(inj.code);
+            }
+          }
+
+          // Apply normal injections → {:inject tag:}
+          for (const [tag, codeBlocks] of normalByTag.entries()) {
+            const marker = `{:inject ${tag}:}`;
+            const combinedCode = codeBlocks.join('\n');
+            const result = insertBeforeMarker(content, marker, combinedCode);
+            if (result.applied) {
+              content = result.content;
+              anyInjectionApplied = true;
+            }
+            // Marker not found → silently skip (intentional, no error)
+          }
+
+          // Apply section injections → {:inject tag;section:}
+          for (const [tagSection, codeBlocks] of sectionByKey.entries()) {
+            const marker = `{:inject ${tagSection}:}`;
+            const combinedCode = codeBlocks.join('\n');
+            const result = insertBeforeMarker(content, marker, combinedCode);
+            if (result.applied) {
+              content = result.content;
+              anyInjectionApplied = true;
+            }
+            // Marker not found → silently skip (intentional, no error)
+          }
+
+          // Update the file in the ZIP
+          if (anyInjectionApplied) {
+            zip.file(targetPath, content);
+          }
+        }
+      }
+
+      // ==========================================================================
+      // STEP 3b: Remove leftover {:inject ...:} markers from ALL files in the ZIP
+      //
+      // After all injections are applied, any remaining {:inject tag:} or
+      // {:inject tag;section:} markers are no longer needed. They served their
+      // purpose as anchor points and would only clutter the final output.
+      // We remove entire lines that contain ONLY a marker (with optional
+      // comment wrapper), preserving any real code on the same line.
+      // ==========================================================================
+      {
+        const zipFiles = zip.files;
+        for (const [filePath, zipEntry] of Object.entries(zipFiles)) {
+          if (zipEntry.dir) continue;
+
+          const fileContent = await zipEntry.async('string');
+
+          // Process line by line: remove lines whose only purpose is an inject marker
+          const lines = fileContent.split('\n');
+          const cleanedLines: string[] = [];
+          let changed = false;
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+
+            // Detect lines that are ONLY an {:inject ...:} marker,
+            // optionally wrapped in a comment (// , # , /* */ , <!-- --> , {/* */})
+            // Examples that get removed:
+            //   {:inject routes;auth1:}
+            //   // {:inject routes;auth1:}
+            //   # {:inject scripts:}
+            //   /* {:inject styles:} */
+            //   <!-- {:inject html;head:} -->
+            //   {/* {:inject jsx;imports:} */}
+            let isMarkerOnlyLine = false;
+
+            // Strip common comment wrappers to find the core content
+            let core = trimmed;
+
+            // {/* ... */}  (JSX comment)
+            if (core.indexOf('{/*') === 0 && core.indexOf('*/}') === core.length - 3) {
+              core = core.substring(3, core.length - 3).trim();
+            }
+            // /* ... */  (C-style block comment)
+            else if (core.indexOf('/*') === 0 && core.indexOf('*/') === core.length - 2) {
+              core = core.substring(2, core.length - 2).trim();
+            }
+            // <!-- ... -->  (HTML comment)
+            else if (core.indexOf('<!--') === 0 && core.indexOf('-->') === core.length - 3) {
+              core = core.substring(4, core.length - 3).trim();
+            }
+            // // ...  (line comment)
+            else if (core.indexOf('//') === 0) {
+              core = core.substring(2).trim();
+            }
+            // # ...  (hash comment)
+            else if (core.indexOf('#') === 0) {
+              core = core.substring(1).trim();
+            }
+
+            // Check if the remaining core is exactly an {:inject ...:} tag
+            if (core.indexOf('{:inject ') === 0 && core.indexOf(':}') === core.length - 2) {
+              isMarkerOnlyLine = true;
+            }
+
+            if (isMarkerOnlyLine) {
+              changed = true;
+              // Skip this line entirely
+            } else {
+              cleanedLines.push(line);
+            }
+          }
+
+          if (changed) {
+            zip.file(filePath, cleanedLines.join('\n'));
+          }
+        }
+      }
+
+      // ==========================================================================
+      // STEP 3b: Renumber sequential files to close gaps from skipped empty files
+      // e.g. migrations: 000001, 000002, 000004, 000007 → 000001, 000002, 000003, 000004
+      // ==========================================================================
+      {
+        // Group files by directory, find numbered sequences, renumber
+        const filesByDir: Record<string, string[]> = {};
+        for (const path of Object.keys(zip.files)) {
+          if (zip.files[path].dir) continue;
+          const lastSlash = path.lastIndexOf('/');
+          const dir = lastSlash >= 0 ? path.substring(0, lastSlash) : '';
+          const name = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+          if (!filesByDir[dir]) filesByDir[dir] = [];
+          filesByDir[dir].push(name);
+        }
+
+        for (const [dir, files] of Object.entries(filesByDir)) {
+          // Find files with a leading number pattern like 000001_xxx or 2026_03_16_000001_xxx
+          const numbered: { original: string, prefix: string, num: number, suffix: string, padLen: number }[] = [];
+          for (const f of files) {
+            // Match pattern: optional date prefix + underscore + padded number + underscore + rest
+            const m = f.match(/^((?:\d{4}_\d{2}_\d{2}_)?)(\d{4,})(_.*)/);
+            if (m) {
+              numbered.push({ original: f, prefix: m[1], num: parseInt(m[2], 10), suffix: m[3], padLen: m[2].length });
+            }
+          }
+          if (numbered.length < 2) continue;
+
+          // Sort by number
+          numbered.sort((a, b) => a.num - b.num);
+
+          // Check if there are gaps
+          const firstNum = numbered[0].num;
+          let hasGaps = false;
+          for (let i = 1; i < numbered.length; i++) {
+            if (numbered[i].num !== firstNum + i) { hasGaps = true; break; }
+          }
+          if (!hasGaps) continue;
+
+          // Renumber sequentially starting from firstNum
+          for (let i = 0; i < numbered.length; i++) {
+            const entry = numbered[i];
+            const newNum = firstNum + i;
+            if (entry.num === newNum) continue;
+
+            const oldPath = dir ? `${dir}/${entry.original}` : entry.original;
+            const newName = entry.prefix + String(newNum).padStart(entry.padLen, '0') + entry.suffix;
+            const newPath = dir ? `${dir}/${newName}` : newName;
+
+            // Read content, remove old, add new
+            const content = await zip.files[oldPath].async('string');
+            zip.remove(oldPath);
+            zip.file(newPath, content);
           }
         }
       }
@@ -2238,6 +2800,9 @@ export default function CodeGenerationPanel() {
       setGenerationErrors(errors);
       setValidationWarnings(collectedValidationWarnings);
 
+      // 🔄 Persist current selections for next session
+      saveCodegenSelections();
+
       // ==========================================================================
       // STEP 5: Generate and download archive (browser-based for large projects)
       // ==========================================================================
@@ -2277,6 +2842,7 @@ export default function CodeGenerationPanel() {
         // 📦 Populate generation metadata for upload
         const selectedTemplatesList = templates.filter(t => selectedTemplateIds.has(t.id));
         generationMetadataRef.current = {
+          ...generationMetadataRef.current,
           tables: allTables.map(t => t.databasename || t.name || 'unknown'),
           languages: Array.from(selectedLanguageCodes),
           templateIds: Array.from(selectedTemplateIds),
@@ -2339,6 +2905,7 @@ export default function CodeGenerationPanel() {
         // 📦 Populate generation metadata for upload (same as ZIP case)
         const selectedTemplatesListTar = templates.filter(t => selectedTemplateIds.has(t.id));
         generationMetadataRef.current = {
+          ...generationMetadataRef.current,
           tables: allTables.map(t => t.databasename || t.name || 'unknown'),
           languages: Array.from(selectedLanguageCodes),
           templateIds: Array.from(selectedTemplateIds),
@@ -2369,6 +2936,7 @@ export default function CodeGenerationPanel() {
       if (!chargeResult.success) {
         setError(chargeResult.message || t.codegenerationpanel2253);
         setGenerating(false);
+      setActiveGenerateButton(null);
         return;
       }
 
@@ -2379,7 +2947,7 @@ export default function CodeGenerationPanel() {
         const link = document.createElement('a');
         link.href = url;
         const projectName = selectedProject?.name || 'project';
-        link.download = `${projectName}_${Date.now()}.zip`;
+        link.download = generationMetadataRef.current.filename || `${projectName}_${Date.now()}.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -2450,6 +3018,7 @@ export default function CodeGenerationPanel() {
       setError(err.message || t.codegenerationpanel2333);
     } finally {
       setGenerating(false);
+      setActiveGenerateButton(null);
       setTimeout(() => {
         setGenerationProgress(null);
       }, 2000);
@@ -2465,6 +3034,7 @@ export default function CodeGenerationPanel() {
       setError(t.codegenerationpanel2348);
       return;
     }
+    setActiveGenerateButton('deploy');
 
     // Check for conflicts first
     const conflicts = await checkFileConflicts();
@@ -2486,6 +3056,7 @@ export default function CodeGenerationPanel() {
       setError(t.codegenerationpanel2369);
       return;
     }
+    setActiveGenerateButton('ftp');
 
     if (!selectedProject?.has_ftp_deployment) {
       setError(t.codegenerationpanel2374);
@@ -2520,6 +3091,7 @@ export default function CodeGenerationPanel() {
       if (!chargeResult.success) {
         setError(chargeResult.message || t.codegenerationpanel2404);
         setGenerating(false);
+      setActiveGenerateButton(null);
         setFtpUploading(false);
         return;
       }
@@ -2649,6 +3221,7 @@ export default function CodeGenerationPanel() {
       setDeploymentLogs(prev => [...prev, '', `${t.codegenerationpanel2532}${err.message}`]);
     } finally {
       setGenerating(false);
+      setActiveGenerateButton(null);
       setFtpUploading(false);
     }
   };
@@ -2760,6 +3333,7 @@ export default function CodeGenerationPanel() {
       if (!chargeResult.success) {
         setError(chargeResult.message || t.codegenerationpanel2644);
         setGenerating(false);
+      setActiveGenerateButton(null);
         return;
       }
 
@@ -2916,6 +3490,7 @@ export default function CodeGenerationPanel() {
       setDeploymentPolling(false);
     } finally {
       setGenerating(false);
+      setActiveGenerateButton(null);
     }
   };
 
@@ -2982,7 +3557,7 @@ export default function CodeGenerationPanel() {
               optionLabel="name"
               optionValue="id"
               placeholder={t.codegenerationpanel2867}
-              disabled={loading}
+              disabled={loading || generating}
               className="w-full"
               filter
               itemTemplate={(option) => (
@@ -3020,7 +3595,8 @@ export default function CodeGenerationPanel() {
                   </label>
                   <button
                     onClick={toggleAllTemplates}
-                    className="text-xs text-blue-400 hover:text-blue-300"
+                    disabled={generating}
+                    className={`text-xs ${generating ? 'text-gray-500 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'}`}
                   >
                     {selectedTemplateIds.size === templates.filter(t => !t.is_soft_locked).length ? t.codegenerationpanel2908 : t.codegenerationpanel2908_2}
                   </button>
@@ -3048,8 +3624,8 @@ export default function CodeGenerationPanel() {
                             <input
                               type="checkbox"
                               checked={selectedTemplateIds.has(template.id)}
-                              onChange={() => !isLocked && toggleTemplate(template.id)}
-                              disabled={isLocked}
+                              onChange={() => !isLocked && !generating && toggleTemplate(template.id)}
+                              disabled={isLocked || generating}
                               className={`mt-1 ${isLocked ? 'cursor-not-allowed' : ''}`}
                             />
                             <div className="flex-1">
@@ -3081,9 +3657,10 @@ export default function CodeGenerationPanel() {
                   </label>
                   <button
                     onClick={toggleAllSchemas}
-                    className="text-xs text-blue-400 hover:text-blue-300"
+                    disabled={generating}
+                    className={`text-xs ${generating ? 'text-gray-500 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'}`}
                   >
-                    {selectedSchemaIds.size === schemas.filter(s => !s.is_soft_locked).length ? 'Deselect All' : 'Select All'}
+                    {selectedSchemaIds.size === schemas.filter(s => !s.is_soft_locked).length ? t.codegenerationpanel2908 : t.codegenerationpanel2908_2}
                   </button>
                 </div>
                 <div className="rounded-lg p-4 max-h-60 overflow-y-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
@@ -3112,8 +3689,8 @@ export default function CodeGenerationPanel() {
                               <input
                                 type="checkbox"
                                 checked={isSelected}
-                                onChange={() => !isLocked && toggleSchema(schema.id)}
-                                disabled={isLocked}
+                                onChange={() => !isLocked && !generating && toggleSchema(schema.id)}
+                                disabled={isLocked || generating}
                                 className={isLocked ? 'cursor-not-allowed' : ''}
                               />
                               {isLocked && (
@@ -3164,7 +3741,8 @@ export default function CodeGenerationPanel() {
                   </label>
                   <button
                     onClick={toggleAllLanguages}
-                    className="text-xs text-blue-400 hover:text-blue-300"
+                    disabled={generating}
+                    className={`text-xs ${generating ? 'text-gray-500 cursor-not-allowed' : 'text-blue-400 hover:text-blue-300'}`}
                   >
                     {selectedLanguageCodes.size === languages.length ? t.codegenerationpanel3064 : t.codegenerationpanel3064_2}
                   </button>
@@ -3185,7 +3763,8 @@ export default function CodeGenerationPanel() {
                           <input
                             type="checkbox"
                             checked={selectedLanguageCodes.has(language.code)}
-                            onChange={() => toggleLanguage(language.code)}
+                            onChange={() => !generating && toggleLanguage(language.code)}
+                            disabled={generating}
                           />
                           <span>{language.name}</span>
                         </label>
@@ -3409,6 +3988,29 @@ export default function CodeGenerationPanel() {
                 </div>
               )}
 
+              {/* 🗑️ Clear Cache Before Generation */}
+              <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={clearCacheBeforeGenerate}
+                    onChange={(e) => setClearCacheBeforeGenerate(e.target.checked)}
+                    disabled={generating}
+                    className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500 disabled:opacity-50"
+                    style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, accentColor: '#f59e0b' }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🗑️</span>
+                    <span className="font-medium" style={{ color: colors.textPrimary }}>
+                      {t.codegenerationpanel_clearcache_label || 'Cache vor Generierung leeren'}
+                    </span>
+                    <span className="text-xs" style={{ color: colors.textMuted }}>
+                      {t.codegenerationpanel_clearcache_hint || '(Redis-Cache dieses Projekts wird vor dem Generieren geleert und neu aufgebaut)'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
               {/* 🔗 Git Push Option */}
               <div className="mb-4 p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid' }}>
                 <div className="flex items-center justify-between">
@@ -3417,7 +4019,7 @@ export default function CodeGenerationPanel() {
                       type="checkbox"
                       checked={pushToGit}
                       onChange={(e) => handlePushToGitChange(e.target.checked)}
-                      disabled={gitIntegrationAccess?.has_access === false}
+                      disabled={gitIntegrationAccess?.has_access === false || generating}
                       className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                       style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}
                     />
@@ -3769,7 +4371,7 @@ export default function CodeGenerationPanel() {
                     }
                   }}
                 >
-                  {generating ? (
+                  {activeGenerateButton === 'download' ? (
                     <>
                       <span className="inline-block animate-spin mr-2">⚙️</span>
                       Generating...
@@ -3801,7 +4403,7 @@ export default function CodeGenerationPanel() {
                     }
                   }}
                 >
-                  {generating ? (
+                  {activeGenerateButton === 'deploy' ? (
                     <>
                       <span className="inline-block animate-spin mr-2">⚙️</span>
                       {t.codegenerationpanel3615}
@@ -3836,7 +4438,7 @@ export default function CodeGenerationPanel() {
                       }
                     }}
                   >
-                    {ftpUploading ? (
+                    {activeGenerateButton === 'ftp' ? (
                       <>
                         <span className="inline-block animate-spin mr-2">⚙️</span>
                         {t.codegenerationpanel3650}

@@ -7,7 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Steps } from 'primereact/steps';
-import { FileUpload, FileUploadHandlerEvent } from 'primereact/fileupload';
+import { FileUploadHandlerEvent } from 'primereact/fileupload';
 import { ProgressBar } from 'primereact/progressbar';
 import { Message } from 'primereact/message';
 import { Tag } from 'primereact/tag';
@@ -232,7 +232,6 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const [serviceLogs, setServiceLogs] = useState<string>('');
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-    const fileUploadRef = useRef<FileUpload>(null);
 
     // Steps configuration
     const steps = [
@@ -664,7 +663,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             setError(err.message || t.templateimportwizardpanel564);
         } finally {
             setLoading(false);
-            fileUploadRef.current?.clear();
+            // Native file input is reset via e.target.value = '' in onChange
         }
     };
 
@@ -1532,29 +1531,39 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                         {t.templateimportwizardpanel1412}
                                     </p>
 
-                                    <FileUpload
-                                        ref={fileUploadRef}
-                                        name="archive"
-                                        accept=".zip,.tar.gz,.tar.xz,.tgz"
-                                        maxFileSize={104857600} // 100MB
-                                        customUpload
-                                        uploadHandler={handleUpload}
-                                        auto
-                                        chooseLabel={t.templateimportwizardpanel1423}
-                                        className="w-full"
-                                        disabled={loading}
-                                        emptyTemplate={
-                                            <div className="flex flex-col items-center py-8">
-                                                <i className="pi pi-cloud-upload text-4xl mb-4" style={{ color: colors.textMuted }} />
-                                                <p style={{ color: colors.textMuted }}>
-                                                    {t.templateimportwizardpanel1430}
-                                                </p>
-                                                <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
-                                                    {t.templateimportwizardpanel1447}
-                                                </p>
-                                            </div>
-                                        }
-                                    />
+                                    <div className="flex justify-center">
+                                        <Button
+                                            icon="pi pi-upload"
+                                            label={t.templateimportwizardpanel1423}
+                                            onClick={() => document.getElementById('wizard-archive-upload')?.click()}
+                                            className="p-button-outlined"
+                                            disabled={loading}
+                                        />
+                                        <input
+                                            id="wizard-archive-upload"
+                                            type="file"
+                                            accept=".zip,.tar.gz,.tar.xz,.tgz"
+                                            style={{ display: 'none' }}
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    handleUpload({ files: [file] } as FileUploadHandlerEvent);
+                                                    e.target.value = '';
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    {!loading && (
+                                        <div className="flex flex-col items-center py-8">
+                                            <i className="pi pi-cloud-upload text-4xl mb-4" style={{ color: colors.textMuted }} />
+                                            <p style={{ color: colors.textMuted }}>
+                                                {t.templateimportwizardpanel1430}
+                                            </p>
+                                            <p className="text-sm mt-2" style={{ color: colors.textMuted }}>
+                                                {t.templateimportwizardpanel1447}
+                                            </p>
+                                        </div>
+                                    )}
 
                                     {loading && (
                                         <div className="mt-4">
@@ -1967,6 +1976,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     onChange={(e) => setTemplateCategory(e.value)}
                                     className="w-full"
                                     inputClassName="w-full"
+                                    inputStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
+                                    panelStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     placeholder={t.templateimportwizardpanel1707}
                                     dropdown
                                     forceSelection={false}
@@ -1988,6 +1999,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                     onChange={(e) => setTemplateLanguage(e.value)}
                                     className="w-full"
                                     inputClassName="w-full"
+                                    inputStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
+                                    panelStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
                                     placeholder={t.templateimportwizardpanel1728}
                                     dropdown
                                     forceSelection={false}
@@ -2439,6 +2452,19 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 }
                 .template-import-wizard .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover {
                     background-color: var(--theme-bg-hover) !important;
+                }
+                /* AutoComplete panels render as portals outside the dialog — need global selectors */
+                .p-autocomplete-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+                    color: var(--theme-text-primary) !important;
+                }
+                .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item:hover,
+                .p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item.p-highlight {
+                    background-color: var(--theme-bg-hover) !important;
+                    color: var(--theme-text-primary) !important;
                 }
                 .template-import-wizard .p-chips .p-chips-multiple-container {
                     background-color: var(--theme-bg-secondary) !important;

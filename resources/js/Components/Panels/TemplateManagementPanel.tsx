@@ -18,6 +18,7 @@ import FileModal from './FileModal';
 import TemplateModal from './TemplateModal';
 import VariableModal from './VariableModal';
 import TemplateImportWizardPanel from './TemplateImportWizardPanel';
+import TemplatePrintModal from './TemplatePrintModal';
 import { useTranslation, SupportedLanguage, getStoredLanguage, tpl} from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -32,6 +33,9 @@ interface TemplateSubscription {
 interface Template {
     id: number;
     name: string;
+    full_name?: string;
+    compatibility_tag?: string | null;
+    generation_order?: number;
     description?: string;
     category: string;
     language: string;
@@ -70,6 +74,10 @@ interface TemplateFile {
     form_window_type?: number;
     content_type?: string;
     zip_filename?: string;
+    is_include_only?: boolean;
+    inject_target?: string | null;
+    inject_tag?: string | null;
+    language_override?: string | null;
 }
 
 interface TemplateVariable {
@@ -127,6 +135,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [communityCategoryFilter, setCommunityCategoryFilter] = useState(t.templatecontroller22);
     const [modalVisible, setModalVisible] = useState(false);
     const [viewModalVisible, setViewModalVisible] = useState(false);
+    const [showPrintModal, setShowPrintModal] = useState(false);
+    const [printTemplateId, setPrintTemplateId] = useState<number | null>(null);
     const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
     const [viewingTemplate, setViewingTemplate] = useState<Template | null>(null);
     const [templateFiles, setTemplateFiles] = useState<TemplateFile[]>([]);
@@ -135,6 +145,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
     const [cloneModalVisible, setCloneModalVisible] = useState(false);
     const [templateToClone, setTemplateToClone] = useState<Template | null>(null);
     const [cloneName, setCloneName] = useState('');
+    const [projectLanguagesForFiles, setProjectLanguagesForFiles] = useState<Array<{ code: string; name: string }>>([]);
     const [cloneVisibility, setCloneVisibility] = useState<'public' | 'private'>('public');
     const [nameCheckLoading, setNameCheckLoading] = useState(false);
     const [nameExists, setNameExists] = useState(false);
@@ -208,6 +219,48 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         loadCommunityTemplates();
         loadPurchasedTemplates();
     }, [projectId]);
+
+    // Load project languages for FileModal language_override dropdown
+    useEffect(() => {
+        const loadProjectLanguages = async () => {
+            try {
+                const currentProjectId = forceProjectId || selectedProject?.id;
+                if (!currentProjectId) {
+                    setProjectLanguagesForFiles([]);
+                    return;
+                }
+                const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+                if (!token) return;
+
+                const [projectRes, langRes] = await Promise.all([
+                    fetch(`/api/projects/${currentProjectId}`, {
+                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+                    }),
+                    fetch('/api/active-languages', {
+                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+                    }),
+                ]);
+
+                if (projectRes.ok && langRes.ok) {
+                    const project = await projectRes.json();
+                    const allLangs = await langRes.json();
+                    const allLangsArray = allLangs.data || allLangs;
+                    const enabledCodes = Array.isArray(project.enabled_languages)
+                        ? project.enabled_languages
+                        : (typeof project.enabled_languages === 'string'
+                            ? JSON.parse(project.enabled_languages)
+                            : []);
+                    const filtered = (Array.isArray(allLangsArray) ? allLangsArray : [])
+                        .filter((lang: any) => enabledCodes.includes(lang.code))
+                        .map((lang: any) => ({ code: lang.code, name: lang.name }));
+                    setProjectLanguagesForFiles(filtered);
+                }
+            } catch {
+                // Silently fail - language override is optional
+            }
+        };
+        loadProjectLanguages();
+    }, [forceProjectId, selectedProject?.id]);
 
     // Reload my templates when filters change
     useEffect(() => {
@@ -943,6 +996,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 is_active: values.is_active !== false,
                 visibility: values.visibility || 'public',
                 is_system_template: values.is_system_template || false,
+                compatibility_tag: values.compatibility_tag || null,
+                generation_order: values.generation_order ?? 0,
                 protected_files: values.protected_files || [],
                 install_script: values.install_script || [],
                 update_script: values.update_script || [],
@@ -952,7 +1007,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     file_type: file.file_type,
                     file_order: index,
                     output_path: file.output_path || '/',
-                    form_window_type: file.form_window_type || 0
+                    content_type: file.content_type || 'text',
+                    zip_filename: file.zip_filename || null,
+                    form_window_type: file.form_window_type || 0,
+                    is_include_only: file.is_include_only || false,
+                    inject_target: file.inject_target || null,
+                    inject_tag: file.inject_tag || null,
                 }))
             };
 
@@ -1003,6 +1063,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 is_active: values.is_active,
                 visibility: values.visibility || 'public',
                 is_system_template: values.is_system_template || false,
+                compatibility_tag: values.compatibility_tag || null,
+                generation_order: values.generation_order ?? 0,
                 protected_files: values.protected_files || [],
                 install_script: values.install_script || [],
                 update_script: values.update_script || [],
@@ -1080,7 +1142,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                          filename.endsWith('.xz');
 
         if (isArchive) {
-            // Handle archive import
             handleArchiveImport(file);
             return false;
         }
@@ -1138,71 +1199,37 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         return false;
     };
 
-    const handleArchiveImport = async (file: File) => {
+    const handleArchiveImport = async (file: File, overwrite = false) => {
         try {
             const formData = new FormData();
             formData.append('template_file', file);
-            formData.append('overwrite_existing', 'false');
+            formData.append('overwrite_existing', overwrite ? 'true' : 'false');
 
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            const data = await api.uploadFile('/templates/import', formData);
 
-            const response = await fetch('/api/templates/import', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
+            if (data.success) {
                 toast.showSuccess(data.message || t.templatemanagementpanel1158);
                 loadMyTemplates();
                 loadCommunityTemplates();
-            } else if (response.status === 409) {
-                // Template already exists - ask for overwrite
+            } else {
+                toast.showError(data.error || t.templatemanagementpanel1199);
+            }
+        } catch (error: any) {
+            if (error.response?.status === 409) {
                 confirmDialog({
                     group: 'template-management',
                     message: t.templatemanagementpanel1164,
                     header: t.templatemanagementpanel1165,
                     icon: 'pi pi-exclamation-triangle',
-                    accept: async () => {
-                        try {
-                            const formDataOverwrite = new FormData();
-                            formDataOverwrite.append('template_file', file);
-                            formDataOverwrite.append('overwrite_existing', 'true');
-
-                            const responseOverwrite = await fetch('/api/templates/import', {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                },
-                                body: formDataOverwrite,
-                            });
-
-                            const dataOverwrite = await responseOverwrite.json();
-
-                            if (responseOverwrite.ok && dataOverwrite.success) {
-                                toast.showSuccess(dataOverwrite.message || t.templatemanagementpanel1184);
-                                loadMyTemplates();
-                                loadCommunityTemplates();
-                            } else {
-                                toast.showError(dataOverwrite.error || t.templatemanagementpanel1188);
-                            }
-                        } catch (error: any) {
-                            toast.showError(t.templatemanagementpanel1191 + error.message);
-                        }
-                    },
+                    accept: () => handleArchiveImport(file, true),
                     acceptLabel: t.templatemanagementpanel1194,
                     rejectLabel: t.templatemanagementpanel1195,
                     acceptClassName: 'p-button-danger'
                 });
             } else {
-                toast.showError(data.error || t.templatemanagementpanel1199);
+                const errorMsg = error.response?.data?.error || error.message || t.templatemanagementpanel1199;
+                toast.showError(t.templatemanagementpanel1202 + errorMsg);
             }
-        } catch (error: any) {
-            toast.showError(t.templatemanagementpanel1202 + error.message);
         }
     };
 
@@ -1284,13 +1311,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 language: editingTemplate.language,
                 tags: editingTemplate.tags || [],
                 is_active: editingTemplate.is_active !== false,
+                compatibility_tag: editingTemplate.compatibility_tag || null,
+                generation_order: editingTemplate.generation_order ?? 0,
                 files: newFiles.map(f => ({
                     file_name: f.file_name,
                     file_content: f.file_content,
                     file_type: f.file_type,
                     file_order: f.file_order,
                     output_path: f.output_path || '/',
-                    form_window_type: f.form_window_type || 0
+                    content_type: f.content_type || 'text',
+                    zip_filename: f.zip_filename || null,
+                    form_window_type: f.form_window_type || 0,
+                    is_include_only: f.is_include_only || false,
+                    inject_target: f.inject_target || null,
+                    inject_tag: f.inject_tag || null,
                 }))
             };
 
@@ -1364,12 +1398,16 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             file_name: values.file_name,
             file_content: fileContent,
             file_type: values.file_type,
-            file_order: values.file_order || templateFiles.length,
+            file_order: values.file_order ?? 0,
             output_path: values.output_path || '/',
             content_type: contentType,
             zip_filename: zipFilename,
             managed_files: managedFilesList, // 🆕 List of individual files
             form_window_type: values.form_window_type || 0,
+            is_include_only: values.is_include_only || false,
+            inject_target: values.inject_target || null,
+            inject_tag: values.inject_tag || null,
+            language_override: values.language_override || null,
         };
 
         try{
@@ -1381,10 +1419,12 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 language: editingTemplate.language,
                 tags: editingTemplate.tags || [],
                 is_active: editingTemplate.is_active !== false,
+                compatibility_tag: editingTemplate.compatibility_tag || null,
+                generation_order: editingTemplate.generation_order ?? 0,
                 files: editingFile
                     ? templateFiles.map(f =>
                         f.id === editingFile.id
-                            ? { ...fileData, file_order: f.file_order }
+                            ? { ...fileData }
                             : {
                                 file_name: f.file_name,
                                 file_content: f.file_content,
@@ -1393,7 +1433,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 output_path: f.output_path || '/',
                                 content_type: f.content_type || 'text',
                                 zip_filename: f.zip_filename || null,
-                                form_window_type: f.form_window_type || 0
+                                form_window_type: f.form_window_type || 0,
+                                is_include_only: f.is_include_only || false,
+                                inject_target: f.inject_target || null,
+                                inject_tag: f.inject_tag || null,
+                                language_override: f.language_override || null,
                             }
                       )
                     : [...templateFiles.map(f => ({
@@ -1404,7 +1448,11 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         output_path: f.output_path || '/',
                         content_type: f.content_type || 'text',
                         zip_filename: f.zip_filename || null,
-                        form_window_type: f.form_window_type || 0
+                        form_window_type: f.form_window_type || 0,
+                        is_include_only: f.is_include_only || false,
+                        inject_target: f.inject_target || null,
+                        inject_tag: f.inject_tag || null,
+                        language_override: f.language_override || null,
                       })), fileData]
             };
 
@@ -1564,7 +1612,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         <Button
                             icon="pi pi-upload"
                             label={t.schematranslationpanel762}
-                            onClick={() => document.getElementById('template-upload')?.click()}
+                            onClick={() => {
+                                document.getElementById('template-upload')?.click();
+                            }}
                             className="p-button-secondary"
                         />
                         <input
@@ -1911,6 +1961,13 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                                 tooltip={t.templatemanagementpanel1908}
                                             />
                                         )}
+                                        <Button
+                                            icon="pi pi-print"
+                                            className="p-button-text p-button-sm"
+                                            style={{ color: '#3b82f6' }}
+                                            onClick={() => { setPrintTemplateId(template.id); setShowPrintModal(true); }}
+                                            tooltip="Print"
+                                        />
                                         {isOwner && (
                                             <>
                                                 <Button
@@ -2269,6 +2326,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 onCreateFile={handleCreateFile}
                 onEditFile={handleEditFile}
                 onDeleteFile={handleDeleteFile}
+                onFilesChange={setTemplateFiles}
                 fileTypes={fileTypes}
                 userType={userType}
                 templateVariables={templateVariables}
@@ -2287,6 +2345,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 templateFiles={templateFiles}
                 fileTypes={fileTypes}
                 templateId={editingTemplate?.id}
+                projectLanguages={projectLanguagesForFiles}
             />
 
             {/* View Modal */}
@@ -3115,6 +3174,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     color: var(--theme-text-muted) !important;
                 }
             `}</style>
+            <TemplatePrintModal visible={showPrintModal} onHide={() => setShowPrintModal(false)} templateId={printTemplateId} />
         </div>
     );
 };

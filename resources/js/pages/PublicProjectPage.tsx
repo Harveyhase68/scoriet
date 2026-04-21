@@ -10,10 +10,6 @@ import {
   DocumentTextIcon,
   CircleStackIcon,
   GlobeAltIcon,
-  CalendarIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  MapPinIcon,
   LinkIcon,
   PaperClipIcon,
 } from '@heroicons/react/24/outline';
@@ -31,14 +27,9 @@ interface ProjectData {
   };
   created_at: string;
   updated_at: string;
+  caption: string | null;
   default_language: string | null;
   enabled_languages: string[] | null;
-  decimal_separator: string | null;
-  thousands_separator: string | null;
-  date_format: string | null;
-  time_format: string | null;
-  currency_symbol: string | null;
-  timezone: string | null;
   project_url: string | null;
   stats: {
     teams_count: number;
@@ -86,7 +77,9 @@ export default function PublicProjectPage({ project, username: _username, projec
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '—';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
     return date.toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'long',
@@ -154,7 +147,7 @@ export default function PublicProjectPage({ project, username: _username, projec
 
               {/* Project Info */}
               <div className="flex-1">
-                <h1 className="text-3xl font-bold mb-2" style={{ color: colors.textPrimary }}>{project.name}</h1>
+                <h1 className="text-3xl font-bold mb-2" style={{ color: colors.textPrimary }}>{project.caption || project.name}</h1>
                 <p className="mb-3" style={{ color: colors.textMuted }}>
                   {t.publicProjectBy} <span className="font-medium" style={{ color: colors.accent }}>@{project.owner.username}</span>
                 </p>
@@ -230,40 +223,6 @@ export default function PublicProjectPage({ project, username: _username, projec
                       </div>
                     </div>
                   )}
-
-                  <Divider className="my-2" />
-
-                  {/* Localization */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {project.date_format && (
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
-                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.dateFormat}:</span>
-                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.date_format}</span>
-                      </div>
-                    )}
-                    {project.time_format && (
-                      <div className="flex items-center gap-2">
-                        <ClockIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
-                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.timeFormat}:</span>
-                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.time_format}</span>
-                      </div>
-                    )}
-                    {project.currency_symbol && (
-                      <div className="flex items-center gap-2">
-                        <CurrencyDollarIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
-                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.currency}:</span>
-                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.currency_symbol}</span>
-                      </div>
-                    )}
-                    {project.timezone && (
-                      <div className="flex items-center gap-2">
-                        <MapPinIcon className="w-4 h-4" style={{ color: colors.textMuted }} />
-                        <span className="text-sm" style={{ color: colors.textMuted }}>{t.timezone}:</span>
-                        <span className="text-sm" style={{ color: colors.textPrimary }}>{project.timezone}</span>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Project URL */}
                   {project.project_url && (

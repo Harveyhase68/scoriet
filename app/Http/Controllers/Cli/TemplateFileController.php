@@ -45,7 +45,7 @@ class TemplateFileController extends Controller
             ], 403);
         }
 
-        $files = $template->files()->orderBy('file_order')->get()->map(function ($file) {
+        $files = $template->files()->orderByRaw('CASE WHEN file_order > 0 THEN 0 ELSE 1 END')->orderBy('file_order')->orderBy('file_name')->get()->map(function ($file) {
             return [
                 'id' => $file->id,
                 'file_name' => $file->file_name,

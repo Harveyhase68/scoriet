@@ -76,6 +76,14 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const [loadingProjects, setLoadingProjects] = useState(false);
     const [savingLink, setSavingLink] = useState(false);
 
+    // Edit Modal State
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [editFormSet, setEditFormSet] = useState<FormSet | null>(null);
+    const [editFsName, setEditFsName] = useState('');
+    const [editFsDescription, setEditFsDescription] = useState('');
+    const [editFsVisibility, setEditFsVisibility] = useState<string>('private');
+    const [editingSave, setEditingSave] = useState(false);
+
     // Delete Modal State
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
     const [formSetToDelete, setFormSetToDelete] = useState<FormSet | null>(null);
@@ -258,13 +266,90 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         }
     };
 
+    // Open edit properties modal
+    const handleEditProperties = (formSet: FormSet) => {
+        setEditFormSet(formSet);
+        setEditFsName(formSet.name);
+        setEditFsDescription(formSet.description || '');
+        setEditFsVisibility(formSet.visibility);
+        setEditModalVisible(true);
+    };
+
+    const executeEditProperties = async () => {
+        if (!editFormSet || !editFsName.trim()) return;
+        setEditingSave(true);
+        try {
+            const response = await fetch(`/api/form-sets/${editFormSet.id}`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name: editFsName, description: editFsDescription || null, visibility: editFsVisibility }),
+            });
+            if (response.ok) {
+                toast.showSuccess(t.formsetmanagementpanel_updated || 'Form Blueprint updated');
+                setEditModalVisible(false);
+                setEditFormSet(null);
+                loadMyFormSets();
+                loadPublicFormSets();
+            } else {
+                const err = await response.json();
+                toast.showError(err.error || err.message || 'Error updating');
+            }
+        } catch (error) {
+            console.error('Edit error:', error);
+            toast.showError('Error updating');
+        } finally {
+            setEditingSave(false);
+        }
+    };
+
     // Open Form Designer for editing
-    const handleEdit = (formSet: FormSet) => {
+    const handleOpenDesigner = (formSet: FormSet) => {
         onOpenPanel?.('form-designer', { formSetId: formSet.id, title: `${t.formsetmanagementpanel263}${formSet.name}` });
     };
 
-    // Delete FormSet - Show custom dialog with DELETE confirmation
-    const handleDelete = (formSet: FormSet) => {
+    // Open Form Layout Designer with pre-selection via localStorage
+    const handleOpenLayoutDesigner = (formSet: FormSet) => {
+        localStorage.setItem('form_layout_preselect', JSON.stringify({
+            formSetId: formSet.id,
+            formSetName: formSet.name,
+            timestamp: Date.now(),
+        }));
+        onOpenPanel?.('form-layout-designer', {
+            title: `${t.formsetmanagementpanel_layout || 'Form Layout'}: ${formSet.name}`,
+            forceNew: true,
+        });
+    };
+
+    // Pre-flight: when in-use, refuse delete BEFORE showing the DELETE-confirm modal
+    // and instead open an informative "cannot delete" dialog listing the references.
+    const [inUseModalVisible, setInUseModalVisible] = useState(false);
+    const [inUseInfo, setInUseInfo] = useState<{
+        formSetName: string;
+        tables: Array<{ id: number; table_name: string; schema_id: number | null }>;
+        projects: Array<{ id: number; name: string | null }>;
+    } | null>(null);
+
+    const handleDelete = async (formSet: FormSet) => {
+        try {
+            const res = await fetch(`/api/form-sets/${formSet.id}/usage`, {
+                headers: getAuthHeaders(),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.data?.in_use) {
+                    setInUseInfo({
+                        formSetName: formSet.name,
+                        tables: data.data.tables || [],
+                        projects: data.data.projects || [],
+                    });
+                    setInUseModalVisible(true);
+                    return;
+                }
+            }
+        } catch {
+            // If the usage check fails for any reason, fall through to the normal
+            // confirm dialog — the backend's destroy() will still block in-use sets.
+        }
         setFormSetToDelete(formSet);
         setDeleteConfirmText('');
         setDeleteModalVisible(true);
@@ -433,27 +518,39 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             const isOwner = Number(formSet.creator_user_id) === Number(currentUserId);
                             return (
                                 <div className="flex gap-1">
+                                    {isOwner && (
+                                        <Button
+                                            icon="pi pi-pencil"
+                                            className="p-button-text p-button-info p-button-sm"
+                                            onClick={() => handleEditProperties(formSet)}
+                                            tooltip={t.formsetmanagementpanel_edit_props || 'Edit Properties'}
+                                        />
+                                    )}
                                     <Button
                                         icon="pi pi-link"
                                         className="p-button-text p-button-success p-button-sm"
                                         onClick={() => handleOpenLinkModal(formSet)}
                                         tooltip={t.formsetmanagementpanel440}
                                     />
+                                    <Button
+                                        icon="pi pi-sliders-h"
+                                        className="p-button-text p-button-secondary p-button-sm"
+                                        onClick={() => handleOpenDesigner(formSet)}
+                                        tooltip={t.formsetmanagementpanel448}
+                                    />
+                                    <Button
+                                        icon="pi pi-th-large"
+                                        className="p-button-text p-button-help p-button-sm"
+                                        onClick={() => handleOpenLayoutDesigner(formSet)}
+                                        tooltip={t.formsetmanagementpanel_open_layout || 'Open in Layout Designer'}
+                                    />
                                     {isOwner && (
-                                        <>
-                                            <Button
-                                                icon="pi pi-pencil"
-                                                className="p-button-text p-button-info p-button-sm"
-                                                onClick={() => handleEdit(formSet)}
-                                                tooltip={t.formsetmanagementpanel448}
-                                            />
-                                            <Button
-                                                icon="pi pi-trash"
-                                                className="p-button-text p-button-danger p-button-sm"
-                                                onClick={() => handleDelete(formSet)}
-                                                tooltip={t.formsetmanagementpanel454}
-                                            />
-                                        </>
+                                        <Button
+                                            icon="pi pi-trash"
+                                            className="p-button-text p-button-danger p-button-sm"
+                                            onClick={() => handleDelete(formSet)}
+                                            tooltip={t.formsetmanagementpanel454}
+                                        />
                                     )}
                                 </div>
                             );
@@ -516,6 +613,41 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 </DataTable>
             </Card>
 
+            {/* EDIT PROPERTIES MODAL */}
+            <Dialog
+                visible={editModalVisible}
+                onHide={() => { if (!editingSave) setEditModalVisible(false); }}
+                header={t.formsetmanagementpanel_edit_title || 'Edit Form Blueprint'}
+                style={{ width: '450px' }}
+                modal closable={!editingSave}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_name || 'Name'}</label>
+                        <InputText value={editFsName} onChange={(e) => setEditFsName(e.target.value)} className="w-full" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_visibility || 'Visibility'}</label>
+                        <Dropdown
+                            value={editFsVisibility}
+                            options={[
+                                { label: t.formsetmanagementpanel_private || 'Private', value: 'private' },
+                                { label: t.formsetmanagementpanel_team || 'Team', value: 'team' },
+                                { label: t.formsetmanagementpanel_public || 'Public', value: 'public' },
+                            ]}
+                            onChange={(e) => setEditFsVisibility(e.value)}
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                        <Button label={t.formsetmanagementpanel_cancel || 'Cancel'} className="p-button-secondary" onClick={() => setEditModalVisible(false)} disabled={editingSave} />
+                        <Button label={editingSave ? (t.formsetmanagementpanel_saving || 'Saving...') : (t.formsetmanagementpanel_save || 'Save')} icon={editingSave ? 'pi pi-spinner pi-spin' : 'pi pi-check'} className="p-button-success" onClick={executeEditProperties} loading={editingSave} disabled={!editFsName.trim()} />
+                    </div>
+                </div>
+            </Dialog>
+
             {/* LINK MODAL */}
             <Dialog
                 visible={linkModalVisible}
@@ -559,6 +691,80 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             onClick={handleSaveLinks}
                             loading={savingLink}
                             disabled={linkedProjectIds.length === 0}
+                        />
+                    </div>
+                </div>
+            </Dialog>
+
+            {/* In-Use Info Dialog (pre-flight, shown when delete is impossible) */}
+            <Dialog
+                visible={inUseModalVisible}
+                onHide={() => { setInUseModalVisible(false); setInUseInfo(null); }}
+                header={(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_title || 'Cannot delete Form Set'}
+                style={{ width: '520px' }}
+                modal
+                closable
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+            >
+                <div className="space-y-4">
+                    <div className="rounded p-4" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
+                        <div className="flex items-start gap-3">
+                            <i className="pi pi-exclamation-triangle text-2xl" style={{ color: colors.warningText }}></i>
+                            <div>
+                                <h4 className="font-semibold" style={{ color: colors.warningText }}>
+                                    {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_heading || 'Form Set is still in use'}
+                                </h4>
+                                <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+                                    <strong style={{ color: colors.textPrimary }}>"{inUseInfo?.formSetName}"</strong>
+                                    {' '}
+                                    {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_explain
+                                      || 'is referenced and cannot be deleted yet. Remove the references below first, then try again.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {inUseInfo && inUseInfo.tables.length > 0 && (
+                        <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                            <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>
+                                <i className="pi pi-table mr-2"></i>
+                                {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_tables || 'Used by schema tables:'}
+                            </p>
+                            <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
+                                {inUseInfo.tables.map(tbl => (
+                                    <li key={tbl.id}>{tbl.table_name}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {inUseInfo && inUseInfo.projects.length > 0 && (
+                        <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+                            <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>
+                                <i className="pi pi-folder mr-2"></i>
+                                {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_projects || 'Set as default in projects:'}
+                            </p>
+                            <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
+                                {inUseInfo.projects.map(p => (
+                                    <li key={p.id}>{p.name || `#${p.id}`}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    <div className="rounded p-3 text-xs" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
+                        <i className="pi pi-info-circle mr-2"></i>
+                        {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_hint
+                          || 'Open the schema designer to remove the form set from those tables, or change the project default in the project settings.'}
+                    </div>
+
+                    <div className="flex justify-end pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                        <Button
+                            label={(t as unknown as Record<string, string>).formsetmanagementpanel_close || 'Close'}
+                            icon="pi pi-times"
+                            className="p-button-secondary"
+                            onClick={() => { setInUseModalVisible(false); setInUseInfo(null); }}
                         />
                     </div>
                 </div>

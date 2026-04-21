@@ -162,6 +162,9 @@ export default function ApplicationsModal({ visible, onHide, project }: Applicat
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
     return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',

@@ -385,13 +385,16 @@ class AuthController extends Controller
         // Also try to claim monthly credits (if eligible)
         $creditsAwarded = $user->claimMonthlyCredits();
 
-        // SINGLE SESSION ENFORCEMENT: Revoke all existing tokens before creating new one
-        // This prevents account sharing and ensures only one active session per user
+        // SINGLE SESSION ENFORCEMENT: Revoke all existing WEB tokens before creating new one
+        // This prevents account sharing and ensures only one active web session per user
+        // CLI/Service tokens (name starts with "Scoriet CLI") are preserved across web logins
         // Skip in demo mode to allow multiple users sharing the same demo accounts
         $existingTokenCount = 0;
         if (!config('scoriet.demo')) {
             $existingTokenCount = $user->tokens()->where('revoked', false)->count();
-            $user->tokens()->update(['revoked' => true]);
+            $user->tokens()
+                ->where('name', 'not like', 'Scoriet CLI%')
+                ->update(['revoked' => true]);
         }
 
         // Create a personal access token

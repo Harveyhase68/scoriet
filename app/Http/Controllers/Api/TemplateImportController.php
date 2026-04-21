@@ -167,6 +167,9 @@ class TemplateImportController extends Controller
                         'file_order' => $meta['file_order'] ?? null,
                         'form_window_type' => $meta['form_window_type'] ?? 0,
                         'is_include_only' => $meta['is_include_only'] ?? false,
+                        'inject_target' => $meta['inject_target'] ?? null,
+                        'inject_tag' => $meta['inject_tag'] ?? null,
+                        'language_override' => $meta['language_override'] ?? null,
                     ];
                 }
 
@@ -279,6 +282,9 @@ class TemplateImportController extends Controller
                     'file_order' => $meta['file_order'] ?? null,
                     'form_window_type' => $meta['form_window_type'] ?? 0,
                     'is_include_only' => $meta['is_include_only'] ?? false,
+                    'inject_target' => $meta['inject_target'] ?? null,
+                    'inject_tag' => $meta['inject_tag'] ?? null,
+                    'language_override' => $meta['language_override'] ?? null,
                 ];
             }
 
@@ -503,6 +509,8 @@ class TemplateImportController extends Controller
                     }
 
                     $existingTemplate->update($updateData);
+                    // Increment version separately (DB::raw conflicts with Eloquent integer cast)
+                    $existingTemplate->increment('version');
                     return $existingTemplate;
                 }
 
@@ -514,9 +522,14 @@ class TemplateImportController extends Controller
 
                 // Include protected_files and scripts from template.json metadata if available
                 $tmplInfo = ($templateMetadata['template'] ?? []);
+                $username = $user->username ?? $user->name;
+                $sourceCompatibilityTag = $tmplInfo['compatibility_tag'] ?? null;
 
                 $template = Template::create([
                     'name' => $validated['name'],
+                    'full_name' => $this->generateFullName($username, $validated['name']),
+                    'compatibility_tag' => $this->generateCompatibilityTag($username, $sourceCompatibilityTag),
+                    'generation_order' => $tmplInfo['generation_order'] ?? 0,
                     'description' => $validated['description'] ?? null,
                     'category' => $validated['category'],
                     'language' => $validated['language'],
@@ -612,6 +625,9 @@ class TemplateImportController extends Controller
                     $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
                     $formWindowType = $fileMeta['form_window_type'] ?? 0;
                     $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
+                    $injectTarget = $fileMeta['inject_target'] ?? null;
+                    $injectTag = $fileMeta['inject_tag'] ?? null;
+                    $languageOverride = $fileMeta['language_override'] ?? null;
 
                     // For files with archive_source (duplicates), restore original file_name
                     $storedFileName = $fileMeta['file_name'] ?? $fileName;
@@ -626,6 +642,8 @@ class TemplateImportController extends Controller
                                 'content_type' => $contentType,
                                 'zip_filename' => $zipFilename,
                             ]);
+                            // Increment version separately (DB::raw conflicts with Eloquent integer cast)
+                            $existingFile->increment('version');
                             $filesUpdated++;
                             continue;
                         }
@@ -642,6 +660,9 @@ class TemplateImportController extends Controller
                         'zip_filename' => $zipFilename,
                         'form_window_type' => $formWindowType,
                         'is_include_only' => $isIncludeOnly,
+                        'inject_target' => $injectTarget,
+                        'inject_tag' => $injectTag,
+                        'language_override' => $languageOverride,
                     ]);
                     $filesAdded++;
                 } else {
@@ -689,6 +710,9 @@ class TemplateImportController extends Controller
                         $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
                         $formWindowType = $fileMeta['form_window_type'] ?? 0;
                         $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
+                        $injectTarget = $fileMeta['inject_target'] ?? null;
+                        $injectTag = $fileMeta['inject_tag'] ?? null;
+                        $languageOverride = $fileMeta['language_override'] ?? null;
                         $storedFileName = $fileMeta['file_name'] ?? $fileName;
 
                         // Merge: update existing file or add new
@@ -717,6 +741,9 @@ class TemplateImportController extends Controller
                             'zip_filename' => $zipFilename,
                             'form_window_type' => $formWindowType,
                             'is_include_only' => $isIncludeOnly,
+                            'inject_target' => $injectTarget,
+                            'inject_tag' => $injectTag,
+                            'language_override' => $languageOverride,
                         ]);
                         $filesAdded++;
                     } else {
@@ -1263,5 +1290,39 @@ class TemplateImportController extends Controller
         }
 
         rmdir($dir);
+    }
+
+    /**
+     * Generate a unique full_name: username/slug
+     * Appends _2, _3, etc. if already taken.
+     */
+    private function generateFullName(string $username, string $templateName): string
+    {
+        $base = strtolower($username) . '/' . Str::slug($templateName, '_');
+        $fullName = $base;
+        $counter = 2;
+
+        while (Template::where('full_name', $fullName)->exists()) {
+            $fullName = $base . '_' . $counter;
+            $counter++;
+        }
+
+        return $fullName;
+    }
+
+    /**
+     * Generate a compatibility_tag: username/slug_from_source
+     * On import: replaces the original username with the importer's username.
+     */
+    private function generateCompatibilityTag(string $username, ?string $sourceTag): ?string
+    {
+        if (!$sourceTag) {
+            return null;
+        }
+
+        $slashPos = strpos($sourceTag, '/');
+        $slug = ($slashPos !== false) ? substr($sourceTag, $slashPos + 1) : $sourceTag;
+
+        return strtolower($username) . '/' . $slug;
     }
 }
