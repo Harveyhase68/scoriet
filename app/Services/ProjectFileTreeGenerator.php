@@ -10,6 +10,7 @@ use App\Models\TemplateFile;
 use App\Models\Language;
 use App\Models\SchemaTable;
 use App\Models\SchemaVersion;
+use App\Support\ProjectNamePlaceholder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -143,8 +144,11 @@ class ProjectFileTreeGenerator
         }
 
         foreach ($latestVersionsBySchema as $schemaId => $latestVersion) {
-            // Load all tables for this version
+            // Load all tables for this version — skip tables with mode='excluded'.
             $schemaTables = SchemaTable::where('schema_version_id', $latestVersion->id)
+                ->where(function($q) {
+                    $q->whereNull('generation_mode')->orWhere('generation_mode', '!=', 'excluded');
+                })
                 ->orderBy('table_name')
                 ->get()
                 ->toArray();
@@ -167,7 +171,9 @@ class ProjectFileTreeGenerator
     protected function buildTemplateNode($template, array $tables, array $languages, Project $project): array
     {
         $templateFiles = TemplateFile::where('template_id', $template->id)
+            ->orderByRaw('CASE WHEN file_order > 0 THEN 0 ELSE 1 END')
             ->orderBy('file_order')
+            ->orderBy('file_name')
             ->get();
 
         $children = [];
@@ -178,8 +184,14 @@ class ProjectFileTreeGenerator
                 $fileNode = $this->buildProjectFileNode($templateFile, $template, $project);
                 $this->insertIntoTree($children, $fileNode);
             } elseif ($templateFile->file_type === 'db_table_file_languages') {
-                // Table + Language file: generate for each table × each language
+                // Table + Language file: generate for each table × each language.
+                // Skip tables whose generation_mode excludes per-table file generation
+                // (code_only, reference_only). Only full/template_only produce files.
                 foreach ($tables as $table) {
+                    $mode = $table['generation_mode'] ?? 'full';
+                    if (!in_array($mode, ['full', 'template_only'])) {
+                        continue;
+                    }
                     foreach ($languages as $language) {
                         $fileNode = $this->buildTableLanguageFileNode(
                             $templateFile,
@@ -192,8 +204,13 @@ class ProjectFileTreeGenerator
                     }
                 }
             } elseif ($templateFile->file_type === 'db_table_file') {
-                // Table file: generate for each table (without language)
+                // Table file: generate for each table (without language).
+                // Same generation_mode filter as above.
                 foreach ($tables as $table) {
+                    $mode = $table['generation_mode'] ?? 'full';
+                    if (!in_array($mode, ['full', 'template_only'])) {
+                        continue;
+                    }
                     $fileNode = $this->buildTableFileNode(
                         $templateFile,
                         $template,
@@ -223,7 +240,13 @@ class ProjectFileTreeGenerator
     protected function buildProjectFileNode($templateFile, $template, Project $project): array
     {
         // Project-level files don't have table or language context
+        // IMPORTANT: %10, %11 MUST come BEFORE %1 to avoid %1 matching first!
+        // %9  -> project name (handled by ProjectNamePlaceholder, supports [u|l|c|p|n])
+        // %14 -> project DB version (was %9 pre-refactor; moved because %9 is now the project name)
         $placeholders = [
+            '%14' => '',  // No database version for project files
+            '%11' => '',  // No table name for project files
+            '%10' => '',  // No table name for project files
             '%1' => '',  // No table name for project files
             '%2' => '',  // No language code
             '%3' => '',  // No language name
@@ -232,16 +255,15 @@ class ProjectFileTreeGenerator
             '%6' => date('Y-m-d'),  // Date (UNC friendly)
             '%7' => date('H-i-s'),  // Time (UNC friendly)
             '%8' => date('Y-m-d_H-i-s'),  // DateTime (UNC friendly)
-            '%9' => '',  // No database version for project files
         ];
 
         // Use output_path for directory structure, file_path for the actual file
         $outputPath = $templateFile->output_path ?? '';
         $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
-        
+
         // Resolve placeholders in both paths
-        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders);
-        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders);
+        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders, $project->name ?? '');
+        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders, $project->name ?? '');
         
         // Combine output path and file path
         $fullPath = $resolvedOutputPath;
@@ -293,42 +315,48 @@ class ProjectFileTreeGenerator
         // Build language localization (e.g., de_DE, en_US)
         $languageLocalization = $this->getLanguageLocalization($languageCode);
 
+        // IMPORTANT: %10, %11 MUST come BEFORE %1 to avoid %1 matching first!
+        // %9  -> project name (handled by ProjectNamePlaceholder, supports [u|l|c|p|n])
+        // %14 -> project DB version (was %9 pre-refactor; moved because %9 is now the project name)
+        $tableNameLower = strtolower($tableName);
         $placeholders = [
-            '%1' => $tableName,                      // Table name
-            '%2' => $languageCode,                   // Language code (2 chars)
-            '%3' => $languageName,                   // Language name
-            '%4' => $languageLocalization,           // Language localization (de_DE)
-            '%5' => $template->name ?? '',           // Template name
-            '%6' => date('Y-m-d'),                   // Date (UNC friendly)
-            '%7' => date('H-i-s'),                   // Time (UNC friendly)
-            '%8' => date('Y-m-d_H-i-s'),            // DateTime (UNC friendly)
-            '%9' => $versionNumber,                  // Database version number
+            '%14' => $versionNumber,                  // Database version number
+            '%11' => strtoupper($tableName),         // Table name UPPERCASE (e.g. TEAMS)
+            '%10' => ucfirst($tableNameLower),        // Table name Ucfirst (e.g. Teams)
+            '%1' => $tableName,                       // Table name (e.g. teams)
+            '%2' => $languageCode,                    // Language code (2 chars)
+            '%3' => $languageName,                    // Language name
+            '%4' => $languageLocalization,             // Language localization (de_DE)
+            '%5' => $template->name ?? '',            // Template name
+            '%6' => date('Y-m-d'),                    // Date (UNC friendly)
+            '%7' => date('H-i-s'),                    // Time (UNC friendly)
+            '%8' => date('Y-m-d_H-i-s'),             // DateTime (UNC friendly)
         ];
 
         // Use output_path for directory structure, file_path for the actual file
         $outputPath = $templateFile->output_path ?? '';
         $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
-        
+
         // Resolve placeholders in both paths
-        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders);
-        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders);
-        
+        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders, $project->name ?? '');
+        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders, $project->name ?? '');
+
         // Combine output path and file path
         $fullPath = $resolvedOutputPath;
         if (!empty($resolvedFilePath)) {
             // If file_path includes directories, we need to handle them
             $fileName = basename($resolvedFilePath);
             $fileDir = dirname($resolvedFilePath);
-            
+
             if ($fileDir !== '.' && $fileDir !== '/') {
                 // Add file directory to output path
                 $fullPath = rtrim($fullPath, '/') . '/' . ltrim($fileDir, '/');
             }
-            
+
             // Add filename
             $fullPath = rtrim($fullPath, '/') . '/' . $fileName;
         }
-        
+
         // Always ensure we have a valid path
         if (empty($fullPath)) {
             $fullPath = $templateFile->file_name;
@@ -361,25 +389,31 @@ class ProjectFileTreeGenerator
         $tableName = $tableData['table_name'] ?? '';
         $versionNumber = $tableData['schema_version_number'] ?? '';
 
+        // IMPORTANT: %10, %11 MUST come BEFORE %1 to avoid %1 matching first!
+        // %9  -> project name (handled by ProjectNamePlaceholder, supports [u|l|c|p|n])
+        // %14 -> project DB version (was %9 pre-refactor; moved because %9 is now the project name)
+        $tableNameLower = strtolower($tableName);
         $placeholders = [
-            '%1' => $tableName,                      // Table name
-            '%2' => '',                              // No language code
-            '%3' => '',                              // No language name
-            '%4' => '',                              // No language localization
-            '%5' => $template->name ?? '',           // Template name
-            '%6' => date('Y-m-d'),                   // Date (UNC friendly)
-            '%7' => date('H-i-s'),                   // Time (UNC friendly)
-            '%8' => date('Y-m-d_H-i-s'),            // DateTime (UNC friendly)
-            '%9' => $versionNumber,                  // Database version number
+            '%14' => $versionNumber,                  // Database version number
+            '%11' => strtoupper($tableName),         // Table name UPPERCASE (e.g. TEAMS)
+            '%10' => ucfirst($tableNameLower),        // Table name Ucfirst (e.g. Teams)
+            '%1' => $tableName,                       // Table name (e.g. teams)
+            '%2' => '',                               // No language code
+            '%3' => '',                               // No language name
+            '%4' => '',                               // No language localization
+            '%5' => $template->name ?? '',            // Template name
+            '%6' => date('Y-m-d'),                    // Date (UNC friendly)
+            '%7' => date('H-i-s'),                    // Time (UNC friendly)
+            '%8' => date('Y-m-d_H-i-s'),             // DateTime (UNC friendly)
         ];
 
         // Use output_path for directory structure, file_path for the actual file
         $outputPath = $templateFile->output_path ?? '';
         $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
-        
+
         // Resolve placeholders in both paths
-        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders);
-        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders);
+        $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders, $project->name ?? '');
+        $resolvedFilePath = $this->resolvePlaceholders($filePath, $placeholders, $project->name ?? '');
         
         // Combine output path and file path
         $fullPath = $resolvedOutputPath;
@@ -419,8 +453,14 @@ class ProjectFileTreeGenerator
     /**
      * Resolve placeholders in a path
      */
-    protected function resolvePlaceholders(string $path, array $placeholders): string
+    protected function resolvePlaceholders(string $path, array $placeholders, string $projectName = ''): string
     {
+        // %9 / %9[u|l|c|p|n] is handled FIRST by the shared formatter so that
+        // the brackets don't collide with the literal str_replace pass below.
+        // If the caller doesn't supply a project name, %9 (with or without suffix)
+        // is stripped — same convention as the other context-less placeholders.
+        $path = ProjectNamePlaceholder::resolve($path, $projectName);
+
         foreach ($placeholders as $placeholder => $value) {
             $path = str_replace($placeholder, $value, $path);
         }

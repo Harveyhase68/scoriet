@@ -85,8 +85,11 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
         onLoginSuccess();
       }
       
-    } catch {
-      setError(_ instanceof Error ? _.message : t.authmodalsegistermodal109);
+    } catch (err) {
+      // Previously written as `catch {` with `_` in the body — `_` would
+      // resolve to the lodash UMD global, not the caught error, so the actual
+      // error message was silently swallowed. Binding it properly now.
+      setError(err instanceof Error ? err.message : t.authmodalsegistermodal109);
     } finally {
       setLoading(false);
     }

@@ -989,7 +989,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, [selectedProject, selectedVersion, selectedSchema, loadSchemaVersions]);
 
   // Create a new table with modal data
-  const handleCreateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string) => {
+  const handleCreateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string, singularName: string, formSetId: number | null, reportPatternId: number | null, tableDisplayState: string = 'enabled', tableGenerationMode: string = 'full') => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id) {
       setError(t.panelt2704);
       return;
@@ -1014,7 +1014,10 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         link_field: field.linkField || null,
         link_display_field: field.linkDisplayField || null,
         link_order_field: field.linkOrderField || null,
-        link_order_direction: field.linkOrderDirection || 'ASC'
+        link_order_direction: field.linkOrderDirection || 'ASC',
+        editmask: field.editmask || null,
+        display_state: field.displayState || 'enabled',
+        generation_mode: field.generationMode || 'full'
       }));
 
       const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables`, {
@@ -1026,9 +1029,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         },
         body: JSON.stringify({
           table_name: tableName,
+          singular_name: singularName,
           filekeyname: fileKeyName,
           file_name_renamed: fileNameRenamed,
           file_name_short: fileNameShort,
+          form_set_id: formSetId,
+          report_pattern_id: reportPatternId,
+          display_state: tableDisplayState,
+          generation_mode: tableGenerationMode,
           columns: columns
         }),
       });
@@ -1052,7 +1060,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema, selectedProject]);
 
   // Update an existing table with modal data
-  const handleUpdateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string) => {
+  const handleUpdateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string, singularName: string, formSetId: number | null, reportPatternId: number | null, tableDisplayState: string = 'enabled', tableGenerationMode: string = 'full') => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id || !pendingEditTable) {
       setError(t.panelt2764);
       return;
@@ -1077,7 +1085,10 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         link_field: field.linkField || null,
         link_display_field: field.linkDisplayField || null,
         link_order_field: field.linkOrderField || null,
-        link_order_direction: field.linkOrderDirection || 'ASC'
+        link_order_direction: field.linkOrderDirection || 'ASC',
+        editmask: field.editmask || null,
+        display_state: field.displayState || 'enabled',
+        generation_mode: field.generationMode || 'full'
       }));
 
       const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingEditTable.id}`, {
@@ -1089,9 +1100,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         },
         body: JSON.stringify({
           table_name: tableName,
+          singular_name: singularName,
           filekeyname: fileKeyName,
           file_name_renamed: fileNameRenamed,
           file_name_short: fileNameShort,
+          form_set_id: formSetId,
+          report_pattern_id: reportPatternId,
+          display_state: tableDisplayState,
+          generation_mode: tableGenerationMode,
           columns: columns
         }),
       });
@@ -1411,8 +1427,11 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // Only handle Ctrl+C and Ctrl+V (or Cmd on Mac)
       if (!(e.ctrlKey || e.metaKey)) return;
 
-      // Ctrl+C - Copy selected table
+      // Ctrl+C - Copy selected table (only when not typing in an input/textarea)
       if (e.key === 'c' || e.key === 'C') {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
         if (selectedNode && (selectedNode.data as any).table) {
           e.preventDefault();
           const table = (selectedNode.data as any).table;
@@ -2254,6 +2273,198 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     }
   }, [selectedSchema, selectedVersion, selectedProject, nodes, edges, saveLayout, loadSchemaVersionWithSchema]);
 
+  // ========== PRINT DIAGRAM ==========
+
+  const handlePrintDiagram = useCallback(() => {
+    if (!selectedSchema || !selectedVersion || nodes.length === 0) return;
+
+    const today = new Date().toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const now = new Date().toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' });
+    const projectName = selectedProject?.name || '';
+
+    // Build table boxes from ReactFlow nodes
+    const NODE_HEADER_H = 22;
+    const FIELD_H = 14;
+    const FONT_SIZE = 8;
+    const HEADER_FONT = 9;
+    const PAD = 4;
+
+    interface PrintNode { x: number; y: number; w: number; h: number; name: string; fields: Array<{ name: string; type: string; isPk: boolean; isFk: boolean }> }
+    const printNodes: PrintNode[] = [];
+
+    for (const node of nodes) {
+      const data = node.data as { tableName?: string; fields?: Array<{ name: string; type: string; isPrimary?: boolean; isForeign?: boolean }> };
+      if (!data || !data.tableName) continue;
+      const fields = (data.fields || []).map(f => ({
+        name: f.name, type: f.type,
+        isPk: !!f.isPrimary, isFk: !!f.isForeign,
+      }));
+      const w = node.measured?.width || node.width || 220;
+      const h = node.measured?.height || node.height || (NODE_HEADER_H + Math.max(1, fields.length) * FIELD_H + PAD * 2);
+      printNodes.push({ x: node.position.x, y: node.position.y, w, h, name: data.tableName, fields });
+    }
+
+    if (printNodes.length === 0) return;
+
+    // Bounding box
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of printNodes) {
+      if (n.x < minX) minX = n.x;
+      if (n.y < minY) minY = n.y;
+      if (n.x + n.w > maxX) maxX = n.x + n.w;
+      if (n.y + n.h > maxY) maxY = n.y + n.h;
+    }
+    const dw = maxX - minX + 60;
+    const dh = maxY - minY + 60;
+
+    // A4 landscape printable: ~1090 x 720
+    const pageW = 1090;
+    const pageH = 700;
+    const scaleX = pageW / dw;
+    const scaleY = pageH / dh;
+    const scale = Math.min(scaleX, scaleY, 1);
+    const scaledW = dw * scale;
+    const scaledH = dh * scale;
+    const offX = (pageW - scaledW) / 2 - minX * scale + 30;
+    const offY = (pageH - scaledH) / 2 - minY * scale + 30;
+
+    // Node name lookup for edges
+    const nodeMap = new Map<string, PrintNode>();
+    for (const n of printNodes) nodeMap.set(n.name, n);
+
+    // Build edges from ReactFlow edges — smoothstep (90° angles) like in the designer
+    let edgesSvg = '';
+    for (const edge of edges) {
+      const srcNode = nodes.find(n => n.id === edge.source);
+      const tgtNode = nodes.find(n => n.id === edge.target);
+      if (!srcNode || !tgtNode) continue;
+      const srcData = srcNode.data as { tableName?: string };
+      const tgtData = tgtNode.data as { tableName?: string };
+      const src = srcData?.tableName ? nodeMap.get(srcData.tableName) : null;
+      const tgt = tgtData?.tableName ? nodeMap.get(tgtData.tableName) : null;
+      if (!src || !tgt) continue;
+
+      // Determine best connection sides based on relative position
+      const srcCx = src.x + src.w / 2;
+      const tgtCx = tgt.x + tgt.w / 2;
+      const srcCy = src.y + src.h / 2;
+      const tgtCy = tgt.y + tgt.h / 2;
+
+      let x1: number, y1: number, x2: number, y2: number;
+
+      if (Math.abs(srcCx - tgtCx) > Math.abs(srcCy - tgtCy)) {
+        // Horizontal connection: right→left or left→right
+        if (srcCx < tgtCx) {
+          x1 = src.x + src.w; y1 = srcCy; x2 = tgt.x; y2 = tgtCy;
+        } else {
+          x1 = src.x; y1 = srcCy; x2 = tgt.x + tgt.w; y2 = tgtCy;
+        }
+      } else {
+        // Vertical connection: bottom→top or top→bottom
+        if (srcCy < tgtCy) {
+          x1 = srcCx; y1 = src.y + src.h; x2 = tgtCx; y2 = tgt.y;
+        } else {
+          x1 = srcCx; y1 = src.y; x2 = tgtCx; y2 = tgt.y + tgt.h;
+        }
+      }
+
+      // Scale to print coordinates
+      const px1 = x1 * scale + offX;
+      const py1 = y1 * scale + offY;
+      const px2 = x2 * scale + offX;
+      const py2 = y2 * scale + offY;
+
+      // Smoothstep path: horizontal first, then 90° turn, then vertical (or vice versa)
+      const midX = (px1 + px2) / 2;
+      const midY = (py1 + py2) / 2;
+      let path: string;
+      if (Math.abs(srcCx - tgtCx) > Math.abs(srcCy - tgtCy)) {
+        // Horizontal dominant: go right, turn, go to target
+        path = `M ${px1} ${py1} L ${midX} ${py1} L ${midX} ${py2} L ${px2} ${py2}`;
+      } else {
+        // Vertical dominant: go down, turn, go to target
+        path = `M ${px1} ${py1} L ${px1} ${midY} L ${px2} ${midY} L ${px2} ${py2}`;
+      }
+
+      const sw = Math.max(0.5, 1.5 * scale);
+      edgesSvg += `<path d="${path}" fill="none" stroke="#f59e0b" stroke-width="${sw}" stroke-dasharray="${Math.max(2, 4 * scale)},${Math.max(1, 2 * scale)}" opacity="0.7"/>`;
+    }
+
+    // Build table SVG nodes
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let nodesSvg = '';
+    for (const n of printNodes) {
+      const nx = n.x * scale + offX;
+      const ny = n.y * scale + offY;
+      const nw = n.w * scale;
+      const nh = n.h * scale;
+      const hh = NODE_HEADER_H * scale;
+      const fh = FIELD_H * scale;
+      const fs = FONT_SIZE * scale;
+      const hfs = HEADER_FONT * scale;
+      const r = 3 * scale;
+
+      nodesSvg += `<rect x="${nx + 1}" y="${ny + 1}" width="${nw}" height="${nh}" rx="${r}" fill="rgba(0,0,0,0.08)"/>`;
+      nodesSvg += `<rect x="${nx}" y="${ny}" width="${nw}" height="${nh}" rx="${r}" fill="#fff" stroke="#e2e8f0" stroke-width="${Math.max(0.3, 0.5 * scale)}"/>`;
+      nodesSvg += `<rect x="${nx}" y="${ny}" width="${nw}" height="${hh}" rx="${r}" fill="#1e40af"/>`;
+      nodesSvg += `<rect x="${nx}" y="${ny + hh - 2 * scale}" width="${nw}" height="${2 * scale}" fill="#1e40af"/>`;
+      nodesSvg += `<text x="${nx + 4 * scale}" y="${ny + hh - 6 * scale}" font-size="${hfs}" fill="#fff" font-weight="600">${esc(n.name)}</text>`;
+
+      n.fields.forEach((f, fi) => {
+        const fy = ny + hh + fi * fh + fh - 3 * scale;
+        const prefix = f.isPk ? '\u{1F511} ' : f.isFk ? '\u{1F517} ' : '';
+        const color = f.isPk ? '#b45309' : f.isFk ? '#166534' : '#334155';
+        if (fi % 2 === 0) nodesSvg += `<rect x="${nx}" y="${ny + hh + fi * fh}" width="${nw}" height="${fh}" fill="rgba(241,245,249,0.5)"/>`;
+        nodesSvg += `<text x="${nx + 4 * scale}" y="${fy}" font-size="${fs}" fill="${color}">${prefix}${esc(f.name)}</text>`;
+        nodesSvg += `<text x="${nx + nw - 4 * scale}" y="${fy}" font-size="${fs * 0.85}" fill="#94a3b8" text-anchor="end">${esc(f.type)}</text>`;
+      });
+    }
+
+    const svgW = pageW + 60;
+    const svgH = pageH + 60;
+
+    const printContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Schema Diagram - ${esc(selectedSchema.name)}</title>
+  <style>
+    @page { size: landscape; margin: 10mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; }
+    .header { font-size: 18px; font-weight: 700; color: #1e293b; }
+    .subtitle { font-size: 12px; color: #64748b; margin-bottom: 6px; }
+    .diagram { text-align: center; overflow: hidden; max-height: calc(100vh - 80px); }
+    .diagram svg { max-width: 100%; max-height: calc(100vh - 90px); }
+    .footer { display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid #e2e8f0; font-size: 9px; color: #94a3b8; margin-top: 4px; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="header">Schema: ${esc(selectedSchema.name)}</div>
+  <div class="subtitle">Chart · Version ${selectedVersion.version_number} · ${printNodes.length} tables</div>
+  <div class="diagram">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" style="font-family: 'Segoe UI', Arial, sans-serif; width: 100%; height: auto; max-height: 92vh;">
+      ${edgesSvg}
+      ${nodesSvg}
+    </svg>
+  </div>
+  <div class="footer">
+    <span>${today} ${now}</span>
+    <span>${projectName || selectedSchema.name}</span>
+    <span>Page 1</span>
+  </div>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.onload = () => { printWindow.print(); };
+    }
+  }, [selectedSchema, selectedVersion, selectedProject, nodes, edges]);
+
   // ========== LOADING ACCESS ==========
   if (loadingAccess) {
     return (
@@ -2521,6 +2732,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               title={effectiveReadOnly ? t.panelt22519 : t.panelt22519_2}
             >
               <i className="pi pi-sync"></i>
+            </button>
+
+            <button
+              onClick={handlePrintDiagram}
+              disabled={loading || !selectedSchema || !selectedVersion || nodes.length === 0}
+              className="panelt2-toolbar-btn text-xs px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ color: '#3b82f6' }}
+              title="Print Diagram"
+            >
+              <i className="pi pi-print"></i>
             </button>
 
           </div>

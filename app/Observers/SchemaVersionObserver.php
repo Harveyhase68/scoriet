@@ -105,13 +105,10 @@ class SchemaVersionObserver
                     Cache::forget($schemaCacheKey);
                 }
 
-                // 2. Delete Gtree Cache for all templates
+                // 2. Delete Gtree Cache for all templates (all schema-selection variants)
                 $templates = \App\Models\Template::all();
                 foreach ($templates as $template) {
-                    $gtreeCacheKey = "gtree:{$projectId}:{$template->id}";
-                    if (Cache::has($gtreeCacheKey)) {
-                        Cache::forget($gtreeCacheKey);
-                    }
+                    TemplateCacheService::forgetGtreePattern($projectId, $template->id);
                 }
             }
         }

@@ -422,6 +422,7 @@ export default function EditProjectModal({
                 placeholder={t.editprojectmodal422}
                 className="w-full"
                 disabled={saving}
+                autoComplete="new-password"
               />
             </div>
           </div>
@@ -653,6 +654,7 @@ export default function EditProjectModal({
                 placeholder={t.editprojectmodal653}
                 className="w-full font-mono"
                 disabled={saving}
+                autoComplete="new-password"
               />
               <div className="text-xs text-gray-400 mt-1">
                 {t.editprojectmodal658}

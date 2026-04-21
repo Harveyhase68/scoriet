@@ -67,6 +67,11 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
                 ->get();
         }
 
+        // 🎯 GENERATION STATE — all tables stay in gtree.tables[] regardless of mode;
+        // iteration is driven by the `tablesgen` index array built after the
+        // foreach loop below (once positional indices are stable).
+        $schemaTables = $schemaTables->values();
+
         // 🚀 ULTIMATE PROJECT DATA - Alle erdenklichen Template-Variablen
         $projectName = $actualProject ? $actualProject->name : 'ScorietDemo';
         $projectId = $actualProject ? $actualProject->id : 1;
@@ -150,8 +155,9 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
             'templatefilescount' => $template->files->count(),
 
             // === COUNTS AND METRICS ===
-            'nmaxfiles' => $schemaTables->count(),
-            'nmaxtables' => $schemaTables->count(),
+            // nmaxtables will be set below to count($tablesgen) — the index array
+            // of tables participating in {:for nmaxtables:} loops (full+code_only).
+            'nmaxtables' => 0, // placeholder, overwritten after the foreach
             'nmaxlanguages' => 1, // Default to 1 language
             'nmaxprojects' => 1, // For this generation context
             'nmaxschemas' => $schemaTables->count(),
@@ -202,8 +208,20 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
 
         // 🌟 ENHANCED TABLE PROCESSING - Erweiterte Tabellen-Metadaten
         foreach ($schemaTables as $tableIndex => $table) {
-            $fields = $table->fields;
+            // All fields stay in fields[] (incl. excluded/reference_only/template_only)
+            // for FK/name lookup; iteration is driven by fieldsgen[] built below.
+            $fields = $table->fields->values();
             $constraints = $table->constraints;
+
+            // fieldsgen collects positional indices of iterable fields
+            // (modes: full, code_only). Non-iterable fields stay in fields[].
+            $fieldsGenIndices = [];
+            foreach ($fields as $fIdx => $f) {
+                $mode = $f->generation_mode ?? 'full';
+                if (in_array($mode, ['full', 'code_only'])) {
+                    $fieldsGenIndices[] = $fIdx;
+                }
+            }
 
             // Extended field mapping with more template variables
             $mappedFields = $fields->map(function($field, $index) use ($table, $projectId) {
@@ -298,6 +316,12 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
                     // SQL-specific helpers
                     'sqldefault' => $field->default_value ? "DEFAULT '{$field->default_value}'" : '',
                     'sqlnull' => $field->is_nullable ? 'NULL' : 'NOT NULL',
+
+                    // Generation state metadata — user JS in {:code:} blocks can read these
+                    'state' => $field->display_state ?? 'enabled',
+                    'generation_mode' => $field->generation_mode ?? 'full',
+                    'in_iteration' => in_array(($field->generation_mode ?? 'full'), ['full', 'code_only']),
+                    'generates_files' => in_array(($field->generation_mode ?? 'full'), ['full', 'template_only']),
                 ];
             })->toArray();
 
@@ -333,16 +357,20 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
                 'tablenameplural' => $tableName . 's', // Simple pluralization
                 'tablenamesingular' => rtrim($tableName, 's'), // Simple singularization
 
-                // Counts
-                'nmaxitems' => $fields->count(),
-                'nmaxfields' => $fields->count(), // Alias
-                'nmaxitemsnokey' => $fields->where('field_name', '!=', 'id')->count(),
+                // Counts — iteration counts reflect generation_mode filter:
+                // only full/code_only fields are counted in {:for nmaxitems:} loops.
+                'nmaxitems' => count($fieldsGenIndices),
+                'nmaxfields' => count($fieldsGenIndices), // Alias
+                'nmaxitemsnokey' => collect($fieldsGenIndices)
+                    ->filter(fn($fIdx) => ($fields[$fIdx]->field_name ?? null) !== 'id')
+                    ->count(),
                 'nmaxkeys' => $constraints->count(),
                 'nmaxconstraints' => $constraints->count(), // Alias
                 'nmaxforeignkeys' => 0, // TODO: Add foreign keys support
 
                 // Table data arrays
                 'fields' => $mappedFields,
+                'fieldsgen' => $fieldsGenIndices, // 🎯 Index array for {:for nmaxitems:} indirection
                 'keys' => $mappedKeys,
                 'constraints' => $mappedKeys, // Alias
 
@@ -362,9 +390,31 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
                 'tableindex' => $tableIndex,
                 'hastimestamps' => $fields->whereIn('field_name', ['created_at', 'updated_at'])->count() >= 2,
                 'hasprimarykey' => $fields->where('field_name', 'id')->count() > 0,
+                'hasblob' => $fields->contains(fn($f) => in_array(
+                    strtolower(strpos($f->field_type, '(') !== false ? substr($f->field_type, 0, strpos($f->field_type, '(')) : $f->field_type),
+                    ['tinyblob', 'blob', 'mediumblob', 'longblob', 'image']
+                )),
                 'primarykeyfield' => $fields->where('field_name', 'id')->first()?->field_name ?? 'id',
+
+                // Generation state metadata — user JS in {:code:} blocks can read these
+                'state' => $table->display_state ?? 'enabled',
+                'generation_mode' => $table->generation_mode ?? 'full',
+                'in_iteration' => in_array(($table->generation_mode ?? 'full'), ['full', 'code_only']),
+                'generates_files' => in_array(($table->generation_mode ?? 'full'), ['full', 'template_only']),
             ];
         }
+
+        // Build tablesgen: index array into tables[] for {:for nmaxtables:} iteration.
+        // Only full/code_only tables iterate. Others stay in tables[] for lookup/FK.
+        $tablesgen = [];
+        foreach ($projectData['tables'] as $idx => $t) {
+            $mode = $t['generation_mode'] ?? 'full';
+            if (in_array($mode, ['full', 'code_only'])) {
+                $tablesgen[] = $idx;
+            }
+        }
+        $projectData['tablesgen'] = $tablesgen;
+        $projectData['nmaxtables'] = count($tablesgen);
 
         // Create the ultimate gtree
         $gtree = [

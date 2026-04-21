@@ -1,13 +1,19 @@
 // resources/js/lib/api.ts
+type DisplayState = 'enabled' | 'disabled' | 'grayed' | 'invisible' | 'excluded';
+type GenerationMode = 'full' | 'code_only' | 'template_only' | 'reference_only' | 'excluded';
+
 interface SchemaTable {
   id: number;
   table_name: string;
+  singular_name?: string;
   comment?: string;
   primarykeyfield?: string;
   filekeyname?: string;
   file_name_renamed?: string;
   file_name_short?: string;
   schema_version_id?: number;
+  display_state?: DisplayState;
+  generation_mode?: GenerationMode;
   fields: SchemaField[];
   constraints: SchemaConstraint[];
 }
@@ -32,6 +38,9 @@ interface SchemaField {
   link_display_field?: string;
   link_order_field?: string;
   link_order_direction?: string;
+  editmask?: string;
+  display_state?: DisplayState;
+  generation_mode?: GenerationMode;
 }
 
 interface SchemaConstraint {
@@ -779,7 +788,7 @@ class ApiClient {
 
 export const apiClient = new ApiClient();
 export const api = apiClient; // Add this alias for backwards compatibility
-export type { SchemaTable, SchemaField, SchemaConstraint, SchemaVersion };
+export type { SchemaTable, SchemaField, SchemaConstraint, SchemaVersion, DisplayState, GenerationMode };
 
 // Utility functions to access pricing data from localStorage
 export const pricingUtils = {

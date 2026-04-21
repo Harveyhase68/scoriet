@@ -1523,6 +1523,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
                 onChange={(e) => setDatabasePassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full"
+                autoComplete="new-password"
               />
             </div>
           </div>

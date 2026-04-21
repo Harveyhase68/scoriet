@@ -73,7 +73,7 @@
     "subscriptionphp389": "CLI-Tool",
     "subscriptionphp390": "Windows-Dienst",
     "subscriptionphp391": "CLI + Service-Paket",
-    "subscriptionphp392": "Formulardesigner",
+    "subscriptionphp392": "Formulare",
     "subscriptionphp393": "Git-Integration",
     "subscriptionphp394": "Code Anpassungen",
     "subscriptionphp395": "Datenbank Designer",
@@ -122,7 +122,7 @@
     "subscriptioncontrollerphp376": "Hintergrund-Service für automatische Synchronisation",
     "subscriptioncontrollerphp385": "Visueller Editor für Datenbankstrukturen",
     "subscriptioncontrollerphp384": "Datenbank Designer",
-    "subscriptioncontrollerphp392": "Formulardesigner",
+    "subscriptioncontrollerphp392": "Formulare",
     "subscriptioncontrollerphp393": "Visueller Editor für Formulare",
     "subscriptioncontrollerphp400": "Git-Integration",
     "subscriptioncontrollerphp401": "Push zu GitHub/GitLab, PRs erstellen",
@@ -402,12 +402,12 @@
     "templatecontrollerphp1302": "Sie haben keine Berechtigung, dieses Template zu bearbeiten",
     "templatecontrollerphp1312": "Die Validierung für das Hinzufügen der DB-Schema-Abhängigkeit ist fehlgeschlagen.",
     "templatecontrollerphp1334": "Diese Abhängigkeit existiert bereits",
-    "templatecontrollerphp1348": "DB Schema Abhängigkeit erfolgreich hinzugefügt",
+    "templatecontrollerphp1348": "Schema Abhängigkeit erfolgreich hinzugefügt",
     "templatecontrollerphp1352": "Fehler beim Hinzufügen der DB-Schema-Abhängigkeit:",
     "templatecontrollerphp1360": "Abhängigkeit konnte nicht hinzugefügt werden:",
     "templatecontrollerphp1374": "Sie haben keine Berechtigung, dieses Template zu bearbeiten",
     "templatecontrollerphp1385": "Abhängigkeit nicht gefunden",
-    "templatecontrollerphp1393": "DB Schema Abhängigkeit erfolgreich entfernt",
+    "templatecontrollerphp1393": "Schema Abhängigkeit erfolgreich entfernt",
     "templatecontrollerphp1398": "Abhängigkeit konnte nicht entfernt werden",
     "templatecontrollerphp1412": "Nicht autorisiert",
     "templatecontrollerphp1436": "Nicht autorisiert",
@@ -1610,4 +1610,5 @@
     "editbladephp22": "Titel",
     "editbladephp53": "Stornieren",
     "editbladephp57": "Seite aktualisieren"
+    
 }

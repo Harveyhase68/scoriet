@@ -93,7 +93,8 @@ class ProjectApplicationController extends Controller
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
-                'description' => $project->description,
+                'caption' => $project->getTranslatedCaption(),
+                'description' => $project->getTranslatedDescription(),
             ]
         ], 201);
     }
@@ -310,7 +311,8 @@ class ProjectApplicationController extends Controller
             'project' => [
                 'id' => $project->id,
                 'name' => $project->name,
-                'description' => $project->description,
+                'caption' => $project->getTranslatedCaption(),
+                'description' => $project->getTranslatedDescription(),
                 'owner' => $project->owner->only(['id', 'name', 'username']),
                 'teams_count' => $project->teams->count(),
                 'created_at' => $project->created_at,

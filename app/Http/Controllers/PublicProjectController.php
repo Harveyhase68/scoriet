@@ -79,10 +79,12 @@ class PublicProjectController extends Controller
             });
 
         // Prepare public project data (exclude sensitive fields)
+        $project->load('translations');
         $publicProjectData = [
             'id' => $project->id,
             'name' => $project->name,
-            'description' => $project->description,
+            'caption' => $project->getTranslatedCaption(),
+            'description' => $project->getTranslatedDescription(),
             'owner' => [
                 'name' => $project->owner->name,
                 'username' => $project->owner->username,
@@ -92,13 +94,6 @@ class PublicProjectController extends Controller
             // Public settings
             'default_language' => $project->default_language,
             'enabled_languages' => $project->enabled_languages,
-            // Localization settings (public)
-            'decimal_separator' => $project->decimal_separator,
-            'thousands_separator' => $project->thousands_separator,
-            'date_format' => $project->date_format,
-            'time_format' => $project->time_format,
-            'currency_symbol' => $project->currency_symbol,
-            'timezone' => $project->timezone,
             // Project URL (if set and public)
             'project_url' => $project->project_url,
             // Statistics
@@ -141,9 +136,11 @@ class PublicProjectController extends Controller
         }
 
         // Return basic public data
+        $project->load('translations');
         return response()->json([
             'name' => $project->name,
-            'description' => $project->description,
+            'caption' => $project->getTranslatedCaption(),
+            'description' => $project->getTranslatedDescription(),
             'owner' => [
                 'name' => $project->owner->name,
                 'username' => $project->owner->username,

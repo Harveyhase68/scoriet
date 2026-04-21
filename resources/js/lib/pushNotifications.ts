@@ -112,7 +112,12 @@ export async function subscribeToPush(): Promise<boolean> {
         console.log('[Push] Subscribing to PushManager...');
         const subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey,
+            // TypeScript 5.x narrowed `BufferSource` so a plain `Uint8Array` is
+            // typed `Uint8Array<ArrayBufferLike>` (includes SharedArrayBuffer)
+            // but the DOM API expects `ArrayBufferView<ArrayBuffer>` only. At
+            // runtime our `new Uint8Array(size)` always has a regular
+            // ArrayBuffer backing, so the cast is safe.
+            applicationServerKey: applicationServerKey as BufferSource,
         });
         console.log('[Push] Browser subscription created:', subscription.endpoint);
 

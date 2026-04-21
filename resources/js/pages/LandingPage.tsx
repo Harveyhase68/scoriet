@@ -898,7 +898,7 @@ export default function LandingPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold mb-4" style={{ color: colors.textPrimary }}>
-                  {t.landingpage573} {userData?.name || 'User'}! 👋
+                  {t.landingpage901}{userData?.name || 'User'}! 👋
                 </h2>
                 <p className="text-xl mb-4" style={{ color: colors.textSecondary }}>
                   {t.currentPlan} <span style={{ color: colors.accent }} className="font-semibold">{t.freeLabel} Plan</span>

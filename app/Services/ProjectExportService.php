@@ -12,6 +12,7 @@ use App\Models\FormSet;
 use App\Models\ProjectFormSet;
 use App\Models\SchemaDesignerLayout;
 use App\Models\SchemaTranslation;
+use App\Models\ProjectTranslation;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -43,6 +44,7 @@ class ProjectExportService
         try {
             // Collect all export data
             $this->collectProjectData();
+            $this->collectProjectTranslations();
             $this->collectAttachments();
             $this->collectSchemas();
             $this->collectSchemaTranslations();
@@ -71,7 +73,7 @@ class ProjectExportService
     {
         $this->exportData['project'] = [
             'name' => $this->project->name,
-            'description' => $this->project->description,
+            'description' => $this->project->getTranslatedDescription(),
             'is_public' => $this->project->is_public,
             'allow_join_requests' => $this->project->allow_join_requests,
             'settings' => $this->project->settings,
@@ -120,6 +122,28 @@ class ProjectExportService
             'exported_at' => now()->toIso8601String(),
             'scoriet_version' => config('app.version', '1.0.0'),
         ];
+    }
+
+    /**
+     * Collect project translations (per-language captions, descriptions, locale settings)
+     */
+    protected function collectProjectTranslations(): void
+    {
+        $translations = ProjectTranslation::where('project_id', $this->project->id)->get();
+
+        $this->exportData['project_translations'] = $translations->map(function ($t) {
+            return [
+                'language_code' => $t->language_code,
+                'caption' => $t->caption,
+                'description' => $t->description,
+                'decimal_separator' => $t->decimal_separator,
+                'thousands_separator' => $t->thousands_separator,
+                'date_format' => $t->date_format,
+                'time_format' => $t->time_format,
+                'currency_symbol' => $t->currency_symbol,
+                'timezone' => $t->timezone,
+            ];
+        })->toArray();
     }
 
     /**
@@ -220,6 +244,8 @@ class ProjectExportService
                         'engine' => $table->engine,
                         'charset' => $table->charset,
                         'collation' => $table->collation,
+                        'display_state' => $table->display_state ?? 'enabled',
+                        'generation_mode' => $table->generation_mode ?? 'full',
                         'fields' => [],
                         'constraints' => [],
                         'designer_layout' => null,
@@ -250,6 +276,8 @@ class ProjectExportService
                             'link_order_field' => $field->link_order_field,
                             'link_order_direction' => $field->link_order_direction,
                             'editmask' => $field->editmask,
+                            'display_state' => $field->display_state ?? 'enabled',
+                            'generation_mode' => $field->generation_mode ?? 'full',
                         ];
                     }
 

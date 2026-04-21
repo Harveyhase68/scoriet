@@ -16,6 +16,7 @@ import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import SchemaPrintModal from '@/Components/Panels/SchemaPrintModal';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -112,6 +113,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [importing, setImporting] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [printSchemaId, setPrintSchemaId] = useState<number | null>(null);
 
   // Create schema modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -820,6 +823,9 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
     return new Date(dateString).toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
@@ -1263,6 +1269,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             onClick={() => onOpenDesigner(schema.id, schema.name)}
           />
         )}
+        <Button
+          icon="pi pi-print"
+          className="p-button-rounded p-button-text p-button-sm"
+          style={{ color: '#3b82f6' }}
+          tooltip="Print"
+          onClick={() => { setShowPrintDialog(true); setPrintSchemaId(schema.id); }}
+        />
         {canDelete && (
           <Button
             icon="pi pi-trash"
@@ -1316,6 +1329,26 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
             onClick={handleCreateSchemaClick}
             disabled={mySchemasLoading || communityLoading}
+          />
+          <Button
+            icon="pi pi-download"
+            label={t.databasemanagementpanel886}
+            className="p-button-text"
+            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+            onClick={() => setShowExportDialog(true)}
+            disabled={exporting || !contextSelectedProject}
+            tooltip={contextSelectedProject ? `${t.databasemanagementpanel876} — ${contextSelectedProject.name}` : t.databasemanagementpanel876}
+            tooltipOptions={{ position: 'bottom' }}
+          />
+          <Button
+            icon="pi pi-upload"
+            label={t.databasemanagementpanel893}
+            className="p-button-text"
+            style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
+            onClick={() => setShowImportDialog(true)}
+            disabled={importing || !contextSelectedProject}
+            tooltip={contextSelectedProject ? `${t.databasemanagementpanel876} — ${contextSelectedProject.name}` : t.databasemanagementpanel876}
+            tooltipOptions={{ position: 'bottom' }}
           />
           <Button
             icon="pi pi-refresh"
@@ -1487,35 +1520,6 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           />
         </DataTable>
       </Card>
-
-      {/* Translation Export/Import */}
-      {contextSelectedProject && (
-        <Card title={t.databasemanagementpanel876} className="mt-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <p className="text-sm text-gray-400 mb-2">
-                {t.databasemanagementpanel1497}{contextSelectedProject.name}{t.databasemanagementpanel1497_2}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                icon="pi pi-download"
-                label={t.databasemanagementpanel886}
-                className="p-button-success"
-                onClick={() => setShowExportDialog(true)}
-                disabled={exporting || !contextSelectedProject}
-              />
-              <Button
-                icon="pi pi-upload"
-                label={t.databasemanagementpanel893}
-                className="p-button-info"
-                onClick={() => setShowImportDialog(true)}
-                disabled={importing || !contextSelectedProject}
-              />
-            </div>
-          </div>
-        </Card>
-      )}
 
       {/* Create Schema Modal */}
       <Dialog
@@ -2589,6 +2593,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           color: var(--theme-text-primary);
         }
       `}</style>
+      {/* Schema Print Modal */}
+      <SchemaPrintModal visible={showPrintDialog} onHide={() => setShowPrintDialog(false)} initialSchemaId={printSchemaId} />
       </div>
     </div>
   );

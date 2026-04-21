@@ -12,6 +12,9 @@ class Template extends Model
     protected $fillable = [
         'name',
         'full_name',
+        'compatibility_tag',
+        'generation_order',
+        'version',
         'description',
         'creator_user_id',
         'project_id',
@@ -49,6 +52,8 @@ class Template extends Model
         'tags' => 'array',
         'is_active' => 'boolean',
         'is_system_template' => 'boolean',
+        'generation_order' => 'integer',
+        'version' => 'integer',
         'file_count' => 'integer',
         'review_score' => 'integer',
         'protected_files' => 'array',
@@ -72,7 +77,10 @@ class Template extends Model
      */
     public function files()
     {
-        return $this->hasMany(TemplateFile::class);
+        return $this->hasMany(TemplateFile::class)
+            ->orderByRaw('CASE WHEN file_order > 0 THEN 0 ELSE 1 END')
+            ->orderBy('file_order')
+            ->orderBy('file_name');
     }
 
     /**

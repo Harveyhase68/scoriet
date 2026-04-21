@@ -21,6 +21,7 @@ use App\Models\ProjectGeneration;
 use App\Services\CreditService;
 use App\Services\PerformanceTrackingService;
 use App\Models\PerformanceMetric;
+use App\Support\ProjectNamePlaceholder;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -118,13 +119,18 @@ class UltimateTemplateController extends Controller
             }
             // 🎯 NEU: schema_version für Project-Dateien - erlaubt Auswahl einer spezifischen Schema-Version
             $schemaVersion = $request->query('schema_version'); // For project_file types - specific schema version
+            // 🎯 Filter: Only include tables from these schema IDs (null = all linked schemas)
+            $schemaIds = $request->query('schema_ids');
+            if ($schemaIds && is_string($schemaIds)) {
+                $schemaIds = json_decode($schemaIds, true);
+            }
 
             // Load project and schema data (with optional migration)
             // 🎯 WICHTIG: $tableName wird übergeben, um zu bestimmen, ob Migrations eingebunden werden sollen
             // Wenn $tableName gesetzt ist (db_table_file) → KEINE Migrations im GTree
             // Wenn $tableName NULL ist (project_file) → Migrations im GTree einbinden
             // 🎯 NEU: $schemaVersion erlaubt die Auswahl einer spezifischen Schema-Version (nicht automatisch die neueste)
-            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions, $tableName, $schemaVersion);
+            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions, $tableName, $schemaVersion, $schemaIds);
 
             // Initialize Ultimate Template Engine
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
@@ -152,6 +158,23 @@ class UltimateTemplateController extends Controller
                 \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution", $includeErrors);
             }
 
+            $globalFileCounter = 0; // Global counter for %13
+
+            // Pre-calculate db_table_file positions for %13 global counter
+            // ONLY count files that actually USE %13 in their filename or output_path
+            $dbTableFilePositions = [];
+            $dbTableFileIdx = 0;
+            foreach ($resolvedFiles as $rf) {
+                $rf = (object) $rf;
+                if (($rf->content_type ?? null) === 'zip') continue;
+                $rfGenType = $this->determineGenerationType($rf);
+                $usesPercent13 = str_contains($rf->file_name ?? '', '%13') || str_contains($rf->output_path ?? '', '%13');
+                if (in_array($rfGenType, ['db_table_file', 'db_table_file_languages']) && $usesPercent13) {
+                    $dbTableFilePositions[$rf->id] = $dbTableFileIdx;
+                    $dbTableFileIdx++;
+                }
+            }
+
             foreach ($resolvedFiles as $file) {
                 // Convert back to object if needed for compatibility
                 $file = (object) $file;
@@ -160,6 +183,8 @@ class UltimateTemplateController extends Controller
                 if (($file->content_type ?? null) === 'zip') {
                     continue;
                 }
+
+                $filePosition = $dbTableFilePositions[$file->id] ?? 0;
 
                 // 🚀 CACHE: Try to get from cache first
                 $fileResult = null;
@@ -170,8 +195,8 @@ class UltimateTemplateController extends Controller
                             fileId: $file->id,
                             tableName: $tableName,
                             languageCode: $languageCode,
-                            compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource) {
-                                return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                            compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, &$globalFileCounter, $filePosition) {
+                                return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, 0, $globalFileCounter, $filePosition);
                             },
                             includeSource: $includeSource
                         );
@@ -183,7 +208,12 @@ class UltimateTemplateController extends Controller
 
                 // Fallback: No cache or cache disabled
                 if (!$fileResult) {
-                    $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                    $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, 0, $globalFileCounter, $filePosition);
+                }
+
+                // Skip files whose table was excluded at schema level (no tableIdx resolved).
+                if (!empty($fileResult['skipped'])) {
+                    continue;
                 }
 
                 $processedFiles[] = $fileResult;
@@ -348,7 +378,7 @@ class UltimateTemplateController extends Controller
      * @param string|null $tableName Table name for db_table_file types (null = project file)
      * @param int|null $schemaVersion Specific schema version to use (null = use latest)
      */
-    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersions = null, ?string $tableName = null, $schemaVersion = null): array
+    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersions = null, ?string $tableName = null, $schemaVersion = null, ?array $schemaIds = null): array
     {
         // Load project and schema data
         $actualProject = $projectId ? Project::find($projectId) : null;
@@ -365,9 +395,14 @@ class UltimateTemplateController extends Controller
 
         if ($actualProject) {
             // Get floating schemas linked to this project
-            $linkedSchemas = FloatingSchema::whereHas('projects', function ($query) use ($projectId) {
+            $linkedSchemasQuery = FloatingSchema::whereHas('projects', function ($query) use ($projectId) {
                 $query->where('projects.id', $projectId);
-            })->get();
+            });
+            // 🎯 Filter: Only include selected schemas (if specified by frontend)
+            if (!empty($schemaIds)) {
+                $linkedSchemasQuery->whereIn('id', $schemaIds);
+            }
+            $linkedSchemas = $linkedSchemasQuery->get();
 
             foreach ($linkedSchemas as $schema) {
                 // Store first schema's name and description
@@ -451,9 +486,19 @@ class UltimateTemplateController extends Controller
             }
         }
 
-        // Load all active languages
-        $languages = Language::where('is_active', true)->orderBy('id')->get();
-        $selectedLanguageCode = request()->query('language_code', 'en'); // Default to English
+        // Load project-enabled languages in sort_order
+        $enabledLanguageCodes = $actualProject ? ($actualProject->enabled_languages ?? []) : [];
+        if (empty($enabledLanguageCodes)) {
+            // Fallback: use project default_language, or 'en'
+            $enabledLanguageCodes = [$actualProject->default_language ?? 'en'];
+        }
+        $languages = Language::where('is_active', true)
+            ->whereIn('code', $enabledLanguageCodes)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $selectedLanguageCode = request()->query('language_code', $actualProject->default_language ?? 'en');
         $selectedLanguageIndex = 0;
 
         // Find the index of the selected language
@@ -464,8 +509,6 @@ class UltimateTemplateController extends Controller
             }
         }
 
-        error_log("🌍 Languages Debug: Found " . $languages->count() . " languages, selected: $selectedLanguageCode (index: $selectedLanguageIndex)");
-
         // Build ultimate project data
         $projectName = $actualProject ? $actualProject->name : 'ScorietDemo';
         $projectData = $this->buildUltimateProjectData($actualProject, $template, $templateId, $schemaDescription, $schemaName);
@@ -474,30 +517,220 @@ class UltimateTemplateController extends Controller
         $projectData['selectedlanguage'] = $selectedLanguageCode;
         $projectData['selectedlanguageindex'] = $selectedLanguageIndex;
 
+        // Load project translations (per-language captions, descriptions, locale)
+        $projectTranslations = $actualProject
+            ? \App\Models\ProjectTranslation::where('project_id', $actualProject->id)->get()->keyBy('language_code')
+            : collect();
+        $defaultLang = $actualProject->default_language ?? 'en';
+        $defaultTranslation = $projectTranslations->get($defaultLang);
+        $defaultCaption = $defaultTranslation->caption ?? ucwords(str_replace('_', ' ', $actualProject->name ?? 'ScorietDemo'));
+        $defaultDescription = $defaultTranslation->description ?? ($actualProject->description ?? '');
+
         // Add languages array (using 'lang' for consistency with template syntax)
-        $projectData['lang'] = $languages->map(function ($language, $index) use ($actualProject) {
+        $projectData['lang'] = $languages->map(function ($language, $index) use ($actualProject, $projectTranslations, $defaultCaption, $defaultDescription, $defaultTranslation) {
+            $trans = $projectTranslations->get($language->code);
+            // Fallback to default language translation, then project fields
+            $fallback = $defaultTranslation;
             return [
-                'id' => $language->id, // 🎯 Language database ID
-                'code' => $language->code, // 🎯 Language token (e.g., 'en', 'de', 'fr')
+                'id' => $language->id,
+                'code' => $language->code,
                 'name' => $language->name,
                 'native_name' => $language->native_name,
                 'flag' => $language->flag ?? '🏴',
                 'index' => $index,
-                // Project translations (use project name/description as default)
-                'caption' => $actualProject ? $actualProject->name : 'ScorietDemo',
-                'filedescription' => $actualProject ? ($actualProject->description ?? '') : 'Demo Project',
+                // Translated project info (fallback: default language → project name)
+                'caption' => $trans->caption ?? $defaultCaption,
+                'filedescription' => $trans->description ?? $defaultDescription,
+                // Locale settings (fallback: default language translation)
+                'decimalsep' => $trans->decimal_separator ?? ($fallback->decimal_separator ?? ','),
+                'thousandsep' => $trans->thousands_separator ?? ($fallback->thousands_separator ?? '.'),
+                'dateformat' => $trans->date_format ?? ($fallback->date_format ?? 'd.m.Y'),
+                'timeformat' => $trans->time_format ?? ($fallback->time_format ?? 'H:i:s'),
+                'currencysym' => $trans->currency_symbol ?? ($fallback->currency_symbol ?? '€'),
+                'timezone' => $trans->timezone ?? ($fallback->timezone ?? 'Europe/Vienna'),
             ];
         })->toArray();
 
         // Update language count
         $projectData['nmaxlanguages'] = $languages->count();
 
+        // Override project-level locale + caption/description with selected language's translation
+        $selectedTrans = $projectTranslations->get($selectedLanguageCode) ?? $defaultTranslation;
+        if ($selectedTrans) {
+            $projectData['decimal_separator'] = $selectedTrans->decimal_separator ?? $projectData['decimal_separator'];
+            $projectData['thousands_separator'] = $selectedTrans->thousands_separator ?? $projectData['thousands_separator'];
+            $projectData['date_format'] = $selectedTrans->date_format ?? $projectData['date_format'];
+            $projectData['time_format'] = $selectedTrans->time_format ?? $projectData['time_format'];
+            $projectData['currency_symbol'] = $selectedTrans->currency_symbol ?? $projectData['currency_symbol'];
+            $projectData['timezone'] = $selectedTrans->timezone ?? $projectData['timezone'];
+        }
+
+        // {:projectcaption:} = translated project name (fallback: formatted project name)
+        // {:projectdescription:} = translated description (fallback: project description)
+        // {:projectname:} stays as the raw project name (e.g. "system_project")
+        $projectData['projectcaption'] = $defaultCaption;
+        $projectData['projectdescription'] = $defaultDescription;
+
         // Build ultimate table data with translations
         $projectData['tables'] = $this->buildUltimateTableDataWithTranslations($schemaTables, $projectId, $languages);
 
-        // Update table/file counts (files = tables in Scoriet)
-        $projectData['nmaxtables'] = count($projectData['tables']);
-        $projectData['nmaxfiles'] = count($projectData['tables']);
+        // 🎯 Add Form Layout data per table.
+        // FormSet resolution is now PER-TABLE: schema_tables.form_set_id can override
+        // the project default. If a table has no own form_set_id, the project's
+        // active ProjectFormSet is used as a fallback. ReportPattern (per-table)
+        // is also resolved here for use by the report generator (Task b).
+        $projectFormSet = $actualProject ? ProjectFormSet::getActiveForProject($actualProject->id) : null;
+        $projectReportPattern = $actualProject ? \App\Models\ProjectReportPattern::getActiveForProject($actualProject->id) : null;
+
+        // Per-request caches keyed by id. We hold the eager-loaded sub-trees so
+        // toGTreeArray() etc. work without re-querying for every table.
+        $formSetCache = [];
+        if ($projectFormSet) {
+            $formSetCache[$projectFormSet->id] = $projectFormSet;
+        }
+        $reportPatternCache = [];
+        if ($projectReportPattern) {
+            $reportPatternCache[$projectReportPattern->id] = $projectReportPattern;
+        }
+
+        $resolveFormSet = function (?int $id) use (&$formSetCache, $projectFormSet) {
+            if ($id === null) {
+                return $projectFormSet;
+            }
+            if (!array_key_exists($id, $formSetCache)) {
+                $formSetCache[$id] = \App\Models\FormSet::with('windows.elements')->find($id) ?? $projectFormSet;
+            }
+            return $formSetCache[$id];
+        };
+
+        $resolveReportPattern = function (?int $id) use (&$reportPatternCache, $projectReportPattern) {
+            if ($id === null) {
+                return $projectReportPattern;
+            }
+            if (!array_key_exists($id, $reportPatternCache)) {
+                $reportPatternCache[$id] = \App\Models\ReportPattern::with('forms.elements')->find($id) ?? $projectReportPattern;
+            }
+            return $reportPatternCache[$id];
+        };
+
+        foreach ($projectData['tables'] as &$tableData) {
+            $tblName = $tableData['filename'] ?? '';
+            $schemaTable = $schemaTables->firstWhere('table_name', $tblName);
+            if (!$schemaTable) continue;
+
+            $tableFormSet = $resolveFormSet($schemaTable->form_set_id);
+            $tableReportPattern = $resolveReportPattern($schemaTable->report_pattern_id);
+
+            $createEditWindow = $tableFormSet?->windows->firstWhere('window_type', 'create_edit');
+            $dataTableWindow = $tableFormSet?->windows->firstWhere('window_type', 'data_table');
+
+            // Build field_name → index lookup from GTree fields array
+            $fieldIndexMap = [];
+            foreach (($tableData['fields'] ?? []) as $fi => $fd) {
+                $fieldIndexMap[$fd['name'] ?? ''] = $fi;
+            }
+
+            // Create/Edit layout (single record form). Fields + buttons are merged
+            // into one ordered array so the template can render them in true tab
+            // order — buttons can sit anywhere in the sequence (between fields,
+            // before, after) depending on the template's FormElement.tab_order.
+            if ($createEditWindow) {
+                $layouts = $this->getOrGenerateFormLayout($createEditWindow, $schemaTable, $selectedLanguageCode ?? null);
+                foreach ($layouts as &$l) {
+                    $l['field_index'] = $fieldIndexMap[$l['field_name'] ?? ''] ?? -1;
+                }
+                unset($l);
+
+                $buttons = $this->getOrGenerateFormButtons($createEditWindow, $selectedLanguageCode ?? null, $tableFormSet);
+
+                $merged = array_merge($layouts, $buttons);
+                usort($merged, function ($a, $b) {
+                    $ta = ($a['tab_order'] ?? 0) > 0 ? $a['tab_order'] : PHP_INT_MAX;
+                    $tb = ($b['tab_order'] ?? 0) > 0 ? $b['tab_order'] : PHP_INT_MAX;
+                    if ($ta !== $tb) return $ta <=> $tb;
+                    return ($a['z_order'] ?? 0) <=> ($b['z_order'] ?? 0);
+                });
+
+                $tableData['layoutsingles'] = $merged;
+                $tableData['nmaxlayoutsingles'] = count($merged);
+                $tableData['layoutsinglecount'] = count($merged);
+            }
+
+            // Data Table layout (columns) — fields only.
+            if ($dataTableWindow) {
+                $layouts = $this->getOrGenerateFormLayout($dataTableWindow, $schemaTable, $selectedLanguageCode ?? null);
+                foreach ($layouts as &$l) {
+                    $l['field_index'] = $fieldIndexMap[$l['field_name'] ?? ''] ?? -1;
+                }
+                unset($l);
+                $tableData['layoutcolumns'] = $layouts;
+                $tableData['nmaxlayoutcolumns'] = count($layouts);
+            }
+
+            // ── ReportPattern integration ──────────────────────────────────
+            // Mirrors the FormSet pipeline: the design template (Vorlage) and
+            // the per-table layout are emitted as two separate sub-trees.
+            //   - reportsingle / reportlist        → the design template (form)
+            //   - layoutreportsingles / lists      → per-table placement loop
+            // If no saved ReportLayoutElement rows exist for (form, table),
+            // the placements are auto-generated transiently via
+            // ReportLayoutElement::computeAutoPlacements() — no DB writes.
+            if ($tableReportPattern) {
+                $tableData['report_pattern_id']   = $tableReportPattern->id;
+                $tableData['report_pattern_name'] = $tableReportPattern->name;
+
+                $singleForm = $tableReportPattern->forms->firstWhere('form_type', 'report_single');
+                $listForm   = $tableReportPattern->forms->firstWhere('form_type', 'report_list');
+
+                if ($singleForm) {
+                    $tableData['reportsingle']             = $singleForm->toGTreeArray();
+                    $tableData['nmaxreportsingleelements'] = $tableData['reportsingle']['nmaxelements'] ?? 0;
+
+                    $layout = $this->getOrGenerateReportLayout($singleForm, $schemaTable, $selectedLanguageCode ?? null);
+                    foreach ($layout as &$l) {
+                        $l['field_index'] = $fieldIndexMap[$l['field_name'] ?? ''] ?? -1;
+                    }
+                    unset($l);
+                    $tableData['layoutreportsingles']    = $layout;
+                    $tableData['nmaxlayoutreportsingle'] = count($layout);
+                }
+
+                if ($listForm) {
+                    $tableData['reportlist']             = $listForm->toGTreeArray();
+                    $tableData['nmaxreportlistelements'] = $tableData['reportlist']['nmaxelements'] ?? 0;
+
+                    $layout = $this->getOrGenerateReportLayout($listForm, $schemaTable, $selectedLanguageCode ?? null);
+                    foreach ($layout as &$l) {
+                        $l['field_index'] = $fieldIndexMap[$l['field_name'] ?? ''] ?? -1;
+                    }
+                    unset($l);
+                    $tableData['layoutreportlists']    = $layout;
+                    $tableData['nmaxlayoutreportlist'] = count($layout);
+                }
+            }
+        }
+        unset($tableData);
+
+        // Build tablesgen: index array into tables[] for {:for nmaxtables:} iteration.
+        // Only full/code_only tables are iterated — template_only, reference_only
+        // and excluded tables stay in tables[] (for name/FK lookup) but are
+        // skipped from the loop via this indirection. Same pattern as
+        // fieldsnokey / fieldsnoblob at the field level.
+        //
+        // Engine emits:
+        //   for (let _tgenI = 0; _tgenI < nmaxtables; _tgenI++) {
+        //     const tableIdx = tablesgen[_tgenI];
+        //     // body references tables[tableIdx] as before — no template changes needed.
+        //   }
+        $tablesgen = [];
+        foreach ($projectData['tables'] as $idx => $t) {
+            $mode = $t['generation_mode'] ?? 'full';
+            if (in_array($mode, ['full', 'code_only'])) {
+                $tablesgen[] = $idx;
+            }
+        }
+        $projectData['tablesgen'] = $tablesgen;
+        $projectData['nmaxtables'] = count($tablesgen);
 
         // 📊 Add migration data if available
         if ($migrationData !== null) {
@@ -671,7 +904,7 @@ class UltimateTemplateController extends Controller
             'projectdbtype' => $actualProject ? ($actualProject->database_type ?? 'MySQL') : 'MySQL',
             'projectdbname' => $schemaName ?: 'Demo Schema', // 🔗 First linked schema name
             'projectdbdesc' => $schemaDescription ?: 'Demo Database Schema', // Use schema description, not project description
-            'projectdbversion' => '1', // Project DB Version (for %9 in filename)
+            'projectdbversion' => '1', // Project DB Version (for %14 in filename; %9 is now the project name)
             'projectdbpassword' => $actualProject ? ($actualProject->database_password ?? '') : '',
             'projectdbusername' => $actualProject ? ($actualProject->database_username ?? 'root') : 'root',
             'projectdbserver' => $actualProject ? ($actualProject->database_server ?? '127.0.0.1') : '127.0.0.1',
@@ -695,16 +928,15 @@ class UltimateTemplateController extends Controller
             'scorietversion' => '2.0.0',
             'laravelversion' => app()->version(),
 
-            // === LOCALIZATION SETTINGS ===
-            'decimal_separator' => $actualProject ? ($actualProject->decimal_separator ?? ',') : ',',
-            'thousands_separator' => $actualProject ? ($actualProject->thousands_separator ?? '.') : '.',
-            'date_format' => $actualProject ? ($actualProject->date_format ?? 'd.m.Y') : 'd.m.Y',
-            'time_format' => $actualProject ? ($actualProject->time_format ?? 'H:i:s') : 'H:i:s',
-            'currency_symbol' => $actualProject ? ($actualProject->currency_symbol ?? '€') : '€',
-            'timezone' => $actualProject ? ($actualProject->timezone ?? 'Europe/Vienna') : 'Europe/Vienna',
+            // === LOCALIZATION SETTINGS (overridden later from project_translations) ===
+            'decimal_separator' => ',',
+            'thousands_separator' => '.',
+            'date_format' => 'd.m.Y',
+            'time_format' => 'H:i:s',
+            'currency_symbol' => '€',
+            'timezone' => 'Europe/Vienna',
 
             // === COUNTS (will be updated after table processing) ===
-            'nmaxfiles' => 0,
             'nmaxtables' => 0,
             'nmaxlanguages' => 1,
 
@@ -722,14 +954,63 @@ class UltimateTemplateController extends Controller
     }
 
     /**
+     * Load per-project ReportPatternFieldAssignment records for the ACTIVE
+     * ReportPattern of the project, keyed by schema_field_id for fast lookup.
+     *
+     * Returns an empty array when:
+     *   - no project context is available
+     *   - the project has no active report pattern
+     *   - the active pattern has no assignments yet
+     */
+    private function loadReportPatternAssignmentsForProject(?int $projectId): array
+    {
+        if (!$projectId) {
+            return [];
+        }
+
+        $activePattern = \App\Models\ProjectReportPattern::getActiveForProject($projectId);
+        if (!$activePattern) {
+            return [];
+        }
+
+        return \App\Models\ReportPatternFieldAssignment::where('report_pattern_id', $activePattern->id)
+            ->get()
+            ->keyBy('schema_field_id')
+            ->map(fn($a) => [
+                'visibility_state' => $a->visibility_state,
+                'sort_order' => $a->sort_order,
+                'report_pattern_id' => $a->report_pattern_id,
+            ])
+            ->toArray();
+    }
+
+    /**
      * 🗄️ BUILD ULTIMATE TABLE DATA
      */
     private function buildUltimateTableData($schemaTables, ?int $projectId): array
     {
         $tables = [];
 
+        // All tables (regardless of generation_mode) stay in gtree.tables[] so
+        // templates can still resolve foreign-key targets and reference data by
+        // name or index. The caller builds a `tablesgen` index array over this
+        // to drive {:for nmaxtables:} iteration — same indirection pattern as
+        // fieldsnokey/fieldsnoblob at the field level.
+        $schemaTables = collect($schemaTables)->values();
+
+        // 🎯 Preload per-project report-pattern field assignments.
+        // If the project has an active ReportPattern, its visibility assignments
+        // are applied as a GLOBAL overlay on field metadata (report_visible /
+        // report_visibility_state), parallel to the per-template-file form overlay
+        // but applied at gtree-build time because reports are not tied to a single
+        // template file — they're project-wide.
+        $reportAssignments = $this->loadReportPatternAssignmentsForProject($projectId);
+
         foreach ($schemaTables as $tableIndex => $table) {
-            $fields = $table->fields;
+            // All fields (incl. excluded/reference_only/template_only) stay in
+            // the mapped fields[] array — iteration is driven by fieldsgen[]
+            // built below, same indirection pattern as tablesgen[].
+            $fields = $table->fields->values();
             $constraints = $table->constraints;
             $tableName = $table->table_name;
 
@@ -788,6 +1069,8 @@ class UltimateTemplateController extends Controller
                 return [
                     // Core field info
                     'name' => $fieldName,
+                    'pascalcase' => str_replace('_', '', ucwords($fieldName, '_')), // PascalCase (e.g. ProdNo)
+                    'camelcase' => lcfirst(str_replace('_', '', ucwords($fieldName, '_'))), // camelCase (e.g. prodNo)
                     'type' => strtoupper($field->field_type),
                     'schema_field_id' => $field->id, // For per-file assignment lookup
 
@@ -796,6 +1079,7 @@ class UltimateTemplateController extends Controller
                     'typecast' => $this->getPhpTypecast($field->field_type),
                     'phptype' => $this->getPhpType($field->field_type),
                     'jstype' => $this->getJsType($field->field_type),
+                    'laraveltype' => $this->getLaravelType($field->field_type),
                     'notnull' => !$field->is_nullable,
                     'order' => $field->field_order,
                     'id' => $index + 1,
@@ -811,7 +1095,10 @@ class UltimateTemplateController extends Controller
                     'istimestamp' => in_array($fieldName, ['created_at', 'updated_at', 'deleted_at']),
                     'autoincrement' => $field->is_auto_increment ?? false, // 🎯 Read from database
                     'isblob' => $this->isBlobType($field->field_type), // 🎯 BLOB/TEXT large field detection
-                    'visible' => true,
+                    'isbinaryblob' => $this->isBinaryBlobType($field->field_type), // 🎯 Binary BLOB only (no TEXT)
+                    // Default visibility comes from the global schema display_state.
+                    // Per-file TemplateFileFieldAssignment overrides this below.
+                    'visible' => !in_array(($field->display_state ?? 'enabled'), ['invisible', 'excluded']),
 
                     // 🎯 LINK FIELDS - For ComboBox, ListBox, RadioButtons, etc.
                     'linktable' => $field->link_table ?? '',
@@ -823,6 +1110,23 @@ class UltimateTemplateController extends Controller
                     // Context
                     'filename' => $tableName,
                     'projectid' => $projectId ?? 1,
+
+                    // Generation state metadata — user JS in {:code:} blocks can read these
+                    'state' => $field->display_state ?? 'enabled',
+                    'generation_mode' => $field->generation_mode ?? 'full',
+                    'in_iteration' => in_array(($field->generation_mode ?? 'full'), ['full', 'code_only']),
+                    'generates_files' => in_array(($field->generation_mode ?? 'full'), ['full', 'template_only']),
+
+                    // Report-pattern assignment overlay (active pattern of the project).
+                    // report_visibility_state comes from the assignment when present,
+                    // otherwise falls back to 'visible'. report_visible is the derived
+                    // boolean so report templates can write {:if item.report_visible:}.
+                    'report_visibility_state' => $reportAssignments[$field->id]['visibility_state'] ?? 'visible',
+                    'report_visible' => !in_array(
+                        $reportAssignments[$field->id]['visibility_state'] ?? 'visible',
+                        ['invisible', 'not_available']
+                    ),
+                    'report_sort_order' => $reportAssignments[$field->id]['sort_order'] ?? null,
                 ];
             })->toArray();
 
@@ -836,8 +1140,26 @@ class UltimateTemplateController extends Controller
             $fieldsNoKeyAllIndices = [];
             $fieldsNoBlobIndices = [];
             $fieldsNoBlobAllIndices = [];
+            $fieldsNoBinaryBlobIndices = [];
+            $fieldsNoBinaryBlobAllIndices = [];
             $fieldsSearchKeyIndices = [];
+            // fieldsgen drives {:for nmaxitems:} via indirection — only fields
+            // with mode full/code_only iterate; template_only, reference_only
+            // and excluded fields remain in fields[] (for lookup) but are
+            // skipped from ALL iteration subsets below.
+            $fieldsGenIndices = [];
             foreach ($mappedFields as $index => $field) {
+                $mode = $field['generation_mode'] ?? 'full';
+                $isIterable = in_array($mode, ['full', 'code_only']);
+
+                // Non-iterable fields (template_only, reference_only, excluded)
+                // never appear in any iteration index array.
+                if (!$isIterable) {
+                    continue;
+                }
+
+                $fieldsGenIndices[] = $index;
+
                 $isKey = $field['isprimary'] || in_array($field['name'], $fileKeyNames);
 
                 if (!$isKey) {
@@ -849,6 +1171,10 @@ class UltimateTemplateController extends Controller
                 if (!$field['isblob']) {
                     $fieldsNoBlobIndices[] = $index;
                     $fieldsNoBlobAllIndices[] = $index;
+                }
+                if (!$field['isbinaryblob']) {
+                    $fieldsNoBinaryBlobIndices[] = $index;
+                    $fieldsNoBinaryBlobAllIndices[] = $index;
                 }
                 // fieldssearchkeys: indices of the file-key fields (for {:for nmaxsearchkeys:} loop)
                 if (in_array($field['name'], $fileKeyNames)) {
@@ -893,7 +1219,7 @@ class UltimateTemplateController extends Controller
             })->values()->toArray();
 
             // 🎯 Foreign Keys array = FOREIGN KEY constraints with reference information
-            $mappedForeignKeys = $constraints->where('constraint_type', 'FOREIGN KEY')->map(function($constraint, $index) use ($fields) {
+            $mappedForeignKeys = $constraints->where('constraint_type', 'FOREIGN KEY')->map(function($constraint) use ($fields) {
                 // Get first column's field name
                 $firstColumn = $constraint->constraintColumns->first();
                 $columnName = $firstColumn ? $firstColumn->field_name : '';
@@ -907,19 +1233,22 @@ class UltimateTemplateController extends Controller
                 $reference = $constraint->foreignKeyReference;
                 $referencedTableName = $reference ? $reference->referencedTable->table_name : '';
 
-                // Get referenced column name from referenceColumns
+                // Get referenced column name from referenceColumns → referencedField relation
                 $referencedColumn = '';
                 if ($reference && $reference->referenceColumns->isNotEmpty()) {
-                    $referencedColumn = $reference->referenceColumns->first()->referenced_column_name;
+                    $refCol = $reference->referenceColumns->first();
+                    $referencedColumn = $refCol->referencedField ? $refCol->referencedField->field_name : '';
                 }
 
                 return [
                     'name' => $columnName, // Field name (e.g., 'user_id')
-                    'id' => $index + 1,
+                    'id' => $constraint->id, // Real database ID
                     'type' => $fieldType, // Field type (e.g., 'BIGINT')
                     'typecast' => $typecast, // PHP typecast (e.g., 'int')
-                    'constraintname' => $constraint->constraint_name ?? 'fk_' . ($index + 1),
-                    'referencedtable' => $referencedTableName, // Referenced table name (e.g., 'users')
+                    'constraintname' => $constraint->constraint_name ?? 'fk_' . $constraint->id,
+                    'referencedtable' => $referencedTableName, // Referenced table name (e.g., 'prod_group')
+                    'referencedtablepascalcase' => str_replace('_', '', ucwords($referencedTableName, '_')), // PascalCase (e.g., 'ProdGroup')
+                    'referencedtablecamelcase' => lcfirst(str_replace('_', '', ucwords($referencedTableName, '_'))), // camelCase (e.g., 'prodGroup')
                     'referencedcolumn' => $referencedColumn, // Referenced column (e.g., 'id')
                     'ondelete' => $reference->on_delete ?? 'NO ACTION', // ON DELETE action
                     'onupdate' => $reference->on_update ?? 'NO ACTION', // ON UPDATE action
@@ -929,18 +1258,31 @@ class UltimateTemplateController extends Controller
             $tables[] = [
                 // Basic table info
                 'filename' => $tableName,
+                'filecamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($tableName), '_'))), // camelCase (e.g. contactMethods)
+                'filepascalcase' => str_replace('_', '', ucwords(strtolower($tableName), '_')), // PascalCase (e.g. ContactMethods)
                 'filenameshort' => $table->file_name_short ?? substr($tableName, 0, 2), // Use DB field or fallback
+                'filenamerenamed' => $table->file_name_renamed ?? '', // {:filenamerenamed:}
                 'fileid' => $table->id ?? $tableIndex,
 
-                // Counts
-                'nmaxitems' => count($mappedFields),
-                'nmaxfields' => count($mappedFields),
+                // Singular name: user-defined or auto-guessed
+                'filesingular' => $table->singular_name ?: $this->guessEnglishSingular($tableName),
+                'filesingularpascalcase' => str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_')),
+                'filesingularcamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_'))),
+
+                // Counts — iteration counts derived from fieldsgen (the index
+                // array of iterable fields). fields[] keeps ALL fields for
+                // name/FK lookup; {:for nmaxitems:} walks fields[fieldsgen[i]].
+                'nmaxitems' => count($fieldsGenIndices),
+                'nmaxfields' => count($fieldsGenIndices),
                 'nmaxitemsnokey' => count($fieldsNoKeyIndices),
                 'nmaxitemsnokeyall' => count($fieldsNoKeyAllIndices),
                 'nmaxitemsnoblob' => count($fieldsNoBlobIndices), // 🎯 Fields without BLOB/TEXT types
                 'nmaxitemsnobloball' => count($fieldsNoBlobAllIndices), // 🎯 All fields without BLOB/TEXT (ignores assignments)
+                'nmaxitemsnobinaryblob' => count($fieldsNoBinaryBlobIndices), // 🎯 Fields without binary BLOB types
+                'nmaxitemsnobinarybloball' => count($fieldsNoBinaryBlobAllIndices), // 🎯 All fields without binary BLOB (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
+                'nmaxforeignkeysunique' => count($mappedForeignKeysUnique),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields, $primaryKeyFieldName),
 
                 // Master-detail (placeholder - implement when needed)
@@ -953,17 +1295,32 @@ class UltimateTemplateController extends Controller
 
                 // Data arrays
                 'fields' => $mappedFields,
+                'fieldsgen' => $fieldsGenIndices, // 🎯 Index array for {:for nmaxitems:} indirection
                 'fieldsnokey' => $fieldsNoKeyIndices, // 🎯 Index array → fields[fieldsnokey[i]]
                 'fieldsnokeyall' => $fieldsNoKeyAllIndices, // 🎯 Index array → fields[fieldsnokeyall[i]]
                 'fieldsnoblob' => $fieldsNoBlobIndices, // 🎯 Index array → fields[fieldsnoblob[i]]
                 'fieldsnobloball' => $fieldsNoBlobAllIndices, // 🎯 All non-BLOB fields (ignores assignments)
+                'fieldsnobinaryblob' => $fieldsNoBinaryBlobIndices, // 🎯 Index array → fields without binary BLOB
+                'fieldsnobinarybloball' => $fieldsNoBinaryBlobAllIndices, // 🎯 All non-binary-BLOB fields (ignores assignments)
                 'fieldssearchkeys' => $fieldsSearchKeyIndices, // 🎯 Index array → fields[fieldssearchkeys[i]] (file-key fields)
                 'keys' => $mappedKeys, // PRIMARY + UNIQUE keys only
                 'foreignkeys' => $mappedForeignKeys, // 🎯 FOREIGN KEY constraints with reference info
+                'foreignkeysunique' => $mappedForeignKeysUnique, // 🎯 Deduplicated: one entry per referenced table
                 'constraints' => $mappedConstraints, // ALL constraints (PRIMARY, UNIQUE, FOREIGN)
 
                 // Metadata
                 'tableindex' => $tableIndex,
+                'hastimestamps' => $fields->whereIn('field_name', ['created_at', 'updated_at'])->count() >= 2,
+                'hasprimarykey' => $fields->where('field_name', 'id')->count() > 0,
+
+                // Generation state metadata — user JS in {:code:} blocks can read these
+                'state' => $table->display_state ?? 'enabled',
+                'generation_mode' => $table->generation_mode ?? 'full',
+                'in_iteration' => in_array(($table->generation_mode ?? 'full'), ['full', 'code_only']),
+                'generates_files' => in_array(($table->generation_mode ?? 'full'), ['full', 'template_only']),
+                'hasblob' => $fields->contains(fn($f) => $this->isBlobType($f->field_type)),
+                'hasbinaryblob' => $fields->contains(fn($f) => $this->isBinaryBlobType($f->field_type)),
+                'hasforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count() > 0,
                 'primarykeyfield' => $this->getPrimaryKeyField($fields),
                 'fileprimarykey' => $fileKeyName, // User-selected key (filekeyname from schema_tables)
             ];
@@ -979,8 +1336,16 @@ class UltimateTemplateController extends Controller
     {
         $tables = [];
 
+        // All tables stay in gtree.tables[] (see sibling method for rationale).
+        // Iteration is driven by the `tablesgen` index array built by the caller.
+        $schemaTables = collect($schemaTables)->values();
+
+        // 🎯 Preload per-project report-pattern field assignments (see sibling method for rationale).
+        $reportAssignments = $this->loadReportPatternAssignmentsForProject($projectId);
+
         foreach ($schemaTables as $tableIndex => $table) {
-            $fields = $table->fields;
+            // All fields stay in fields[] — iteration driven by fieldsgen[] indirection.
+            $fields = $table->fields->values();
             $constraints = $table->constraints;
             $tableName = $table->table_name;
 
@@ -1062,6 +1427,8 @@ class UltimateTemplateController extends Controller
                 $fieldData = [
                     // Core field info
                     'name' => $fieldName,
+                    'pascalcase' => str_replace('_', '', ucwords($fieldName, '_')), // PascalCase (e.g. ProdNo)
+                    'camelcase' => lcfirst(str_replace('_', '', ucwords($fieldName, '_'))), // camelCase (e.g. prodNo)
                     'type' => strtoupper($field->field_type),
                     'schema_field_id' => $field->id, // For per-file assignment lookup
 
@@ -1070,6 +1437,7 @@ class UltimateTemplateController extends Controller
                     'typecast' => $this->getPhpTypecast($field->field_type),
                     'phptype' => $this->getPhpType($field->field_type),
                     'jstype' => $this->getJsType($field->field_type),
+                    'laraveltype' => $this->getLaravelType($field->field_type),
                     'notnull' => !$field->is_nullable,
                     'order' => $field->field_order,
                     'id' => $index + 1,
@@ -1085,7 +1453,10 @@ class UltimateTemplateController extends Controller
                     'istimestamp' => in_array($fieldName, ['created_at', 'updated_at', 'deleted_at']),
                     'autoincrement' => $field->is_auto_increment ?? false, // 🎯 Read from database
                     'isblob' => $this->isBlobType($field->field_type), // 🎯 BLOB/TEXT large field detection
-                    'visible' => true,
+                    'isbinaryblob' => $this->isBinaryBlobType($field->field_type), // 🎯 Binary BLOB only (no TEXT)
+                    // Default visibility comes from the global schema display_state.
+                    // Per-file TemplateFileFieldAssignment overrides this below.
+                    'visible' => !in_array(($field->display_state ?? 'enabled'), ['invisible', 'excluded']),
 
                     // 🎯 NEW: ITEMS variables for templates
                     'unsigned' => $field->is_unsigned ?? false, // {item.unsigned}
@@ -1098,6 +1469,23 @@ class UltimateTemplateController extends Controller
 
                     // 🌍 NEW: Language translations array
                     'lang' => $fieldTranslations,
+
+                    // Generation state metadata — user JS in {:code:} blocks can read these
+                    'state' => $field->display_state ?? 'enabled',
+                    'generation_mode' => $field->generation_mode ?? 'full',
+                    'in_iteration' => in_array(($field->generation_mode ?? 'full'), ['full', 'code_only']),
+                    'generates_files' => in_array(($field->generation_mode ?? 'full'), ['full', 'template_only']),
+
+                    // Report-pattern assignment overlay (active pattern of the project).
+                    // report_visibility_state comes from the assignment when present,
+                    // otherwise falls back to 'visible'. report_visible is the derived
+                    // boolean so report templates can write {:if item.report_visible:}.
+                    'report_visibility_state' => $reportAssignments[$field->id]['visibility_state'] ?? 'visible',
+                    'report_visible' => !in_array(
+                        $reportAssignments[$field->id]['visibility_state'] ?? 'visible',
+                        ['invisible', 'not_available']
+                    ),
+                    'report_sort_order' => $reportAssignments[$field->id]['sort_order'] ?? null,
                 ];
 
                 // 🎯 LINK FIELDS - Only add for ComboBox when link fields are populated
@@ -1138,8 +1526,26 @@ class UltimateTemplateController extends Controller
             $fieldsNoKeyAllIndices = [];
             $fieldsNoBlobIndices = [];
             $fieldsNoBlobAllIndices = [];
+            $fieldsNoBinaryBlobIndices = [];
+            $fieldsNoBinaryBlobAllIndices = [];
             $fieldsSearchKeyIndices = [];
+            // fieldsgen drives {:for nmaxitems:} via indirection — only fields
+            // with mode full/code_only iterate; template_only, reference_only
+            // and excluded fields remain in fields[] (for lookup) but are
+            // skipped from ALL iteration subsets below.
+            $fieldsGenIndices = [];
             foreach ($mappedFields as $index => $field) {
+                $mode = $field['generation_mode'] ?? 'full';
+                $isIterable = in_array($mode, ['full', 'code_only']);
+
+                // Non-iterable fields (template_only, reference_only, excluded)
+                // never appear in any iteration index array.
+                if (!$isIterable) {
+                    continue;
+                }
+
+                $fieldsGenIndices[] = $index;
+
                 $isKey = $field['isprimary'] || in_array($field['name'], $fileKeyNames);
 
                 if (!$isKey) {
@@ -1151,6 +1557,10 @@ class UltimateTemplateController extends Controller
                 if (!$field['isblob']) {
                     $fieldsNoBlobIndices[] = $index;
                     $fieldsNoBlobAllIndices[] = $index;
+                }
+                if (!$field['isbinaryblob']) {
+                    $fieldsNoBinaryBlobIndices[] = $index;
+                    $fieldsNoBinaryBlobAllIndices[] = $index;
                 }
                 // fieldssearchkeys: indices of the file-key fields (for {:for nmaxsearchkeys:} loop)
                 if (in_array($field['name'], $fileKeyNames)) {
@@ -1195,7 +1605,7 @@ class UltimateTemplateController extends Controller
             })->values()->toArray();
 
             // 🎯 Foreign Keys array = FOREIGN KEY constraints with reference information
-            $mappedForeignKeys = $constraints->where('constraint_type', 'FOREIGN KEY')->map(function($constraint, $index) use ($fields) {
+            $mappedForeignKeys = $constraints->where('constraint_type', 'FOREIGN KEY')->map(function($constraint) use ($fields) {
                 // Get first column's field name
                 $firstColumn = $constraint->constraintColumns->first();
                 $columnName = $firstColumn ? $firstColumn->field_name : '';
@@ -1209,42 +1619,69 @@ class UltimateTemplateController extends Controller
                 $reference = $constraint->foreignKeyReference;
                 $referencedTableName = $reference ? $reference->referencedTable->table_name : '';
 
-                // Get referenced column name from referenceColumns
+                // Get referenced column name from referenceColumns → referencedField relation
                 $referencedColumn = '';
                 if ($reference && $reference->referenceColumns->isNotEmpty()) {
-                    $referencedColumn = $reference->referenceColumns->first()->referenced_column_name;
+                    $refCol = $reference->referenceColumns->first();
+                    $referencedColumn = $refCol->referencedField ? $refCol->referencedField->field_name : '';
                 }
 
                 return [
                     'name' => $columnName, // Field name (e.g., 'user_id')
-                    'id' => $index + 1,
+                    'id' => $constraint->id, // Real database ID
                     'type' => $fieldType, // Field type (e.g., 'BIGINT')
                     'typecast' => $typecast, // PHP typecast (e.g., 'int')
-                    'constraintname' => $constraint->constraint_name ?? 'fk_' . ($index + 1),
-                    'referencedtable' => $referencedTableName, // Referenced table name (e.g., 'users')
+                    'constraintname' => $constraint->constraint_name ?? 'fk_' . $constraint->id,
+                    'referencedtable' => $referencedTableName, // Referenced table name (e.g., 'prod_group')
+                    'referencedtablepascalcase' => str_replace('_', '', ucwords($referencedTableName, '_')), // PascalCase (e.g., 'ProdGroup')
+                    'referencedtablecamelcase' => lcfirst(str_replace('_', '', ucwords($referencedTableName, '_'))), // camelCase (e.g., 'prodGroup')
                     'referencedcolumn' => $referencedColumn, // Referenced column (e.g., 'id')
                     'ondelete' => $reference->on_delete ?? 'NO ACTION', // ON DELETE action
                     'onupdate' => $reference->on_update ?? 'NO ACTION', // ON UPDATE action
                 ];
             })->values()->toArray();
 
+            // 🎯 Deduplicated Foreign Keys — unique by referencedtable (first FK per referenced table wins)
+            $seenReferencedTables = [];
+            $mappedForeignKeysUnique = [];
+            foreach ($mappedForeignKeys as $fk) {
+                $refTable = $fk['referencedtable'];
+                if (!isset($seenReferencedTables[$refTable])) {
+                    $seenReferencedTables[$refTable] = true;
+                    $mappedForeignKeysUnique[] = $fk;
+                }
+            }
+
             $tables[] = [
                 // Basic table info
                 'filename' => $tableName,
+                'filecamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($tableName), '_'))), // camelCase (e.g. contactMethods)
+                'filepascalcase' => str_replace('_', '', ucwords(strtolower($tableName), '_')), // PascalCase (e.g. ContactMethods)
                 'filenameshort' => $table->file_name_short ?? substr($tableName, 0, 2), // Use DB field or fallback
+                'filenamerenamed' => $table->file_name_renamed ?? '', // {:filenamerenamed:}
                 'fileid' => $table->id ?? $tableIndex,
                 'databasename' => $table->floatingSchema->name ?? 'unknown', // 🔗 Schema/Database name
                 'schemaid' => $table->floatingSchema->id ?? null, // 🔗 Schema ID for filtering
 
-                // Counts
-                'nmaxitems' => count($mappedFields),
-                'nmaxfields' => count($mappedFields),
+                // Singular name: user-defined or auto-guessed
+                'filesingular' => $table->singular_name ?: $this->guessEnglishSingular($tableName),
+                'filesingularpascalcase' => str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_')),
+                'filesingularcamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_'))),
+
+                // Counts — iteration counts derived from fieldsgen (the index
+                // array of iterable fields). fields[] keeps ALL fields for
+                // name/FK lookup; {:for nmaxitems:} walks fields[fieldsgen[i]].
+                'nmaxitems' => count($fieldsGenIndices),
+                'nmaxfields' => count($fieldsGenIndices),
                 'nmaxitemsnokey' => count($fieldsNoKeyIndices),
                 'nmaxitemsnokeyall' => count($fieldsNoKeyAllIndices),
                 'nmaxitemsnoblob' => count($fieldsNoBlobIndices), // 🎯 Fields without BLOB/TEXT types
                 'nmaxitemsnobloball' => count($fieldsNoBlobAllIndices), // 🎯 All fields without BLOB/TEXT (ignores assignments)
+                'nmaxitemsnobinaryblob' => count($fieldsNoBinaryBlobIndices), // 🎯 Fields without binary BLOB types
+                'nmaxitemsnobinarybloball' => count($fieldsNoBinaryBlobAllIndices), // 🎯 All fields without binary BLOB (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
+                'nmaxforeignkeysunique' => count($mappedForeignKeysUnique),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields, $primaryKeyFieldName),
 
                 // Master-detail (placeholder - implement when needed)
@@ -1257,17 +1694,32 @@ class UltimateTemplateController extends Controller
 
                 // Data arrays
                 'fields' => $mappedFields,
+                'fieldsgen' => $fieldsGenIndices, // 🎯 Index array for {:for nmaxitems:} indirection
                 'fieldsnokey' => $fieldsNoKeyIndices, // 🎯 Index array → fields[fieldsnokey[i]]
                 'fieldsnokeyall' => $fieldsNoKeyAllIndices, // 🎯 Index array → fields[fieldsnokeyall[i]]
                 'fieldsnoblob' => $fieldsNoBlobIndices, // 🎯 Index array → fields[fieldsnoblob[i]]
                 'fieldsnobloball' => $fieldsNoBlobAllIndices, // 🎯 All non-BLOB fields (ignores assignments)
+                'fieldsnobinaryblob' => $fieldsNoBinaryBlobIndices, // 🎯 Index array → fields without binary BLOB
+                'fieldsnobinarybloball' => $fieldsNoBinaryBlobAllIndices, // 🎯 All non-binary-BLOB fields (ignores assignments)
                 'fieldssearchkeys' => $fieldsSearchKeyIndices, // 🎯 Index array → fields[fieldssearchkeys[i]] (file-key fields)
                 'keys' => $mappedKeys, // PRIMARY + UNIQUE keys only
                 'foreignkeys' => $mappedForeignKeys, // 🎯 FOREIGN KEY constraints with reference info
+                'foreignkeysunique' => $mappedForeignKeysUnique, // 🎯 Deduplicated: one entry per referenced table
                 'constraints' => $mappedConstraints, // ALL constraints (PRIMARY, UNIQUE, FOREIGN)
 
                 // Metadata
                 'tableindex' => $tableIndex,
+                'hastimestamps' => $fields->whereIn('field_name', ['created_at', 'updated_at'])->count() >= 2,
+                'hasprimarykey' => $fields->where('field_name', 'id')->count() > 0,
+
+                // Generation state metadata — user JS in {:code:} blocks can read these
+                'state' => $table->display_state ?? 'enabled',
+                'generation_mode' => $table->generation_mode ?? 'full',
+                'in_iteration' => in_array(($table->generation_mode ?? 'full'), ['full', 'code_only']),
+                'generates_files' => in_array(($table->generation_mode ?? 'full'), ['full', 'template_only']),
+                'hasblob' => $fields->contains(fn($f) => $this->isBlobType($f->field_type)),
+                'hasbinaryblob' => $fields->contains(fn($f) => $this->isBinaryBlobType($f->field_type)),
+                'hasforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count() > 0,
                 'primarykeyfield' => $this->getPrimaryKeyField($fields),
                 'fileprimarykey' => $fileKeyName, // User-selected key (filekeyname from schema_tables)
 
@@ -1339,9 +1791,12 @@ class UltimateTemplateController extends Controller
     }
 
     /**
-     * 🔧 REPLACE FILENAME PLACEHOLDERS (%1-%9)
+     * 🔧 REPLACE FILENAME PLACEHOLDERS (%1-%14)
+     *
+     * %9  -> project name (supports [u|l|c|p|n] format suffixes via ProjectNamePlaceholder)
+     * %14 -> project DB version (formerly %9; moved because %9 now carries the project name)
      */
-    private function replaceFilenamePlaceholders(string $filename, array $gtreeData, ?string $tableName = null, ?string $languageCode = null, $file = null): string
+    private function replaceFilenamePlaceholders(string $filename, array $gtreeData, ?string $tableName = null, ?string $languageCode = null, $file = null, ?int $tableIndex = null, int &$globalFileCounter = 0, int $dbTableFilePosition = 0, int $sequentialTableCounter = 0, int $totalTablesForCounter = 0): string
     {
         $gtree = $gtreeData['gtree'] ?? [];
         $project = $gtree[0]['project'][0] ?? [];
@@ -1361,21 +1816,109 @@ class UltimateTemplateController extends Controller
 
         // Get current date/time
         $now = now();
-        $date = $now->format('Y-m-d');
-        $time = $now->format('H-i-s'); // Use dashes instead of colons for filename compatibility
-        $datetime = $now->format('Y-m-d_H-i-s');
+        $y = $now->format('Y');
+        $mo = $now->format('m');
+        $d = $now->format('d');
+        $h = $now->format('H');
+        $mi = $now->format('i');
+        $s = $now->format('s');
 
-        // Build replacements
+        // ── STEP 1: Process parameterized placeholders (with [...] options) ──
+
+        // %6[separatorFormat] — Date with custom separator and optional format
+        // %6       → 20260307           (no separator, ISO)
+        // %6[-]    → 2026-03-07         (dash separator, ISO)
+        // %6[_]    → 2026_03_07         (underscore separator, ISO)
+        // %6[.]    → 2026.03.07         (dot separator, ISO)
+        // %6[_U]   → 03_07_2026         (underscore, US: MM_DD_YYYY)
+        // %6[_E]   → 07_03_2026         (underscore, European: DD_MM_YYYY)
+        $filename = preg_replace_callback('/%6(?:\[(.{1,2})\])?/', function($m) use ($y, $mo, $d) {
+            $param = $m[1] ?? '';
+            $sep = strlen($param) > 0 ? $param[0] : '';
+            $fmt = strlen($param) > 1 ? strtoupper($param[1]) : '';
+            if ($fmt === 'U') return $mo . $sep . $d . $sep . $y;
+            if ($fmt === 'E') return $d . $sep . $mo . $sep . $y;
+            return $y . $sep . $mo . $sep . $d;
+        }, $filename);
+
+        // %7[separator] — Time with custom separator
+        // %7       → 095034             (no separator)
+        // %7[:]    → 09:50:34
+        // %7[-]    → 09-50-34
+        // %7[_]    → 09_50_34
+        $filename = preg_replace_callback('/%7(?:\[(.)\])?/', function($m) use ($h, $mi, $s) {
+            $sep = $m[1] ?? '';
+            return $h . $sep . $mi . $sep . $s;
+        }, $filename);
+
+        // %8[separatorDateSep] — DateTime combined
+        // %8       → 20260307_095034               (no date-sep, underscore between date/time, no time-sep)
+        // %8[-]    → 2026-03-07_09-50-34           (dash for both date and time)
+        // %8[_]    → 2026_03_07_09_50_34           (underscore for everything)
+        $filename = preg_replace_callback('/%8(?:\[(.)\])?/', function($m) use ($y, $mo, $d, $h, $mi, $s) {
+            $sep = $m[1] ?? '';
+            return $y . $sep . $mo . $sep . $d . '_' . $h . $sep . $mi . $sep . $s;
+        }, $filename);
+
+        // %12[padWidth] — Auto-incrementing counter per template file (resets per file)
+        // %12       → 1, 2, 3, ...              (no padding)
+        // %12[06]   → 000001, 000002, ...        (zero-padded, width 6)
+        // %12[ 6]   → "     1", "     2", ...    (space-padded, width 6)
+        // %12[03]   → 001, 002, ...              (zero-padded, width 3)
+        // Uses sequential counter (1-based), independent of GTree index
+        $counter = $sequentialTableCounter > 0 ? $sequentialTableCounter : (($tableIndex ?? 0) + 1);
+
+        $filename = preg_replace_callback('/%12(?:\[(.)(\\d{1,2})\])?/', function($m) use ($counter) {
+            if (isset($m[1]) && isset($m[2])) {
+                $padChar = $m[1];
+                $width = (int)$m[2];
+                return str_pad((string)$counter, $width, $padChar, STR_PAD_LEFT);
+            }
+            return (string)$counter;
+        }, $filename);
+
+        // %13[padWidth] — Global counter across ALL db_table_files in a template
+        // Uses the file's auto-calculated position among db_table_files (NOT file_order!)
+        // file_order controls SORT ORDER only, dbTableFilePosition controls %13 offset
+        // Formula: (dbTableFilePosition × totalTables) + tableCounter
+        // Position 0 (1st db_table_file): %13 = 1, 2, 3, ...  (same as %12)
+        // Position 1 (2nd db_table_file): %13 = 20, 21, 22, ... (for 19 tables)
+        // Position 2 (3rd db_table_file): %13 = 39, 40, 41, ... (for 19 tables)
+        // %13       → no padding
+        // %13[06]   → 000020, 000021, ...           (zero-padded, width 6)
+        // %13[03]   → 020, 021, ...                 (zero-padded, width 3)
+        $totalForGlobal = $totalTablesForCounter > 0 ? $totalTablesForCounter : count($gtree[0]['project'][0]['tables'] ?? []);
+        $offsetCounter = ($dbTableFilePosition * $totalForGlobal) + $counter;
+        $filename = preg_replace_callback('/%13(?:\[(.)(\\d{1,2})\])?/', function($m) use ($offsetCounter) {
+            if (isset($m[1]) && isset($m[2])) {
+                $padChar = $m[1];
+                $width = (int)$m[2];
+                return str_pad((string)$offsetCounter, $width, $padChar, STR_PAD_LEFT);
+            }
+            return (string)$offsetCounter;
+        }, $filename);
+
+        // ── STEP 1b: Project-name placeholder %9 / %9[u|l|c|p|n] ──
+        // Handled BEFORE the simple str_replace so the bracket suffix isn't
+        // mistaken for literal characters during the generic pass.
+        $filename = ProjectNamePlaceholder::resolve($filename, (string)($project['projectname'] ?? ''));
+
+        // ── STEP 2: Simple placeholders (no parameters) ──
+        // IMPORTANT: Longer numbers MUST come BEFORE shorter ones (%11 before %1)
+        $tableNameLower = strtolower($tableName ?? 'unknown');
+        // For _languages file types, keep %2 unreplaced — frontend handles per-language replacement
+        $generationType = $file ? $this->determineGenerationType($file) : 'project_file';
+        $keepPercent2 = in_array($generationType, ['project_file_languages', 'db_table_file_languages']);
+
         $replacements = [
-            '%1' => $tableName ?? 'unknown',                          // DB Table name
-            '%2' => $languageCode ?? 'en',                             // Language short code
+            '%14' => $project['projectdbversion'] ?? '1',              // Project DB Version (was %9 before the refactor)
+            '%11' => strtoupper($tableName ?? 'UNKNOWN'),              // DB Table name UPPERCASE (e.g. TEAMS)
+            '%10' => str_replace('_', '', ucwords($tableNameLower, '_')), // DB Table name PascalCase (e.g. ContactMethods)
+            '%1' => $tableName ?? 'unknown',                           // DB Table name (e.g. teams)
+            '%2' => $keepPercent2 ? '%2' : ($languageCode ?? 'en'),    // Language short code (kept for frontend if _languages type)
             '%3' => $languageName ?: 'English',                        // Language name
             '%4' => $languageLocale ?: 'en',                           // Language locale
             '%5' => $file->template->name ?? 'template',               // Template name
-            '%6' => $date,                                             // Date
-            '%7' => $time,                                             // Time
-            '%8' => $datetime,                                         // DateTime raw
-            '%9' => $project['projectdbversion'] ?? '1',               // Project DB Version
         ];
 
         return str_replace(array_keys($replacements), array_values($replacements), $filename);
@@ -1384,7 +1927,7 @@ class UltimateTemplateController extends Controller
     /**
      * 📝 PROCESS TEMPLATE FILE
      */
-    private function processTemplateFile(UltimateTemplateEngine $engine, $file, array $gtreeData, bool $compile, ?string $tableName = null, ?string $languageCode = null, bool $includeSource = false): array
+    private function processTemplateFile(UltimateTemplateEngine $engine, $file, array $gtreeData, bool $compile, ?string $tableName = null, ?string $languageCode = null, bool $includeSource = false, int $fileCounter = 0, int &$globalFileCounter = 0, int $dbTableFilePosition = 0, int $sequentialTableCounter = 0, int $totalTablesForCounter = 0): array
     {
         $content = $file->file_content;
 
@@ -1396,8 +1939,6 @@ class UltimateTemplateController extends Controller
         // If table_name parameter is provided, resolve table index for db_table types
         // Only override generation type for actual db_table types, NOT for project/static files
         if ($tableName) {
-            error_log("🔧 Backend Debug: tableName parameter received: " . $tableName);
-
             // Only set generation_type to db_table_file if the file is actually a DB type
             if ($generationType === 'db_table_file' || $generationType === 'db_table_file_languages') {
                 // Keep original type (already correct)
@@ -1411,7 +1952,6 @@ class UltimateTemplateController extends Controller
 
             // Find the table in gtree data
             $gtree = $gtreeData['gtree'] ?? [];
-            error_log("🔧 Backend Debug: gtree count: " . count($gtree));
 
             // Access the correct gtree structure: gtree[0]['project'][0]['tables']
             if (isset($gtree[0]['project'][0]['tables'])) {
@@ -1426,20 +1966,60 @@ class UltimateTemplateController extends Controller
                         ($tableTablename && $tableTablename === $tableName)) {
                         $tableIndex = $index;
                         $actualTableName = $tableName;
-                        error_log("🔧 Backend Debug: Found table at index $index: " . $tableName);
                         break;
                     }
                 }
             }
 
-            error_log("🔧 Backend Debug: Final values - tableIndex: " . ($tableIndex ?? 'null') . ", actualTableName: " . ($actualTableName ?? 'null'));
+            // 🎯 Graceful skip for tables excluded at schema level.
+            // When $tableName was requested but the table is no longer in the gtree
+            // (because SchemaTable.generation_mode is 'excluded' or 'reference_only'),
+            // we must NOT fall through to engine compilation — the engine would emit
+            // JS that references `tableIdx` without defining it (since tableIdx is
+            // only written when $tableIndex !== null). Emitting such code leads to
+            // "tableIdx is not defined" runtime errors. Returning a SKIPPED marker
+            // lets every caller filter this file out cleanly.
+            if (($generationType === 'db_table_file' || $generationType === 'db_table_file_languages')
+                && $tableIndex === null) {
+                return [
+                    'file_id' => $file->id,
+                    'filename' => $file->file_name,
+                    'original_template' => $file->file_name,
+                    'file_type' => $file->file_type,
+                    'original_content' => $content,
+                    'compiled_content' => '',
+                    'is_compiled' => false,
+                    'output_path' => $file->output_path ?? '/',
+                    'file_size' => 0,
+                    'generation_type' => $generationType,
+                    'generated_from_template' => $file->file_name,
+                    'table' => $tableName,
+                    'table_index' => null,
+                    'language_code' => $languageCode,
+                    'unknown_variables' => [],
+                    'required_missing' => [],
+                    'optional_missing' => [],
+                    'has_unknown_variables' => false,
+                    'syntax_errors' => [],
+                    'syntax_warnings' => [],
+                    'has_syntax_errors' => false,
+                    // Skip marker — consumed by upstream loops so nothing is emitted.
+                    'skipped' => true,
+                    'skip_reason' => "Table '{$tableName}' is excluded from code generation (generation_mode).",
+                ];
+            }
         } else {
-            error_log("🔧 Backend Debug: No tableName parameter provided");
+            // No tableName — project_file or static_file
         }
 
-        // Replace %1-%9 placeholders in filename AND output path
-        $processedFileName = $this->replaceFilenamePlaceholders($file->file_name, $gtreeData, $actualTableName, $languageCode, $file);
-        $processedOutputPath = $this->replaceFilenamePlaceholders($file->output_path ?? '/', $gtreeData, $actualTableName, $languageCode, $file);
+        // Replace %1-%13 placeholders in filename, output path, and inject_target
+        // Uses sequential counter (independent of GTree index) for %12/%13
+        $counterIndex = $tableIndex ?? 0;
+        $processedFileName = $this->replaceFilenamePlaceholders($file->file_name, $gtreeData, $actualTableName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter);
+        $processedOutputPath = $this->replaceFilenamePlaceholders($file->output_path ?? '/', $gtreeData, $actualTableName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter);
+        $processedInjectTarget = $file->inject_target
+            ? $this->replaceFilenamePlaceholders($file->inject_target, $gtreeData, $actualTableName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter)
+            : null;
 
         // 🎯 INJECT TEMPLATE FILE VARIABLES into gtreeData for this file
         $outputPath = $processedOutputPath;
@@ -1457,12 +2037,31 @@ class UltimateTemplateController extends Controller
         $gtreeData['gtree'][0]['project'][0]['templateoutputpath'] = $outputPath;
 
         // 🎨 Set current form window index based on template file's form_window_type
-        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table, 4=report_single, 5=report_list
-        // Maps to window indexes: form_window_type - 1 (or 0 if none)
+        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table
+        // Legacy: 4=report_single, 5=report_list — these used to map to dead
+        // formset.windows[3]/[4] rows. The new report system uses dedicated
+        // {:reportsingle.X:} / {:reportlist.X:} tags resolved via the per-table
+        // node, see buildUltimateProjectData(). Coerce legacy values to 0 to
+        // avoid garbage paths if a template still has the old metadata.
         $formWindowType = $file->form_window_type ?? 0;
+        if ($formWindowType >= 4) {
+            $formWindowType = 0;
+        }
         $currentFormWindowIdx = $formWindowType > 0 ? $formWindowType - 1 : 0;
         $gtreeData['gtree'][0]['project'][0]['currentFormWindowIdx'] = $currentFormWindowIdx;
         $gtreeData['gtree'][0]['project'][0]['currentFormWindowType'] = $formWindowType;
+
+        // 🌐 Language Override: if this template file has a language_override, switch selectedlanguageindex
+        if (!empty($file->language_override) && isset($gtreeData['gtree'][0]['project'][0]['lang'])) {
+            $languages = $gtreeData['gtree'][0]['project'][0]['lang'];
+            foreach ($languages as $langIdx => $lang) {
+                if ($lang['code'] === $file->language_override) {
+                    $gtreeData['gtree'][0]['project'][0]['selectedlanguage'] = $file->language_override;
+                    $gtreeData['gtree'][0]['project'][0]['selectedlanguageindex'] = $langIdx;
+                    break;
+                }
+            }
+        }
 
         // 🎯 Per-file field assignment overlay (visibility + sort on INDEX ARRAYS only, fields order unchanged!)
         $fileAssignments = TemplateFileFieldAssignment::where('template_file_id', $file->id)
@@ -1508,16 +2107,20 @@ class UltimateTemplateController extends Controller
                 // Re-order index arrays by per-file sort_order (fields array stays in original order!)
                 $tableData['fieldsnokey']      = $sort($excl($tableData['fieldsnokeyall']));
                 $tableData['fieldsnokeyall']   = $sort($tableData['fieldsnokeyall']);
-                $tableData['fieldsnoblob']     = $sort($excl($tableData['fieldsnobloball']));
-                $tableData['fieldsnobloball']  = $sort($tableData['fieldsnobloball']);
-                $tableData['fieldssearchkeys'] = $sort($tableData['fieldssearchkeys']);
+                $tableData['fieldsnoblob']          = $sort($excl($tableData['fieldsnobloball']));
+                $tableData['fieldsnobloball']       = $sort($tableData['fieldsnobloball']);
+                $tableData['fieldsnobinaryblob']    = $sort($excl($tableData['fieldsnobinarybloball']));
+                $tableData['fieldsnobinarybloball'] = $sort($tableData['fieldsnobinarybloball']);
+                $tableData['fieldssearchkeys']      = $sort($tableData['fieldssearchkeys']);
 
                 // Update counters to match
-                $tableData['nmaxitemsnokey']     = count($tableData['fieldsnokey']);
-                $tableData['nmaxitemsnokeyall']  = count($tableData['fieldsnokeyall']);
-                $tableData['nmaxitemsnoblob']    = count($tableData['fieldsnoblob']);
-                $tableData['nmaxitemsnobloball'] = count($tableData['fieldsnobloball']);
-                $tableData['nmaxsearchkeys']     = count($tableData['fieldssearchkeys']);
+                $tableData['nmaxitemsnokey']          = count($tableData['fieldsnokey']);
+                $tableData['nmaxitemsnokeyall']       = count($tableData['fieldsnokeyall']);
+                $tableData['nmaxitemsnoblob']         = count($tableData['fieldsnoblob']);
+                $tableData['nmaxitemsnobloball']      = count($tableData['fieldsnobloball']);
+                $tableData['nmaxitemsnobinaryblob']   = count($tableData['fieldsnobinaryblob']);
+                $tableData['nmaxitemsnobinarybloball'] = count($tableData['fieldsnobinarybloball']);
+                $tableData['nmaxsearchkeys']          = count($tableData['fieldssearchkeys']);
             }
             unset($tableData);
         }
@@ -1555,13 +2158,13 @@ class UltimateTemplateController extends Controller
 
         return [
             'file_id' => $file->id,
-            'filename' => $processedFileName,
-            'original_template' => $file->file_name, // Keep original for debugging
+            'filename' => $processedFileName, // %2 already kept by replaceFilenamePlaceholders for _languages types
+            'original_template' => $file->file_name,
             'file_type' => $file->file_type,
             'original_content' => $content,
             'compiled_content' => $compiledContent,
             'is_compiled' => $compile,
-            'output_path' => $processedOutputPath,
+            'output_path' => $processedOutputPath, // %2 already kept for _languages types
             'file_size' => strlen($compiledContent),
             'generation_type' => $generationType,
             'generated_from_template' => $file->file_name,
@@ -1581,6 +2184,11 @@ class UltimateTemplateController extends Controller
             'syntax_warnings' => $syntaxWarnings,
             // 🎯 Per-file overlaid GTree (only included when file has assignments)
             'overlaid_gtree' => $fileAssignments->isNotEmpty() ? $gtreeData['gtree'] : null,
+            // Include-only flag (file is only used via {:include:}, not output to ZIP)
+            'is_include_only' => (bool) $file->is_include_only,
+            // Smart Injection fields
+            'inject_target' => $processedInjectTarget,
+            'inject_tag' => $file->inject_tag,
         ];
     }
 
@@ -1657,6 +2265,29 @@ class UltimateTemplateController extends Controller
         };
     }
 
+    private function getLaravelType(string $fieldType): string
+    {
+        $type = strtolower(trim($fieldType));
+        // tinyint(1) is the canonical MySQL boolean representation
+        if ($type === 'tinyint(1)') {
+            return 'boolean';
+        }
+        // Strip size suffix: VARCHAR(50) → varchar, DECIMAL(10,2) → decimal
+        $baseType = strpos($type, '(') !== false ? substr($type, 0, strpos($type, '(')) : $type;
+        return match($baseType) {
+            'int', 'integer', 'bigint', 'smallint', 'mediumint', 'tinyint', 'year' => 'integer',
+            'decimal', 'float', 'double', 'numeric', 'real'                        => 'numeric',
+            'boolean', 'bool'                                                       => 'boolean',
+            'date'                                                                  => 'date',
+            'datetime', 'timestamp'                                                 => 'datetime',
+            'time'                                                                  => 'date_format:H:i:s',
+            'json'                                                                  => 'json',
+            'uuid'                                                                  => 'uuid',
+            'blob', 'tinyblob', 'mediumblob', 'longblob', 'image'                  => 'file',
+            default                                                                 => 'string',
+        };
+    }
+
     /**
      * 🎯 Check if a field type is a BLOB/TEXT large data type
      * These are excluded from {:for nmaxitemsnoblob:} loops
@@ -1674,6 +2305,20 @@ class UltimateTemplateController extends Controller
             'ntext',        // MS-SQL (deprecated but still in use)
             'binary',       // Binary large data
             'varbinary',    // Variable-length binary
+        ]);
+    }
+
+    /**
+     * 🎯 Check if a field type is a binary BLOB type (NOT text, NOT binary/varbinary)
+     * Used for {:hasblob:} table-level flag — only true binary large objects
+     */
+    private function isBinaryBlobType(string $fieldType): bool
+    {
+        $type = strtolower($fieldType);
+        $baseType = strpos($type, '(') !== false ? substr($type, 0, strpos($type, '(')) : $type;
+        return in_array($baseType, [
+            'tinyblob', 'blob', 'mediumblob', 'longblob',
+            'image',    // MS-SQL binary large object
         ]);
     }
 
@@ -1815,6 +2460,35 @@ class UltimateTemplateController extends Controller
     /**
      * 🔑 GET PRIMARY KEY FIELD - Löst das {filekeyname} Problem
      */
+    /**
+     * Guess English singular form of a table name.
+     * Only handles common English patterns — for other languages, use singular_name field.
+     */
+    private function guessEnglishSingular(string $tableName): string
+    {
+        // Handle compound names: split by underscore, singularize the LAST part
+        $parts = explode('_', $tableName);
+        $lastPart = array_pop($parts);
+
+        // Common English pluralization rules (reversed)
+        if (str_ends_with($lastPart, 'ies') && strlen($lastPart) > 4) {
+            $lastPart = substr($lastPart, 0, -3) . 'y'; // categories → category
+        } elseif (str_ends_with($lastPart, 'sses')) {
+            $lastPart = substr($lastPart, 0, -2); // addresses → address... wait, "addresses" ends in "es"
+        } elseif (str_ends_with($lastPart, 'ses') || str_ends_with($lastPart, 'xes') || str_ends_with($lastPart, 'zes') || str_ends_with($lastPart, 'shes') || str_ends_with($lastPart, 'ches')) {
+            $lastPart = substr($lastPart, 0, -2); // addresses → addresse... hmm
+        } elseif (str_ends_with($lastPart, 'sses')) {
+            $lastPart = substr($lastPart, 0, -2); // classes → class
+        } elseif (str_ends_with($lastPart, 'ves')) {
+            $lastPart = substr($lastPart, 0, -3) . 'f'; // wolves → wolf (approximate)
+        } elseif (str_ends_with($lastPart, 's') && !str_ends_with($lastPart, 'ss') && !str_ends_with($lastPart, 'us') && !str_ends_with($lastPart, 'is')) {
+            $lastPart = substr($lastPart, 0, -1); // products → product
+        }
+
+        $parts[] = $lastPart;
+        return implode('_', $parts);
+    }
+
     private function getPrimaryKeyField($fields): string
     {
         // Suche nach 'id' field
@@ -1942,6 +2616,24 @@ class UltimateTemplateController extends Controller
                     \Log::warning("⚠️ [INCLUDE RESOLVER] Errors during include resolution in generateFullProject", $includeErrors);
                 }
 
+                // Global counter for %13 — continues across ALL template files within a generation
+                $globalFileCounter = 0;
+
+                // Pre-calculate db_table_file positions for %13 global counter
+                // ONLY count files that actually USE %13 in their filename or output_path
+                $dbTableFilePositions = [];
+                $dbTableFileIdx = 0;
+                foreach ($resolvedFiles as $rf) {
+                    $rf = (object) $rf;
+                    if (($rf->content_type ?? null) === 'zip') continue;
+                    $rfGenType = ($rf->file_type ?? 'project_file');
+                    $usesPercent13 = str_contains($rf->file_name ?? '', '%13') || str_contains($rf->output_path ?? '', '%13');
+                    if (in_array($rfGenType, ['db_table_file', 'db_table_file_languages']) && $usesPercent13) {
+                        $dbTableFilePositions[$rf->id] = $dbTableFileIdx;
+                        $dbTableFileIdx++;
+                    }
+                }
+
                 // Process each file in the template
                 foreach ($resolvedFiles as $file) {
                     // Convert back to object if needed for compatibility
@@ -1953,6 +2645,7 @@ class UltimateTemplateController extends Controller
                     }
 
                     $fileType = $file->file_type ?? 'project_file';
+                    $filePosition = $dbTableFilePositions[$file->id] ?? 0;
 
                     if ($fileType === 'db_table_file' || $fileType === 'db_table_file_languages') {
                         // Generate for each table
@@ -1963,11 +2656,31 @@ class UltimateTemplateController extends Controller
                             continue;
                         }
 
-                        foreach ($tablesFromGtree as $tableData) {
+                        // Build schema-relative counters
+                        $schemaCounters = [];
+                        $schemaCounts = [];
+                        $tableSchemaMap = [];
+                        foreach ($tablesFromGtree as $gt) {
+                            $sid = $gt['schemaid'] ?? 'default';
+                            $schemaCounts[$sid] = ($schemaCounts[$sid] ?? 0) + 1;
+                        }
+                        foreach ($tablesFromGtree as $gt) {
+                            $tName = $gt['filename'] ?? $gt['tablename'] ?? null;
+                            $sid = $gt['schemaid'] ?? 'default';
+                            if ($tName) {
+                                $schemaCounters[$sid] = ($schemaCounters[$sid] ?? 0) + 1;
+                                $tableSchemaMap[$tName] = ['index' => $schemaCounters[$sid], 'total' => $schemaCounts[$sid]];
+                            }
+                        }
+
+                        foreach ($tablesFromGtree as $tblIdx => $tableData) {
                             $tableName = $tableData['filename'] ?? $tableData['tablename'] ?? null;
                             if (!$tableName) continue;
 
                             $languagesToProcess = ($fileType === 'db_table_file_languages') ? $languageCodes : ['en'];
+                            $schemaInfo = $tableSchemaMap[$tableName] ?? null;
+                            $seqCounter = $schemaInfo ? $schemaInfo['index'] : ($tblIdx + 1);
+                            $seqTotal = $schemaInfo ? $schemaInfo['total'] : count($tablesFromGtree);
 
                             foreach ($languagesToProcess as $languageCode) {
                                 $result = $this->processTemplateFile(
@@ -1977,8 +2690,19 @@ class UltimateTemplateController extends Controller
                                     true, // compile
                                     $tableName,
                                     $languageCode,
-                                    false // includeSource
+                                    false, // includeSource
+                                    $tblIdx,
+                                    $globalFileCounter,
+                                    $filePosition,
+                                    $seqCounter,
+                                    $seqTotal
                                 );
+
+                                // Defense-in-depth: skip files whose table was excluded at schema level.
+                                if (!empty($result['skipped'])) {
+                                    $completedOperations++;
+                                    continue;
+                                }
 
                                 if (!$result['has_syntax_errors']) {
                                     // 🎯 Execute JavaScript to get actual output with language context
@@ -2000,6 +2724,7 @@ class UltimateTemplateController extends Controller
                                         'content' => $output,
                                         'template' => $template->name,
                                         'table' => $tableName,
+                                        'table_index' => $tblIdx,
                                         'language' => $languageCode,
                                     ];
                                 } else {
@@ -2032,7 +2757,9 @@ class UltimateTemplateController extends Controller
                                 true, // compile
                                 null,
                                 $languageCode,
-                                false // includeSource
+                                false, // includeSource
+                                0,
+                                $globalFileCounter
                             );
 
                             if (!$result['has_syntax_errors']) {
@@ -2083,7 +2810,9 @@ class UltimateTemplateController extends Controller
                             true, // compile
                             null,
                             null,
-                            false // includeSource
+                            false, // includeSource
+                            0,
+                            $globalFileCounter
                         );
 
                         if (!$result['has_syntax_errors']) {
@@ -2143,16 +2872,50 @@ class UltimateTemplateController extends Controller
                 $tableName = $fileData['table'] ?? null;
                 $languageCode = $fileData['language'] ?? null;
 
+                $tableIdx = $fileData['table_index'] ?? 0;
+
+                // Use the same parameterized placeholder logic as replaceFilenamePlaceholders
+                $now = now();
+                $y = $now->format('Y'); $mo = $now->format('m'); $d = $now->format('d');
+                $h = $now->format('H'); $mi = $now->format('i'); $s = $now->format('s');
+                $counter = $tableIdx + 1;
+
+                // Process parameterized placeholders first
+                $outputPath = preg_replace_callback('/%6(?:\[(.{1,2})\])?/', function($m) use ($y, $mo, $d) {
+                    $param = $m[1] ?? ''; $sep = strlen($param) > 0 ? $param[0] : '';
+                    $fmt = strlen($param) > 1 ? strtoupper($param[1]) : '';
+                    if ($fmt === 'U') return $mo . $sep . $d . $sep . $y;
+                    if ($fmt === 'E') return $d . $sep . $mo . $sep . $y;
+                    return $y . $sep . $mo . $sep . $d;
+                }, $outputPath);
+                $outputPath = preg_replace_callback('/%7(?:\[(.)\])?/', function($m) use ($h, $mi, $s) {
+                    $sep = $m[1] ?? ''; return $h . $sep . $mi . $sep . $s;
+                }, $outputPath);
+                $outputPath = preg_replace_callback('/%8(?:\[(.)\])?/', function($m) use ($y, $mo, $d, $h, $mi, $s) {
+                    $sep = $m[1] ?? ''; return $y . $sep . $mo . $sep . $d . '_' . $h . $sep . $mi . $sep . $s;
+                }, $outputPath);
+                $outputPath = preg_replace_callback('/%12(?:\[(.)(\\d{1,2})\])?/', function($m) use ($counter) {
+                    if (isset($m[1]) && isset($m[2])) return str_pad((string)$counter, (int)$m[2], $m[1], STR_PAD_LEFT);
+                    return (string)$counter;
+                }, $outputPath);
+                // %13 is already resolved in processTemplateFile, no additional handling needed here
+
+                // %9 / %9[u|l|c|p|n] — project name with optional format suffix.
+                // Must run before the generic str_replace so the bracket suffix is parsed,
+                // not matched as literal text.
+                $outputPath = ProjectNamePlaceholder::resolve($outputPath, (string)($project->name ?? ''));
+
+                // Simple placeholders
+                // %14 carries what was previously named %9 (project DB version).
                 $replacements = [
+                    '%14' => '1',
+                    '%11' => strtoupper($tableName ?? 'UNKNOWN'),
+                    '%10' => str_replace('_', '', ucwords(strtolower($tableName ?? 'unknown'), '_')),
                     '%1' => $tableName ?? 'unknown',
                     '%2' => $languageCode ?? 'en',
-                    '%3' => $languageCode ?? 'English',  // Language name (simplified for now)
+                    '%3' => $languageCode ?? 'English',
                     '%4' => $languageCode ?? 'en',
                     '%5' => $fileData['template'] ?? 'template',
-                    '%6' => date('Y-m-d'),
-                    '%7' => date('H-i-s'),
-                    '%8' => date('Y-m-d_H-i-s'),
-                    '%9' => '1',  // Project DB version
                 ];
 
                 $outputPath = str_replace(array_keys($replacements), array_values($replacements), $outputPath);
@@ -2482,6 +3245,9 @@ JS;
             $includeSource = $request->input('include_source', false);
             $includeGtree = $request->input('include_gtree', false); // 🚀 NEW: Only send gtree when requested!
             $migrationFromVersions = $request->input('migration_from_versions'); // 📊 Per-schema migration versions
+            $schemaIds = $request->input('schema_ids'); // 🎯 Filter: Only include selected schemas
+            $batchOffset = (int) $request->input('batch_offset', 0); // %12: offset of first table in this batch
+            $totalTablesAcrossBatches = (int) $request->input('total_tables', 0); // %13: total tables across ALL batches
 
             if (!$projectId) {
                 return response()->json([
@@ -2496,7 +3262,10 @@ JS;
 
             // 🚀 OPTIMIZATION: Cache gtree in Redis (MASSIVE PERFORMANCE BOOST!)
             // Build gtree only ONCE per project+template, reuse for 24 hours
-            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}";
+            $schemaIdsSorted = is_array($schemaIds) ? $schemaIds : [];
+            sort($schemaIdsSorted);
+            $schemaIdsHash = !empty($schemaIdsSorted) ? ':s' . implode('-', $schemaIdsSorted) : '';
+            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}{$schemaIdsHash}";
             $gtreeData = null;
 
             // Try to get from cache first
@@ -2511,7 +3280,7 @@ JS;
 
             // Build gtree if not cached
             if (!$gtreeData) {
-                $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions);
+                $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions, null, null, $schemaIds);
 
                 // Cache for 24 hours
                 if ($cacheService) {
@@ -2534,8 +3303,57 @@ JS;
             // Process each table
             $results = [];
             $tableCount = 0;
+            $totalBatchTables = $totalTablesAcrossBatches > 0 ? $totalTablesAcrossBatches : count($tables); // %13 total
+            $batchTableIndex = $batchOffset; // Start from offset position within full table list
+
+            // Build schema-relative table index lookup for %12/%13 counters
+            // Groups tables by schemaid so counter starts at 1 per schema, not globally
+            $gtreeTables = $gtreeData['gtree'][0]['project'][0]['tables'] ?? [];
+            $schemaTableCounters = []; // schemaid → next counter (1-based)
+            $tableSchemaIndex = [];    // tablename → [schemaRelativeIndex (1-based), schemaTableCount]
+            $schemaTableCounts = [];   // schemaid → total table count
+            // First pass: count tables per schema
+            foreach ($gtreeTables as $gt) {
+                $sid = $gt['schemaid'] ?? 'default';
+                $schemaTableCounts[$sid] = ($schemaTableCounts[$sid] ?? 0) + 1;
+            }
+            // Second pass: assign schema-relative indices
+            foreach ($gtreeTables as $gt) {
+                $tName = $gt['filename'] ?? $gt['tablename'] ?? null;
+                $sid = $gt['schemaid'] ?? 'default';
+                if ($tName) {
+                    $schemaTableCounters[$sid] = ($schemaTableCounters[$sid] ?? 0) + 1;
+                    $tableSchemaIndex[$tName] = [
+                        'index' => $schemaTableCounters[$sid], // 1-based
+                        'total' => $schemaTableCounts[$sid],
+                    ];
+                }
+            }
+
+            // Pre-calculate db_table_file positions for %13 global counter
+            // ONLY count files that actually USE %13 in their filename or output_path
+            $dbTableFilePositions = [];
+            $dbTableFileIdx = 0;
+            foreach ($resolvedFiles as $rf) {
+                $rf = (object) $rf;
+                if (($rf->content_type ?? null) === 'zip') continue;
+                $rfGenType = $this->determineGenerationType($rf);
+                $usesPercent13 = str_contains($rf->file_name ?? '', '%13') || str_contains($rf->output_path ?? '', '%13');
+                if (in_array($rfGenType, ['db_table_file', 'db_table_file_languages']) && $usesPercent13) {
+                    $dbTableFilePositions[$rf->id] = $dbTableFileIdx;
+                    $dbTableFileIdx++;
+                }
+            }
+
             foreach ($tables as $tableName) {
                 $tableCount++;
+                $batchTableIndex++;
+
+                // Schema-relative counter for %12/%13 (starts at 1 per schema, not globally)
+                $schemaInfo = $tableSchemaIndex[$tableName] ?? null;
+                $seqCounter = $schemaInfo ? $schemaInfo['index'] : $batchTableIndex;
+                $seqTotal = $schemaInfo ? $schemaInfo['total'] : $totalBatchTables;
+
                 try {
 
                     // Process template files for this table
@@ -2558,6 +3376,8 @@ JS;
                             continue;
                         }
 
+                        $filePosition = $dbTableFilePositions[$file->id] ?? 0;
+
                         // Try cache first
                         $fileResult = null;
                         if ($cacheService && $compile) {
@@ -2567,8 +3387,9 @@ JS;
                                     fileId: $file->id,
                                     tableName: $tableName,
                                     languageCode: $languageCode,
-                                    compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource) {
-                                        return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                                    compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, $batchTableIndex, $totalBatchTables, $filePosition, $seqCounter, $seqTotal) {
+                                        $gfc = $totalBatchTables;
+                                        return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, $batchTableIndex, $gfc, $filePosition, $seqCounter, $seqTotal);
                                     }
                                 );
                             } catch (\Exception $e) {
@@ -2579,7 +3400,14 @@ JS;
 
                         // Fallback: compile without cache
                         if (!$fileResult) {
-                            $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource);
+                            $gfc = $totalBatchTables;
+                            $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, $batchTableIndex, $gfc, $filePosition, $seqCounter, $seqTotal);
+                        }
+
+                        // Skip files whose table was excluded at schema level.
+                        if (!empty($fileResult['skipped'])) {
+                            unset($fileResult);
+                            continue;
                         }
 
                         $processedFiles[] = $fileResult;
@@ -2622,6 +3450,55 @@ JS;
             // Get cache hit stats before cleanup
             $cacheStats = $cacheService ? $cacheService->getHitStats() : ['hits' => 0, 'misses' => 0, 'total' => 0, 'hit_rate' => 0];
 
+            // 🔖 GENERATION HASH — only on first batch (include_gtree is true only for first batch)
+            // Format: {projectname}_t{template_version}_s{schema_version}_{hash8chars}.zip
+            $generationInfo = null;
+            if ($includeGtree) {
+                $genTemplateVersion = $template->version ?? 1;
+                $genFilesVersionSum = $template->files->sum('version') ?: $template->files->count();
+                $genSchemaVersion   = !empty($schemaIdsSorted)
+                    ? (\DB::table('schema_versions')->whereIn('schema_id', $schemaIdsSorted)->max('version_number') ?? 1)
+                    : 1;
+                $genTimestamp  = (int)(microtime(true) * 1000);
+                $genPayload    = json_encode([
+                    'template_version' => $genTemplateVersion,
+                    'template_files'   => $genFilesVersionSum,
+                    'schema_version'   => $genSchemaVersion,
+                    'timestamp'        => $genTimestamp,
+                ]);
+                $genHashFull   = hash('sha256', $genPayload);
+                $genHashShort  = substr($genHashFull, 0, 8);
+                $genProjectName = preg_replace('/[^a-zA-Z0-9_-]/', '_',
+                    \DB::table('projects')->where('id', $projectId)->value('name') ?? 'project'
+                );
+                $genFilename = "{$genProjectName}_t{$genTemplateVersion}_s{$genSchemaVersion}_{$genHashShort}.zip";
+
+                try {
+                    \App\Models\GenerationLog::create([
+                        'project_id'        => $projectId,
+                        'template_id'       => $templateId,
+                        'schema_ids'        => $schemaIdsSorted,
+                        'template_version'  => $genTemplateVersion,
+                        'files_version_sum' => $genFilesVersionSum,
+                        'schema_version'    => $genSchemaVersion,
+                        'hash_timestamp'    => $genTimestamp,
+                        'hash_full'         => $genHashFull,
+                        'hash_short'        => $genHashShort,
+                        'filename'          => $genFilename,
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::warning("GenerationLog write failed: {$e->getMessage()}");
+                }
+
+                $generationInfo = [
+                    'template_version'  => $genTemplateVersion,
+                    'files_version_sum' => $genFilesVersionSum,
+                    'schema_version'    => $genSchemaVersion,
+                    'hash_short'        => $genHashShort,
+                    'filename'          => $genFilename,
+                ];
+            }
+
             // 📊 Track performance metric for batch processing
             $user = auth()->user();
             try {
@@ -2653,6 +3530,7 @@ JS;
                 'success' => true,
                 'template_id' => $templateId,
                 'project_id' => $projectId,
+                'generation_info' => $generationInfo,
                 'gtree' => $includeGtree ? $gtreeData['gtree'] : null, // 🚀 Only send 100 MB gtree when needed!
                 'results' => $results,
                 'performance' => [
@@ -2781,6 +3659,24 @@ JS;
                 ? array_column($languagesFromGtree, 'code')
                 : ['en'];
 
+            // Global counter for %13 — continues across ALL template files within a generation
+            $globalFileCounter = 0;
+
+            // Pre-calculate db_table_file positions for %13 global counter
+            // ONLY count files that actually USE %13 in their filename or output_path
+            $dbTableFilePositions = [];
+            $dbTableFileIdx = 0;
+            foreach ($resolvedFiles as $rf) {
+                $rf = (object) $rf;
+                if (($rf->content_type ?? null) === 'zip') continue;
+                $rfGenType = ($rf->file_type ?? 'project_file');
+                $usesPercent13 = str_contains($rf->file_name ?? '', '%13') || str_contains($rf->output_path ?? '', '%13');
+                if (in_array($rfGenType, ['db_table_file', 'db_table_file_languages']) && $usesPercent13) {
+                    $dbTableFilePositions[$rf->id] = $dbTableFileIdx;
+                    $dbTableFileIdx++;
+                }
+            }
+
             foreach ($resolvedFiles as $templateFile) {
                 // Convert back to object if needed for compatibility
                 $templateFile = (object) $templateFile;
@@ -2792,6 +3688,7 @@ JS;
                     }
 
                     $fileType = $templateFile->file_type ?? 'project_file';
+                    $filePosition = $dbTableFilePositions[$templateFile->id] ?? 0;
 
                     // 🔥 FIX: Handle db_table_file - generate one file per table
                     if ($fileType === 'db_table_file' || $fileType === 'db_table_file_languages') {
@@ -2803,11 +3700,31 @@ JS;
                             continue;
                         }
 
-                        foreach ($tablesFromGtree as $tableData) {
+                        // Build schema-relative counters
+                        $cliSchemaCounters = [];
+                        $cliSchemaCounts = [];
+                        $cliTableSchemaMap = [];
+                        foreach ($tablesFromGtree as $gt) {
+                            $sid = $gt['schemaid'] ?? 'default';
+                            $cliSchemaCounts[$sid] = ($cliSchemaCounts[$sid] ?? 0) + 1;
+                        }
+                        foreach ($tablesFromGtree as $gt) {
+                            $tName = $gt['filename'] ?? $gt['tablename'] ?? null;
+                            $sid = $gt['schemaid'] ?? 'default';
+                            if ($tName) {
+                                $cliSchemaCounters[$sid] = ($cliSchemaCounters[$sid] ?? 0) + 1;
+                                $cliTableSchemaMap[$tName] = ['index' => $cliSchemaCounters[$sid], 'total' => $cliSchemaCounts[$sid]];
+                            }
+                        }
+
+                        foreach ($tablesFromGtree as $tblIdx => $tableData) {
                             $tableName = $tableData['filename'] ?? $tableData['tablename'] ?? null;
                             if (!$tableName) continue;
 
                             $languagesToProcess = ($fileType === 'db_table_file_languages') ? $languageCodes : ['en'];
+                            $schemaInfo = $cliTableSchemaMap[$tableName] ?? null;
+                            $seqCounter = $schemaInfo ? $schemaInfo['index'] : ($tblIdx + 1);
+                            $seqTotal = $schemaInfo ? $schemaInfo['total'] : count($tablesFromGtree);
 
                             foreach ($languagesToProcess as $languageCode) {
                                 $result = $this->processTemplateFile(
@@ -2817,8 +3734,18 @@ JS;
                                     true, // compile
                                     $tableName,
                                     $languageCode,
-                                    false // includeSource
+                                    false, // includeSource
+                                    $tblIdx,
+                                    $globalFileCounter,
+                                    $filePosition,
+                                    $seqCounter,
+                                    $seqTotal
                                 );
+
+                                // Defense-in-depth: skip files whose table was excluded at schema level.
+                                if (!empty($result['skipped'])) {
+                                    continue;
+                                }
 
                                 if (!$result['has_syntax_errors']) {
                                     // 🎯 Execute JavaScript to get actual output
@@ -2834,6 +3761,7 @@ JS;
                                         'filename' => $result['filename'],
                                         'content' => $output,
                                         'table' => $tableName,
+                                        'table_index' => $tblIdx,
                                         'language' => $languageCode,
                                     ];
                                 } else {
@@ -2855,7 +3783,9 @@ JS;
                                 true, // compile
                                 null,
                                 $languageCode,
-                                false // includeSource
+                                false, // includeSource
+                                0,
+                                $globalFileCounter
                             );
 
                             if (!$result['has_syntax_errors']) {
@@ -2888,7 +3818,9 @@ JS;
                             true, // compile
                             null,
                             'en',
-                            false // includeSource
+                            false, // includeSource
+                            0,
+                            $globalFileCounter
                         );
 
                         if (!$result['has_syntax_errors']) {
@@ -3095,5 +4027,337 @@ JS;
             // Return original output on error (warn + continue)
             return $output;
         }
+    }
+
+    /**
+     * Get existing form layout or auto-generate one for a table
+     */
+    private function getOrGenerateFormLayout(\App\Models\FormWindow $window, $schemaTable, ?string $language = null): array
+    {
+        // Check if a layout exists for this window + table
+        $existing = \App\Models\FormItemPlacement::forWindowAndTable($window->id, $schemaTable->id)
+            ->visible()
+            ->fields()
+            ->orderBy('sort_order')
+            ->with(['schemaField', 'lookupTable'])
+            ->get();
+
+        if ($existing->isNotEmpty()) {
+            return $existing->map(fn($p) => $p->toGTreeArray($language))->toArray();
+        }
+
+        // No layout defined — auto-generate intelligently
+        return $this->autoGenerateFormLayout($window, $schemaTable, $language);
+    }
+
+    /**
+     * Returns the report layout for a (ReportPatternForm, SchemaTable) pair.
+     * Mirrors getOrGenerateFormLayout(): if saved ReportLayoutElement rows
+     * exist for the (form, table), they're used; otherwise the algorithm in
+     * ReportLayoutElement::computeAutoPlacements() produces a transient
+     * placement array (no DB writes).
+     */
+    private function getOrGenerateReportLayout(
+        \App\Models\ReportPatternForm $form,
+        \App\Models\SchemaTable $schemaTable,
+        ?string $language = null
+    ): array {
+        $saved = \App\Models\ReportLayoutElement::forFormAndTable($form->id, $schemaTable->id)
+            ->visible()
+            ->with(['schemaField', 'containerElement'])
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($saved->isNotEmpty()) {
+            return $saved->map(fn($e) => $e->toGTreeArray($language))->values()->all();
+        }
+
+        // No saved layout — transient auto-generation. Fully read-only.
+        return \App\Models\ReportLayoutElement::computeAutoPlacements($form, $schemaTable, $language);
+    }
+
+    /**
+     * Returns button placements for a window in GTree-array form. If the user has
+     * saved button placements (FormItemPlacement with item_type='button'), those
+     * are used. Otherwise we fall back to the template's FormElement buttons —
+     * which already carry the user's tab_order from the form-template editor.
+     */
+    private function getOrGenerateFormButtons(\App\Models\FormWindow $window, ?string $language = null, $formSet = null): array
+    {
+        // FormSet default colors used as fallback when a button has no own color set.
+        $defaultBg   = $formSet->default_button_color      ?? null;
+        $defaultText = $formSet->default_button_text_color ?? null;
+
+        $existing = \App\Models\FormItemPlacement::buttons()
+            ->forWindow($window->id)
+            ->visible()
+            ->orderBy('sort_order')
+            ->get();
+
+        if ($existing->isNotEmpty()) {
+            $rows = $existing->map(fn($p) => $p->toGTreeArray($language))->toArray();
+            // Inject FormSet defaults where the placement has no per-button color.
+            foreach ($rows as &$row) {
+                if (($row['background_color'] ?? null) === null && $defaultBg !== null) {
+                    $row['background_color'] = $defaultBg;
+                }
+                if (($row['text_color'] ?? null) === null && $defaultText !== null) {
+                    $row['text_color'] = $defaultText;
+                }
+            }
+            unset($row);
+            return $rows;
+        }
+
+        // Fallback: derive from the template's FormElement buttons. Shape mirrors
+        // FormItemPlacement::toGTreeArray() so templates see the same keys whether
+        // the layout is saved or auto-derived.
+        $btns = [];
+        foreach ($window->elements as $el) {
+            $type = $el->element_type ?? '';
+            if (!is_string($type) || !str_starts_with($type, 'button_')) continue;
+
+            $btns[] = [
+                // Common
+                'id'               => $el->id,
+                'type'             => 'button',
+                'x'                => $el->x_position,
+                'y'                => $el->y_position,
+                'width'            => $el->width,
+                'height'           => $el->height,
+                'visible'          => (bool)$el->is_visible,
+                'z_order'          => $el->sort_order ?? 0,
+                'tab_order'        => $el->tab_order ?? 0,
+                'anchor_right'     => null,
+                'anchor_bottom'    => null,
+                'anchor_width'     => null,
+                'anchor_height'    => null,
+                'label'            => $el->button_label,
+                'container_id'     => null,
+                // Button-specific
+                'control_type'     => 'button',
+                'button_type'      => $type,
+                'icon'             => $el->effective_icon,
+                'action'           => $el->button_action,
+                'background_color' => $el->button_background_color ?? $defaultBg,
+                'text_color'       => $el->button_text_color ?? $defaultText,
+            ];
+        }
+
+        usort($btns, function ($a, $b) {
+            // Positive tab_order first (ASC), then unset (0/−1) sorted by z_order.
+            $ta = $a['tab_order'] > 0 ? $a['tab_order'] : PHP_INT_MAX;
+            $tb = $b['tab_order'] > 0 ? $b['tab_order'] : PHP_INT_MAX;
+            if ($ta !== $tb) return $ta <=> $tb;
+            return ($a['z_order'] ?? 0) <=> ($b['z_order'] ?? 0);
+        });
+
+        return $btns;
+    }
+
+    /**
+     * Auto-generate a form layout for a table based on container settings
+     */
+    private function autoGenerateFormLayout(\App\Models\FormWindow $window, $schemaTable, ?string $language = null): array
+    {
+        $container = $window->elements->firstWhere('element_type', 'container');
+        $fields = $schemaTable->fields
+            ->where('is_auto_increment', false)
+            ->sortBy('field_order')
+            ->values();
+
+        if ($fields->isEmpty() || !$container) return [];
+
+        // Load schema translations for field labels
+        $translations = [];
+        if ($language) {
+            $tableName = $schemaTable->table_name;
+            $fieldItems = $fields->map(fn($f) => $tableName . '.' . $f->field_name)->toArray();
+            $trans = \App\Models\SchemaTranslation::whereIn('item_name', $fieldItems)
+                ->where('code', $language)
+                ->pluck('translated_text', 'item_name');
+            foreach ($trans as $itemName => $text) {
+                $fieldName = str_replace($tableName . '.', '', $itemName);
+                $translations[$fieldName] = $text;
+            }
+        }
+
+        $containerCols = $container->container_columns ?? 1;
+        $containerGap = $container->container_gap ?? 8;
+        $maxFields = $container->max_fields ?? 999;
+        $fieldHeight = $container->default_control_height ?? 32;
+        $containerWidth = $container->width ?? 600;
+
+        $placements = [];
+        $colWidth = ($containerWidth - ($containerCols - 1) * $containerGap) / max(1, $containerCols);
+
+        foreach ($fields as $idx => $field) {
+            if ($idx >= $maxFields) break;
+
+            $col = $idx % $containerCols;
+            $row = intdiv($idx, $containerCols);
+
+            $placements[] = [
+                'id' => 0,
+                'type' => 'field',
+                'x' => round($col * ($colWidth + $containerGap)),
+                'y' => round($row * ($fieldHeight + $containerGap)),
+                'width' => round($colWidth),
+                'height' => $fieldHeight,
+                'visible' => true,
+                'z_order' => $idx,
+                'tab_order' => 0, // overwritten by assignAutoTabOrder() below
+                // Anchors: width 100% for create_edit forms
+                'anchor_right' => null,
+                'anchor_bottom' => null,
+                'anchor_width' => $window->window_type === 'create_edit' ? 100 : null,
+                'anchor_height' => null,
+                // Label
+                'label' => $translations[$field->field_name] ?? $this->formatFieldNameForLayout($field->field_name),
+                'container_id' => $container->id,
+                // Field-specific
+                'control_type' => $this->detectControlTypeForLayout($field),
+                'label_position' => 'top',
+                'label_width' => 100,
+                'field_name' => $field->field_name,
+                'field_type' => $field->field_type,
+                'lookup_table' => $field->link_table,
+                'lookup_display' => $field->link_display_field,
+                'lookup_value' => $field->link_field,
+                'lookup_sort' => $field->link_order_field,
+            ];
+        }
+
+        // Assign tab_order based on the template element layout (FormElement.tab_order):
+        // walk template elements in tab-order; when our container's slot comes up,
+        // emit one tab_order step per placed field; buttons before/after consume their
+        // own slots so the field range slides into the right window of the sequence.
+        $this->assignAutoTabOrder($placements, $window->elements, (int)$container->id);
+
+        return $placements;
+    }
+
+    /**
+     * Assigns tab_order on auto-generated field placements by walking the template
+     * elements (FormElement) in their FormElement.tab_order. Container slots get
+     * "expanded" into one slot per field; button slots are reserved (counted) so
+     * fields are numbered consistently relative to surrounding buttons.
+     *
+     * Mirrors the frontend tab-order expansion in
+     * FormLayoutDesignerPanel.tsx::handleAutoPlace.
+     *
+     * Fallback: if no template element has tab_order > 0, fields are simply
+     * numbered 1..N in their existing sort order (field_order).
+     *
+     * @param array $placements           Field placement arrays (mutated in place).
+     * @param mixed $templateElements     Iterable<FormElement> ($window->elements).
+     * @param int   $containerId          The container id whose slot expands into fields.
+     */
+    private function assignAutoTabOrder(array &$placements, $templateElements, int $containerId): void
+    {
+        if (empty($placements)) {
+            return;
+        }
+
+        // Detect whether the template defined any meaningful tab order at all.
+        $hasAny = false;
+        foreach ($templateElements as $el) {
+            if (($el->tab_order ?? 0) > 0) { $hasAny = true; break; }
+        }
+
+        if (!$hasAny) {
+            // Fallback: pure sequential numbering in field/sort order.
+            $i = 1;
+            foreach ($placements as &$p) {
+                $p['tab_order'] = $i++;
+            }
+            unset($p);
+            return;
+        }
+
+        // Sort template elements ASC by tab_order, drop -1 (no tab stop).
+        $sorted = [];
+        foreach ($templateElements as $el) {
+            if (($el->tab_order ?? 0) === -1) continue;
+            $sorted[] = $el;
+        }
+        usort($sorted, fn($a, $b) => ($a->tab_order ?? 0) <=> ($b->tab_order ?? 0));
+
+        $counter = 0;
+        $assignedFields = false;
+        foreach ($sorted as $el) {
+            $type = $el->element_type ?? '';
+            $isOurContainer = (int)$el->id === $containerId
+                && in_array($type, ['container', 'tab_container', 'tab_panel'], true);
+            $isButton = is_string($type) && str_starts_with($type, 'button_');
+
+            if ($isOurContainer && !$assignedFields) {
+                // Expand this container slot into one tab_order per field.
+                foreach ($placements as &$p) {
+                    $counter++;
+                    $p['tab_order'] = $counter;
+                }
+                unset($p);
+                $assignedFields = true;
+            } elseif ($isButton) {
+                // Button consumes one slot in the sequence (we don't return buttons
+                // here, but their position determines where the field range falls).
+                $counter++;
+            }
+            // Other elements (other containers, separators, ...) are ignored.
+        }
+
+        // Container wasn't part of the template's tab-order list at all → append fields.
+        if (!$assignedFields) {
+            foreach ($placements as &$p) {
+                $counter++;
+                $p['tab_order'] = $counter;
+            }
+            unset($p);
+        }
+    }
+
+    private function formatFieldNameForLayout(string $fieldName): string
+    {
+        return str_replace('_', ' ', ucwords(str_replace('_', ' ', $fieldName)));
+    }
+
+    private function detectControlTypeForLayout($field): string
+    {
+        $type = strtolower($field->field_type ?? '');
+        $name = strtolower($field->field_name ?? '');
+
+        // Explicit control_type from schema
+        if (!empty($field->control_type)) {
+            return strtolower($field->control_type);
+        }
+
+        // Linked table → combobox
+        if (!empty($field->link_table)) return 'combobox';
+
+        // Boolean/tinyint → checkbox
+        if ($type === 'tinyint' || str_contains($type, 'bool')) return 'checkbox';
+
+        // Date/time types
+        if (str_contains($type, 'datetime') || str_contains($type, 'timestamp')) return 'datetime';
+        if ($type === 'date') return 'date';
+        if ($type === 'time') return 'time';
+
+        // Large text
+        if (in_array($type, ['text', 'mediumtext', 'longtext'])) return 'textarea';
+
+        // Numeric
+        if (str_contains($type, 'decimal') || str_contains($type, 'float') || str_contains($type, 'double')) return 'float';
+        if (str_contains($type, 'int') || str_contains($type, 'bigint')) return 'integer';
+
+        // File/image names
+        if (str_contains($name, 'image') || str_contains($name, 'photo') || str_contains($name, 'file')) return 'file';
+        if (str_contains($name, 'password') || str_contains($name, 'passwort')) return 'password';
+        if (str_contains($name, 'email')) return 'email';
+
+        // BLOB
+        if (str_contains($type, 'blob') || str_contains($type, 'binary')) return 'file';
+
+        return 'text';
     }
 }

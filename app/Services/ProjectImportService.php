@@ -24,6 +24,7 @@ use App\Models\ProjectTemplateUsage;
 use App\Models\ProjectTemplateVariableValue;
 use App\Models\SchemaDesignerLayout;
 use App\Models\SchemaTranslation;
+use App\Models\ProjectTranslation;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -120,8 +121,11 @@ class ProjectImportService
                 // 7. Import Template Variable Values
                 $this->importTemplateVariableValues($project, $result);
 
-                // 8. Import Translations
+                // 8. Import Schema Translations
                 $this->importTranslations($result);
+
+                // 8b. Import Project Translations (per-language captions, descriptions, locale)
+                $this->importProjectTranslations($project, $result);
 
                 // 9. Import Attachments
                 $this->importAttachments($project, $result);
@@ -184,6 +188,7 @@ class ProjectImportService
                 'code_adjustments' => count($this->manifest['code_adjustments'] ?? []),
                 'attachments' => count($this->manifest['attachments'] ?? []),
                 'translations' => count($this->manifest['schema_translations'] ?? []),
+                'project_translations' => count($this->manifest['project_translations'] ?? []),
                 'template_variable_values' => count($this->manifest['template_variable_values'] ?? []),
             ],
             'temp_dir' => $this->tempDir,
@@ -451,6 +456,8 @@ class ProjectImportService
                 'filekeyname' => $tableData['filekeyname'] ?? null,
                 'file_name_renamed' => $tableData['file_name_renamed'] ?? '',
                 'file_name_short' => $tableData['file_name_short'] ?? '',
+                'display_state' => $tableData['display_state'] ?? 'enabled',
+                'generation_mode' => $tableData['generation_mode'] ?? 'full',
             ]);
 
             // Import fields
@@ -474,6 +481,9 @@ class ProjectImportService
                     'link_display_field' => $fieldData['link_display_field'] ?? null,
                     'link_order_field' => $fieldData['link_order_field'] ?? null,
                     'link_order_direction' => $fieldData['link_order_direction'] ?? 'ASC',
+                    'editmask' => $fieldData['editmask'] ?? null,
+                    'display_state' => $fieldData['display_state'] ?? 'enabled',
+                    'generation_mode' => $fieldData['generation_mode'] ?? 'full',
                 ]);
             }
 
@@ -985,6 +995,44 @@ class ProjectImportService
 
             } catch (\Exception $e) {
                 // Silently ignore translation errors
+            }
+        }
+    }
+
+    /**
+     * Import project translations (per-language captions, descriptions, locale settings)
+     */
+    protected function importProjectTranslations(Project $project, array &$result): void
+    {
+        $translations = $this->manifest['project_translations'] ?? [];
+
+        if (empty($translations)) {
+            return;
+        }
+
+        foreach ($translations as $translationData) {
+            try {
+                ProjectTranslation::updateOrCreate(
+                    [
+                        'project_id' => $project->id,
+                        'language_code' => $translationData['language_code'],
+                    ],
+                    [
+                        'caption' => $translationData['caption'] ?? null,
+                        'description' => $translationData['description'] ?? null,
+                        'decimal_separator' => $translationData['decimal_separator'] ?? null,
+                        'thousands_separator' => $translationData['thousands_separator'] ?? null,
+                        'date_format' => $translationData['date_format'] ?? null,
+                        'time_format' => $translationData['time_format'] ?? null,
+                        'currency_symbol' => $translationData['currency_symbol'] ?? null,
+                        'timezone' => $translationData['timezone'] ?? null,
+                    ]
+                );
+
+                $result['imported']['project_translations'] = ($result['imported']['project_translations'] ?? 0) + 1;
+
+            } catch (\Exception $e) {
+                $result['warnings'][] = "Failed to import project translation for language '{$translationData['language_code']}': {$e->getMessage()}";
             }
         }
     }

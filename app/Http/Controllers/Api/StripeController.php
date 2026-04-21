@@ -57,10 +57,13 @@ class StripeController extends Controller
         $selectedPackage = $packages[$package];
         $priceInCents = (int) round($selectedPackage['price'] * 100);
 
+        // Use fixed Stripe Price ID if configured, otherwise create inline price_data
+        $stripePriceId = config("services.stripe.price_{$package}");
+
         try {
-            $session = Session::create([
-                'payment_method_types' => ['card'],
-                'line_items' => [[
+            $lineItem = $stripePriceId
+                ? ['price' => $stripePriceId, 'quantity' => 1]
+                : [
                     'price_data' => [
                         'currency' => 'eur',
                         'product_data' => [
@@ -70,7 +73,11 @@ class StripeController extends Controller
                         'unit_amount' => $priceInCents,
                     ],
                     'quantity' => 1,
-                ]],
+                ];
+
+            $session = Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [$lineItem],
                 'mode' => 'payment',
                 'success_url' => config('app.url') . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => config('app.url') . '/payment/cancel',
@@ -130,10 +137,13 @@ class StripeController extends Controller
         $selectedPlan = $plans[$plan];
         $priceInCents = (int) round($selectedPlan['price'] * 100);
 
+        // Use fixed Stripe Price ID if configured, otherwise create inline price_data
+        $stripePriceId = config("services.stripe.price_{$plan}");
+
         try {
-            $session = Session::create([
-                'payment_method_types' => ['card'],
-                'line_items' => [[
+            $lineItem = $stripePriceId
+                ? ['price' => $stripePriceId, 'quantity' => 1]
+                : [
                     'price_data' => [
                         'currency' => 'eur',
                         'product_data' => [
@@ -146,7 +156,11 @@ class StripeController extends Controller
                         ],
                     ],
                     'quantity' => 1,
-                ]],
+                ];
+
+            $session = Session::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [$lineItem],
                 'mode' => 'subscription',
                 'success_url' => config('app.url') . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => config('app.url') . '/payment/cancel',

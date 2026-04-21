@@ -266,6 +266,7 @@ export default function ResetPasswordModal({
                 <input
                   id="reset-password"
                   type="password"
+                  autoComplete="new-password"
                   placeholder={t.authmodalsesetpasswordmodal265}
                   value={data.password}
                   onChange={(e) => updateData('password', e.target.value)}
@@ -288,6 +289,7 @@ export default function ResetPasswordModal({
                 <input
                   id="reset-password-confirm"
                   type="password"
+                  autoComplete="new-password"
                   placeholder={t.authmodalsegistermodal312}
                   value={data.password_confirmation}
                   onChange={(e) => updateData('password_confirmation', e.target.value)}

@@ -241,6 +241,26 @@ class FormDesignerController extends Controller
             return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp241')], 403);
         }
 
+        // ── In-use protection ──────────────────────────────────────────
+        // Refuse deletion if any schema_table or project still references this
+        // FormSet — silently nulling user choices via ON DELETE SET NULL would
+        // be lossy and unexpected.
+        $inUseByTables = \App\Models\SchemaTable::where('form_set_id', $id)
+            ->get(['id', 'table_name', 'schema_id']);
+        $inUseByProjects = \App\Models\ProjectFormSet::where('form_set_id', $id)->count();
+
+        if ($inUseByTables->isNotEmpty() || $inUseByProjects > 0) {
+            return response()->json([
+                'success' => false,
+                'error' => __('formdesignercontrollerphp_in_use'),
+                'in_use_by_tables' => $inUseByTables->map(fn($t) => [
+                    'table_id' => $t->id,
+                    'table_name' => $t->table_name,
+                ])->values(),
+                'in_use_by_projects' => $inUseByProjects,
+            ], 409);
+        }
+
         $formSet->delete();
 
         return response()->json([
@@ -324,6 +344,14 @@ class FormDesignerController extends Controller
             'background_color' => 'nullable|string|max:7',
             'window_color' => 'nullable|string|max:7',
             'text_color' => 'nullable|string|max:7',
+            // Paper/print configuration (report types)
+            'paper_size' => 'nullable|string|max:20',
+            'paper_orientation' => 'nullable|string|in:portrait,landscape',
+            'paper_unit' => 'nullable|string|in:cm,mm,inch',
+            'margin_top' => 'nullable|numeric|min:0|max:30',
+            'margin_right' => 'nullable|numeric|min:0|max:30',
+            'margin_bottom' => 'nullable|numeric|min:0|max:30',
+            'margin_left' => 'nullable|numeric|min:0|max:30',
         ]);
 
         $window->update($validated);
@@ -390,11 +418,17 @@ class FormDesignerController extends Controller
                     'y_position' => $elementData['y_position'] ?? $elementData['y'] ?? 0,
                     'width' => $elementData['width'] ?? 100,
                     'height' => $elementData['height'] ?? 40,
+                    // Anchor
+                    'anchor_right' => $elementData['anchor_right'] ?? null,
+                    'anchor_bottom' => $elementData['anchor_bottom'] ?? null,
+                    'anchor_width' => $elementData['anchor_width'] ?? null,
+                    'anchor_height' => $elementData['anchor_height'] ?? null,
                     // Container-spezifisch
                     'container_orientation' => $elementData['container_orientation'] ?? $elementData['orientation'] ?? null,
                     'max_fields' => $elementData['max_fields'] ?? null,
                     'container_gap' => $elementData['container_gap'] ?? 8,
                     'container_columns' => $elementData['container_columns'] ?? 1,
+                    'default_control_height' => $elementData['default_control_height'] ?? 56,
                     // Button-spezifisch
                     'button_label' => $elementData['button_label'] ?? $elementData['label'] ?? null,
                     'button_icon' => $elementData['button_icon'] ?? $elementData['icon'] ?? null,
@@ -406,6 +440,7 @@ class FormDesignerController extends Controller
                     'parent_tab_container_id' => $elementData['parent_tab_container_id'] ?? null,
                     'custom_style' => $elementData['custom_style'] ?? $elementData['style'] ?? null,
                     'sort_order' => $index,
+                    'tab_order' => isset($elementData['tab_order']) ? max(-1, min(9999, (int)$elementData['tab_order'])) : 0,
                     'is_visible' => $elementData['is_visible'] ?? $elementData['visible'] ?? true,
                 ];
 
@@ -523,6 +558,59 @@ class FormDesignerController extends Controller
         return response()->json([
             'success' => true,
             'data' => $formSet,
+        ]);
+    }
+
+    /**
+     * Clear the project's active FormSet (= "no default").
+     * DELETE /api/projects/{projectId}/active-form-set
+     */
+    public function deactivateForProject(int $projectId): JsonResponse
+    {
+        ProjectFormSet::forProject($projectId)->update(['is_active' => false]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Project default FormSet cleared',
+        ]);
+    }
+
+    /**
+     * Pre-flight usage check for a FormSet — returns the schema_tables and
+     * projects that reference it. The frontend uses this BEFORE opening the
+     * "type DELETE to confirm" dialog so it can warn the user up front.
+     * GET /api/form-sets/{id}/usage
+     */
+    public function usage(int $id): JsonResponse
+    {
+        $formSet = FormSet::find($id);
+        if (!$formSet) {
+            return response()->json(['success' => false, 'error' => 'FormSet not found'], 404);
+        }
+
+        $tables = \App\Models\SchemaTable::where('form_set_id', $id)
+            ->get(['id', 'table_name', 'schema_id'])
+            ->map(fn($t) => [
+                'id' => $t->id,
+                'table_name' => $t->table_name,
+                'schema_id' => $t->schema_id,
+            ])->values();
+
+        $projects = ProjectFormSet::where('form_set_id', $id)
+            ->where('is_active', true)
+            ->with('project:id,name')
+            ->get()
+            ->map(fn($link) => [
+                'id' => $link->project_id,
+                'name' => $link->project?->name,
+            ])->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'tables' => $tables,
+                'projects' => $projects,
+                'in_use' => $tables->isNotEmpty() || $projects->isNotEmpty(),
+            ],
         ]);
     }
 

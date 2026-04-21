@@ -25,6 +25,18 @@ export default function ForgotPasswordModal({
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
 
+  // Reset state whenever the modal is hidden. Replaces the pattern of calling
+  // handleHide() right before onSwitchToLogin() which produced a transient
+  // null-modal state (and could leave PrimeReact's mask overlay stuck).
+  React.useEffect(() => {
+    if (!visible) {
+      setEmail('');
+      setError('');
+      setSuccess('');
+      setLoading(false);
+    }
+  }, [visible]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -50,7 +62,14 @@ export default function ForgotPasswordModal({
 
       setSuccess(t.forgotpasswordmodal46);
       setEmail(''); // Clear email field
-      
+
+      // Auto-close the dialog shortly after success so the user is not stuck
+      // in a modal that looks "done" — the success toast/message remains
+      // visible long enough to be read.
+      setTimeout(() => {
+        handleHide();
+      }, 2500);
+
     } catch (error) {
       setError(error instanceof Error ? error.message : t.authmodalsegistermodal109);
     } finally {
@@ -135,10 +154,7 @@ export default function ForgotPasswordModal({
             type="button"
             label={t.forgotpasswordmodal131}
             className="p-button-link p-button-sm"
-            onClick={() => {
-              handleHide();
-              onSwitchToLogin();
-            }}
+            onClick={onSwitchToLogin}
           />
         </div>
       </form>

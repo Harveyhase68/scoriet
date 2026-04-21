@@ -18,10 +18,15 @@ class FormElement extends Model
         'y_position',
         'width',
         'height',
+        'anchor_right',
+        'anchor_bottom',
+        'anchor_width',
+        'anchor_height',
         'container_orientation',
         'max_fields',
         'container_gap',
         'container_columns',
+        'default_control_height',
         'button_label',
         'button_icon',
         'button_action',
@@ -31,6 +36,7 @@ class FormElement extends Model
         'parent_tab_container_id',
         'custom_style',
         'sort_order',
+        'tab_order',
         'is_visible',
     ];
 
@@ -39,11 +45,16 @@ class FormElement extends Model
         'y_position' => 'integer',
         'width' => 'integer',
         'height' => 'integer',
+        'anchor_right' => 'decimal:2',
+        'anchor_bottom' => 'decimal:2',
+        'anchor_width' => 'decimal:2',
+        'anchor_height' => 'decimal:2',
         'max_fields' => 'integer',
         'container_gap' => 'integer',
         'container_columns' => 'integer',
         'custom_style' => 'array',
         'sort_order' => 'integer',
+        'tab_order' => 'integer',
         'is_visible' => 'boolean',
     ];
 
@@ -186,6 +197,7 @@ class FormElement extends Model
             'visible' => $this->is_visible,
             'is_container' => $this->is_container,
             'is_button' => $this->is_button,
+            'tab_order' => $this->tab_order ?? 0,
         ];
 
         // Container-spezifische Eigenschaften (nur für container, menu_container, tab_container)

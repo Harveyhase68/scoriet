@@ -18,6 +18,7 @@ import ProjectInvitationsModal from '@/Components/Modals/ProjectInvitationsModal
 import ProjectMembersModal from '@/Components/Modals/ProjectMembersModal';
 import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import ProjectPrintModal from '@/Components/Panels/ProjectPrintModal';
 // import EditProjectModal from '@/Components/Modals/EditProjectModal'; // Replaced by ProjectSettingsPanel
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
@@ -108,7 +109,10 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     setSelectedProject: setGlobalSelectedProject,
     loadProjects: loadProjectsFromContext,
     setPreferredProject,
-    loading: contextLoading
+    loading: contextLoading,
+    editLock,
+    acquireLock,
+    releaseLock,
   } = useProject();
 
   // Map to local project state for compatibility
@@ -167,6 +171,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const [showInvitationsModal, setShowInvitationsModal] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showProjectOverviewModal, setShowProjectOverviewModal] = useState(false);
+  const [showProjectPrintModal, setShowProjectPrintModal] = useState(false);
+  const [printProjectId, setPrintProjectId] = useState<number | null>(null);
   const [selectedProjectForOverview, setSelectedProjectForOverview] = useState<Project | null>(null);
   const [projectTeamsTree, setProjectTeamsTree] = useState<any[]>([]);
   const [loadingTeamsData, setLoadingTeamsData] = useState(false);
@@ -247,6 +253,31 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     }
   }, [projectId, globalProjects, setGlobalSelectedProject]);
 
+  // Listen for real-time project updates from other users (via WebSocket)
+  // Debounce: multiple events (ProjectUpdated + ProjectUnlocked) arrive in quick
+  // succession for a single save — show only one toast per burst.
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleProjectUpdatedByOther = () => {
+      if (debounceTimer) return; // already scheduled
+      debounceTimer = setTimeout(() => {
+        toast.current?.show({
+          severity: 'info',
+          summary: t.projectUpdatedByOther,
+          life: 3000,
+        });
+        debounceTimer = null;
+      }, 500);
+    };
+
+    window.addEventListener('projectUpdatedByOther', handleProjectUpdatedByOther);
+    return () => {
+      window.removeEventListener('projectUpdatedByOther', handleProjectUpdatedByOther);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [t]);
+
   // Listen for notification bell click to open Applications Modal
   useEffect(() => {
     const handleOpenApplicationsModal = () => {
@@ -264,6 +295,23 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const handleEdit = async (projectToEdit?: Project) => {
     const project = projectToEdit || currentProject;
     if (project && onOpenPanel) {
+      // Try to acquire the edit lock first
+      const lockAcquired = await acquireLock(project.id);
+      if (!lockAcquired) {
+        toast.current?.show({
+          severity: 'warn',
+          summary: t.projectLockFailed,
+          life: 4000,
+        });
+        return;
+      }
+
+      toast.current?.show({
+        severity: 'info',
+        summary: t.projectLockAcquired,
+        life: 2000,
+      });
+
       // Set the project as the current project first
       setGlobalSelectedProject(project as any);
 
@@ -686,8 +734,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   };
 
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(currentLanguage, {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '—';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString(currentLanguage, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -1046,6 +1097,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           tooltip={t.projectpanel583}
           onClick={() => handleEdit(project)}
         />
+        <Button
+          icon="pi pi-print"
+          className="p-button-rounded p-button-sm"
+          style={{ color: '#3b82f6' }}
+          tooltip="Print"
+          onClick={() => { setPrintProjectId(project.id); setShowProjectPrintModal(true); }}
+        />
         {Number(project.owner_id) === Number(currentUserId) && (
           <Button
             icon="pi pi-trash"
@@ -1139,10 +1197,13 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                 </span>
                 {currentProject && (
                   <Button
-                    icon="pi pi-pencil"
+                    icon={editLock?.isLocked && !editLock.isLockedByMe ? "pi pi-lock" : "pi pi-pencil"}
                     className="p-button-sm p-button-outlined"
                     onClick={() => handleEdit()}
-                    tooltip={t.projectpanel583}
+                    tooltip={editLock?.isLocked && !editLock.isLockedByMe
+                      ? `${t.projectLockLockedBy} ${editLock.lockedByUserName}`
+                      : t.projectpanel583}
+                    disabled={editLock?.isLocked && !editLock.isLockedByMe}
                   />
                 )}
               </div>
@@ -1152,6 +1213,31 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           >
             {currentProject ? (
               <div className="space-y-3">
+                {/* Edit Lock Banner */}
+                {editLock?.isLocked && !editLock.isLockedByMe && (
+                  <Message
+                    severity="warn"
+                    className="w-full"
+                    text={`${t.projectLockLockedBy} ${editLock.lockedByUserName}`}
+                  />
+                )}
+                {editLock?.isLocked && editLock.isLockedByMe && (
+                  <Message
+                    severity="info"
+                    className="w-full"
+                    content={
+                      <div className="flex items-center justify-between w-full px-2">
+                        <span>{t.projectLockAcquired}</span>
+                        <Button
+                          icon="pi pi-unlock"
+                          label={t.projectLockReleased}
+                          className="p-button-sm p-button-text"
+                          onClick={() => currentProject && releaseLock(currentProject.id)}
+                        />
+                      </div>
+                    }
+                  />
+                )}
                 <div>
                   <h3 className="text-lg font-semibold mb-1" style={{ color: colors.textPrimary }}>
                     {currentProject.name}
@@ -1594,6 +1680,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
                   placeholder="database_password"
                   className="w-full"
                   disabled={creating}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
@@ -2467,6 +2554,9 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </div>
         )}
       </Dialog>
+
+      {/* Project Print Modal */}
+      <ProjectPrintModal visible={showProjectPrintModal} onHide={() => setShowProjectPrintModal(false)} projectId={printProjectId} />
     </div>
   );
 }

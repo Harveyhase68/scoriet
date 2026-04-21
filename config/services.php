@@ -39,6 +39,12 @@ return [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        // Stripe Price IDs — different per environment (test vs production)
+        'price_credits_500' => env('STRIPE_PRICE_CREDITS_500'),
+        'price_credits_1000' => env('STRIPE_PRICE_CREDITS_1000'),
+        'price_credits_2500' => env('STRIPE_PRICE_CREDITS_2500'),
+        'price_patron_monthly' => env('STRIPE_PRICE_PATRON_MONTHLY'),
+        'price_patron_annual' => env('STRIPE_PRICE_PATRON_ANNUAL'),
     ],
 
     'github' => [

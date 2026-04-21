@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\TemplateCache;
+use App\Services\TemplateCacheService;
 use App\Services\CacheProgressService;
 use App\Jobs\CachePrecompilationJob;
+use App\Models\Project;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 
@@ -102,6 +106,65 @@ class CacheController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to get cache stats',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear all generator caches for a single project. Available to project
+     * owners and team members — no system-admin requirement. Used by the
+     * "Cache vor Generierung leeren" checkbox in the Code Generation panel.
+     *
+     * Targets:
+     *   - gtree:{projectId}:* (all template variants)
+     *   - compiled_template cache for templates linked to the project
+     *   - schema_data:{projectId}
+     *
+     * After clearing, the next generator run will see cache misses and
+     * automatically populate fresh entries — exactly the desired semantic.
+     */
+    public function clearProjectCache(int $projectId): JsonResponse
+    {
+        $user = Auth::user();
+        $project = Project::find($projectId);
+
+        if (!$project) {
+            return response()->json(['success' => false, 'error' => 'Project not found'], 404);
+        }
+
+        // Project access check (owner or team member) — same pattern as
+        // ProjectController::userHasProjectAccess(). Inlined here to avoid
+        // tight coupling between controllers.
+        $hasAccess = false;
+        if ($user) {
+            if ((string)$project->owner_id === (string)$user->id) {
+                $hasAccess = true;
+            } elseif ($project->teams()->whereHas('members', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->exists()) {
+                $hasAccess = true;
+            }
+        }
+
+        if (!$hasAccess) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
+
+        try {
+            $cacheService = app(TemplateCacheService::class);
+            $cacheService->invalidateGtreeForProject($projectId);
+            $cacheService->invalidateCompiledForProject($projectId);
+            Cache::forget("schema_data:{$projectId}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Project cache cleared',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to clear project cache',
                 'message' => $e->getMessage(),
             ], 500);
         }

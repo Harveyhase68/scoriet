@@ -63,7 +63,7 @@ class TemplateController extends Controller
     {
         try {
             $template = Template::with(['files' => function ($query) {
-                $query->orderBy('file_order');
+                $query->orderByRaw('CASE WHEN file_order > 0 THEN 0 ELSE 1 END')->orderBy('file_order')->orderBy('file_name');
             }])->findOrFail($id);
 
             // Add generation_type to each file based on content analysis

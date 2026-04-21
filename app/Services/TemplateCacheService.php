@@ -6,6 +6,7 @@ use App\Models\Template;
 use App\Models\TemplateFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * Service for managing compiled template caching
@@ -202,12 +203,8 @@ class TemplateCacheService
             ->unique();
 
         foreach ($projectIds as $projectId) {
-            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}";
-            Cache::forget($gtreeCacheKey);
+            static::forgetGtreePattern($projectId, $templateId);
         }
-
-
-
     }
 
     /**
@@ -227,8 +224,43 @@ class TemplateCacheService
             ->unique();
 
         foreach ($templateIds as $templateId) {
-            $gtreeCacheKey = "gtree:{$projectId}:{$templateId}";
-            Cache::forget($gtreeCacheKey);
+            static::forgetGtreePattern($projectId, $templateId);
+        }
+    }
+
+    /**
+     * Delete ALL gtree cache entries for a project+template combination,
+     * regardless of which schema IDs were selected when the cache was built.
+     *
+     * Cache keys follow the pattern: gtree:{projectId}:{templateId}[:s{id1}-{id2}-...]
+     * Using Redis KEYS + DEL to match all variants with the wildcard suffix.
+     *
+     * @param int $projectId
+     * @param int $templateId
+     * @return int Number of deleted keys
+     */
+    public static function forgetGtreePattern(int $projectId, int $templateId): int
+    {
+        try {
+            $redis = Redis::connection('cache');
+            $redisPrefix = config('database.redis.options.prefix') ?: '';
+            $cachePrefix = config('cache.prefix') ?: 'scoriet_cache';
+            $fullPrefix = $redisPrefix . $cachePrefix;
+
+            $pattern = $fullPrefix . "gtree:{$projectId}:{$templateId}*";
+            $keys = $redis->executeRaw(['KEYS', $pattern]);
+
+            if (!empty($keys)) {
+                $redis->executeRaw(array_merge(['DEL'], $keys));
+                return count($keys);
+            }
+
+            return 0;
+        } catch (\Exception $e) {
+            // Fallback: delete only the base key (no schema suffix)
+            Cache::forget("gtree:{$projectId}:{$templateId}");
+            Log::warning("TemplateCacheService::forgetGtreePattern fallback used: {$e->getMessage()}");
+            return 0;
         }
     }
 

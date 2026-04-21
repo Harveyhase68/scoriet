@@ -16,6 +16,8 @@ class Project extends Model
         'name',
         'description',
         'owner_id',
+        'locked_by_user_id',
+        'locked_at',
         'is_active',
         'is_public',
         'join_code',
@@ -34,18 +36,16 @@ class Project extends Model
         'diagram_vertical_spacing',
         'form_designer_snap_to_grid',
         'form_designer_grid_size',
+        'report_designer_snap_to_grid',
+        'report_designer_grid_unit',
+        'report_designer_grid_size',
         'project_directory',
         'project_url',
         'start_page',
         'default_language',
+        'target_language',
         'archive_format',
         'filename_short_length',
-        'decimal_separator',
-        'thousands_separator',
-        'date_format',
-        'time_format',
-        'currency_symbol',
-        'timezone',
         'enabled_languages',
         'google_translate_api_key',
         'protected_files',
@@ -77,10 +77,13 @@ class Project extends Model
         'is_public' => 'boolean',
         'allow_join_requests' => 'boolean',
         'form_designer_snap_to_grid' => 'boolean',
+        'report_designer_snap_to_grid' => 'boolean',
+        'report_designer_grid_size' => 'decimal:2',
         'settings' => 'array',
         'enabled_languages' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'locked_at' => 'datetime',
         'protected_files' => 'array',
         'install_script' => 'array',
         'update_script' => 'array',
@@ -136,11 +139,106 @@ class Project extends Model
     protected $with = ['owner'];
 
     /**
+     * Get the user who has locked this project for editing
+     */
+    public function lockedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'locked_by_user_id');
+    }
+
+    /**
+     * Check if the project is currently locked for editing
+     * Auto-expires locks older than 15 minutes
+     */
+    public function isEditLocked(): bool
+    {
+        if (!$this->locked_by_user_id) {
+            return false;
+        }
+        // Auto-expire locks older than 15 minutes
+        if ($this->locked_at && $this->locked_at->diffInMinutes(now()) > 15) {
+            $this->forceUnlock();
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Check if the project is locked by a specific user
+     */
+    public function isLockedBy(User $user): bool
+    {
+        return $this->locked_by_user_id !== null
+            && (string)$this->locked_by_user_id === (string)$user->id;
+    }
+
+    /**
+     * Lock the project for editing by a user
+     * Returns false if already locked by someone else
+     */
+    public function lockForEditing(User $user): bool
+    {
+        if ($this->isEditLocked() && !$this->isLockedBy($user)) {
+            return false;
+        }
+        $this->update([
+            'locked_by_user_id' => $user->id,
+            'locked_at' => now(),
+        ]);
+        return true;
+    }
+
+    /**
+     * Force-unlock the project (clear edit lock)
+     */
+    public function forceUnlock(): void
+    {
+        $this->update([
+            'locked_by_user_id' => null,
+            'locked_at' => null,
+        ]);
+    }
+
+    /**
      * Get the owner of the project
      */
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function translations(): HasMany
+    {
+        return $this->hasMany(ProjectTranslation::class);
+    }
+
+    /**
+     * Get translated caption for a language (fallback: default language → formatted name)
+     */
+    public function getTranslatedCaption(?string $langCode = null): string
+    {
+        $langCode = $langCode ?? $this->default_language ?? 'en';
+        $trans = $this->translations->firstWhere('language_code', $langCode);
+        if ($trans && $trans->caption) return $trans->caption;
+        // Fallback: default language
+        $defaultTrans = $this->translations->firstWhere('language_code', $this->default_language ?? 'en');
+        if ($defaultTrans && $defaultTrans->caption) return $defaultTrans->caption;
+        // Last fallback: format project name
+        return ucwords(str_replace('_', ' ', $this->name));
+    }
+
+    /**
+     * Get translated description for a language (fallback: default language → project description)
+     */
+    public function getTranslatedDescription(?string $langCode = null): string
+    {
+        $langCode = $langCode ?? $this->default_language ?? 'en';
+        $trans = $this->translations->firstWhere('language_code', $langCode);
+        if ($trans && $trans->description) return $trans->description;
+        // Fallback: default language
+        $defaultTrans = $this->translations->firstWhere('language_code', $this->default_language ?? 'en');
+        if ($defaultTrans && $defaultTrans->description) return $defaultTrans->description;
+        return $this->description ?? '';
     }
 
     /**

@@ -336,6 +336,7 @@ interface FileModalProps {
     templateFiles: any[];
     fileTypes: any[];
     templateId?: number; // For external editing features
+    projectLanguages?: Array<{ code: string; name: string }>; // Available project languages for language_override
 }
 
 const FileModal: React.FC<FileModalProps> = ({
@@ -345,7 +346,8 @@ const FileModal: React.FC<FileModalProps> = ({
     editingFile,
     templateFiles,
     fileTypes,
-    templateId
+    templateId,
+    projectLanguages = []
 }) => {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
@@ -360,18 +362,21 @@ const FileModal: React.FC<FileModalProps> = ({
             file_type: 'project_file',
             file_order: 0,
             form_window_type: 0,
-            is_include_only: false
+            is_include_only: false,
+            inject_target: '',
+            inject_tag: '',
+            language_override: null as string | null,
         }
     });
 
     // Form Window Type Options
+    // Values 4 (report_single) and 5 (report_list) are legacy and have been
+    // removed — reports are now handled by ReportPattern, not FormWindow.
     const formWindowTypeOptions = [
         { label: t.filemodal369, value: 0 },
         { label: t.filemodal370, value: 1 },
         { label: t.filemodal371, value: 2 },
         { label: t.filemodal372, value: 3 },
-        { label: t.filemodal373, value: 4 },
-        { label: t.filemodal374, value: 5 },
     ];
     const [uploadedFile, setUploadedFile] = useState<any>(null);
     const [zipFileList, setZipFileList] = useState<Array<{ name: string; size: number }>>([]);
@@ -405,6 +410,10 @@ const FileModal: React.FC<FileModalProps> = ({
 
     // Watch file_name for language detection
     const fileName = useWatch({ control, name: 'file_name' }) || '';
+    const watchIsIncludeOnly = useWatch({ control, name: 'is_include_only' });
+    const watchInjectTarget = useWatch({ control, name: 'inject_target' });
+    const watchInjectTag = useWatch({ control, name: 'inject_tag' });
+    const isInjectMode = !!watchInjectTarget && !!watchInjectTag;
 
     // All hooks must be called before any early returns
     React.useEffect(() => {
@@ -420,6 +429,9 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_order: editingFile.file_order,
                         form_window_type: editingFile.form_window_type || 0,
                         is_include_only: editingFile.is_include_only || false,
+                        inject_target: editingFile.inject_target || '',
+                        inject_tag: editingFile.inject_tag || '',
+                        language_override: editingFile.language_override || null,
                     });
                     setUploadedFile(null);
 
@@ -441,7 +453,10 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_type: 'project_file',
                         file_order: templateFiles.length,
                         form_window_type: 0,
-                        is_include_only: false
+                        is_include_only: false,
+                        inject_target: '',
+                        inject_tag: '',
+                        language_override: null,
                     });
                     setUploadedFile(null);
                     setManagedFiles([]); // Clear managed files
@@ -1088,6 +1103,7 @@ const FileModal: React.FC<FileModalProps> = ({
                                         inputId="is_include_only"
                                         checked={field.value || false}
                                         onChange={(e) => field.onChange(e.checked)}
+                                        disabled={isInjectMode}
                                     />
                                     <label htmlFor="is_include_only" className="text-sm cursor-pointer" style={{ color: colors.textSecondary }}>
                                         {t.filemodal1047}{'{:include:}'}
@@ -1096,11 +1112,127 @@ const FileModal: React.FC<FileModalProps> = ({
                             )}
                         />
                     </div>
+                    <div style={{ minWidth: '100px' }}>
+                        <label htmlFor="file_order" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                            {t.filemodal_file_order || 'Gen. Order'}
+                        </label>
+                        <Controller
+                            name="file_order"
+                            control={control}
+                            render={({ field }) => (
+                                <InputText
+                                    id="file_order"
+                                    type="number"
+                                    value={String(field.value ?? 0)}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                    className="w-full"
+                                    min={0}
+                                />
+                            )}
+                        />
+                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                            {t.filemodal_file_order_help || 'Controls %13 counter position'}
+                        </div>
+                    </div>
                 </div>
                 <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
                     <strong>{t.filemodal1055}</strong>{t.filemodal1055_2}|
                     <strong>{t.filemodal1056}</strong>{t.filemodal1056_2}<code>{'{:include: path/file.php:}'}</code>{t.filemodal1056_3}
                 </div>
+
+                {/* Language Override */}
+                {projectLanguages && projectLanguages.length > 0 && (
+                    <div className="flex gap-4 mt-3">
+                        <div style={{ minWidth: '250px' }}>
+                            <label htmlFor="language_override" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                                {t.filemodal_language_override || 'Language Override'}
+                                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
+                                    {t.filemodal_language_override_hint || '(optional)'}
+                                </span>
+                            </label>
+                            <Controller
+                                name="language_override"
+                                control={control}
+                                render={({ field }) => (
+                                    <Dropdown
+                                        id="language_override"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(e.value)}
+                                        options={[
+                                            { label: t.filemodal_language_default || 'Use Project Default Language', value: null },
+                                            ...projectLanguages.map(lang => ({
+                                                label: `${lang.name} (${lang.code})`,
+                                                value: lang.code
+                                            }))
+                                        ]}
+                                        placeholder={t.filemodal_language_default || 'Use Project Default Language'}
+                                        className="w-full"
+                                    />
+                                )}
+                            />
+                            <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                {t.filemodal_language_override_help || 'Overrides the language for {:caption:} and {:description:} placeholders in this file'}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Smart Injection Fields */}
+                <div className="flex gap-4 mt-3">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium mb-2" style={{ color: isInjectMode ? colors.accent : colors.textSecondary }}>
+                            <i className="pi pi-bolt mr-1" style={{ fontSize: '0.75rem' }} />
+                            {t.filemodal_si_target}
+                            <span className="text-xs ml-2 font-normal" style={{ color: colors.textMuted }}>
+                                ({t.filemodal_si_target_hint})
+                            </span>
+                        </label>
+                        <Controller
+                            name="inject_target"
+                            control={control}
+                            render={({ field }) => (
+                                <InputText
+                                    id="inject_target"
+                                    {...field}
+                                    placeholder="routes/web.php"
+                                    className="w-full"
+                                    disabled={watchIsIncludeOnly || false}
+                                />
+                            )}
+                        />
+                    </div>
+                    <div style={{ minWidth: '200px' }}>
+                        <label className="block text-sm font-medium mb-2" style={{ color: isInjectMode ? colors.accent : colors.textSecondary }}>
+                            {t.filemodal_si_tag}
+                            <span className="text-xs ml-2 font-normal" style={{ color: colors.textMuted }}>
+                                ({t.filemodal_si_tag_hint})
+                            </span>
+                        </label>
+                        <Controller
+                            name="inject_tag"
+                            control={control}
+                            render={({ field }) => (
+                                <InputText
+                                    id="inject_tag"
+                                    {...field}
+                                    placeholder="routes"
+                                    className="w-full"
+                                    disabled={watchIsIncludeOnly || false}
+                                />
+                            )}
+                        />
+                    </div>
+                </div>
+                {isInjectMode ? (
+                    <div className="text-xs mt-1 p-2 rounded" style={{ color: isDark ? 'rgba(147, 197, 253, 0.9)' : 'rgba(30, 64, 175, 0.85)', backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.06)', border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.2)'}` }}>
+                        <strong><i className="pi pi-bolt mr-1" />{t.filemodal_si_active}</strong> {t.filemodal_si_active_desc1}<code>{watchInjectTarget}</code>{t.filemodal_si_active_desc2}<code>{'{:inject ' + watchInjectTag + ':}'}</code>{t.filemodal_si_active_desc3}
+                    </div>
+                ) : (
+                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                        <strong>Smart Injection:</strong> {t.filemodal_si_help}
+                        {t.filemodal_si_syntax} <code>{'// {:inject tagname:}'}</code> {t.filemodal_si_syntax2}
+                    </div>
+                )}
 
                 {/* Output Path */}
                 <div>

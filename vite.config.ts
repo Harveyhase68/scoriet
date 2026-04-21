@@ -127,6 +127,11 @@ export default defineConfig({
         port: 5173,
         origin: 'http://10.0.0.8:5173',  // Use network IP so phone can load assets
         cors: true,
+        watch: {
+            // Ignore directories where PHP writes files at runtime — prevents Vite from
+            // triggering a full-reload when e.g. the template import wizard extracts archives
+            ignored: ['**/storage/**', '**/vendor/**', '**/public/build/**'],
+        },
     },    
     esbuild: {
         jsx: 'automatic',

@@ -12,6 +12,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { api } from '@/lib/api';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import TranslationPrintModal from '@/Components/Panels/TranslationPrintModal';
 
 interface SchemaTranslation {
   id: number;
@@ -62,6 +63,7 @@ export default function SchemaTranslationPanel() {
 
   // Export/Import
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedLanguagesForExport, setSelectedLanguagesForExport] = useState<string[]>([]);
   const [selectedLanguagesForImport, setSelectedLanguagesForImport] = useState<string[]>([]);
@@ -851,6 +853,14 @@ export default function SchemaTranslationPanel() {
               <i className="pi pi-upload mr-2"></i>{t.schematranslationpanel762}
             </button>
             <button
+              onClick={() => setShowPrintDialog(true)}
+              disabled={!selectedProject}
+              className="schema-translation-btn px-3 py-1.5 rounded text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-md active:scale-95"
+              style={{ backgroundColor: colors.accent, color: 'white' }}
+            >
+              <i className="pi pi-print mr-2"></i>Print
+            </button>
+            <button
               onClick={handleAutoTranslate}
               disabled={!selectedProject || translating}
               className="schema-translation-btn px-3 py-1.5 rounded text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 hover:shadow-md active:scale-95"
@@ -1434,6 +1444,7 @@ export default function SchemaTranslationPanel() {
           color: var(--theme-text-secondary) !important;
         }
       `}</style>
+      <TranslationPrintModal visible={showPrintDialog} onHide={() => setShowPrintDialog(false)} />
     </div>
   );
 }
