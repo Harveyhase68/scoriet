@@ -13,7 +13,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/agpl-3.0)
 [![Development Status](https://img.shields.io/badge/Status-%20Ready%20For%20Testing-green.svg?style=flat-square)](https://github.com/harveyhase68/scoriet)
 
-[**🧪 Live Demo**](https://demo.scoriet.dev) • [** Application**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](#documentation) • [**Contributing**](#contributing)
+[**🧪 Live Demo**](https://demo.scoriet.dev) • [** Application**](https://scoriet.dev) • [**📋 Installation**](INSTALLATION.md) • [**Documentation**](https://scoriet.com/docs/) • [**Contributing**](#contributing)
 
 ** Development Status**: Scoriet is still under **development**. The application is functional, but changes may occur and restarts may happen during the day.
 
@@ -1342,6 +1342,78 @@ scoriet/
 ### API Reference
 
 Coming soon - comprehensive API documentation with examples.
+
+## 📖 User Documentation (Docusaurus)
+
+The [`/doku/`](doku/) folder contains a standalone [Docusaurus](https://docusaurus.io) sub-project that hosts the complete Scoriet user and developer documentation. It is **not** integrated into the Laravel application — the live version is served separately at [scoriet.com/docs/](https://scoriet.com/docs/).
+
+### Structure
+
+```
+doku/
+├── docs/                    # Markdown documentation source
+│   ├── intro.md
+│   ├── getting-started/
+│   ├── templates/
+│   ├── database/
+│   ├── code-generator/
+│   ├── projects/
+│   ├── team/
+│   ├── features/
+│   ├── gtree/
+│   └── developer/
+├── src/                     # React components & custom CSS
+├── static/                  # Static assets (images, favicon)
+├── docusaurus.config.ts     # Docusaurus configuration
+├── sidebars.ts              # Sidebar navigation structure
+├── package.json
+└── tsconfig.json
+```
+
+### Requirements
+
+- **Node.js** ≥ 20.0 (Docusaurus 3.x requirement)
+- **npm** ≥ 9.0
+
+### Installation
+
+```bash
+# Change into the doku sub-project
+cd doku
+
+# Install dependencies (only needed once)
+npm install
+```
+
+### Development Server
+
+```bash
+# Start the Docusaurus dev server with hot reload
+cd doku
+npm start
+```
+
+The dev server opens on **http://localhost:3000** by default. Changes to `.md` files are reflected instantly without a manual refresh.
+
+### Production Build
+
+```bash
+# Build static HTML files for deployment
+cd doku
+npm run build
+
+# Preview the production build locally
+npm run serve
+```
+
+Generated static files end up in `doku/build/`. Upload this folder to the web server at `scoriet.com/docs/` for deployment.
+
+### Editing & Notes
+
+- **Editing docs**: Edit any `.md` file inside [`doku/docs/`](doku/docs/). The sidebar structure is defined in [`doku/sidebars.ts`](doku/sidebars.ts).
+- **Navbar / footer links**: Adjust in [`doku/docusaurus.config.ts`](doku/docusaurus.config.ts).
+- **Gitignored**: `doku/node_modules/`, `doku/build/`, and `doku/.docusaurus/` are excluded from Git — they regenerate via `npm install` / `npm run build`.
+- **Independent from the Laravel app**: The documentation runs as its own static site; it does not share dependencies with the main project and can be developed, built, and deployed entirely on its own.
 
 ## 🤝 Contributing
 
