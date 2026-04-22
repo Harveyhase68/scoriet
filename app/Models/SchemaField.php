@@ -50,6 +50,11 @@ class SchemaField extends Model
     ];
 
     protected $casts = [
+        // table_id cast to int — see note in SchemaTable model about MariaDB/PDO
+        // returning BIGINT columns as strings. Strict === / !== comparisons in
+        // controllers (e.g. "Field does not belong to this table") would
+        // otherwise fail silently.
+        'table_id' => 'integer',
         'is_unsigned' => 'boolean',
         'is_nullable' => 'boolean',
         'is_auto_increment' => 'boolean',

@@ -15,6 +15,9 @@ class Message extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'thread_id' => 'integer',
+        'sender_id' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

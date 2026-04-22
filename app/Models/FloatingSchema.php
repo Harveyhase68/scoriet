@@ -24,6 +24,8 @@ class FloatingSchema extends Model
      * The attributes that should be cast.
      */
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'owner_id' => 'integer',
         'is_system_schema' => 'boolean',
         'last_version' => 'integer',
     ];

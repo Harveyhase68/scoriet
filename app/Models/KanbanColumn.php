@@ -18,6 +18,8 @@ class KanbanColumn extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'board_id' => 'integer',
         'position' => 'integer',
         'wip_limit' => 'integer',
         'is_done_column' => 'boolean',

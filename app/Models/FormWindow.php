@@ -36,6 +36,8 @@ class FormWindow extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'form_set_id' => 'integer',
         'min_width' => 'integer',
         'min_height' => 'integer',
         'default_width' => 'integer',
