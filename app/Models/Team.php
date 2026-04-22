@@ -17,6 +17,8 @@ class Team extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'project_owner_id' => 'integer',
         'is_active' => 'boolean'
     ];
 

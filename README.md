@@ -1353,7 +1353,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes
 4. Run tests: `composer run test`
-5. Run quality checks: `npm run lint && npm run types`
+5. Run quality checks: `npm run lint && npm run types && npx tsc --noEmit --watch`
 6. Commit changes: `git commit -m 'Add amazing feature'`
 7. Push to branch: `git push origin feature/amazing-feature`
 8. Create a Pull Request

@@ -73,6 +73,12 @@ class Project extends Model
     ];
 
     protected $casts = [
+        // FK columns cast to int — MariaDB/PDO may return BIGINT as strings on
+        // some configs, which makes strict `!==`/`===` comparisons silently
+        // fail (e.g. `$project->owner_id !== $user->id` in controllers).
+        'owner_id' => 'integer',
+        'locked_by_user_id' => 'integer',
+        'git_provider_id' => 'integer',
         'is_active' => 'boolean',
         'is_public' => 'boolean',
         'allow_join_requests' => 'boolean',

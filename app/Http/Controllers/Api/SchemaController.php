@@ -843,7 +843,9 @@ class SchemaController extends Controller
         }
 
         // Validate that the table belongs to this version
-        if ($table->schema_version_id !== $version->id) {
+        // Defensive (int) cast — model's $casts handles this for Eloquent-loaded
+        // rows, but this makes the check robust against raw-query loaded rows too.
+        if ((int) $table->schema_version_id !== (int) $version->id) {
             return response()->json(['message' => __('schemacontrollerphp829')], 404);
         }
 
@@ -1283,7 +1285,9 @@ class SchemaController extends Controller
         }
 
         // Check if table belongs to this version
-        if ($table->schema_version_id !== $version->id) {
+        // Defensive (int) cast — model's $casts handles this for Eloquent-loaded
+        // rows, but this makes the check robust against raw-query loaded rows too.
+        if ((int) $table->schema_version_id !== (int) $version->id) {
             return response()->json(['message' => __('schemacontrollerphp1248')], 400);
         }
 
@@ -1323,7 +1327,9 @@ class SchemaController extends Controller
         }
 
         // Check if table belongs to this version
-        if ($table->schema_version_id !== $version->id) {
+        // Defensive (int) cast — model's $casts handles this for Eloquent-loaded
+        // rows, but this makes the check robust against raw-query loaded rows too.
+        if ((int) $table->schema_version_id !== (int) $version->id) {
             return response()->json(['message' => __('schemacontrollerphp1288')], 400);
         }
 

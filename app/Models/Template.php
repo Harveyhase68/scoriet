@@ -49,6 +49,10 @@ class Template extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'creator_user_id' => 'integer',
+        'project_id' => 'integer',
+        'original_template_id' => 'integer',
         'tags' => 'array',
         'is_active' => 'boolean',
         'is_system_template' => 'boolean',

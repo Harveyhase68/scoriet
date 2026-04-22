@@ -25,6 +25,10 @@ class KanbanCard extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'column_id' => 'integer',
+        'created_by' => 'integer',
+        'assigned_to' => 'integer',
         'position' => 'integer',
         'estimated_hours' => 'integer',
         'actual_hours' => 'integer',

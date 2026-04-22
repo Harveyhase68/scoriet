@@ -193,7 +193,8 @@
       "Read(//c/My Projects/csharptemp/blazor_template/blazor_template/Components/Pages/Stammdaten/**)",
       "Read(//c/My Projects/csharptemp/blazor_template/blazor_template/Components/Pages/Stammdaten/Kunden/**)",
       "Bash(find c:\\\\\\\\wamp\\\\\\\\www\\\\\\\\scoriet -type f -name \"*.php\")",
-      "Bash(find c:\\\\\\\\wamp\\\\\\\\www\\\\\\\\scoriet -type f -name \"*2026_04_21*.php\" -path \"*/migrations/*\")"
+      "Bash(find c:\\\\\\\\wamp\\\\\\\\www\\\\\\\\scoriet -type f -name \"*2026_04_21*.php\" -path \"*/migrations/*\")",
+      "Bash(git rm *)"
     ],
     "deny": [],
     "ask": []

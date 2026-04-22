@@ -40,6 +40,14 @@ class SchemaTable extends Model
     ];
 
     protected $casts = [
+        // All FK columns cast to int — MariaDB/PDO may return BIGINT columns as
+        // strings depending on the driver config. Without these casts, strict
+        // (===, !==) comparisons between a $table->xxx_id and a route-bound
+        // parent's ->id silently fail even when the values match. See the
+        // "Table does not belong to this schema version" false positive in
+        // SchemaController::updateTable() as the concrete example.
+        'schema_version_id' => 'integer',
+        'schema_id' => 'integer',
         'form_set_id' => 'integer',
         'report_pattern_id' => 'integer',
     ];

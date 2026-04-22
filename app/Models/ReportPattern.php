@@ -21,6 +21,9 @@ class ReportPattern extends Model
     ];
 
     protected $casts = [
+        // See note on Project::$casts re: BIGINT-as-string from MariaDB/PDO.
+        'creator_user_id' => 'integer',
+        'cloned_from_id' => 'integer',
         'is_active' => 'boolean',
     ];
 
