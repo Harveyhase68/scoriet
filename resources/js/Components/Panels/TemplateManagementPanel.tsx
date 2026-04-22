@@ -2154,7 +2154,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                             <span className="px-2 py-1 bg-yellow-500 text-white rounded text-xs">
                                                 {t.templatemanagementpanel2095}
                                             </span>
-                                            <span className="text-xs" style={{ color: colors.textMuted }}>{score}/{maxScore} Punkte</span>
+                                            <span className="text-xs" style={{ color: colors.textMuted }}>{score}/{maxScore} {t.templatemanagementpanel2157}</span>
                                         </div>
                                     );
                                 }

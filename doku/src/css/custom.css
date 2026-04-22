@@ -1,0 +1,312 @@
+/**
+ * Scoriet Documentation — matches scoriet.com homepage
+ * Primary blue on dark slate, dark-mode first.
+ */
+
+/* ===== Light Mode: Scoriet Blue ===== */
+:root {
+  --ifm-color-primary: #3b82f6;
+  --ifm-color-primary-dark: #2563eb;
+  --ifm-color-primary-darker: #1d4ed8;
+  --ifm-color-primary-darkest: #1e40af;
+  --ifm-color-primary-light: #60a5fa;
+  --ifm-color-primary-lighter: #93c5fd;
+  --ifm-color-primary-lightest: #bfdbfe;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(59, 130, 246, 0.1);
+
+  /* Scoriet.com shared palette */
+  --scoriet-bg-primary: #0f172a;
+  --scoriet-bg-secondary: #1e293b;
+  --scoriet-bg-tertiary: #334155;
+  --scoriet-border: #334155;
+  --scoriet-border-light: #475569;
+  --scoriet-text-primary: #f1f5f9;
+  --scoriet-text-secondary: #94a3b8;
+  --scoriet-text-muted: #64748b;
+
+  /* Status colors (aligned with homepage) */
+  --scoriet-accent-blue: #3b82f6;
+  --scoriet-accent-green: #22c55e;
+  --scoriet-accent-orange: #f59e0b;
+  --scoriet-accent-red: #ef4444;
+  --scoriet-accent-cyan: #06b6d4;
+  --scoriet-accent-purple: #8b5cf6;
+
+  /* Hero / feature surfaces */
+  --scoriet-hero-bg: linear-gradient(135deg, #1e293b 0%, #0f172a 60%, #1e3a8a 100%);
+  --scoriet-feature-bg: #f8fafc;
+  --scoriet-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* ===== Dark Mode (matches scoriet.com) ===== */
+[data-theme='dark'] {
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+
+  --ifm-background-color: #0f172a;
+  --ifm-background-surface-color: #1e293b;
+  --ifm-navbar-background-color: #1e293b;
+  --ifm-footer-background-color: #1e293b;
+
+  --docusaurus-highlighted-code-line-bg: rgba(96, 165, 250, 0.2);
+
+  --scoriet-hero-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%);
+  --scoriet-feature-bg: #1e293b;
+  --scoriet-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== Navbar (sticky, blue border like homepage) ===== */
+.navbar {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid var(--scoriet-border);
+}
+
+[data-theme='dark'] .navbar {
+  background-color: #1e293b;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ===== Back-to-Homepage nav item ===== */
+.navbar-back-homepage {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+  color: #ffffff !important;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.9rem !important;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.navbar-back-homepage:hover {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(59, 130, 246, 0.4);
+  text-decoration: none;
+}
+
+/* ===== Hero Section ===== */
+.hero--primary {
+  background: var(--scoriet-hero-bg);
+  color: #ffffff;
+}
+
+.hero__title {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #f1f5f9, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero__subtitle {
+  font-size: 1.4rem;
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto;
+  color: #94a3b8;
+}
+
+/* ===== Feature Cards (match homepage) ===== */
+.feature-card {
+  background: var(--scoriet-feature-bg);
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-shadow: var(--scoriet-card-shadow);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.2);
+}
+
+/* ===== Admonitions ===== */
+.admonition {
+  border-radius: 8px;
+  border-left-width: 4px;
+}
+
+/* ===== Screenshot containers ===== */
+.screenshot-container {
+  border: 2px solid var(--ifm-color-primary-lighter);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 1.5rem 0;
+  box-shadow: var(--scoriet-card-shadow);
+}
+
+.screenshot-container img {
+  display: block;
+  width: 100%;
+}
+
+.screenshot-caption {
+  padding: 0.75rem 1rem;
+  background: var(--scoriet-feature-bg);
+  font-size: 0.9rem;
+  color: var(--ifm-color-primary);
+  font-style: italic;
+  border-top: 1px solid var(--ifm-color-primary-lightest);
+}
+
+/* ===== Placeholder images ===== */
+.screenshot-placeholder {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 50%, #93c5fd 100%);
+  border: 2px dashed var(--ifm-color-primary-light);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--ifm-color-primary-dark);
+  font-size: 0.95rem;
+}
+
+[data-theme='dark'] .screenshot-placeholder {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #1e3a8a 100%);
+  border-color: var(--ifm-color-primary-darker);
+  color: var(--ifm-color-primary-lighter);
+}
+
+.screenshot-placeholder::before {
+  content: '📸';
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ===== Code blocks ===== */
+.theme-code-block {
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+/* ===== Tables (blue header like homepage buttons) ===== */
+table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+table thead tr {
+  background: var(--ifm-color-primary);
+  color: #ffffff;
+}
+
+table thead th {
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] table thead tr {
+  background: var(--ifm-color-primary-dark);
+}
+
+/* ===== Badges ===== */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge--blue   { background: #dbeafe; color: #1d4ed8; }
+.badge--green  { background: #dcfce7; color: #166534; }
+.badge--orange { background: #fef3c7; color: #b45309; }
+.badge--red    { background: #fee2e2; color: #b91c1c; }
+.badge--cyan   { background: #cffafe; color: #0e7490; }
+.badge--purple { background: #ede9fe; color: #6d28d9; }
+
+[data-theme='dark'] .badge--blue   { background: #1e3a8a; color: #93c5fd; }
+[data-theme='dark'] .badge--green  { background: #14532d; color: #86efac; }
+[data-theme='dark'] .badge--orange { background: #78350f; color: #fcd34d; }
+[data-theme='dark'] .badge--red    { background: #7f1d1d; color: #fca5a5; }
+[data-theme='dark'] .badge--cyan   { background: #164e63; color: #67e8f9; }
+[data-theme='dark'] .badge--purple { background: #4c1d95; color: #c4b5fd; }
+
+/* ===== Sidebar items ===== */
+.menu__link {
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.menu__link--active {
+  background-color: var(--ifm-color-primary);
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .menu__link--active {
+  background-color: var(--ifm-color-primary-dark);
+}
+
+/* ===== Mermaid diagrams ===== */
+.docusaurus-mermaid-container {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--scoriet-feature-bg);
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+/* ===== Responsive image rounding ===== */
+img {
+  border-radius: 8px;
+}
+
+/* ===== Reference boxes ===== */
+.reference-box {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(96, 165, 250, 0.05) 100%);
+  border: 1px solid var(--ifm-color-primary-lightest);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+[data-theme='dark'] .reference-box {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.1) 100%);
+  border-color: var(--ifm-color-primary-darker);
+}
+
+/* ===== Footer (matches homepage footer) ===== */
+.footer {
+  background: #0f172a;
+  border-top: 1px solid var(--scoriet-border);
+}
+
+.footer__title {
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.footer__link-item {
+  color: #94a3b8;
+}
+
+.footer__link-item:hover {
+  color: var(--ifm-color-primary-light);
+}
+
+.footer__copyright {
+  color: #64748b;
+}
+
+/* ===== Search input tuning for dark mode ===== */
+[data-theme='dark'] .navbar__search-input {
+  background-color: #334155;
+  border-color: #475569;
+  color: #f1f5f9;
+}
+
+[data-theme='dark'] .navbar__search-input::placeholder {
+  color: #94a3b8;
+}

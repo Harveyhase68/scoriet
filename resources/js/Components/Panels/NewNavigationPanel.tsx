@@ -33,6 +33,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   const [userCredits, setUserCredits] = useState<number>(0);
   const [patronType, setPatronType] = useState<string | null>(null);
   const [isInnerCore, setIsInnerCore] = useState<boolean>(false);
+  // System admins implicitly have all Inner-Core permissions (matches the
+  // backend check in TemplateReviewController). Without this derived flag the
+  // "Code Review" menu entry would only appear for users with is_inner_core=1
+  // even though the backend allows admins to access the review routes.
+  const canReviewTemplates = isInnerCore || userType === 'system';
   const [showWizard, setShowWizard] = useState<boolean>(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuCloseTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -463,7 +468,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   icon: 'pi pi-shopping-cart',
                   command: () => onOpenPanel('template-store'),
                 },
-                ...(isInnerCore ? [{
+                ...(canReviewTemplates ? [{
                   label: t.menu_code_vorlagen_review,
                   icon: 'pi pi-star-fill',
                   command: () => onOpenPanel('template-review'),
@@ -968,7 +973,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                                 <i className="pi pi-shopping-cart"></i>
                                 <span>{t.menu_code_vorlagen_shop}</span>
                               </button>
-                              {isInnerCore && (
+                              {canReviewTemplates && (
                                 <button onClick={blurAndRun(() => onOpenPanel('template-review'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                                   <i className="pi pi-star-fill text-yellow-400"></i>
                                   <span>{t.menu_code_vorlagen_review}</span>

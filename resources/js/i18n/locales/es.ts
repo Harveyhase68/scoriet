@@ -7562,5 +7562,8 @@ export const es: Translations = {
   projectsettingspanel554: 'Formato de fecha',
   projectsettingspanel559: 'Formato de hora',
   projectsettingspanel564: 'Símbolo de moneda',
-  projectsettingspanel569: 'Zona horaria',
+  projectsettingspanel569: 'Zona horaria',  templatemanagementpanel2157: 'Puntos',
+  templatereviewpanel300: ' Puntos',
+  reportlayoutdesignerpanel2077: 'Construir automáticamente',
+
 };

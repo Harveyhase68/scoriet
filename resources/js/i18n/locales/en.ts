@@ -7581,5 +7581,8 @@ export const en: Translations = {
   projectsettingspanel554: 'Date Format',
   projectsettingspanel559: 'Time Format',
   projectsettingspanel564: 'Currency Symbol',
-  projectsettingspanel569: 'Timezone',
+  projectsettingspanel569: 'Timezone',  templatemanagementpanel2157: 'Points',
+  templatereviewpanel300: ' Points',
+  reportlayoutdesignerpanel2077: 'Build automatically',
+
 };
