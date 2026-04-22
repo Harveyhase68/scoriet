@@ -1,0 +1,27 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 3rem 0;
+  width: 100%;
+}
+
+.featureCard {
+  background: var(--scoriet-feature-bg, #f8fafc);
+  border-radius: 12px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  box-shadow: var(--scoriet-card-shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  height: 100%;
+}
+
+.featureCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px -5px rgba(79, 70, 229, 0.2);
+}
+
+.featureIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}

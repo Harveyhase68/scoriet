@@ -194,7 +194,10 @@
       "Read(//c/My Projects/csharptemp/blazor_template/blazor_template/Components/Pages/Stammdaten/Kunden/**)",
       "Bash(find c:\\\\\\\\wamp\\\\\\\\www\\\\\\\\scoriet -type f -name \"*.php\")",
       "Bash(find c:\\\\\\\\wamp\\\\\\\\www\\\\\\\\scoriet -type f -name \"*2026_04_21*.php\" -path \"*/migrations/*\")",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(robocopy \"D:\\\\Eigene Dateien\\\\Claude\\\\Projects\\\\Scoriet USER DOKU\\\\Scoriet User Doku\\\\scoriet-user-docs\" \"C:\\\\wamp\\\\www\\\\scoriet\\\\doku\" /E /XD node_modules build .docusaurus /NFL /NDL /NP /R:1 /W:1)",
+      "PowerShell(robocopy \"D:\\\\Eigene Dateien\\\\Claude\\\\Projects\\\\Scoriet USER DOKU\\\\Scoriet User Doku\\\\scoriet-user-docs\" \"C:\\\\wamp\\\\www\\\\scoriet\\\\doku\" /E /XD node_modules build .docusaurus /NFL /NDL /NP /R:1 /W:1 | Select-Object -Last 15; \"ExitCode: $LASTEXITCODE\")",
+      "Bash(git check-ignore *)"
     ],
     "deny": [],
     "ask": []

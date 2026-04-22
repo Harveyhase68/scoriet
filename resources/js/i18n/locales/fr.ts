@@ -7564,5 +7564,8 @@ export const fr: Translations = {
   projectsettingspanel554: 'Format de date',
   projectsettingspanel559: 'Format d\'heure',
   projectsettingspanel564: 'Symbole monétaire',
-  projectsettingspanel569: 'Fuseau horaire',
+  projectsettingspanel569: 'Fuseau horaire',  templatemanagementpanel2157: 'Points',
+  templatereviewpanel300: ' Points',
+  reportlayoutdesignerpanel2077: 'Construire automatiquement',
+
 };

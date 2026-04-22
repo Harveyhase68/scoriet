@@ -7562,5 +7562,8 @@ export const it: Translations = {
   projectsettingspanel554: 'Formato data',
   projectsettingspanel559: 'Formato ora',
   projectsettingspanel564: 'Simbolo valuta',
-  projectsettingspanel569: 'Fuso orario',
+  projectsettingspanel569: 'Fuso orario',  templatemanagementpanel2157: 'Punti',
+  templatereviewpanel300: ' Punti',
+  reportlayoutdesignerpanel2077: 'Costruire automaticamente',
+
 };

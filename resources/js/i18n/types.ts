@@ -7613,4 +7613,7 @@ templatemodal480: string;
   projectsettingspanel559: string; // Time Format
   projectsettingspanel564: string; // Currency Symbol
   projectsettingspanel569: string; // Timezone
+  templatemanagementpanel2157: string;
+  templatereviewpanel300: string;
+  reportlayoutdesignerpanel2077: string;
 }

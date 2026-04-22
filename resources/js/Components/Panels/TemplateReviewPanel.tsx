@@ -101,9 +101,12 @@ const TemplateReviewPanel: React.FC = () => {
   const userType = localStorage.getItem('user_type') || 'free';
   const isAdmin = userType === 'system';
   const isInnerCore = localStorage.getItem('is_inner_core') === '1';
+  // System admins bypass the inner-core gate — matches TemplateReviewController
+  // on the backend and the menu visibility in NewNavigationPanel.
+  const canReview = isInnerCore || isAdmin;
 
   useEffect(() => {
-    if (isInnerCore) {
+    if (canReview) {
       loadPendingTemplates();
     }
   }, []);
@@ -297,7 +300,7 @@ const TemplateReviewPanel: React.FC = () => {
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <Tag
-            value={`${score} Punkte`}
+            value={`${score}${t.templatereviewpanel300}`}
             severity={isApproved ? 'success' : score >= 3 ? 'success' : score >= 1 ? 'warning' : 'danger'}
             icon="pi pi-star-fill"
           />
@@ -388,7 +391,7 @@ const TemplateReviewPanel: React.FC = () => {
     );
   };
 
-  if (!isInnerCore) {
+  if (!canReview) {
     return (
       <TabContent colors={colors}>
         <div className="h-full flex flex-col items-center justify-center">

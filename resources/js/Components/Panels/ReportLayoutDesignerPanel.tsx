@@ -2074,7 +2074,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
         {/* Auto-place button */}
         <Button
-          label="Autom. aufbauen"
+          label={t.reportlayoutdesignerpanel2077}
           icon="pi pi-th-large"
           size="small"
           severity="secondary"

@@ -45,3 +45,15 @@ reset.bat
 scoriet.code-workspace
 test.bat
 yarn-error.log
+
+# Docusaurus user documentation sub-project (doku/)
+/doku/node_modules
+/doku/build
+/doku/.docusaurus
+/doku/.env.local
+/doku/.env.development.local
+/doku/.env.test.local
+/doku/.env.production.local
+/doku/npm-debug.log*
+/doku/yarn-debug.log*
+/doku/yarn-error.log*

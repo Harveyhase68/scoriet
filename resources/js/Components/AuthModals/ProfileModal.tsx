@@ -1234,7 +1234,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       header={t.profileTitle}
       visible={visible}
       onHide={handleHide}
-      style={{ width: '1100px' }}
+      style={{ width: '1165px' }}
       modal
       closable
       draggable={true}
@@ -1242,7 +1242,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       className="p-dialog-custom"
     >
       <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
-        <TabPanel header={t.profileTab} leftIcon="pi pi-user">
+        {/* Icons moved inline into the header so a Tailwind-managed margin
+            (mr-2) guarantees the spacing. PrimeReact's `leftIcon` prop relies
+            on its own CSS margin which gets zeroed out by our theme reset,
+            making the icon collide with the label text. */}
+        <TabPanel header={<span><i className="pi pi-user mr-2" />{t.profileTab}</span>}>
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             {profileError && (
               <Message 
@@ -1610,7 +1614,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </form>
         </TabPanel>
 
-        <TabPanel header={t.passwordTab} leftIcon="pi pi-lock">
+        <TabPanel header={<span><i className="pi pi-lock mr-2" />{t.passwordTab}</span>}>
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <input type="text" name="username" autoComplete="username" value={userData?.email ?? ''} readOnly tabIndex={-1} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', border: 'none', padding: 0, margin: 0 }} />
             {passwordError && (
@@ -1696,11 +1700,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </form>
         </TabPanel>
 
-        <TabPanel header={t.profilemodal1604} leftIcon="pi pi-shield">
+        <TabPanel header={<span><i className="pi pi-shield mr-2" />{t.profilemodal1604}</span>}>
           <TwoFactorSection />
         </TabPanel>
 
-        <TabPanel header={t.profilemodal1608} leftIcon="pi pi-unlock">
+        <TabPanel header={<span><i className="pi pi-unlock mr-2" />{t.profilemodal1608}</span>}>
           <div className="space-y-6">
             {/* Credits Display */}
             <div className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderSecondary}` }}>
@@ -2229,7 +2233,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </div>
         </TabPanel>
 
-        <TabPanel header={t.profilemodal611} leftIcon="pi pi-credit-card">
+        <TabPanel header={t.profilemodal611} leftIcon="pi pi-credit-card mr-2">
           <div className="space-y-6">
             {/* Current Plan Info */}
             <div className="p-4 rounded-lg" style={{ backgroundColor: colors.bgTertiary, borderLeft: `4px solid ${colors.accent}` }}>
@@ -2326,7 +2330,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         </TabPanel>
 
         {/* Seller Profile Tab */}
-        <TabPanel header={t.profilemodal2234} leftIcon="pi pi-shopping-bag">
+        <TabPanel header={t.profilemodal2234} leftIcon="pi pi-shopping-bag mr-2">
           <form onSubmit={handleSellerSubmit} className="space-y-6">
             {sellerError && (
               <Message severity="error" text={sellerError} className="w-full" />
@@ -2600,7 +2604,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         </TabPanel>
 
         {/* Git Integration Tab */}
-        <TabPanel header="Git" leftIcon="pi pi-github">
+        <TabPanel header="Git" leftIcon="pi pi-github mr-2">
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-semibold mb-2 flex items-center gap-2" style={{ color: colors.textPrimary }}>
@@ -2779,7 +2783,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
           </div>
         </TabPanel>
 
-        <TabPanel header={t.deleteTab} leftIcon="pi pi-trash">
+        <TabPanel header={t.deleteTab} leftIcon="pi pi-trash mr-2">
           <form onSubmit={handleDeleteSubmit} className="space-y-4" autoComplete="off">
             <input type="text" name="username" autoComplete="off" value="" readOnly tabIndex={-1} aria-hidden="true" style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', border: 'none', padding: 0, margin: 0 }} />
             {deleteError && (
