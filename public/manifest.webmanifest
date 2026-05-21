@@ -1,5 +1,5 @@
 {
-  "name": "Scoriet - Enterprise Code Generator",
+  "name": "Scoriet - Schema-to-Stack Studio",
   "short_name": "Scoriet",
   "description": "Automate code generation through intelligent templating. Generate PHP, Laravel, React, and more from your database schemas.",
   "start_url": "/",

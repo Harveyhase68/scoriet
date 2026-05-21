@@ -1,6 +1,7 @@
 // resources/js/contexts/ProjectContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { getEcho, resetEcho } from '@/lib/echo';
+import { apiClient } from '@/lib/api';
 
 interface ProjectSubscription {
   id: number;
@@ -120,88 +121,69 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   const loadProjects = useCallback(async () => {
     try {
       setLoading(true);
-      // Check both localStorage and sessionStorage for the token
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        // No auth token found, skipping project load
+
+      // Skip silently if there's no token at all - we're not logged in.
+      if (!localStorage.getItem('access_token') && !sessionStorage.getItem('access_token')) {
         setProjects([]);
         setSelectedProject(null);
         return;
       }
 
-      const response = await fetch('/api/user/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
+      // apiClient.request() transparently handles token refresh on 401 and
+      // throws on a final auth failure (after refresh attempt). We use
+      // apiClient.get() directly here instead of getUserProjects() because
+      // the latter swallows all errors into an empty array, which would
+      // hide auth failures from us.
+      const response = await apiClient.get('/user/projects');
+      const projectsArray = response.projects || [];
 
-      if (response.ok) {
-        const data = await response.json();
+      // Filter out projects without an ID
+      const validProjects = projectsArray.filter((p: Project) => p.id);
+      setProjects(validProjects);
 
-        const projectsArray = data.projects || [];
+      // Try to restore saved project, use preferred project, or auto-select first
+      const savedProjectId = localStorage.getItem('scoriet_selected_project_id');
+      let projectToSelect = null;
 
-        // Filter out projects without an ID
-        const validProjects = projectsArray.filter((p: Project) => p.id);
-        setProjects(validProjects);
-
-        // Try to restore saved project, use preferred project, or auto-select first
-        const savedProjectId = localStorage.getItem('scoriet_selected_project_id');
-        let projectToSelect = null;
-
-        // Priority 1: Use preferred project (e.g., newly created project)
-        if (preferredProject) {
-          const foundPreferred = projectsArray.find((p: Project) => p.id === preferredProject.id);
-          if (foundPreferred) {
-            projectToSelect = foundPreferred;
-            setPreferredProject(null); // Clear after using
-          }
+      // Priority 1: Use preferred project (e.g., newly created project)
+      if (preferredProject) {
+        const foundPreferred = projectsArray.find((p: Project) => p.id === preferredProject.id);
+        if (foundPreferred) {
+          projectToSelect = foundPreferred;
+          setPreferredProject(null); // Clear after using
         }
+      }
 
-        // Priority 2: Try to restore saved project
-        if (!projectToSelect && savedProjectId) {
-          const savedProject = projectsArray.find((p: Project) => p.id.toString() === savedProjectId);
-          if (savedProject) {
-            projectToSelect = savedProject;
-          } else {
-            localStorage.removeItem('scoriet_selected_project_id');
-          }
+      // Priority 2: Try to restore saved project
+      if (!projectToSelect && savedProjectId) {
+        const savedProject = projectsArray.find((p: Project) => p.id.toString() === savedProjectId);
+        if (savedProject) {
+          projectToSelect = savedProject;
+        } else {
+          localStorage.removeItem('scoriet_selected_project_id');
         }
+      }
 
-        // Priority 3: If no saved project or saved project not found, select first available
-        if (!projectToSelect && projectsArray.length > 0) {
-          projectToSelect = projectsArray[0];
-        }
+      // Priority 3: If no saved project or saved project not found, select first available
+      if (!projectToSelect && projectsArray.length > 0) {
+        projectToSelect = projectsArray[0];
+      }
 
-        // Always set the project if we have one to select (either restored or first)
-        if (projectToSelect) {
-          setSelectedProject(projectToSelect);
-          localStorage.setItem('scoriet_selected_project_id', projectToSelect.id.toString());
-        }
-      } else if (response.status === 401) {
-        // Token was revoked (likely logged in on another device)
-        const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
-        const isLoggingOut = localStorage.getItem('logout_in_progress');
-
-        if (!alreadyNotified && !isLoggingOut) {
-          sessionStorage.setItem('session_revoke_notified', 'true');
-
-          // Clear tokens
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-
-          window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
-            detail: { reason: 'token_revoked' }
-          }));
-        }
-
+      // Always set the project if we have one to select (either restored or first)
+      if (projectToSelect) {
+        setSelectedProject(projectToSelect);
+        localStorage.setItem('scoriet_selected_project_id', projectToSelect.id.toString());
+      }
+    } catch (err: any) {
+      // apiClient threw: either auth failure after refresh failed (handled
+      // internally - tokens cleared, sessionForciblyEnded dispatched), or a
+      // transient network/server issue. In both cases clear local state.
+      if (err?.response?.status === 401 || err?.message?.includes('Authentication')) {
         setProjects([]);
         setSelectedProject(null);
       }
-    } catch {
-      // Error loading projects
+      // For other errors keep the state as-is so a transient hiccup doesn't
+      // wipe the UI.
     } finally {
       setLoading(false);
     }
@@ -283,59 +265,42 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
   // ── Lock acquire / release ─────────────────────────────────────────────
 
   const acquireLock = useCallback(async (projectId: number): Promise<boolean> => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (!token) return false;
-
     try {
-      const response = await fetch(`/api/projects/${projectId}/lock`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const currentUserId = Number(localStorage.getItem('user_id'));
-        setEditLock({
-          isLocked: true,
-          lockedByUserId: data.locked_by_user_id,
-          lockedByUserName: data.locked_by_user_name,
-          isLockedByMe: Number(data.locked_by_user_id) === currentUserId,
-        });
-
-        // Start heartbeat to keep lock alive (every 5 minutes)
-        if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-        heartbeatRef.current = setInterval(async () => {
-          try {
-            await fetch(`/api/projects/${projectId}/heartbeat`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-              },
-            });
-          } catch { /* heartbeat failed silently */ }
-        }, 5 * 60 * 1000);
-
-        return true;
-      }
-
-      if (response.status === 409) {
-        // Already locked by someone else
-        const data = await response.json();
-        setEditLock({
-          isLocked: true,
-          lockedByUserId: data.locked_by_user_id,
-          lockedByUserName: data.locked_by_user_name,
-          isLockedByMe: false,
-        });
+      let data: any;
+      try {
+        data = await apiClient.post(`/projects/${projectId}/lock`);
+      } catch (err: any) {
+        if (err?.response?.status === 409) {
+          // Already locked by someone else
+          const errData = err.response.data || {};
+          setEditLock({
+            isLocked: true,
+            lockedByUserId: errData.locked_by_user_id,
+            lockedByUserName: errData.locked_by_user_name,
+            isLockedByMe: false,
+          });
+          return false;
+        }
         return false;
       }
 
-      return false;
+      const currentUserId = Number(localStorage.getItem('user_id'));
+      setEditLock({
+        isLocked: true,
+        lockedByUserId: data.locked_by_user_id,
+        lockedByUserName: data.locked_by_user_name,
+        isLockedByMe: Number(data.locked_by_user_id) === currentUserId,
+      });
+
+      // Start heartbeat to keep lock alive (every 5 minutes)
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      heartbeatRef.current = setInterval(async () => {
+        try {
+          await apiClient.post(`/projects/${projectId}/heartbeat`);
+        } catch { /* heartbeat failed silently */ }
+      }, 5 * 60 * 1000);
+
+      return true;
     } catch {
       return false;
     }
@@ -348,17 +313,8 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
       heartbeatRef.current = null;
     }
 
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (!token) return;
-
     try {
-      await fetch(`/api/projects/${projectId}/unlock`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
+      await apiClient.post(`/projects/${projectId}/unlock`);
       setEditLock(null);
     } catch { /* unlock failed silently */ }
   }, []);

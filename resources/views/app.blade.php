@@ -47,10 +47,10 @@
             }
         </style>
 
-        <title inertia>{{ config('app.name', 'Scoriet') }} – Enterprise Code Generator</title>
+        <title inertia>{{ config('app.name', 'Scoriet') }} – Schema-to-Stack Studio</title>
 
         {{-- SEO Meta Tags --}}
-        <meta name="description" content="Scoriet is an Enterprise Code Generator that automates code generation through intelligent templating. Generate PHP, Laravel, React, and more from your database schemas.">
+        <meta name="description" content="Scoriet is an Schema-to-Stack Studio that automates code generation through intelligent templating. Generate PHP, Laravel, React, and more from your database schemas.">
         <meta name="keywords" content="code generator, template engine, PHP generator, Laravel generator, database schema, enterprise development, automation">
         <meta name="author" content="Scoriet">
         <meta name="robots" content="index, follow">
@@ -59,7 +59,7 @@
         {{-- Open Graph / Facebook --}}
         <meta property="og:type" content="website">
         <meta property="og:url" content="{{ url()->current() }}">
-        <meta property="og:title" content="{{ config('app.name', 'Scoriet') }} – Enterprise Code Generator">
+        <meta property="og:title" content="{{ config('app.name', 'Scoriet') }} – Schema-to-Stack Studio">
         <meta property="og:description" content="Automate code generation through intelligent templating. Generate PHP, Laravel, React, and more from your database schemas.">
         <meta property="og:image" content="{{ asset('images/logos/scoriet-logo.png') }}">
         <meta property="og:site_name" content="Scoriet">
@@ -68,7 +68,7 @@
         {{-- Twitter Card --}}
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:url" content="{{ url()->current() }}">
-        <meta name="twitter:title" content="{{ config('app.name', 'Scoriet') }} – Enterprise Code Generator">
+        <meta name="twitter:title" content="{{ config('app.name', 'Scoriet') }} – Schema-to-Stack Studio">
         <meta name="twitter:description" content="Automate code generation through intelligent templating. Generate PHP, Laravel, React, and more from your database schemas.">
         <meta name="twitter:image" content="{{ asset('images/logos/scoriet-logo.png') }}">
 

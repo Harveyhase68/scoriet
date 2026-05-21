@@ -2214,6 +2214,10 @@ templatemodal480: string;
   // resources/js/pages/LandingPage.tsx
   contactUsLink: string;
   communityLink: string;
+  forumLink: string;
+  devlogLink: string;
+  ticketsLink: string;
+  issuesLink: string;
   allRightsReserved: string;
 
   // resources/js/pages/LandingPage.tsx
@@ -4133,6 +4137,8 @@ templatemodal480: string;
   twofactorsection587: string;
   twofactorsection593: string;
   twofactorsection604: string;
+  twofactorsection_trust_device_label: string;
+  twofactorsection_trust_device_hint: string;
   twofactorsection621: string;
   twofactorsection627: string;
   twofactorsection639: string;

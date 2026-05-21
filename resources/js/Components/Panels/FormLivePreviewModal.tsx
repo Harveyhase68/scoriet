@@ -12,6 +12,7 @@ import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { apiClient } from '@/lib/api';
 
 // ========== INTERFACES ==========
 
@@ -214,18 +215,9 @@ const getControlType = (p: FieldPlacement): string => {
 
 const LANG_FLAGS: Record<string, string> = { de: '🇩🇪', en: '🇬🇧', fr: '🇫🇷', es: '🇪🇸', it: '🇮🇹', pt: '🇵🇹', nl: '🇳🇱', pl: '🇵🇱', cs: '🇨🇿', hu: '🇭🇺' };
 
-// ========== AUTH HELPER ==========
-
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  return {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-  };
-}
-
 // ========== LIVE DATA HOOK ==========
+// Auth headers + 401-refresh handled inside apiClient.cliRequest; no need
+// for a local getAuthHeaders() helper any more.
 
 const CONN_STORAGE_KEY = 'scoriet_live_preview_connection';
 
@@ -252,31 +244,35 @@ async function createDataQueryTask(
   targetDeviceId?: string | null,
   projectId?: number | null,
 ): Promise<{ taskId: number } | { error: string }> {
-  const res = await fetch('/cli/svc/tasks/data-query', {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({
-      target_device_id: targetDeviceId || null,
-      project_id: projectId || null,
-      payload: {
-        connection_type: conn.connection_type,
-        host: conn.host,
-        port: conn.port,
-        database: conn.database,
-        username: conn.username,
-        password: conn.password,
-        table_name: tableName,
-        columns,
-        query_type: queryType,
-        limit,
-        offset: offset,
-        order_by: orderBy || null,
-      },
-    }),
-  });
-  const data = await res.json();
-  if (data.success) return { taskId: data.task_id };
-  return { error: data.message || 'Failed to create data query task' };
+  try {
+    const data = await apiClient.cliRequest('/svc/tasks/data-query', {
+      method: 'POST',
+      body: JSON.stringify({
+        target_device_id: targetDeviceId || null,
+        project_id: projectId || null,
+        payload: {
+          connection_type: conn.connection_type,
+          host: conn.host,
+          port: conn.port,
+          database: conn.database,
+          username: conn.username,
+          password: conn.password,
+          table_name: tableName,
+          columns,
+          query_type: queryType,
+          limit,
+          offset: offset,
+          order_by: orderBy || null,
+        },
+      }),
+    });
+    if (data.success) return { taskId: data.task_id };
+    return { error: data.message || 'Failed to create data query task' };
+  } catch (err: any) {
+    // cliRequest throws on !response.ok; surface the message in the same
+    // shape the caller already handles (so existing error UI stays intact).
+    return { error: err?.response?.data?.message || err?.message || 'Failed to create data query task' };
+  }
 }
 
 async function pollTaskResult(taskId: number, maxAttempts = 30, intervalMs = 1000): Promise<{
@@ -289,8 +285,12 @@ async function pollTaskResult(taskId: number, maxAttempts = 30, intervalMs = 100
 }> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, intervalMs));
-    const res = await fetch(`/cli/svc/tasks/${taskId}`, { headers: getAuthHeaders() });
-    const data = await res.json();
+    let data: any;
+    try {
+      data = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
+    } catch {
+      return { success: false, error: 'Failed to check task status' };
+    }
     if (!data.success) return { success: false, error: 'Failed to check task status' };
 
     const task = data.task;
@@ -331,23 +331,48 @@ const FormLivePreviewModal: React.FC<FormLivePreviewModalProps> = ({
   const [devices, setDevices] = useState<Array<{ device_id: string; device_name: string; platform: string; is_online: boolean }>>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
-  // Load devices when dialog opens
+  // Load devices when dialog opens AND keep them fresh while it's open.
+  //
+  // The backend's isOnline() check (CliDevice.php) uses a 30-second sliding
+  // window over last_seen_at, which scoriet-svc bumps on every queue poll
+  // (~5s cadence). A one-shot fetch on open meant the green/red LED only
+  // ever reflected the state AT mount — if scoriet-svc came online a second
+  // after the modal opened, the user saw a red LED until they re-opened the
+  // modal. A 10s poll is well inside the 30s offline threshold so transitions
+  // (offline→online and back) show up within one cycle without hammering
+  // the endpoint.
+  //
+  // Auto-select fires on the FIRST fetch only — re-running it on every poll
+  // would yank the user's manual selection away the moment any other device
+  // came online.
+  const hasAutoSelectedRef = useRef(false);
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      hasAutoSelectedRef.current = false; // re-arm for next open
+      return;
+    }
     const loadDevices = async () => {
       try {
-        const res = await fetch('/cli/svc/devices', { headers: getAuthHeaders() });
-        const data = await res.json();
+        const data = await apiClient.cliRequest('/svc/devices');
         if (data.success && data.devices) {
           setDevices(data.devices);
-          // Auto-select first online device, or first device
-          const online = data.devices.find((d: { is_online: boolean }) => d.is_online);
-          if (online && !selectedDeviceId) setSelectedDeviceId(online.device_id);
-          else if (data.devices.length > 0 && !selectedDeviceId) setSelectedDeviceId(data.devices[0].device_id);
+          // Only auto-select an ONLINE device on the first load. Auto-picking
+          // the first row when nothing is online was a UX trap: a task
+          // targeted at an offline device sits pending forever (queue filter
+          // requires the polling scoriet-svc to identify itself with that
+          // exact device_id). Leaving selectedDeviceId=null means the task
+          // is untargeted and gets picked up by whichever service polls next.
+          if (!hasAutoSelectedRef.current) {
+            const online = data.devices.find((d: { is_online: boolean }) => d.is_online);
+            if (online && !selectedDeviceId) setSelectedDeviceId(online.device_id);
+            hasAutoSelectedRef.current = true;
+          }
         }
       } catch { /* ignore */ }
     };
     loadDevices();
+    const intervalId = window.setInterval(loadDevices, 10_000);
+    return () => window.clearInterval(intervalId);
   }, [visible]);
 
   // ========== DATA SOURCE: test vs live ==========
@@ -523,7 +548,7 @@ const FormLivePreviewModal: React.FC<FormLivePreviewModalProps> = ({
           <div style={{
             width: imgH * 1.2, height: imgH, borderRadius: 6, flexShrink: 0,
             overflow: 'hidden', border: '1px solid rgba(107,114,128,0.3)',
-            background: hasImage ? '#000' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: hasImage ? '#000' : 'linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             position: 'relative',
           }}>
@@ -1099,14 +1124,24 @@ const FormLivePreviewModal: React.FC<FormLivePreviewModalProps> = ({
               style={{ width: '100%', fontSize: 12 }}
             />
           </div>
+          {/* Host + Port row.
+            * minWidth: 0 on both flex children breaks out of the flex default
+            * `min-width: auto`, which otherwise inherits the inner PrimeReact
+            * input's min-width (~12rem in the arya theme). Without this the
+            * Port column refused to shrink to its 80px slot and the row
+            * overflowed the 380px dialog → horizontal scrollbar.
+            *
+            * useGrouping={false} drops the "3,306" thousands separator (we're
+            * showing a TCP port, not a price) so the InputNumber renders
+            * "3306" plain and fits the narrow slot. */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Host</label>
-              <InputText value={connSettings.host} onChange={e => setConnSettings(p => ({ ...p, host: e.target.value }))} style={{ width: '100%', fontSize: 12 }} />
+              <InputText value={connSettings.host} onChange={e => setConnSettings(p => ({ ...p, host: e.target.value }))} style={{ width: '100%', fontSize: 12, minWidth: 0 }} />
             </div>
-            <div style={{ width: 80 }}>
+            <div style={{ width: 80, minWidth: 0 }}>
               <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Port</label>
-              <InputNumber value={connSettings.port} onValueChange={e => setConnSettings(p => ({ ...p, port: e.value || 3306 }))} style={{ width: '100%' }} inputStyle={{ fontSize: 12 }} />
+              <InputNumber value={connSettings.port} onValueChange={e => setConnSettings(p => ({ ...p, port: e.value || 3306 }))} useGrouping={false} style={{ width: '100%' }} inputStyle={{ fontSize: 12, width: '100%', minWidth: 0 }} />
             </div>
           </div>
           <div>

@@ -43,15 +43,51 @@ class SvcController extends Controller
      */
     public function getQueue(Request $request): JsonResponse
     {
+        $user = $request->user();
         $deviceId = $request->header('X-Device-Id');
 
-        // Heartbeat: update device last_seen_at if device_id provided
+        // Heartbeat: update device last_seen_at if device_id provided. We
+        // additionally require the device to belong to this user, otherwise
+        // a stolen/leaked device_id from another user could be used to
+        // mark someone else's device as alive.
         if ($deviceId) {
-            CliDevice::where('device_id', $deviceId)->update(['last_seen_at' => now()]);
+            CliDevice::where('device_id', $deviceId)
+                ->where('user_id', $user->id)
+                ->update(['last_seen_at' => now()]);
         }
 
-        // Get next pending task: only tasks targeted at this device OR untargeted tasks
-        $query = CliTask::where('status', CliTask::STATUS_PENDING);
+        // CRITICAL: Only return tasks that belong to the polling user. Without
+        // this filter, every service ever logged in would see and pick up
+        // every other user's untargeted tasks, mark them as processing, and
+        // then fail them on the access check at the actual handler endpoint.
+        // That is both a data leak (task payload is visible) AND a denial of
+        // service vector (one malicious user can fail every other user's
+        // queued work).
+        $query = CliTask::where('status', CliTask::STATUS_PENDING)
+            ->where('user_id', $user->id);
+
+        // Stale-task filter: do not serve tasks that have been waiting in the
+        // queue longer than their per-type pickup TTL. A task that has sat
+        // here past its TTL means the service was offline when the user
+        // queued it; the user has either given up or already retried, and
+        // re-running it now (potentially much later) would surprise them.
+        // The scheduled cleanup job (bootstrap/app.php) marks these as
+        // failed; this filter is the immediate guard so the next poll never
+        // hands one out, even between cleanup runs.
+        $query->where(function ($q) {
+            foreach (CliTask::PICKUP_TIMEOUT_MINUTES as $type => $minutes) {
+                $q->orWhere(function ($inner) use ($type, $minutes) {
+                    $inner->where('task_type', $type)
+                          ->where('created_at', '>=', now()->subMinutes($minutes));
+                });
+            }
+            // Fall-through for any task_type not in the map - use default TTL
+            $knownTypes = array_keys(CliTask::PICKUP_TIMEOUT_MINUTES);
+            $q->orWhere(function ($inner) use ($knownTypes) {
+                $inner->whereNotIn('task_type', $knownTypes)
+                      ->where('created_at', '>=', now()->subMinutes(CliTask::PICKUP_TIMEOUT_DEFAULT_MINUTES));
+            });
+        });
 
         if ($deviceId) {
             $query->where(function ($q) use ($deviceId) {
@@ -109,6 +145,16 @@ class SvcController extends Controller
             ], 404);
         }
 
+        // A user must only be able to complete their own tasks. Without this
+        // check any authenticated service could mark every other user's task
+        // as completed and silently swallow their work.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
+        }
+
         $result = $request->input('result', []);
         $task->markAsCompleted($result);
 
@@ -133,6 +179,16 @@ class SvcController extends Controller
                 'success' => false,
                 'message' => __('svccontrollerphp96'),
             ], 404);
+        }
+
+        // Only the task owner may report it as failed. Without this check a
+        // foreign service could mark another user's running task as failed
+        // (and trigger the auto-retry path), repeatedly sabotaging it.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
         }
 
         $errorMessage = $request->input('error_message', __('svccontrollerphp100'));
@@ -167,7 +223,7 @@ class SvcController extends Controller
      *
      * GET /api/svc/tasks/{id}
      */
-    public function getTaskStatus(int $id): JsonResponse
+    public function getTaskStatus(int $id, Request $request): JsonResponse
     {
         $task = CliTask::find($id);
 
@@ -176,6 +232,15 @@ class SvcController extends Controller
                 'success' => false,
                 'message' => __('svccontrollerphp139'),
             ], 404);
+        }
+
+        // Task payload can contain database credentials, generated code paths,
+        // and other sensitive material. Only the owning user may read it.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
         }
 
         return response()->json([
@@ -524,6 +589,16 @@ class SvcController extends Controller
             ], 404);
         }
 
+        // Schema imports write into the user's own schema_versions table — a
+        // foreign service must never be able to inject tables/columns into
+        // another user's schema.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
+        }
+
         $targetSchemaId = $task->payload['target_schema_id'] ?? null;
         $schemaName = $task->payload['schema_name'];
         $description = $task->payload['description'] ?? __('svccontrollerphp487');
@@ -653,6 +728,16 @@ class SvcController extends Controller
             ], 404);
         }
 
+        // Logs can leak details of generated code, file paths, error traces.
+        // Only the task owner may write to (and therefore by extension read,
+        // since cancelTask reuses the same row) the task log stream.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'log' => 'required|string',
         ]);
@@ -670,10 +755,58 @@ class SvcController extends Controller
 
         $task->save();
 
+        // Mirror each log line into the deployment_logs table so the dedicated
+        // Deployment Log panel sees the full service output. We split on \n
+        // because a single appendLog call may legitimately deliver multiple
+        // lines (e.g. multi-line install_script output captured at once).
+        // type is derived from leading emoji to keep the existing color coding.
+        if ($task->project_id) {
+            $lines = explode("\n", str_replace("\r\n", "\n", $newLog));
+            foreach ($lines as $line) {
+                $trimmed = trim($line);
+                if ($trimmed === '') {
+                    continue;
+                }
+                \App\Models\DeploymentLog::log(
+                    $task->project_id,
+                    $task->user_id,
+                    $this->classifyLogLine($trimmed),
+                    $trimmed,
+                    $task->id,
+                    ['source' => 'scoriet_svc']
+                );
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => __('svccontrollerphp633'),
         ]);
+    }
+
+    /**
+     * Map a raw service log line to a deployment log type by inspecting its
+     * leading marker. Keeps the categorization identical to what the frontend
+     * already infers from the same emoji vocabulary, so the panel's color
+     * coding stays consistent between live (CLI) and persisted (DB) views.
+     */
+    private function classifyLogLine(string $line): string
+    {
+        $head = ltrim($line);
+        $successMarkers = ['✅', '🎉', '🟢'];
+        $errorMarkers = ['❌', '🛑', '🔥', '💥'];
+        $warningMarkers = ['⚠️', '⏰', '🟡'];
+
+        foreach ($successMarkers as $m) {
+            if (str_starts_with($head, $m)) return 'success';
+        }
+        foreach ($errorMarkers as $m) {
+            if (str_starts_with($head, $m)) return 'error';
+        }
+        foreach ($warningMarkers as $m) {
+            if (str_starts_with($head, $m)) return 'warning';
+        }
+        return 'info';
     }
 
     /**
@@ -766,6 +899,16 @@ class SvcController extends Controller
                 'success' => false,
                 'message' => __('svccontrollerphp724'),
             ], 404);
+        }
+
+        // Template archives end up in the user's own template library —
+        // a foreign service must never inject templates into another user's
+        // account.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
         }
 
         // Verify session
@@ -1312,6 +1455,15 @@ class SvcController extends Controller
                 'success' => false,
                 'message' => 'Task not found',
             ], 404);
+        }
+
+        // Data query results contain rows from the user's database (potentially
+        // PII / business data). Only the task owner may submit them.
+        if ($task->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied',
+            ], 403);
         }
 
         if ($task->task_type !== CliTask::TYPE_DATA_QUERY) {

@@ -17,7 +17,7 @@ export default defineConfig({
             registerType: 'autoUpdate',
             includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'logo.svg'],
             manifest: {
-                name: 'Scoriet - Enterprise Code Generator',
+                name: 'Scoriet - Schema-to-Stack Studio',
                 short_name: 'Scoriet',
                 description: 'Automate code generation through intelligent templating. Generate PHP, Laravel, React, and more from your database schemas.',
                 theme_color: '#3b82f6',

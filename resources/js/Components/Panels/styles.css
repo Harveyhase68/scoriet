@@ -262,26 +262,59 @@
 /* Themed Dialog - uses CSS variables from ThemeContext */
 .themed-dialog .p-dialog {
   background: var(--theme-bg-primary) !important;
-  border: 1px solid var(--theme-border-primary) !important;
+  border: 1px solid #6b7280 !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s ease !important;
+}
+
+.themed-dialog .p-dialog:hover {
+  border-color: #000000 !important;
 }
 
 .themed-dialog .p-dialog-header {
-  background: var(--theme-bg-secondary) !important;
-  color: var(--theme-text-primary) !important;
-  border-bottom: 1px solid var(--theme-border-primary) !important;
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+}
+
+.themed-dialog .p-dialog-footer {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+.themed-dialog .p-dialog-content:last-of-type {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+.themed-dialog .p-dialog-header {
+  background: linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%) !important;
+  color: #f3f4f6 !important;
+  border-bottom: none !important;
+  min-height: 56px !important;
+  padding: 0.875rem 1.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.themed-dialog .p-dialog-header .p-dialog-header-icons {
+  display: flex !important;
+  align-items: center !important;
 }
 
 .themed-dialog .p-dialog-header .p-dialog-title {
-  color: var(--theme-text-primary) !important;
+  color: #f3f4f6 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
 }
 
 .themed-dialog .p-dialog-header .p-dialog-header-icon {
-  color: var(--theme-text-secondary) !important;
+  color: #f3f4f6 !important;
 }
 
 .themed-dialog .p-dialog-header .p-dialog-header-icon:hover {
-  background: var(--theme-bg-tertiary) !important;
-  color: var(--theme-text-primary) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
 }
 
 .themed-dialog .p-dialog-content {
@@ -294,27 +327,13 @@
   border-top: 1px solid var(--theme-border-primary) !important;
 }
 
-/* Global PrimeReact Dialog override for dark themes */
-.p-dialog {
-  background: var(--theme-bg-primary, #1e1e1e) !important;
-  border: 1px solid var(--theme-border-primary, #333) !important;
-}
-
-.p-dialog .p-dialog-header {
-  background: var(--theme-bg-secondary, #252525) !important;
-  color: var(--theme-text-primary, #fff) !important;
-  border-bottom: 1px solid var(--theme-border-primary, #333) !important;
-}
-
-.p-dialog .p-dialog-content {
-  background: var(--theme-bg-primary, #1e1e1e) !important;
-  color: var(--theme-text-primary, #fff) !important;
-}
-
-.p-dialog .p-dialog-footer {
-  background: var(--theme-bg-secondary, #252525) !important;
-  border-top: 1px solid var(--theme-border-primary, #333) !important;
-}
+/* PrimeReact Dialog theming lives further down in this file. The earlier
+ * block that used to live here ("Global PrimeReact Dialog override for dark
+ * themes") was fully shadowed by the later "Dialog Styling" + "Dialog Theming
+ * for Role Modal" blocks (every property was re-declared with !important and
+ * equal-or-higher specificity), so it has been removed. See the canonical
+ * rules at "Dialog Styling - uses CSS variables from ThemeContext".
+ */
 
 /* PrimeReact InputText theming */
 .p-inputtext {
@@ -843,27 +862,65 @@
   color: var(--theme-text-muted) !important;
 }
 
-/* Dialog Styling - uses CSS variables from ThemeContext */
+/* Dialog Styling - uses CSS variables from ThemeContext.
+ *
+ * Border carries a transition so the hover rule further down can fade from
+ * "soft grey" to solid black, giving each modal a small but lively pop on
+ * mouse-over (without shifting layout — the width stays 1px in both states).
+ */
 .p-dialog,
 .p-dialog.p-dialog-custom,
 .p-dialog.resource-unlock-modal {
   background: var(--theme-bg-secondary) !important;
-  border: 1px solid var(--theme-border-secondary) !important;
+  border: 1px solid #6b7280 !important;
+  /* Clearer rounding than arya-blue's default 3px so the modal reads as a
+   * card rather than a sharp-edged box, AND so the new grey border has a
+   * visible curve to follow at the corners.
+   * The matching radius on header / footer / last-content below keeps the
+   * inner gradient + backgrounds from rendering rectangles past the curve.
+   * No overflow:hidden here because PrimeReact dropdowns inside dialogs
+   * sometimes render as children (e.g. on iOS Safari) and would get clipped.
+   */
+  border-radius: 8px !important;
+  transition: border-color 0.15s ease !important;
 }
 
-/* Dialog Header - consistent dark blue with light text across all themes */
-.p-dialog .p-dialog-header,
-.p-dialog.p-dialog-custom .p-dialog-header,
-.p-dialog.resource-unlock-modal .p-dialog-header {
-  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%) !important;
-  border-bottom: 1px solid #1e40af !important;
-  color: #f3f4f6 !important;
+.p-dialog:hover {
+  border-color: #000000 !important;
 }
 
-.p-dialog .p-dialog-header .p-dialog-title,
-.p-dialog.p-dialog-custom .p-dialog-header .p-dialog-title,
-.p-dialog.resource-unlock-modal .p-dialog-header .p-dialog-title {
+/* Match the outer .p-dialog corners on the inner blocks so backgrounds
+ * (gradient header, themed footer/content) stop short of the rounded edge
+ * instead of bleeding into the corner and making the border look "cornered". */
+.p-dialog .p-dialog-header {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+}
+
+.p-dialog .p-dialog-footer {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+/* Dialog with no footer: the content is the last block, so it owns the
+ * bottom corners. PrimeReact already does this in the arya-blue theme with
+ * 3px — we override to 8px to match the new outer radius. */
+.p-dialog .p-dialog-content:last-of-type {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+/* All modal headers (incl. legacy .p-dialog-custom / .resource-unlock-modal)
+ * are styled by the single ".p-dialog .p-dialog-header" rule further down.
+ * The dedicated variant block that used to live here became a no-op once both
+ * default and variant ended up with the same gradient, and DevTools showed it
+ * as a confusing duplicate. The two CSS classes remain valid markers in the
+ * HTML for any future per-variant tweak — for now they inherit the default.
+ */
+.p-dialog .p-dialog-header .p-dialog-title {
   color: #f3f4f6 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
 }
 
 .p-dialog .p-dialog-header .p-dialog-header-icon {
@@ -917,7 +974,292 @@
   color: var(--theme-text-primary) !important;
 }
 
-/* InputText in Dialogs */
+/* ==============================================================
+   Vertical TabView — Tabs as a left-side menu.
+   Apply by setting className="p-tabview-vertical" on the PrimeReact
+   <TabView> element (the <TabViewSideMenu> wrapper component does
+   this automatically and additionally manages a drag-resizable width
+   via the --p-tabview-vertical-width custom property).
+
+   Layout strategy: turn the TabView into flex-row, force the nav
+   container into a fixed-width column, then flex the panels region
+   to fill remaining space. PrimeReact's INK BAR underline does not
+   work in a column layout, so we hide it and reuse the active-tab
+   styling itself as the indicator (filled background + right border).
+   ============================================================== */
+.p-tabview.p-tabview-vertical {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  /* The default width lives as a var() FALLBACK on the consumer rules below
+   * (not as a property on this element). Setting it here as a normal
+   * declaration was a subtle bug: a CSS variable declared on .p-tabview
+   * "wins" against the same variable inherited from a parent. The wrapper
+   * component sets --p-tabview-vertical-width on .p-tabview-vertical-wrapper
+   * (its outer element); if we also redeclare it on .p-tabview here, the
+   * inner declaration shadows the inherited one for .p-tabview AND every
+   * descendant — including .p-tabview-nav-container, which then ignored the
+   * dynamic width the wrapper had set.
+   */
+}
+
+/* Nav container (the left "menu") */
+.p-tabview.p-tabview-vertical .p-tabview-nav-container {
+  /* var(..., 240px) supplies the default ONLY when no outer wrapper has
+   * provided a value — when TabViewSideMenu sets it on the wrapper, that
+   * inherited value wins because there's no shadowing declaration in
+   * between. Keep both width and flex-basis in sync. */
+  width: var(--p-tabview-vertical-width, 240px) !important;
+  flex: 0 0 var(--p-tabview-vertical-width, 240px) !important;
+  border-right: 1px solid var(--theme-border-secondary) !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav-content {
+  width: 100% !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  background: var(--theme-bg-tertiary) !important;
+  /* The arya-blue theme draws a horizontal underline-border under the nav.
+   * It looks wrong in a vertical layout (becomes a stray line), so kill it. */
+  border-bottom: none !important;
+  border-right: none !important;
+  /* No padding here anymore — the entire grey nav block is now inset via
+   * the wrapper's --p-tabview-vertical-pad-* variables. Padding inside the
+   * <ul> would only shift the tabs WITHIN the grey block; we want the grey
+   * block itself moved. */
+  padding: 0 !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav li {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav li .p-tabview-nav-link {
+  /* position:relative anchors the absolutely-positioned active indicator
+   * pseudo-element (the blue pill on the left edge of the active tab). */
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  /* Fixed min-height so each tab is exactly the same vertical size whether
+   * its label is icon+text or text-only, single-line or two-line. Without
+   * this, mixing TabPanels that use leftIcon prop with ones that use an
+   * inline <i className="pi pi-..."> made the menu "jump" between clicks. */
+  min-height: 48px !important;
+  padding: 0.5rem 1rem !important;
+  line-height: 1.4 !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  /* No borders in vertical mode — the left-edge pill below is the only
+   * active indicator now. */
+  border: none !important;
+  border-radius: 0 !important;
+  color: var(--theme-text-secondary) !important;
+  background: transparent !important;
+  /* Subtle bottom hairline between tabs so the menu reads as a list. */
+  border-bottom: 1px solid var(--theme-border-primary) !important;
+  /* IMPORTANT: do NOT change font-weight between active/inactive. The bold
+   * weight on hover/active shifted the label width by ~1-2px each time and
+   * combined with the height jump made the next tab move under the cursor
+   * mid-click. Same weight everywhere = stable layout. */
+  font-weight: 500 !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav li:last-child .p-tabview-nav-link {
+  border-bottom: none !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav li .p-tabview-nav-link:hover {
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+/* Active tab: a SUBTLE blue-tinted background (not a full accent fill) so
+ * the blue pill indicator on the left stays clearly visible. A full accent
+ * fill drowned the pill in the same blue. The semi-transparent rgba lets
+ * the menu-container's --theme-bg-tertiary show through, giving the active
+ * tab a slight blue-grey wash rather than a solid block.
+ *
+ * font-weight intentionally stays the same as the inactive tabs (see above).
+ * If you want the active label louder, brighten the color rather than
+ * bolding it — bolding shifts width and the menu starts jumping again.
+ */
+.p-tabview.p-tabview-vertical .p-tabview-nav li.p-highlight .p-tabview-nav-link {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-tabview.p-tabview-vertical .p-tabview-nav li.p-highlight .p-tabview-nav-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  /* 65% of the tab height leaves a small unmarked gap top + bottom, which
+   * is what makes the indicator read as a "pill" instead of a full-height
+   * border strip. */
+  height: 65%;
+  background: #3b82f6;        /* Tailwind blue-500 — the "middle-light blue" */
+  border-radius: 4px;          /* full pill: half of width is enough to fully
+                                * round the ends; 4 ≥ width/2 = 2 ensures
+                                * stadium shape. */
+}
+
+/* PrimeReact renders an ink-bar slider below the active tab. In vertical
+ * mode it would try to animate a tiny horizontal underline — hide it. */
+.p-tabview.p-tabview-vertical .p-tabview-ink-bar {
+  display: none !important;
+}
+
+/* Panels region: fills remaining width, scrolls vertically if content
+ * is taller than the dialog.
+ *
+ * padding-top intentionally near-zero (only 4px) so the first row of the
+ * panel sits right under the dialog header instead of with a ~28px gap.
+ * The dialog itself already supplies enough breathing room via .p-dialog-content
+ * padding; doubling it inside the TabView made the content "float" too far
+ * below the header band. */
+.p-tabview.p-tabview-vertical .p-tabview-panels {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow-y: auto !important;
+  padding: 0.25rem 1.25rem 1rem 1.25rem !important;
+  /* display:flex on the panels container lets each individual .p-tabview-panel
+   * below stretch to fill the available height — required for any TabPanel
+   * whose own content wants to do internal scrolling (e.g. the Fields tab in
+   * TableModal pins a header at the top and scrolls the field list below).
+   * Without this, .p-tabview-panel sizes itself to content and h-full inside
+   * resolves to "100% of nothing" → flex-1 children collapse to zero height. */
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Default: each visible panel grows to AT LEAST the container height, but
+ * never shrinks below its own content. Two cases handled:
+ *
+ *   1) Short content (e.g. a small form):  panel = container height. Empty
+ *      space below content. Nothing scrolls because everything fits.
+ *
+ *   2) Long content (e.g. ProfileModal forms with many fields and a Save
+ *      button at the bottom):  panel = content height (larger than the
+ *      container). The .p-tabview-panels overflow-y:auto above kicks in
+ *      and the user scrolls to reach the bottom.
+ *
+ * flex: 1 0 auto means grow-into-available-space (1) / never shrink (0) /
+ * start at content height (auto). The shrink: 0 is the critical bit —
+ * previously this rule used `flex: 1 1 auto; min-height: 0`, which let
+ * the panel collapse smaller than its content and silently CLIP the
+ * last ~20px (the Save button), since the parent's overflow-y:auto
+ * couldn't see content "outside" the shrunken flex item.
+ */
+.p-tabview.p-tabview-vertical .p-tabview-panels > .p-tabview-panel {
+  flex: 1 0 auto !important;
+  width: 100% !important;
+}
+
+/* Opt-in for tabs that pin a header and run an INTERNAL scroll container
+ * (TableModal Fields, DatabaseExportModal View). Those need the panel to
+ * be EXACTLY the container height so a child with h-full + flex children
+ * (overflow-y:auto on a flex-1 inner div) has a concrete height to anchor
+ * to. Add via:  <TabPanel contentClassName="panel-fill"> ... </TabPanel>
+ *
+ * Behaviour: panel locks to container height; any overflow inside the
+ * tab is the responsibility of the tab content itself (a child div with
+ * overflow-y:auto). The outer .p-tabview-panels scroll stays inactive
+ * for this panel because content can't physically exceed its container.
+ */
+.p-tabview.p-tabview-vertical .p-tabview-panels > .p-tabview-panel.panel-fill {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+/* Wrapper around a vertical TabView. The wrapper itself is relatively
+ * positioned so the absolutely-positioned resizer can sit directly on
+ * the seam between nav-container and panels (rather than as a separate
+ * flex item which would shift the panels region's width away from the
+ * --p-tabview-vertical-width invariant the rest of this block relies on). */
+.p-tabview-vertical-wrapper {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-height: 0;
+  /* Inset around the entire vertical TabView so neither the grey nav band
+   * nor the panels region clings to the modal edge. Padding (not margin)
+   * because the resizer is positioned absolutely against this wrapper's
+   * padding-box — keeping it as padding keeps the resizer math consistent.
+   *
+   * Two custom properties so the resizer's left-offset can stay in sync
+   * via calc() (see TabViewSideMenu.tsx where it's read). */
+  --p-tabview-vertical-pad-left: 15px;
+  --p-tabview-vertical-pad-top: 22px;
+  padding: var(--p-tabview-vertical-pad-top) 0 0 var(--p-tabview-vertical-pad-left);
+  box-sizing: border-box;
+}
+
+.p-tabview-vertical-wrapper > .p-tabview {
+  height: 100%;
+}
+
+/* When a dialog hosts a vertical TabView, force the dialog into flex-column
+ * layout so a fixed height on the <Dialog> reliably stretches the content
+ * area (and therefore the TabView+panels inside it). Without this, some
+ * PrimeReact builds default .p-dialog-content to height:auto, which makes
+ * the panels region too short and re-introduces the "modal jumps height
+ * with each tab" symptom we just fixed.
+ *
+ * :has() selector — modern Chrome / Firefox / Safari support all required
+ * versions for this app. If a user's browser is too old to support :has(),
+ * the rule simply doesn't apply and the layout falls back to PrimeReact's
+ * own defaults (which is the same state we had before this rule).
+ */
+.p-dialog:has(.p-tabview-vertical-wrapper) {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.p-dialog:has(.p-tabview-vertical-wrapper) > .p-dialog-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  /* The vertical TabView and its panels manage their own internal padding;
+   * letting the dialog-content add its own would push the menu down and
+   * leave a dead band at the top. */
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Drag-handle rendered by <TabViewSideMenu>. 6px wide vertical strip
+ * floating right at the nav→panels seam. Translates -3px so the cursor
+ * affordance straddles the divider line itself instead of starting after
+ * it. Subtle by default; brightens on hover and during the drag. */
+.p-tabview-vertical-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* left is set inline by the React wrapper to var(--p-tabview-vertical-width). */
+  width: 6px;
+  margin-left: -3px;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 0.15s ease;
+  user-select: none;
+  z-index: 1;
+}
+
+.p-tabview-vertical-resizer:hover,
+.p-tabview-vertical-resizer.is-dragging {
+  background-color: var(--theme-accent);
+}
+
 .p-dialog .p-inputtext {
   background: var(--theme-bg-primary) !important;
   border-color: var(--theme-border-secondary) !important;
@@ -1831,21 +2173,29 @@ button.landing-lang-selector .p-button-label {
   color: var(--theme-text-primary) !important;
 }
 
-.form-designer-modal .p-dialog-header {
-  background-color: var(--theme-dialog-header) !important;
+/* Form Designer is a fullscreen-style editor — it explicitly OPTS OUT of the
+ * global gradient header so its own toolbar/header system stays subtle.
+ * Selectors are written with .p-dialog.form-designer-modal (specificity 3)
+ * so they outweigh the global ".p-dialog .p-dialog-header" rule (specificity
+ * 2) further down in this file, regardless of source order.
+ */
+.p-dialog.form-designer-modal .p-dialog-header {
+  background: var(--theme-dialog-header) !important;
   color: var(--theme-text-primary) !important;
   border-bottom: none !important;
 }
 
-.form-designer-modal .p-dialog-header .p-dialog-title {
+.p-dialog.form-designer-modal .p-dialog-header .p-dialog-title {
   color: var(--theme-text-primary) !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
 }
 
-.form-designer-modal .p-dialog-header-icons .p-dialog-header-icon {
+.p-dialog.form-designer-modal .p-dialog-header-icons .p-dialog-header-icon {
   color: var(--theme-text-muted) !important;
 }
 
-.form-designer-modal .p-dialog-header-icons .p-dialog-header-icon:hover {
+.p-dialog.form-designer-modal .p-dialog-header-icons .p-dialog-header-icon:hover {
   color: var(--theme-text-primary) !important;
   background-color: var(--theme-bg-hover) !important;
 }
@@ -2209,11 +2559,39 @@ button.landing-lang-selector .p-button-label {
   color: var(--accordion-text, var(--theme-text-primary)) !important;
 }
 
-/* Dialog Theming for Role Modal */
+/* Default dialog theming applied to EVERY PrimeReact Dialog.
+ *
+ * Header is the unified purple gradient — toned-down sibling of the older
+ * #667eea→#764ba2 (auth-modals.css) and #1e3a5f→#2563eb (this file). Both
+ * legacy variants are now redeclared with the same color further up so the
+ * visual is identical regardless of which class the modal happens to carry.
+ *
+ * min-height 56px ensures a consistent header band even when the title is
+ * short; padding 0 1.5rem lets PrimeReact's own flex layout centre the title
+ * vertically without us guessing line-heights.
+ */
 .p-dialog .p-dialog-header {
-  background: var(--theme-bg-tertiary) !important;
-  color: var(--theme-text-primary) !important;
-  border-bottom: 1px solid var(--theme-border-primary) !important;
+  background: linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%) !important;
+  color: #f3f4f6 !important;
+  border-bottom: none !important;
+  /* Symmetric vertical padding keeps the close-button vertically centred
+   * (PrimeReact's flex layout treats the icon container the same as the
+   * title text — equal padding top/bottom = visually centred). min-height
+   * acts as a floor so the header stays consistent even for very short
+   * titles or icon-only headers. */
+  min-height: 56px !important;
+  padding: 0.875rem 1.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* Make sure PrimeReact's icon container itself stays vertically centred —
+ * some PrimeReact themes set it to flex-start which causes the close-button
+ * to ride at the top of the header band. */
+.p-dialog .p-dialog-header .p-dialog-header-icons {
+  display: flex !important;
+  align-items: center !important;
 }
 
 .p-dialog .p-dialog-content {
@@ -2227,12 +2605,12 @@ button.landing-lang-selector .p-button-label {
 }
 
 .p-dialog .p-dialog-header .p-dialog-header-icon {
-  color: var(--theme-text-secondary) !important;
+  color: #f3f4f6 !important;
 }
 
 .p-dialog .p-dialog-header .p-dialog-header-icon:hover {
-  color: var(--theme-text-primary) !important;
-  background: var(--theme-bg-secondary) !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* ============================================================

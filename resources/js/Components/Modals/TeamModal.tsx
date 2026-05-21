@@ -11,6 +11,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { apiClient } from '@/lib/api';
 
 interface TeamSubscriptionInfo {
   active_subscriptions: number;
@@ -116,15 +117,8 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       }
 
       // Load user data
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
 
         const isFreeUser = userData.user_type === 'free' || !userData.user_type;
@@ -135,22 +129,19 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
           setCheckingSubscription(false);
           return;
         }
+      } catch {
+        // ignore - fall through to team subscription check
       }
 
       // Load team subscription info
-      const response = await fetch('/api/teams?all=1', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const data = await apiClient.get('/teams?all=1');
         if (data.subscription_info) {
           setSubscriptionInfo(data.subscription_info);
           setNeedsUnlock(data.subscription_info.needs_unlock);
         }
+      } catch {
+        // ignore
       }
     } catch (err) {
       console.error('Error checking team subscription:', err);
@@ -165,17 +156,8 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
-      const response = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-      }
+      const userData = await apiClient.get('/user');
+      setCurrentUser(userData);
     } catch (err) {
       console.error('Error refreshing credits:', err);
     }
@@ -214,6 +196,25 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
     setFormData(prev => ({ ...prev, name: sanitized }));
   };
 
+  // Live uniqueness check on blur. Team names are globally unique, so we
+  // surface conflicts immediately rather than waiting for the submit 422.
+  // The current team's id is excluded so editing a team and leaving its name
+  // unchanged doesn't flag itself as a duplicate.
+  const handleNameBlur = async () => {
+    const name = formData.name.trim();
+    if (!name) return;
+    if (nameError) return; // already failing a char-set check
+    try {
+      const ignore = team?.id ? `&ignore=${team.id}` : '';
+      const result = await apiClient.get(`/teams/check-name?name=${encodeURIComponent(name)}${ignore}`);
+      if (result?.exists) {
+        setNameError(`"${name}" is already taken. Team names must be globally unique.`);
+      }
+    } catch {
+      // Network/auth failure — silent; the submit-time 422 will catch it.
+    }
+  };
+
   useEffect(() => {
     if (visible && team) {
       // Editing existing team - no unlock needed
@@ -250,26 +251,21 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         throw new Error(t.applicationsmodal66);
       }
 
-      const url = team ? `/api/teams/${team.id}` : '/api/teams';
-      const method = team ? 'PUT' : 'POST';
+      const endpoint = team ? `/teams/${team.id}` : '/teams';
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
+      try {
+        if (team) {
+          await apiClient.put(endpoint, formData);
+        } else {
+          await apiClient.post(endpoint, formData);
+        }
+      } catch (err: any) {
+        const errorData = err?.response?.data || {};
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -307,7 +303,6 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   const hasEnoughCredits = (currentUser?.credits || 0) >= 50;
   const creditsNeeded = 50 - (currentUser?.credits || 0);
   const ownedTeams = subscriptionInfo?.owned_teams || 0;
-  const activeSubscriptions = subscriptionInfo?.active_subscriptions || 0;
 
   return (
     <>
@@ -341,8 +336,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
             </p>
             {ownedTeams > 0 && (
               <p className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-                You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>
-                {activeSubscriptions > 0 && ` (${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''})`}.
+                You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>.
               </p>
             )}
           </div>
@@ -424,6 +418,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
               id="name"
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
+              onBlur={handleNameBlur}
               placeholder="gen_team_96"
               required
               className={nameError ? 'p-invalid' : ''}

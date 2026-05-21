@@ -30,6 +30,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ReportLivePreviewModal from './ReportLivePreviewModal';
+import { apiClient } from '@/lib/api';
 
 // ========== INTERFACES ==========
 
@@ -245,15 +246,6 @@ const FORM_TYPE_OPTIONS = [
 ];
 
 // ========== HELPERS ==========
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-};
 
 const getFieldColorBar = (fieldType: string, isPrimaryKey?: boolean): string => {
   const lower = fieldType.toLowerCase();
@@ -965,9 +957,8 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
   const [projectDateFormats, setProjectDateFormats] = useState<Record<string, { date_format: string; time_format: string }>>({});
   useEffect(() => {
     if (!selectedProject?.id) return;
-    fetch(`/api/projects/${selectedProject.id}/translations`, { headers: getAuthHeaders() })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+    apiClient.get(`/projects/${selectedProject.id}/translations`)
+      .then((data: any) => {
         if (!data) return;
         const fmts: Record<string, { date_format: string; time_format: string }> = {};
         if (Array.isArray(data)) {
@@ -989,9 +980,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
   const loadPatterns = useCallback(async () => {
     try {
-      const res = await fetch('/api/report-patterns?own_only=true', { headers: getAuthHeaders() });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await apiClient.get('/report-patterns?own_only=true');
       const list = Array.isArray(data) ? data : (data.data || []);
       setPatterns(list);
     } catch {
@@ -1004,9 +993,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
   const loadSchemas = useCallback(async () => {
     if (!selectedProject) return;
     try {
-      const res = await fetch(`/api/projects/${selectedProject.id}/schemas`, { headers: getAuthHeaders() });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await apiClient.get(`/projects/${selectedProject.id}/schemas`);
       setSchemas(Array.isArray(data) ? data : (data.data || []));
     } catch {
       // silent
@@ -1017,9 +1004,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
   const loadTablesForSchema = useCallback(async (schemaId: number) => {
     try {
-      const versionsRes = await fetch(`/api/floating-schemas/${schemaId}/versions`, { headers: getAuthHeaders() });
-      if (!versionsRes.ok) return;
-      const versionsData = await versionsRes.json();
+      const versionsData = await apiClient.get(`/floating-schemas/${schemaId}/versions`);
       const versions = Array.isArray(versionsData) ? versionsData : (versionsData.data || versionsData.versions || []);
       if (versions.length === 0) {
         setTables([]);
@@ -1030,14 +1015,13 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
           Number(a.version_number) > Number(b.version_number) ? a : b,
         versions[0],
       );
-      const tablesRes = await fetch(`/api/schema-versions/${latestVersion.id}/tables`, { headers: getAuthHeaders() });
-      if (!tablesRes.ok) {
+      try {
+        const tablesData = await apiClient.get(`/schema-versions/${latestVersion.id}/tables`);
+        const tablesArray = Array.isArray(tablesData) ? tablesData : (tablesData.data || []);
+        setTables(tablesArray);
+      } catch {
         setTables([]);
-        return;
       }
-      const tablesData = await tablesRes.json();
-      const tablesArray = Array.isArray(tablesData) ? tablesData : (tablesData.data || []);
-      setTables(tablesArray);
     } catch {
       setTables([]);
     }
@@ -1047,12 +1031,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
   const loadLayoutElements = useCallback(async (formId: number, tableId: number) => {
     try {
-      const res = await fetch(`/api/report-layout/${formId}/elements?table_id=${tableId}`, { headers: getAuthHeaders() });
-      if (!res.ok) {
-        setLayoutElements([]);
-        return;
-      }
-      const data = await res.json();
+      const data = await apiClient.get(`/report-layout/${formId}/elements?table_id=${tableId}`);
       setLayoutElements(Array.isArray(data) ? data : (data.data || []));
     } catch {
       setLayoutElements([]);
@@ -1083,9 +1062,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/report-patterns/${selectedPatternId}`, { headers: getAuthHeaders() });
-        if (!res.ok) return;
-        const json = await res.json();
+        const json = await apiClient.get(`/report-patterns/${selectedPatternId}`);
         const pattern: ReportPattern = json.data || json;
         if (cancelled || !pattern?.id) return;
         setPinnedPattern(pattern);
@@ -1141,9 +1118,12 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
     try {
       // Load the full pattern with forms and elements
-      const patRes = await fetch(`/api/report-patterns/${selectedPatternId}`, { headers: getAuthHeaders() });
-      if (!patRes.ok) throw new Error('Failed to load report pattern');
-      const patData = await patRes.json();
+      let patData: any;
+      try {
+        patData = await apiClient.get(`/report-patterns/${selectedPatternId}`);
+      } catch {
+        throw new Error('Failed to load report pattern');
+      }
       const pattern: ReportPattern = patData.data || patData;
       setCurrentPattern(pattern);
 
@@ -1166,10 +1146,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
       // Copy pattern controls as editable layout elements (if not yet copied)
       try {
-        await fetch(`/api/report-layout/${matchingForm.id}/copy-pattern-controls`, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-        });
+        await apiClient.post(`/report-layout/${matchingForm.id}/copy-pattern-controls`);
       } catch {
         // Non-critical — continue loading
       }
@@ -1823,18 +1800,15 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
         is_visible: el.is_visible,
       }));
 
-      const res = await fetch(`/api/report-layout/${currentForm.id}/elements`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ elements: payload, table_id: selectedTableId }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || 'Save failed');
+      let data: any;
+      try {
+        data = await apiClient.put(`/report-layout/${currentForm.id}/elements`, {
+          elements: payload,
+          table_id: selectedTableId,
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || 'Save failed');
       }
-
-      const data = await res.json();
       const savedElements = Array.isArray(data) ? data : (data.data || data.elements || []);
       if (savedElements.length > 0) {
         setLayoutElements(savedElements);
@@ -1863,20 +1837,22 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/report-layout/${currentForm.id}/auto-place`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
+      let data: any;
+      let serverPlaced = false;
+      try {
         // Pass language so the backend picks the right caption for the
         // persisted `caption` column; the full caption_labels map is always
         // snapshotted from schema_translations regardless of this value.
-        body: JSON.stringify({
+        data = await apiClient.post(`/report-layout/${currentForm.id}/auto-place`, {
           table_id: selectedTableId,
           language: selectedLanguage,
-        }),
-      });
+        });
+        serverPlaced = true;
+      } catch {
+        serverPlaced = false;
+      }
 
-      if (res.ok) {
-        const data = await res.json();
+      if (serverPlaced) {
         const elements = Array.isArray(data) ? data : (data.data || data.elements || []);
         setLayoutElements(elements);
         setHasUnsavedChanges(true);
@@ -1949,10 +1925,7 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
     // Delete from server if it has an id
     if (el.id) {
       try {
-        await fetch(`/api/report-layout/elements/${el.id}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders(),
-        });
+        await apiClient.delete(`/report-layout/elements/${el.id}`);
       } catch {
         // Continue with local delete
       }

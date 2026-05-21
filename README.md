@@ -1,15 +1,18 @@
 <div align="center">
 
-# Scoriet V 1.0.0.2 Latest Changes from 21.4.2026
+# Scoriet V 1.0.0.3 Latest Changes from 21.5.2026
 
-### Enterprise Code Generator with Intelligent Templating
+### Schema-to-Stack Studio with Intelligent Templating
 
-![Scoriet - Enterprise Code Generator](github-social-preview.png)
+![Scoriet - Schema-to-Stack Studio](github-social-preview-new.png)
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-red.svg?style=flat-square&logo=laravel)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?style=flat-square&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-purple.svg?style=flat-square)](https://inertiajs.com)
+![Docker Ready](https://img.shields.io/badge/docker-ready-success?logo=docker)
+![Self Hosted](https://img.shields.io/badge/self--hosted-supported-blue)
+![AI Ready](https://img.shields.io/badge/AI-ready-purple)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/agpl-3.0)
 [![Development Status](https://img.shields.io/badge/Status-%20Ready%20For%20Testing-green.svg?style=flat-square)](https://github.com/harveyhase68/scoriet)
 
@@ -332,6 +335,94 @@ php artisan passport:client --personal --name="Scoriet Personal Access Client"
 # SCORIET_DEMO=true     # Disables registration, enables demo mode
 # VITE_SCORIET_DEMO="${SCORIET_DEMO}"
 ```
+
+## 🐳 Docker Live Demo
+
+Scoriet ships with a self-contained Docker setup intended as a **one-command live demo** of the running application. It is deliberately *not* a development environment and *not* a production build — it is an in-between that lets you spin up a working Scoriet instance next to your existing dev environment without conflicts.
+
+### What you get
+
+```bash
+docker compose up
+# Open http://localhost:8888
+```
+
+That's it. The container provisions everything on first start: database wait-loop, migrations, Passport key generation, an idempotent password-grant OAuth client, and a fresh Vite production build of the frontend. Apache serves the prebuilt assets from `public/build/`. A separate `mysql:8.0` container holds the database.
+
+### Why port 8888 (and 3307)
+
+The setup is designed to **coexist with a local development environment** — you can run WAMP/XAMPP/`composer run dev` on the host (using ports 80/8000/5173/3306) and the Docker demo on the same machine without collisions. The `docker-compose.yml` maps:
+
+- App container `:80` → host `:8888`
+- DB container `:3306` → host `:3307`
+
+So `localhost:8888` is the obvious "I'm hitting the Docker instance" indicator.
+
+### What this setup is and isn't
+
+| Aspect | Configuration | Type |
+|---|---|---|
+| Web server | Apache + PHP 8.4 (production-style) | prod-like |
+| Frontend | `vite build --mode docker` → static `public/build` | prod-like |
+| Composer | `--no-dev --optimize-autoloader` | prod-like |
+| `APP_ENV` | `local` | dev |
+| `APP_DEBUG` | `true` (full stacktraces in browser) | dev |
+| `LOG_LEVEL` | `debug` | dev |
+| OAuth secret | hardcoded in image (development-only value) | dev |
+| Frontend rebuild | every container start (slow first start, instant DB visibility) | hybrid |
+
+**Use this for**: trying Scoriet, demoing it, debugging issues against a clean state, training, screenshots.
+
+**Do not use this for**:
+- Active code editing — the frontend is a static build per container start; there is no Vite HMR. Edit-reload cycles require a full container restart. Use `composer run dev` on the host for that.
+- Internet-facing deployments — `APP_DEBUG=true`, hardcoded OAuth credentials, default DB password (`admin`), and no HTTPS termination make this unsafe to expose publicly.
+
+### Files involved
+
+- [`Dockerfile`](Dockerfile) — PHP 8.4 + Apache base image, dependency install
+- [`docker-compose.yml`](docker-compose.yml) — App + MySQL services, port mapping, env-file mount
+- [`entrypoint.sh`](entrypoint.sh) — runtime provisioning (DB wait, migrate, Passport setup, Vite build)
+- [`.env.docker`](.env.docker) — environment template, mounted read-only into the container as `.env`
+- [`.dockerignore`](.dockerignore) — excludes other `.env.*` files (so production credentials never leak into the image) and `public/hot` (so the container doesn't accidentally proxy assets to a host Vite dev server)
+
+### Converting to a real DEV + Vite environment
+
+If you want hot-reloading inside Docker (edit code on host, see changes instantly), the changes you'd make are:
+
+1. **Bind-mount the source** in `docker-compose.yml`:
+   ```yaml
+   volumes:
+     - ./:/var/www/scoriet
+     - ./.env.docker:/var/www/scoriet/.env:ro
+   ```
+2. **Run Vite in dev mode** in `entrypoint.sh` instead of `npm run build`:
+   ```bash
+   npm run dev -- --host 0.0.0.0 &
+   ```
+3. **Expose Vite's port** in `docker-compose.yml`: `- "5173:5173"`
+4. **Install dev dependencies** in the `Dockerfile`: drop `--no-dev` from `composer install`.
+5. Optional: separate file as `docker-compose.dev.yml` so the demo setup stays untouched.
+
+### Converting to a real PROD build
+
+If you want a production-ready image suitable for deploying behind a reverse proxy:
+
+1. **Tighten env** in `.env.docker` (or a dedicated `.env.production`):
+   - `APP_ENV=production`
+   - `APP_DEBUG=false`
+   - `LOG_LEVEL=warning`
+2. **Build the frontend at image-build time**, not on container start. Move `npm install && npm run build` into the `Dockerfile` and remove the runtime build step from `entrypoint.sh`. This makes container startup near-instant.
+3. **Bake the Laravel caches**: append to the `Dockerfile`:
+   ```dockerfile
+   RUN php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache
+   ```
+4. **Replace hardcoded OAuth credentials** in `entrypoint.sh` with values injected via Docker secrets or your secret manager — the current values are intentionally for development only.
+5. **Drop default passwords** from `docker-compose.yml` (the `admin` MySQL root password, the demo OAuth secret).
+6. **Add a reverse proxy** (Traefik / Nginx / Caddy) for HTTPS termination; remove the `8888:80` mapping in favor of internal-only networking.
+7. **Run the queue as a separate service** (separate container or `supervisord`) instead of relying on `composer run dev`'s `queue:listen`.
+8. **Remove `chown -R` at runtime** — set ownership at image build time and run Apache as a non-root user where possible.
+
+For most production scenarios, the practical approach is to fork `Dockerfile` → `Dockerfile.prod` and `docker-compose.yml` → `docker-compose.prod.yml` rather than parameterising one set of files for both.
 
 ## 🧪 Demo Access
 

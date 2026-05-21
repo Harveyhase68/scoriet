@@ -287,7 +287,10 @@ class FormDesignerController extends Controller
             return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp267')], 403);
         }
 
-        $newName = $request->input('name', $formSet->name . __('formdesignercontrollerphp270'));
+        // Let the model derive a unique "_copy" / "_copy_<n>" name when the
+        // caller didn't provide one; keeps suffixes consistent across all
+        // clone flows (Report Pattern, Form Set, Team Role, Code Adjustment).
+        $newName = $request->input('name');
         $clone = $formSet->cloneForUser($user->id, $newName);
 
         return response()->json([

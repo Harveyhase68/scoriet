@@ -13,6 +13,7 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -80,21 +81,9 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
   const loadCurrentUser = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUserId(userData.id);
-        setCurrentUser(userData);
-      }
+      const userData = await apiClient.get('/user');
+      setCurrentUserId(userData.id);
+      setCurrentUser(userData);
     } catch {
       // Error loading current user
     }
@@ -103,25 +92,13 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
   // Check if user needs credits for cloning (free users with max projects)
   const checkSubscription = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
       // Load user's projects to check subscription status
-      const response = await fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.subscription_info) {
-          setSubscriptionInfo(data.subscription_info);
-          // Free users need credits if they're at their limit
-          const isFreeUser = currentUser?.user_type === 'free' || !currentUser?.user_type;
-          setNeedsCredits(isFreeUser && data.subscription_info.needs_unlock);
-        }
+      const data = await apiClient.get('/projects');
+      if (data.subscription_info) {
+        setSubscriptionInfo(data.subscription_info);
+        // Free users need credits if they're at their limit
+        const isFreeUser = currentUser?.user_type === 'free' || !currentUser?.user_type;
+        setNeedsCredits(isFreeUser && data.subscription_info.needs_unlock);
       }
     } catch (err) {
       console.error(t.publicprojectspanel127_2, err);
@@ -132,27 +109,14 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
     try {
       setLoading(true);
       setError('');
-      
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setError(t.applicationsmodal66);
-        return;
-      }
 
-      const response = await fetch('/api/projects?public=1', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get('/projects?public=1');
+      } catch {
         throw new Error(t.publicprojectspanel97);
       }
-
-      const data = await response.json();
       setProjects(data.projects || []);
-
     } catch (error) {
       setError(error instanceof Error ? error.message : t.publicprojectspanel104);
     } finally {
@@ -201,60 +165,45 @@ export default function PublicProjectsPanel({ isActive }: TabPanelProps) {
 
     setCloning(projectToClone.id);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          name: cloneForm.name,
-          description: cloneForm.description,
-          original_project_id: projectToClone.id,
-          creator_user_id: projectToClone.owner.id, // Credit to original creator
-          is_clone: true,
-          is_public: cloneForm.is_public,
-        }),
+      await apiClient.post('/projects', {
+        name: cloneForm.name,
+        description: cloneForm.description,
+        original_project_id: projectToClone.id,
+        creator_user_id: projectToClone.owner.id, // Credit to original creator
+        is_clone: true,
+        is_public: cloneForm.is_public,
       });
 
-      if (response.ok) {
-        await response.json(); // Consume response but don't use data
-        setShowCloneModal(false);
-        setProjectToClone(null);
-        setCloneForm({ name: '', description: '', is_public: false });
-        setCloneError('');
+      setShowCloneModal(false);
+      setProjectToClone(null);
+      setCloneForm({ name: '', description: '', is_public: false });
+      setCloneError('');
 
-        // Refresh the projects list to show the new cloned project
-        await loadPublicProjects();
+      // Refresh the projects list to show the new cloned project
+      await loadPublicProjects();
 
-        // Also refresh the global project dropdown
-        await loadGlobalProjects();
+      // Also refresh the global project dropdown
+      await loadGlobalProjects();
 
-        // Reload user to update credits
-        await loadCurrentUser();
+      // Reload user to update credits
+      await loadCurrentUser();
 
-        // Dispatch event to notify other components (like navigation) about credit change
-        if (needsCredits) {
-          window.dispatchEvent(new CustomEvent('creditsChanged'));
-        }
-
-        alert(`Project "${cloneForm.name}"${t.publicprojectspanel244}`);
-      } else {
-        const errorData = await response.json();
-
-        // Handle insufficient credits error
-        if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
-          setCloneError(`${t.publicprojectspanel250}${errorData.required_credits}${t.publicprojectspanel250_2}${errorData.current_credits}.`);
-          setNeedsCredits(true);
-        } else {
-          setCloneError(errorData.message || t.publicprojectspanel183);
-        }
+      // Dispatch event to notify other components (like navigation) about credit change
+      if (needsCredits) {
+        window.dispatchEvent(new CustomEvent('creditsChanged'));
       }
-    } catch (error) {
-      setCloneError(error instanceof Error ? error.message : t.publicprojectspanel183);
+
+      alert(`Project "${cloneForm.name}"${t.publicprojectspanel244}`);
+    } catch (error: any) {
+      const errorData = error?.response?.data;
+
+      // Handle insufficient credits error
+      if (errorData?.error_code === 'INSUFFICIENT_CREDITS') {
+        setCloneError(`${t.publicprojectspanel250}${errorData.required_credits}${t.publicprojectspanel250_2}${errorData.current_credits}.`);
+        setNeedsCredits(true);
+      } else {
+        setCloneError(errorData?.message || (error instanceof Error ? error.message : t.publicprojectspanel183));
+      }
     } finally {
       setCloning(null);
     }

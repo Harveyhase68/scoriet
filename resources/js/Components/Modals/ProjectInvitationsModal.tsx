@@ -10,6 +10,7 @@ import { Tag } from 'primereact/tag';
 import { Message } from 'primereact/message';
 import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 interface ProjectInvitationsModalProps {
   visible: boolean;
@@ -74,32 +75,24 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       // NEVER clear success message during reload - let it auto-expire
       // setSuccess(''); // <-- REMOVED
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
       }
 
-      const response = await fetch(`/api/projects/${project.id}/invitations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.status === 403) {
-        // User doesn't have permission to manage invitations — not an error, just no access
-        setInvitations([]);
-        return;
-      }
-
-      if (!response.ok) {
+      try {
+        const data = await apiClient.get(`/projects/${project.id}/invitations`);
+        // API returns invitations directly, not wrapped in { invitations: [...] }
+        setInvitations(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        if (err?.response?.status === 403) {
+          // User doesn't have permission to manage invitations — not an error, just no access
+          setInvitations([]);
+          return;
+        }
         throw new Error(t.projectinvitationsmodal86);
       }
-
-      const data = await response.json();
-      // API returns invitations directly, not wrapped in { invitations: [...] }
-      setInvitations(Array.isArray(data) ? data : []);
     } catch (error) {
       setError(error instanceof Error ? error.message : t.projectinvitationsmodal93);
     } finally {
@@ -124,30 +117,22 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       setError('');
       setSuccess('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) {
         setError(t.applicationsmodal66);
         return;
       }
 
-      const response = await fetch(`/api/projects/${project.id}/invitations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      let data: any;
+      try {
+        data = await apiClient.post(`/projects/${project.id}/invitations`, {
           email: inviteForm.email.trim(),
           role: inviteForm.role,
           message: inviteForm.message.trim() || null,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || t.manageteammodal129);
+        });
+      } catch (err: any) {
+        const errorData = err?.response?.data;
+        throw new Error(errorData?.message || t.manageteammodal129);
       }
 
       setSuccess(t.projectinvitationsmodal148);
@@ -198,18 +183,11 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       icon: 'pi pi-exclamation-triangle',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) return;
 
-          const response = await fetch(`/api/projects/${project.id}/invitations/${invitation.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-          });
-
-          if (response.ok) {
+          try {
+            await apiClient.delete(`/projects/${project.id}/invitations/${invitation.id}`);
             setSuccess(t.projectinvitationsmodal220);
             loadInvitations();
 
@@ -217,9 +195,9 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             setTimeout(() => {
               setSuccess('');
             }, 4000);
-          } else {
-            const errorData = await response.json();
-            setError(errorData.message || t.manageteammodal206);
+          } catch (err: any) {
+            const errorData = err?.response?.data;
+            setError(errorData?.message || t.manageteammodal206);
           }
         } catch (error) {
           setError(error instanceof Error ? error.message : t.manageteammodal206);
@@ -238,25 +216,17 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
       icon: 'pi pi-send',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (!token) return;
 
-          // Send a new invitation with the same details
-          const response = await fetch(`/api/projects/${project.id}/invitations`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+          try {
+            // Send a new invitation with the same details
+            await apiClient.post(`/projects/${project.id}/invitations`, {
               email: invitation.invited_email,
               role: invitation.role,
               message: invitation.message || t.projectinvitationsmodal261,
-            }),
-          });
+            });
 
-          if (response.ok) {
             setSuccess(t.projectinvitationsmodal266);
             loadInvitations();
 
@@ -264,9 +234,9 @@ export default function ProjectInvitationsModal({ visible, onHide, project }: Pr
             setTimeout(() => {
               setSuccess('');
             }, 4000);
-          } else {
-            const errorData = await response.json();
-            setError(errorData.message || t.projectinvitationsmodal275);
+          } catch (err: any) {
+            const errorData = err?.response?.data;
+            setError(errorData?.message || t.projectinvitationsmodal275);
           }
         } catch (error) {
           setError(error instanceof Error ? error.message : t.projectinvitationsmodal275);

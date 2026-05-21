@@ -58,6 +58,27 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('projects:clear-stale-locks')
             ->everyFiveMinutes()
             ->withoutOverlapping();
+
+        // ⌛ Auto-fail pending CLI tasks whose pickup window has passed.
+        // The scoriet-svc queue endpoint already filters these out at read
+        // time, but without this cleanup they would sit in the DB as
+        // "pending" forever and confuse status views. Per-type TTLs come
+        // from CliTask::PICKUP_TIMEOUT_MINUTES.
+        $schedule->call(function () {
+            foreach (\App\Models\CliTask::PICKUP_TIMEOUT_MINUTES as $type => $minutes) {
+                \App\Models\CliTask::query()
+                    ->where('status', \App\Models\CliTask::STATUS_PENDING)
+                    ->where('task_type', $type)
+                    ->where('created_at', '<', now()->subMinutes($minutes))
+                    ->update([
+                        'status'        => \App\Models\CliTask::STATUS_FAILED,
+                        'failed_at'     => now(),
+                        'error_message' => "Task expired - service did not pick it up within {$minutes} minutes",
+                    ]);
+            }
+        })->name('cli-tasks-expire-stale')
+          ->everyFiveMinutes()
+          ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
@@ -84,5 +105,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // For non-browser entry points (CLI client, JSON API consumers) we
+        // never want to fall through to Laravel's default web-redirect on
+        // an AuthenticationException - that would land the caller on the
+        // login HTML page with status 200 (after the redirect is followed),
+        // which a JSON client cannot parse and which masks the real reason.
+        // Force a clean 401 JSON response on every /cli/* and /api/* path
+        // and on any other route that explicitly expects JSON.
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
+            if ($request->is('cli/*') || $request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Unauthenticated.',
+                ], 401);
+            }
+            // Fall through to default redirect behaviour for browser / web routes
+            return null;
+        });
     })->create();

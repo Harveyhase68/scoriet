@@ -6,6 +6,7 @@ import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 // ========== INTERFACES ==========
 
@@ -108,11 +109,6 @@ interface TemplateVariable {
 }
 
 // ========== HELPERS ==========
-
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
-  return { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
-}
 
 const esc = (s: string | undefined | null) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -442,29 +438,31 @@ const ProjectPrintModal: React.FC<ProjectPrintModalProps> = ({ visible, onHide, 
       }
       return;
     }
-    const headers = getAuthHeaders();
     setLoading(true);
 
     const fetchAll = async () => {
+      // Each endpoint catches its own failure so a single 4xx doesn't blank
+      // the whole preview — useful e.g. when /git-settings 404s on a project
+      // without Git integration.
+      const tryGet = (endpoint: string) => apiClient.get(endpoint).catch(() => null);
+
       try {
         // Parallel fetch all data
-        const [projRes, membersRes, schemasRes, templatesRes, settingsRes, gitRes, ftpRes] = await Promise.all([
-          fetch(`/api/projects/${projectId}`, { headers }),
-          fetch(`/api/projects/${projectId}/members`, { headers }),
-          fetch(`/api/projects/${projectId}/schemas`, { headers }),
-          fetch(`/api/projects/${projectId}/template-usages`, { headers }),
-          fetch(`/api/projects/${projectId}/settings`, { headers }),
-          fetch(`/api/projects/${projectId}/git-settings`, { headers }).catch(() => null),
-          fetch(`/api/projects/${projectId}/ftp-settings`, { headers }).catch(() => null),
+        const [projData, membersData, schemasData, templatesData, settingsData, gitData, ftpData] = await Promise.all([
+          tryGet(`/projects/${projectId}`),
+          tryGet(`/projects/${projectId}/members`),
+          tryGet(`/projects/${projectId}/schemas`),
+          tryGet(`/projects/${projectId}/template-usages`),
+          tryGet(`/projects/${projectId}/settings`),
+          tryGet(`/projects/${projectId}/git-settings`),
+          tryGet(`/projects/${projectId}/ftp-settings`),
         ]);
 
-        if (projRes.ok) {
-          const d = await projRes.json();
-          setProject(d.project || d.data || d);
+        if (projData) {
+          setProject(projData.project || projData.data || projData);
         }
-        if (membersRes.ok) {
-          const d = await membersRes.json();
-          const raw = d.members || d.data || (Array.isArray(d) ? d : []);
+        if (membersData) {
+          const raw = membersData.members || membersData.data || (Array.isArray(membersData) ? membersData : []);
           // API returns {user_id, role, user: {name, email}} - flatten to {name, email, role}
           setMembers(raw.map((m: Record<string, unknown>) => ({
             id: m.user_id || m.id,
@@ -473,9 +471,8 @@ const ProjectPrintModal: React.FC<ProjectPrintModalProps> = ({ visible, onHide, 
             role: m.role || 'member',
           })));
         }
-        if (schemasRes.ok) {
-          const d = await schemasRes.json();
-          const raw = d.schemas || d.data || (Array.isArray(d) ? d : []);
+        if (schemasData) {
+          const raw = schemasData.schemas || schemasData.data || (Array.isArray(schemasData) ? schemasData : []);
           setSchemas(raw.map((s: Record<string, unknown>) => ({
             id: s.id as number,
             name: (s.name || '') as string,
@@ -484,25 +481,21 @@ const ProjectPrintModal: React.FC<ProjectPrintModalProps> = ({ visible, onHide, 
             association_type: ((s.pivot as Record<string, unknown>)?.association_type || s.association_type || 'linked') as string,
           })));
         }
-        if (templatesRes.ok) {
-          const d = await templatesRes.json();
-          setTemplates(d.templates || d.data || (Array.isArray(d) ? d : []));
+        if (templatesData) {
+          setTemplates(templatesData.templates || templatesData.data || (Array.isArray(templatesData) ? templatesData : []));
         }
-        if (settingsRes.ok) {
-          const d = await settingsRes.json();
+        if (settingsData) {
           setDeploySettings({
-            protected_files: d.protected_files || [],
-            install_script: d.install_script || [],
-            update_script: d.update_script || [],
+            protected_files: settingsData.protected_files || [],
+            install_script: settingsData.install_script || [],
+            update_script: settingsData.update_script || [],
           });
         }
-        if (gitRes && gitRes.ok) {
-          const d = await gitRes.json();
-          setGitSettings(d.settings || d.data || d);
+        if (gitData) {
+          setGitSettings(gitData.settings || gitData.data || gitData);
         }
-        if (ftpRes && ftpRes.ok) {
-          const d = await ftpRes.json();
-          setFtpSettings(d.settings || d.data || d);
+        if (ftpData) {
+          setFtpSettings(ftpData.settings || ftpData.data || ftpData);
         }
 
         // Template variables (needs template list first)

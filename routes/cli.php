@@ -26,8 +26,14 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes (no authentication required)
 Route::prefix('auth')->group(function () {
-    // Initial authorization - generates Personal Access Token
-    Route::post('/authorize', [AuthController::class, 'authorize']);
+    // Initial authorization - generates Personal Access Token (or 2FA challenge)
+    Route::post('/authorize', [AuthController::class, 'authorize'])
+        ->middleware('throttle:10,1'); // 10 attempts per minute per IP
+    // Verify 2FA code from a /authorize 'two_factor_required' response.
+    // Lower limit because the per-session counter (5) is the primary defence;
+    // the IP-throttle is a second line that catches attackers cycling sessions.
+    Route::post('/verify-2fa', [AuthController::class, 'verifyTwoFactor'])
+        ->middleware('throttle:30,1'); // 30 attempts per minute per IP
 });
 
 // Protected routes (require Personal Access Token)

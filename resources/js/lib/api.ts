@@ -1,4 +1,6 @@
 // resources/js/lib/api.ts
+import { getRefreshToken, setTokens } from '@/utils/auth';
+
 type DisplayState = 'enabled' | 'disabled' | 'grayed' | 'invisible' | 'excluded';
 type GenerationMode = 'full' | 'code_only' | 'template_only' | 'reference_only' | 'excluded';
 
@@ -64,7 +66,11 @@ interface SchemaVersion {
 
 class ApiClient {
   private baseURL = '/api';
-  
+
+  // Singleton lock: when several requests get 401 in parallel, only one
+  // of them performs the refresh; the others await the same Promise.
+  private refreshPromise: Promise<string | null> | null = null;
+
   private async getAuthToken(): Promise<string | null> {
     // First check localStorage (Remember Me)
     let token = localStorage.getItem('access_token');
@@ -92,6 +98,92 @@ class ApiClient {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Exchange the stored refresh_token for a new access_token + refresh_token
+   * pair via the OAuth2 refresh_token grant. Returns the new access token
+   * on success, or null if no refresh token exists or the exchange failed.
+   *
+   * Uses a singleton lock: parallel callers share the same in-flight Promise
+   * so the backend only sees one refresh request even if many requests get
+   * 401 at the same moment.
+   */
+  private async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        const refreshToken = getRefreshToken();
+        if (!refreshToken) return null;
+
+        const clientId = import.meta.env.VITE_PASSPORT_CLIENT_ID || '1';
+        const clientSecret = import.meta.env.VITE_PASSPORT_CLIENT_SECRET || '';
+
+        const response = await fetch(`${this.baseURL}/oauth/token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+            client_id: clientId,
+            client_secret: clientSecret,
+          }),
+        });
+
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        if (!data?.access_token) return null;
+
+        // Refresh-token rotation: store the new pair in the same storage
+        setTokens(data.access_token, data.refresh_token ?? null);
+
+        return data.access_token as string;
+      } catch {
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
+  /**
+   * Public 401 handler for direct fetch() callers that aren't yet migrated
+   * to apiClient.request(). The flow is:
+   *   1. Skip if a logout is already in progress (don't interfere).
+   *   2. Try a refresh - the singleton lock ensures parallel callers all
+   *      share one in-flight refresh request, so the backend only sees one
+   *      grant_type=refresh_token call no matter how many fetches got 401.
+   *   3. If refresh succeeds, return true so the caller knows the next
+   *      request will work.
+   *   4. If refresh fails, run the same handleAuthError cleanup that
+   *      apiClient.request() uses (clears tokens, dispatches the
+   *      sessionForciblyEnded event exactly once) and return false.
+   *
+   * IMPORTANT: callers must NOT clear tokens themselves any more - this
+   * method owns that responsibility now. Otherwise the refresh has nothing
+   * to refresh with.
+   */
+  async tryRefreshOrLogout(): Promise<boolean> {
+    if (localStorage.getItem('logout_in_progress')) {
+      return false;
+    }
+
+    const newToken = await this.refreshAccessToken();
+    if (newToken) {
+      return true;
+    }
+
+    await this.handleAuthError();
+    return false;
   }
 
   private async handleAuthError(): Promise<void> {
@@ -125,7 +217,7 @@ class ApiClient {
     }
   }
 
-  async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+  async request(endpoint: string, options: RequestInit = {}, _isRetry: boolean = false): Promise<any> {
     const token = await this.getAuthToken();
 
     // If no token, throw authentication error immediately
@@ -144,6 +236,17 @@ class ApiClient {
     });
 
     if (response.status === 401) {
+      // First 401: try to refresh the access token and retry once.
+      // _isRetry guards against an infinite loop if the refreshed token
+      // is also rejected (e.g. user got revoked server-side).
+      if (!_isRetry) {
+        const newToken = await this.refreshAccessToken();
+        if (newToken) {
+          return this.request(endpoint, options, true);
+        }
+      }
+
+      // Refresh failed (or this was already the retry) - clean logout.
       await this.handleAuthError();
       throw new Error('Authentication expired - please log in again');
     }
@@ -151,6 +254,60 @@ class ApiClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw { response: { status: response.status, data: errorData }, message: `API Error: ${response.status} ${response.statusText}` };
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Sibling of request() for the /cli/* route group (routes/cli.php).
+   *
+   * The CLI route group is mounted at the application root (/cli/...) instead
+   * of under /api/, so request()'s hardcoded /api prefix can't reach it.
+   * Everything else — auth header, 401-refresh-retry, JSON decoding, error
+   * shape — matches request() exactly so callers get one consistent contract.
+   *
+   * Endpoint is everything AFTER /cli — e.g. cliRequest('/svc/tasks/active')
+   * fetches /cli/svc/tasks/active. Always start the endpoint with a slash so
+   * the resulting URL is well-formed regardless of how the consumer composes
+   * the path.
+   *
+   * Why a separate method rather than a baseURL parameter on request():
+   * request() already has hundreds of call sites; adding a third arg would
+   * either change every signature or sit in an awkward middle position.
+   * A sibling method keeps both call surfaces self-documenting.
+   */
+  async cliRequest(endpoint: string, options: RequestInit = {}, _isRetry: boolean = false): Promise<any> {
+    const token = await this.getAuthToken();
+
+    if (!token) {
+      throw new Error('Authentication required - please login');
+    }
+
+    const response = await fetch(`/cli${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+
+    if (response.status === 401) {
+      if (!_isRetry) {
+        const newToken = await this.refreshAccessToken();
+        if (newToken) {
+          return this.cliRequest(endpoint, options, true);
+        }
+      }
+      await this.handleAuthError();
+      throw new Error('Authentication expired - please log in again');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw { response: { status: response.status, data: errorData }, message: `CLI API Error: ${response.status} ${response.statusText}` };
     }
 
     return response.json();
@@ -186,7 +343,7 @@ class ApiClient {
     });
   }
 
-  async uploadFile(endpoint: string, formData: FormData): Promise<any> {
+  async uploadFile(endpoint: string, formData: FormData, _isRetry: boolean = false): Promise<any> {
     const token = await this.getAuthToken();
 
     if (!token) {
@@ -204,6 +361,13 @@ class ApiClient {
     });
 
     if (response.status === 401) {
+      if (!_isRetry) {
+        const newToken = await this.refreshAccessToken();
+        if (newToken) {
+          return this.uploadFile(endpoint, formData, true);
+        }
+      }
+
       await this.handleAuthError();
       throw new Error('Authentication expired - please log in again');
     }

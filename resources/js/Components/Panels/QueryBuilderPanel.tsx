@@ -548,7 +548,7 @@ export default function QueryBuilderPanel({ isActive }: TabPanelProps) {
           {schemaMigrationAccess?.is_patron ? (
             <Tag value={t.querybuilderpanel439} severity="warning" />
           ) : schemaMigrationAccess?.days_remaining !== undefined ? (
-            <Tag value={`${schemaMigrationAccess.days_remaining}{t.querybuilderpanel441}`} severity="info" />
+            <Tag value={`${schemaMigrationAccess.days_remaining}${t.querybuilderpanel441}`} severity="info" />
           ) : null}
         </div>
         <p style={{ color: colors.textMuted }}>

@@ -14,8 +14,9 @@ import { useToast } from '@/contexts/ToastContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
-// Helper function to get auth token
+// Helper function to get auth token (kept for binary downloads that can't go through apiClient)
 const getAuthToken = (): string | null => {
     return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 };
@@ -115,13 +116,8 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     useEffect(() => {
         const fetchUser = async () => {
             try {
-                const response = await fetch('/api/user', {
-                    headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-                });
-                if (response.ok) {
-                    const user = await response.json();
-                    setCurrentUserId(user.id);
-                }
+                const user = await apiClient.get('/user');
+                setCurrentUserId(user.id);
             } catch {
                 // Ignore errors
             }
@@ -139,14 +135,12 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
             if (selectedCategory !== 'all') params.append('category', selectedCategory);
             if (searchTerm) params.append('search', searchTerm);
 
-            const response = await fetch(
-                `/api/projects/${effectiveProjectId}/attachments?${params.toString()}`,
-                { headers: { 'Authorization': `Bearer ${getAuthToken()}` } }
-            );
-
-            if (!response.ok) throw new Error(t.projectattachmentspanel147_2);
-
-            const data = await response.json();
+            let data: any;
+            try {
+                data = await apiClient.get(`/projects/${effectiveProjectId}/attachments?${params.toString()}`);
+            } catch {
+                throw new Error(t.projectattachmentspanel147_2);
+            }
             setAttachments(data.attachments);
             setCategories(data.categories);
         } catch (error: any) {
@@ -175,19 +169,13 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
             formData.append('file', file);
             formData.append('category', 'other');
 
-            const response = await fetch(`/api/projects/${effectiveProjectId}/attachments`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${getAuthToken()}` },
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || t.projectattachmentspanel186);
+            let data: any;
+            try {
+                data = await apiClient.uploadFile(`/projects/${effectiveProjectId}/attachments`, formData);
+            } catch (err: any) {
+                throw new Error(err?.response?.data?.message || t.projectattachmentspanel186);
             }
-
-            const data = await response.json();
-            toast.showSuccess(`"${data.attachment.original_filename}"{$t.projectattachmentspanel190}`);
+            toast.showSuccess(`"${data.attachment.original_filename}"${t.projectattachmentspanel190}`);
             loadAttachments();
         } catch (error: any) {
             toast.showError(error.message || t.projectattachmentspanel193);
@@ -228,19 +216,13 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
     // Handle pin/unpin
     const handleTogglePin = async (attachment: Attachment) => {
         try {
-            const response = await fetch(
-                `/api/projects/${effectiveProjectId}/attachments/${attachment.id}`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ is_pinned: !attachment.is_pinned }),
-                }
-            );
-
-            if (!response.ok) throw new Error(t.projectattachmentspanel220);
+            try {
+                await apiClient.put(`/projects/${effectiveProjectId}/attachments/${attachment.id}`, {
+                    is_pinned: !attachment.is_pinned,
+                });
+            } catch {
+                throw new Error(t.projectattachmentspanel220);
+            }
 
             toast.showSuccess(attachment.is_pinned ? t.projectattachmentspanel222 : t.projectattachmentspanel222_2);
             loadAttachments();
@@ -263,19 +245,11 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
         if (!editingAttachment) return;
 
         try {
-            const response = await fetch(
-                `/api/projects/${effectiveProjectId}/attachments/${editingAttachment.id}`,
-                {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(editForm),
-                }
-            );
-
-            if (!response.ok) throw new Error(t.projectattachmentspanel255);
+            try {
+                await apiClient.put(`/projects/${effectiveProjectId}/attachments/${editingAttachment.id}`, editForm);
+            } catch {
+                throw new Error(t.projectattachmentspanel255);
+            }
 
             toast.showSuccess(t.projectattachmentspanel257);
             setEditDialogVisible(false);
@@ -295,15 +269,11 @@ export default function ProjectAttachmentsPanel({ isActive, projectId }: TabPane
             acceptClassName: 'p-button-danger',
             accept: async () => {
                 try {
-                    const response = await fetch(
-                        `/api/projects/${effectiveProjectId}/attachments/${attachment.id}`,
-                        {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${getAuthToken()}` },
-                        }
-                    );
-
-                    if (!response.ok) throw new Error(t.projectattachmentspanel282);
+                    try {
+                        await apiClient.delete(`/projects/${effectiveProjectId}/attachments/${attachment.id}`);
+                    } catch {
+                        throw new Error(t.projectattachmentspanel282);
+                    }
 
                     toast.showSuccess(t.projectattachmentspanel284);
                     loadAttachments();

@@ -31,6 +31,7 @@ import '@xyflow/react/dist/style.css';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 // Stable reference for ReactFlow's multiSelectionKeyCode prop — must NOT be
 // recreated each render, otherwise the internal store loops on updates.
@@ -265,15 +266,6 @@ interface FieldPlacementNodeData {
 }
 
 // ========== HELPERS ==========
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-};
 
 const getFieldColorBar = (fieldType: string, isPrimaryKey?: boolean): string => {
   const lower = fieldType.toLowerCase();
@@ -1159,9 +1151,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
   const loadFormSets = useCallback(async () => {
     try {
-      const res = await fetch('/api/form-sets', { headers: getAuthHeaders() });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await apiClient.get('/form-sets');
       const list = Array.isArray(data) ? data : (data.data || []);
       setFormSets(list);
     } catch {
@@ -1174,9 +1164,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   const loadSchemas = useCallback(async () => {
     if (!selectedProject) return;
     try {
-      const res = await fetch(`/api/projects/${selectedProject.id}/schemas`, { headers: getAuthHeaders() });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await apiClient.get(`/projects/${selectedProject.id}/schemas`);
       setSchemas(Array.isArray(data) ? data : (data.data || []));
     } catch {
       // silent
@@ -1188,9 +1176,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   const loadTablesForSchema = useCallback(async (schemaId: number) => {
     try {
       // Step 1: Get versions for the schema
-      const versionsRes = await fetch(`/api/floating-schemas/${schemaId}/versions`, { headers: getAuthHeaders() });
-      if (!versionsRes.ok) return;
-      const versionsData = await versionsRes.json();
+      const versionsData = await apiClient.get(`/floating-schemas/${schemaId}/versions`);
       const versions = Array.isArray(versionsData) ? versionsData : (versionsData.data || versionsData.versions || []);
       if (versions.length === 0) {
         setTables([]);
@@ -1202,14 +1188,13 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       , versions[0]);
 
       // Step 2: Load tables for this version (versions endpoint does NOT include tables)
-      const tablesRes = await fetch(`/api/schema-versions/${latestVersion.id}/tables`, { headers: getAuthHeaders() });
-      if (!tablesRes.ok) {
+      try {
+        const tablesData = await apiClient.get(`/schema-versions/${latestVersion.id}/tables`);
+        const tablesArray = Array.isArray(tablesData) ? tablesData : (tablesData.data || []);
+        setTables(tablesArray);
+      } catch {
         setTables([]);
-        return;
       }
-      const tablesData = await tablesRes.json();
-      const tablesArray = Array.isArray(tablesData) ? tablesData : (tablesData.data || []);
-      setTables(tablesArray);
     } catch {
       setTables([]);
     }
@@ -1223,34 +1208,22 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         // Main menu: only load menu items (no fields/buttons)
         setPlacements([]);
         setButtonPlacements([]);
-        const menuRes = await fetch(`/api/form-layout/${windowId}/menu-items`, { headers: getAuthHeaders() });
-        if (menuRes.ok) {
-          const menuData = await menuRes.json();
+        try {
+          const menuData = await apiClient.get(`/form-layout/${windowId}/menu-items`);
           setMenuPlacements(menuData.data || []);
-        } else {
+        } catch {
           setMenuPlacements([]);
         }
       } else {
         // Other window types: load field + button placements
         setMenuPlacements([]);
-        const [fieldRes, btnRes] = await Promise.all([
-          fetch(`/api/form-layout/${windowId}/placements?table_id=${tableId}`, { headers: getAuthHeaders() }),
-          fetch(`/api/form-layout/${windowId}/buttons`, { headers: getAuthHeaders() }),
-        ]);
-
-        if (fieldRes.ok) {
-          const data = await fieldRes.json();
-          setPlacements(Array.isArray(data) ? data : (data.data || []));
-        } else {
-          setPlacements([]);
-        }
-
-        if (btnRes.ok) {
-          const btnData = await btnRes.json();
-          setButtonPlacements(Array.isArray(btnData) ? btnData : (btnData.data || []));
-        } else {
-          setButtonPlacements([]);
-        }
+        const fieldP = apiClient.get(`/form-layout/${windowId}/placements?table_id=${tableId}`)
+          .then((data: any) => setPlacements(Array.isArray(data) ? data : (data.data || [])))
+          .catch(() => setPlacements([]));
+        const btnP = apiClient.get(`/form-layout/${windowId}/buttons`)
+          .then((btnData: any) => setButtonPlacements(Array.isArray(btnData) ? btnData : (btnData.data || [])))
+          .catch(() => setButtonPlacements([]));
+        await Promise.all([fieldP, btnP]);
       }
     } catch {
       setPlacements([]);
@@ -1284,12 +1257,9 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       tables.map(async (tbl: any) => {
         let caption = tbl.singular_name || tbl.table_name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
         try {
-          const trRes = await fetch(`/api/schema-translation?item_name=${encodeURIComponent(tbl.table_name)}&code=${langCode}`, { headers: getAuthHeaders() });
-          if (trRes.ok) {
-            const trData = await trRes.json();
-            if (trData.translated_text) {
-              caption = trData.translated_text;
-            }
+          const trData = await apiClient.get(`/schema-translation?item_name=${encodeURIComponent(tbl.table_name)}&code=${langCode}`);
+          if (trData.translated_text) {
+            caption = trData.translated_text;
           }
         } catch { /* silent */ }
         return { id: tbl.id, table_name: tbl.table_name, singular_name: tbl.singular_name, caption };
@@ -1337,9 +1307,12 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
     try {
       // Load the full form set with windows and elements
-      const fsRes = await fetch(`/api/form-sets/${selectedFormSetId}`, { headers: getAuthHeaders() });
-      if (!fsRes.ok) throw new Error('Failed to load form set');
-      const fsData = await fsRes.json();
+      let fsData: any;
+      try {
+        fsData = await apiClient.get(`/form-sets/${selectedFormSetId}`);
+      } catch {
+        throw new Error('Failed to load form set');
+      }
       const formSet: FormSet = fsData.data || fsData;
       setCurrentFormSet(formSet);
 
@@ -2141,34 +2114,34 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
       // Only save field/button placements for non-menu window types
       if (selectedWindowType !== 'main_menu') {
-        const [fieldRes, btnRes] = await Promise.all([
-          fetch(`/api/form-layout/${currentWindow.id}/placements`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ placements: payload, table_id: selectedTableId }),
-          }),
-          fetch(`/api/form-layout/${currentWindow.id}/buttons`, {
-            method: 'PUT',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ buttons: buttonPayload }),
-          }),
-        ]);
+        // Run the two saves in parallel but keep the original semantics:
+        // a placement save failure aborts (throws), a button save failure
+        // is non-fatal (we just keep the existing local state).
+        const fieldP = apiClient.put(`/form-layout/${currentWindow.id}/placements`, {
+          placements: payload,
+          table_id: selectedTableId,
+        });
+        const btnP = apiClient.put(`/form-layout/${currentWindow.id}/buttons`, {
+          buttons: buttonPayload,
+        });
 
-        if (!fieldRes.ok) {
-          const errData = await fieldRes.json().catch(() => ({}));
-          throw new Error(errData.message || 'Save failed');
+        let data: any;
+        try {
+          data = await fieldP;
+        } catch (err: any) {
+          throw new Error(err?.response?.data?.message || 'Save failed');
         }
-
-        const data = await fieldRes.json();
         const savedPlacements = Array.isArray(data) ? data : (data.data || data.placements || []);
         if (savedPlacements.length > 0) {
           setPlacements(savedPlacements);
         }
 
-        if (btnRes.ok) {
-          const btnData = await btnRes.json();
+        try {
+          const btnData: any = await btnP;
           const savedButtons = Array.isArray(btnData) ? btnData : (btnData.data || []);
           setButtonPlacements(savedButtons);
+        } catch {
+          // Button save failure is non-fatal - keep existing state
         }
       }
 
@@ -2180,15 +2153,13 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
           tab_order: item.tab_order ?? 0,
         }));
 
-        const menuRes = await fetch(`/api/form-layout/${currentWindow.id}/menu-items`, {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ menu_items: menuPayload }),
-        });
-
-        if (menuRes.ok) {
-          const menuData = await menuRes.json();
+        try {
+          const menuData: any = await apiClient.put(`/form-layout/${currentWindow.id}/menu-items`, {
+            menu_items: menuPayload,
+          });
           setMenuPlacements(menuData.data || []);
+        } catch {
+          // Menu save failure is non-fatal
         }
       }
 
@@ -2664,16 +2635,10 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
     if (selectedPlacement.id) {
       try {
-        const res = await fetch(`/api/form-layout/placements/${selectedPlacement.id}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders(),
-        });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.message || 'Delete failed');
-        }
-      } catch (err) {
-        toast.current?.show({ severity: 'error', summary: t.formlayoutdesigner_error || 'Error', detail: String(err), life: 4000 });
+        await apiClient.delete(`/form-layout/placements/${selectedPlacement.id}`);
+      } catch (err: any) {
+        const detail = err?.response?.data?.message || err?.message || 'Delete failed';
+        toast.current?.show({ severity: 'error', summary: t.formlayoutdesigner_error || 'Error', detail, life: 4000 });
         return;
       }
     }
@@ -2987,26 +2952,14 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
             // Clear from DB immediately
             if (currentWindow) {
               try {
-                const promises: Promise<Response>[] = [];
+                const promises: Promise<any>[] = [];
                 if (selectedWindowType === 'main_menu') {
-                  promises.push(fetch(`/api/form-layout/${currentWindow.id}/menu-items`, {
-                    method: 'PUT',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ menu_items: [] }),
-                  }));
+                  promises.push(apiClient.put(`/form-layout/${currentWindow.id}/menu-items`, { menu_items: [] }));
                 } else {
                   if (selectedTableId) {
-                    promises.push(fetch(`/api/form-layout/${currentWindow.id}/placements`, {
-                      method: 'PUT',
-                      headers: getAuthHeaders(),
-                      body: JSON.stringify({ placements: [], table_id: selectedTableId }),
-                    }));
+                    promises.push(apiClient.put(`/form-layout/${currentWindow.id}/placements`, { placements: [], table_id: selectedTableId }));
                   }
-                  promises.push(fetch(`/api/form-layout/${currentWindow.id}/buttons`, {
-                    method: 'PUT',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ buttons: [] }),
-                  }));
+                  promises.push(apiClient.put(`/form-layout/${currentWindow.id}/buttons`, { buttons: [] }));
                 }
                 await Promise.all(promises);
               } catch {

@@ -107,23 +107,19 @@ class TeamController extends Controller
                     'can_unlock' => $canUnlock,
                 ];
             }
-            // If no direct subscription AND owner is not exempt (patron/admin/system), check slot-based system
+            // If no direct subscription AND owner is not exempt (patron/admin/system),
+            // check feature-subscription model: one active subscription unlocks ALL teams for 1 year.
             elseif (!$ownerIsExempt && $teamOwner) {
-                // Count owner's active team slots
-                $ownerActiveSlots = Subscription::where('user_id', $teamOwner->id)
+                $ownerActiveSubscription = Subscription::where('user_id', $teamOwner->id)
                     ->where('subscription_type', Subscription::TYPE_TEAM)
                     ->where('is_active', true)
                     ->where('expires_at', '>', now())
-                    ->whereNull('entity_id') // Slot-based subscriptions only
-                    ->count();
+                    ->whereNull('entity_id') // Feature subscription (not entity-bound)
+                    ->orderBy('expires_at', 'desc')
+                    ->first();
 
-                // Count owner's total owned teams
-                $ownerTeamCount = Team::where('project_owner_id', $teamOwner->id)->count();
-
-                // If owner has more teams than slots, determine which teams should be locked
-                // Teams without explicit subscription are locked if slots are exhausted
-                if ($ownerTeamCount > $ownerActiveSlots) {
-                    // This team should be soft-locked (no subscription found and slots exhausted)
+                if (!$ownerActiveSubscription) {
+                    // No active feature subscription → all teams are soft-locked
                     $team->is_soft_locked = true;
                     $team->subscription_data = [
                         'id' => null,
@@ -132,9 +128,10 @@ class TeamController extends Controller
                         'is_soft_locked' => true,
                         'days_remaining' => 0,
                         'can_unlock' => $canUnlock,
-                        'reason' => 'no_slot', // Team has no subscription slot
+                        'reason' => 'no_subscription',
                     ];
                 }
+                // else: feature subscription is active → team is unlocked (no extra data needed)
             }
             // Patron users: teams are always active (no subscription needed)
 
@@ -144,41 +141,38 @@ class TeamController extends Controller
         $ownedTeams = $ownedTeams->map($addSubscriptionData);
         $memberTeams = $memberTeams->map($addSubscriptionData);
 
-        // Calculate subscription info for free users (slot-based system)
+        // Calculate subscription info for free users (feature-subscription model)
+        // One active subscription unlocks the Teams feature → unlimited teams for 1 year.
         $subscriptionInfo = null;
         $isFreeUser = $user->user_type === 'free' || !$user->user_type;
 
         if ($isFreeUser) {
-            // Count active team subscription SLOTS (not expired)
-            // NOTE: Subscriptions are slot-based (entity_id = null), not tied to specific teams
-            $activeSlots = Subscription::where('user_id', $user->id)
+            $activeSubscription = Subscription::where('user_id', $user->id)
                 ->where('subscription_type', Subscription::TYPE_TEAM)
                 ->where('is_active', true)
                 ->where('expires_at', '>', now())
-                ->get();
+                ->whereNull('entity_id')
+                ->orderBy('expires_at', 'desc')
+                ->first();
 
-            $activeSubscriptionsCount = $activeSlots->count();
-
-            // Get the earliest expiring slot for warning purposes
-            $earliestExpiry = $activeSlots->min('expires_at');
-            $daysUntilExpiry = $earliestExpiry ? now()->diffInDays($earliestExpiry, false) : null;
-
-            // Free users have: 0 free teams + number of active subscription slots
-            $maxAllowedTeams = 0 + $activeSubscriptionsCount;
+            $hasActiveSubscription = $activeSubscription !== null;
+            $expiresAt = $activeSubscription?->expires_at;
+            $daysUntilExpiry = $expiresAt ? now()->diffInDays($expiresAt, false) : null;
             $ownedTeamsCount = $ownedTeams->count();
-            $availableSlots = $maxAllowedTeams - $ownedTeamsCount;
 
             $subscriptionInfo = [
-                'active_slots' => $activeSubscriptionsCount,
+                'has_active_subscription' => $hasActiveSubscription,
                 'owned_teams' => $ownedTeamsCount,
-                'max_allowed' => $maxAllowedTeams,
-                'available_slots' => max(0, $availableSlots),
-                'needs_unlock' => $ownedTeamsCount >= $maxAllowedTeams,
-                'earliest_expiry' => $earliestExpiry?->toISOString(),
+                'needs_unlock' => !$hasActiveSubscription,
+                'expires_at' => $expiresAt?->toISOString(),
                 'days_until_expiry' => $daysUntilExpiry,
-                'free_teams_allowed' => 0, // Teams are not free for free users
-                // Legacy field for backwards compatibility
-                'active_subscriptions' => $activeSubscriptionsCount,
+                'free_teams_allowed' => 0,
+                // Legacy fields for backwards compatibility with older frontend code
+                'active_subscriptions' => $hasActiveSubscription ? 1 : 0,
+                'active_slots' => $hasActiveSubscription ? 1 : 0,
+                'max_allowed' => $hasActiveSubscription ? PHP_INT_MAX : 0,
+                'available_slots' => $hasActiveSubscription ? PHP_INT_MAX : 0,
+                'earliest_expiry' => $expiresAt?->toISOString(),
             ];
         }
 
@@ -190,21 +184,49 @@ class TeamController extends Controller
     }
 
     /**
+     * Check whether a team name is already taken anywhere in the system.
+     * Used by the Project Wizard and team modals for live preflight validation
+     * so the user doesn't hit a 422 after the project has already been created.
+     *
+     * GET /api/teams/check-name?name=foo&ignore=42
+     */
+    public function checkName(Request $request): JsonResponse
+    {
+        $name = trim((string) $request->get('name', ''));
+        if ($name === '') {
+            return response()->json(['exists' => false]);
+        }
+
+        $query = Team::where('name', $name);
+
+        // Optional: ignore a specific team id (used when editing — the team's
+        // own current name must not count as a duplicate of itself).
+        $ignoreId = $request->integer('ignore');
+        if ($ignoreId > 0) {
+            $query->where('id', '!=', $ignoreId);
+        }
+
+        return response()->json(['exists' => $query->exists()]);
+    }
+
+    /**
      * Store a newly created team
      */
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
 
+        // Team names are global identifiers (used in invitations, public discovery,
+        // and project-wizard team picker), so uniqueness is enforced across ALL
+        // owners, not scoped per-user. The DB carries a matching unique index as
+        // a hard safety net.
         $validator = Validator::make($request->all(), [
             'name' => [
                 'required',
                 'string',
                 'max:255',
                 'regex:/^[a-z0-9_]+$/',
-                Rule::unique('teams')->where(function ($query) use ($user) {
-                    return $query->where('project_owner_id', $user->id);
-                })
+                Rule::unique('teams', 'name'),
             ],
             'description' => 'nullable|string|max:1000',
             'project_ids' => 'required|array|min:1',
@@ -224,16 +246,15 @@ class TeamController extends Controller
         $requiredCredits = 50;
 
         if ($isFreeUser) {
-            // Count active team subscriptions
-            $activeSubscriptionsCount = Subscription::countActiveForUser($user->id, Subscription::TYPE_TEAM);
+            // Feature-subscription model: one active subscription unlocks unlimited teams for 1 year.
+            $hasActiveSubscription = Subscription::where('user_id', $user->id)
+                ->where('subscription_type', Subscription::TYPE_TEAM)
+                ->where('is_active', true)
+                ->where('expires_at', '>', now())
+                ->whereNull('entity_id')
+                ->exists();
 
-            // Count owned teams
-            $ownedTeamsCount = Team::where('project_owner_id', $user->id)->count();
-
-            // Free users get 0 free teams, only subscription slots
-            $maxAllowedTeams = 0 + $activeSubscriptionsCount;
-
-            if ($ownedTeamsCount >= $maxAllowedTeams) {
+            if (!$hasActiveSubscription) {
                 $needsPayment = true;
 
                 // Check if user has enough credits
@@ -354,6 +375,8 @@ class TeamController extends Controller
             return $lockResponse;
         }
 
+        // Global uniqueness (see store()), with ignore() so renaming a team
+        // to its existing name still passes.
         $validator = Validator::make($request->all(), [
             'name' => [
                 'sometimes',
@@ -361,9 +384,7 @@ class TeamController extends Controller
                 'string',
                 'max:255',
                 'regex:/^[a-z0-9_]+$/',
-                Rule::unique('teams')->ignore($team->id)->where(function ($query) use ($team) {
-                    return $query->where('project_owner_id', $team->project_owner_id);
-                })
+                Rule::unique('teams', 'name')->ignore($team->id),
             ],
             'description' => 'nullable|string|max:1000',
             'project_ids' => 'sometimes|array|min:1',
@@ -1040,9 +1061,10 @@ class TeamController extends Controller
     }
 
     /**
-     * Unlock a team by purchasing a new slot subscription
-     * This is used when a team has no subscription (was created via slot system)
-     * or when the team was transferred as locked
+     * Unlock the Teams feature for the current user.
+     * One 50-credit payment activates a 1-year feature subscription that unlocks
+     * ALL of the user's teams simultaneously. The Team route parameter is kept
+     * for backwards compatibility but only used for the audit log description.
      */
     public function unlockTeam(Request $request, Team $team): JsonResponse
     {
@@ -1079,24 +1101,24 @@ class TeamController extends Controller
 
         try {
             $result = DB::transaction(function () use ($team, $user, $requiredCredits) {
-                // Check if team already has an active subscription (soft-locked one)
-                $existingSubscription = $team->subscription;
+                // Renew the user's most recent feature subscription if one exists
+                // (even if expired/soft-locked), otherwise create a new one.
+                $subscription = Subscription::where('user_id', $user->id)
+                    ->where('subscription_type', Subscription::TYPE_TEAM)
+                    ->whereNull('entity_id')
+                    ->orderBy('expires_at', 'desc')
+                    ->first();
 
-                if ($existingSubscription) {
-                    // Renew existing subscription
-                    $existingSubscription->expires_at = now()->addYear();
-                    $existingSubscription->is_active = true;
-                    $existingSubscription->is_soft_locked = false;
-                    $existingSubscription->entity_id = null; // Convert to slot-based
-                    $existingSubscription->save();
-
-                    $subscription = $existingSubscription;
+                if ($subscription) {
+                    $subscription->expires_at = now()->addYear();
+                    $subscription->is_active = true;
+                    $subscription->is_soft_locked = false;
+                    $subscription->save();
                 } else {
-                    // Create new slot-based subscription
                     $subscription = Subscription::create([
                         'user_id' => $user->id,
                         'subscription_type' => Subscription::TYPE_TEAM,
-                        'entity_id' => null, // Slot-based
+                        'entity_id' => null,
                         'expires_at' => now()->addYear(),
                         'is_active' => true,
                         'is_soft_locked' => false,
@@ -1127,7 +1149,7 @@ class TeamController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error("Team unlock failed", [
+            \Log::error("Team feature unlock failed", [
                 'team_id' => $team->id,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),

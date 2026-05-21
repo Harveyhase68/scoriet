@@ -3,7 +3,8 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
@@ -220,16 +221,23 @@ export default function EditProjectModal({
       header={t.editprojectmodal215}
       visible={visible}
       onHide={handleCancel}
-      style={{ width: '800px' }}
+      /* Fixed height (85vh) is required for the inner flex layout to
+       * distribute space correctly — see ProfileModal / TableModal for
+       * the same pattern. Width bumped from 800px to 900px to give the
+       * side-menu + content pair more breathing room. */
+      style={{ width: '900px', height: '85vh' }}
       modal
       closable
       draggable={true}
       resizable={true}
       className="p-dialog-custom"
+      contentStyle={{ padding: '0' }}
     >
-      <TabView>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0">
+      <TabViewSideMenu storageKey="editProjectModal" defaultWidth={220}>
         {/* Tab 1: Project Settings */}
-        <TabPanel header={t.editprojectmodal227} leftIcon="pi pi-cog">
+        <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.editprojectmodal227}</span>}>
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
@@ -334,7 +342,7 @@ export default function EditProjectModal({
         </TabPanel>
 
         {/* Tab 2: Database Connection */}
-        <TabPanel header={t.editprojectmodal332} leftIcon="pi pi-database">
+        <TabPanel header={<span><i className="pi pi-database mr-2" />{t.editprojectmodal332}</span>}>
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
@@ -429,7 +437,7 @@ export default function EditProjectModal({
         </TabPanel>
 
         {/* Tab 3: Project Properties */}
-        <TabPanel header={t.editprojectmodal426} leftIcon="pi pi-file">
+        <TabPanel header={<span><i className="pi pi-file mr-2" />{t.editprojectmodal426}</span>}>
           <div className="space-y-4">
             <div className="field">
               <label className="block text-sm font-medium text-white mb-2">
@@ -525,7 +533,7 @@ export default function EditProjectModal({
         </TabPanel>
 
         {/* Tab 4: Localization Settings */}
-        <TabPanel header={t.editprojectmodal522} leftIcon="pi pi-globe">
+        <TabPanel header={<span><i className="pi pi-globe mr-2" />{t.editprojectmodal522}</span>}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="field">
@@ -667,44 +675,47 @@ export default function EditProjectModal({
             </div>
           </div>
         </TabPanel>
-      </TabView>
+      </TabViewSideMenu>
+        </div>
 
-      {/* Messages */}
-      {error && (
-        <div className="mt-4">
-          <Message
-            severity="error"
-            text={error}
-            className="w-full"
+        {/* Messages — flex-shrink-0 so they keep their natural height under
+         * the fixed-height dialog and don't get squeezed by the TabView. */}
+        {error && (
+          <div className="px-6 pt-3 flex-shrink-0">
+            <Message
+              severity="error"
+              text={error}
+              className="w-full"
+            />
+          </div>
+        )}
+
+        {success && (
+          <div className="px-6 pt-3 flex-shrink-0">
+            <Message
+              severity="success"
+              text={success}
+              className="w-full"
+            />
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex justify-end space-x-2 p-6 pt-4 gap-2 flex-shrink-0">
+          <Button
+            label={t.applicationsmodal432}
+            icon="pi pi-times"
+            onClick={handleCancel}
+            className="p-button-text"
+            disabled={saving}
+          />
+          <Button
+            label={saving ? t.editprojectmodal701 : t.editprojectmodal696}
+            icon={saving ? "pi pi-spinner pi-spin" : "pi pi-check"}
+            onClick={handleSave}
+            disabled={saving}
           />
         </div>
-      )}
-
-      {success && (
-        <div className="mt-4">
-          <Message
-            severity="success"
-            text={success}
-            className="w-full"
-          />
-        </div>
-      )}
-
-      {/* Buttons */}
-      <div className="flex justify-end space-x-2 pt-4 gap-2">
-        <Button
-          label={t.applicationsmodal432}
-          icon="pi pi-times"
-          onClick={handleCancel}
-          className="p-button-text"
-          disabled={saving}
-        />
-        <Button
-          label={saving ? t.editprojectmodal701 : t.editprojectmodal696}
-          icon={saving ? "pi pi-spinner pi-spin" : "pi pi-check"}
-          onClick={handleSave}
-          disabled={saving}
-        />
       </div>
     </Dialog>
   );

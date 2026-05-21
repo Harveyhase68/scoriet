@@ -3,6 +3,8 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { confirmDialog } from 'primereact/confirmdialog';
 import { ConfirmDialog } from 'primereact/confirmdialog';
 import { Toast } from 'primereact/toast';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
 
 // TypeScript declaration for window timeout
 declare global {
@@ -29,7 +31,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { TabContentProps } from '@/types';
-import { SchemaTable } from '@/lib/api';
+import { SchemaTable, apiClient } from '@/lib/api';
 import SqlImportModal from '@/Components/SqlImportModal';
 import VersionConfirmationModal from '@/Components/VersionConfirmationModal';
 import TableModal from '@/Components/Modals/TableModal';
@@ -422,6 +424,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   // ReactFlow instance ref for programmatic control (fitView after sort, etc.)
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
+  const VIEWPORT_STORAGE_PREFIX = 'scoriet_db_designer_viewport__';
+
   // Database Designer Access State (Premium Feature)
   const [databaseDesignerAccess, setDatabaseDesignerAccess] = useState<{
     has_access: boolean;
@@ -455,6 +459,54 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, [isReadOnly, selectedSchema, currentUserId]);
   const [schemaVersions, setSchemaVersions] = useState<SchemaVersionExtended[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<SchemaVersionExtended | null>(null);
+
+  // Per-schema+version localStorage key for the saved viewport (zoom + pan).
+  // Layouts can drift between versions of the same schema, so we scope per
+  // version rather than per schema — keeps the saved camera in sync with the
+  // actual table positions the user last saw.
+  const viewportStorageKey = React.useMemo(() => {
+    if (!selectedSchema || !selectedVersion) return null;
+    return `${VIEWPORT_STORAGE_PREFIX}${selectedSchema.id}__${selectedVersion.id}`;
+  }, [selectedSchema, selectedVersion]);
+
+  // Saves the current viewport on every pan/zoom end. Debounce isn't needed
+  // because ReactFlow only fires onMoveEnd when the gesture actually ends.
+  const persistViewport = React.useCallback((_event: any, viewport: { x: number; y: number; zoom: number }) => {
+    if (!viewportStorageKey) return;
+    try {
+      window.localStorage.setItem(viewportStorageKey, JSON.stringify(viewport));
+    } catch {
+      // ignore — quota or private-browsing mode
+    }
+  }, [viewportStorageKey]);
+
+  // Read the saved viewport SYNCHRONOUSLY when the schema/version changes,
+  // so it can be passed straight to <ReactFlow> as `defaultViewport` on the
+  // first mount. The earlier post-mount restore via onInit + RAF lost a
+  // race against ReactFlow's internal fitView pass, which re-fit the camera
+  // AFTER our setViewport ran and silently undid the restore.
+  //
+  // Because ReactFlow is conditionally rendered (only when nodes.length > 0)
+  // every schema switch unmounts and re-mounts it, so defaultViewport is
+  // re-read on each switch — no need for a controlled-prop dance.
+  //
+  // Within the same schema, we deliberately do NOT recompute this on pan/
+  // zoom: ReactFlow already owns the live viewport, recomputing would
+  // either be a no-op or cause an unwanted jump.
+  const savedViewport = React.useMemo(() => {
+    if (!viewportStorageKey) return null;
+    try {
+      const raw = window.localStorage.getItem(viewportStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.zoom === 'number' && typeof parsed.x === 'number' && typeof parsed.y === 'number') {
+        return parsed as { x: number; y: number; zoom: number };
+      }
+    } catch {
+      // corrupted entry, treat as no saved viewport
+    }
+    return null;
+  }, [viewportStorageKey]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -522,21 +574,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setError(null);
 
       // Load schemas associated with the current project
-      const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(t.panelt2405);
-        }
-        throw new Error(`${t.panelt2538}${response.statusText}`);
-      }
-
-      const schemas = await response.json();
+      const schemas = await apiClient.get(`/projects/${selectedProject.id}/schemas`);
       setFloatingSchemas(schemas);
 
       // If we're preserving a specific schema ID, find and select it
@@ -612,23 +650,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     }));
 
     try {
-      const response = await fetch(
-        `/api/floating-schemas/${selectedSchema.id}/layouts/${selectedVersion.version_number}`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ layouts })
-        }
+      await apiClient.post(
+        `/floating-schemas/${selectedSchema.id}/layouts/${selectedVersion.version_number}`,
+        { layouts }
       );
-
-      if (!response.ok) {
-        // Failed to save layout
-      }
     } catch {
-      // Error saving layout
+      // Error saving layout - apiClient already handled 401
     }
   }, [selectedSchema, selectedVersion]);
 
@@ -638,22 +665,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     if (!schema || !version) return {};
 
     try {
-      const response = await fetch(
-        `/api/floating-schemas/${schema.id}/layouts/${version.version_number}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-            'Content-Type': 'application/json'
-          }
-        }
+      const layouts = await apiClient.get(
+        `/floating-schemas/${schema.id}/layouts/${version.version_number}`
       );
-
-      if (response.ok) {
-        const layouts = await response.json();
-        return layouts;
-      }
+      return layouts;
     } catch {
-      // Error loading layout
+      // Error loading layout - apiClient already handled 401
     }
 
     return {};
@@ -664,18 +681,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/floating-schemas/${schema.id}/versions`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`${t.panelt2677}${response.statusText}`);
-      }
-
-      const versions: SchemaVersionExtended[] = await response.json();
+      const versions: SchemaVersionExtended[] = await apiClient.get(`/floating-schemas/${schema.id}/versions`);
       setSchemaVersions(versions);
 
       // Auto-select latest version or clear if no versions
@@ -710,18 +716,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       // FIRST: Set the selected version so it's available
       setSelectedVersion(version);
 
-      const response = await fetch(`/api/schema-versions/${version.id}/tables`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`${t.panelt2723}${response.statusText}`);
-      }
-
-      const tables = await response.json();
+      const tables = await apiClient.get(`/schema-versions/${version.id}/tables`);
 
       if (tables && tables.length > 0) {
         // Load saved layouts for this version with explicit schema parameter
@@ -761,23 +756,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     const loadDatabaseDesignerAccess = async () => {
       setLoadingAccess(true);
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) {
-          setLoadingAccess(false);
-          return;
-        }
-
-        const response = await fetch('/api/subscriptions/database-designer/status', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setDatabaseDesignerAccess(data);
-        }
+        const data = await apiClient.get('/subscriptions/database-designer/status');
+        setDatabaseDesignerAccess(data);
       } catch (error) {
         console.error(t.panelt2783, error);
       } finally {
@@ -792,28 +772,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   const unlockDatabaseDesigner = async () => {
     setUnlocking(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions/unlock-database-designer', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setDatabaseDesignerAccess(data.access_status);
+      const data = await apiClient.post('/subscriptions/unlock-database-designer');
+      setDatabaseDesignerAccess(data.access_status);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message;
+      if (errorMsg) {
+        alert(errorMsg);
       } else {
-        const errorData = await response.json();
-        alert(errorData.message || t.panelt2813);
+        console.error(t.panelt2816, err);
+        alert(t.panelt2817);
       }
-    } catch (err) {
-      console.error(t.panelt2816, err);
-      alert(t.panelt2817);
     } finally {
       setUnlocking(false);
     }
@@ -950,24 +918,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         accept: async () => {
           try {
             setLoading(true);
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-              },
-              body: JSON.stringify({ description: 'Initial version' }),
+            await apiClient.post(`/floating-schemas/${selectedSchema!.id}/versions`, {
+              description: 'Initial version',
             });
-
-            if (!response.ok) throw new Error(t.panelt2964);
 
             // Reload versions and then open create table modal
             await loadSchemaVersions(selectedSchema!);
             setTimeout(() => setTableModalMode('create'), 300);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : t.panelt2970);
+          } catch (err: any) {
+            setError(err?.response?.data?.message || (err instanceof Error ? err.message : t.panelt2970));
           } finally {
             setLoading(false);
           }
@@ -1008,6 +967,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         is_index: field.constraintType === 'index',
         is_unique: field.constraintType === 'unique',
         comment: field.comment || null,
+        // null vs '' preserved: backend column is nullable text, '' is a
+        // valid default (empty string), null means "no default at all".
+        default_value: field.defaultValue === undefined ? null : field.defaultValue,
         // Control Type & Link fields for ComboBox, ListBox, etc.
         control_type: field.controlType || 'TEXT',
         link_table: field.linkTable || null,
@@ -1020,14 +982,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         generation_mode: field.generationMode || 'full'
       }));
 
-      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await apiClient.post(`/schema-versions/${selectedVersion.id}/tables`, {
           table_name: tableName,
           singular_name: singularName,
           filekeyname: fileKeyName,
@@ -1038,12 +994,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           display_state: tableDisplayState,
           generation_mode: tableGenerationMode,
           columns: columns
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.panelt2745);
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.panelt2745);
       }
 
       // Close modal and refresh the schema to show the new table
@@ -1079,6 +1032,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         is_index: field.constraintType === 'index',
         is_unique: field.constraintType === 'unique',
         comment: field.comment || null,
+        // null vs '' preserved: backend column is nullable text, '' is a
+        // valid default (empty string), null means "no default at all".
+        default_value: field.defaultValue === undefined ? null : field.defaultValue,
         // Control Type & Link fields for ComboBox, ListBox, etc.
         control_type: field.controlType || 'TEXT',
         link_table: field.linkTable || null,
@@ -1091,14 +1047,8 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         generation_mode: field.generationMode || 'full'
       }));
 
-      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingEditTable.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await apiClient.put(`/schema-versions/${selectedVersion.id}/tables/${pendingEditTable.id}`, {
           table_name: tableName,
           singular_name: singularName,
           filekeyname: fileKeyName,
@@ -1109,12 +1059,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           display_state: tableDisplayState,
           generation_mode: tableGenerationMode,
           columns: columns
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.schemacontroller810);
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.schemacontroller810);
       }
 
       // Close modal and refresh the schema to show the updated table
@@ -1140,17 +1087,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     try {
       // Create new version only
-      const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(t.panelt2841);
-      }
+      await apiClient.post(`/floating-schemas/${selectedSchema.id}/versions`);
 
       // Reload the schema and versions to get the new version
       await loadFloatingSchemas(selectedSchema.id);
@@ -1159,7 +1096,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setTableModalMode('edit');
 
     } catch (err) {
-      // Error creating new version
       setError(err instanceof Error ? err.message : t.panelt2841);
     } finally {
       setShowVersionModal(false);
@@ -1176,17 +1112,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     try {
       // Create new version only
-      const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(t.panelt2841);
-      }
+      await apiClient.post(`/floating-schemas/${selectedSchema.id}/versions`);
 
       // Reload the schema and versions to get the new version
       await loadFloatingSchemas(selectedSchema.id);
@@ -1195,7 +1121,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setTableModalMode('create');
 
     } catch (err) {
-      // Error creating new version
       setError(err instanceof Error ? err.message : t.panelt2841);
     } finally {
       setShowVersionModal(false);
@@ -1212,13 +1137,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     try {
       // Mark version as having unsaved changes
-      await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await apiClient.put(`/schema-versions/${selectedVersion.id}/unsaved-changes`);
 
       // Update local state
       setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
@@ -1244,13 +1163,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
     try {
       // Mark version as having unsaved changes
-      await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      await apiClient.put(`/schema-versions/${selectedVersion.id}/unsaved-changes`);
 
       // Update local state
       setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
@@ -1337,11 +1250,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
       // Convert field names to match API expectations
       const columns = (pasteTableData.fields || []).map((field: any) => {
         // Check if this field is in primary key constraint
@@ -1372,24 +1280,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         };
       });
 
-      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      let result: any;
+      try {
+        result = await apiClient.post(`/schema-versions/${selectedVersion.id}/tables`, {
           table_name: pasteTableName.trim(),
           comment: pasteTableData.comment,
           columns: columns,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || t.panelt21376);
+        });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        throw new Error(data?.message || data?.error || t.panelt21376);
       }
 
       // Close modal and reset state
@@ -1483,19 +1383,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     if (!selectedVersion) return;
 
     try {
-      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${table.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
+      let result: any;
+      try {
+        result = await apiClient.delete(`/schema-versions/${selectedVersion.id}/tables/${table.id}`);
+      } catch {
         throw new Error(t.panelt21001);
       }
-
-      const result = await response.json();
 
       // Show info message if FK constraints were deleted
       if (result.deleted_fks && result.deleted_fks > 0) {
@@ -1553,22 +1446,14 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       try {
         // Use the new API endpoint that creates version copy AND deletes table in one operation
-        const response = await fetch(`/api/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
+        let result: any;
+        try {
+          result = await apiClient.post(`/schema-versions/${selectedVersion.id}/tables/${pendingDeleteTable.id}/delete-with-copy`, {
             description: `Table deletion: ${pendingDeleteTable.table_name}`
-          })
-        });
-
-        if (!response.ok) {
+          });
+        } catch {
           throw new Error(t.panelt21054);
         }
-
-        const result = await response.json();
 
         if (result.success && result.new_version_number) {
           // Show info message if FK constraints were deleted
@@ -1636,13 +1521,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
 
       try {
         // Mark version as having unsaved changes
-        await fetch(`/api/schema-versions/${selectedVersion.id}/unsaved-changes`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        await apiClient.put(`/schema-versions/${selectedVersion.id}/unsaved-changes`);
 
         // Update local state
         setSelectedVersion(prev => prev ? { ...prev, has_unsaved_changes: true } : null);
@@ -1686,29 +1565,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           setLoading(true);
           setError(null);
 
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-          if (!token) {
-            throw new Error(t.applicationsmodal66);
-          }
-
-          const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
+          let newVersion: any;
+          try {
+            newVersion = await apiClient.post(`/floating-schemas/${selectedSchema.id}/versions`, {
               description: `${t.panelt21682}`
-            }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || errorData.error || t.panelt2841);
+            });
+          } catch (err: any) {
+            const data = err?.response?.data;
+            throw new Error(data?.message || data?.error || t.panelt2841);
           }
-
-          const newVersion = await response.json();
 
           // Reload schema versions
           await loadSchemaVersions(selectedSchema);
@@ -1767,25 +1632,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.panelt21752);
+      let result: any;
+      try {
+        result = await apiClient.delete(`/floating-schemas/${selectedSchema.id}/versions/${versionId}`);
+      } catch (err: any) {
+        const data = err?.response?.data;
+        throw new Error(data?.message || data?.error || t.panelt21765);
       }
-
-      const response = await fetch(`/api/floating-schemas/${selectedSchema.id}/versions/${versionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || t.panelt21765);
-      }
-
-      const result = await response.json();
 
       // Reload floating schemas to update last_version in the schema
       await loadFloatingSchemas(selectedSchema.id);
@@ -1832,23 +1685,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/constraints/${selectedFK.constraintId}/foreign-key`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || t.schemacontroller1328);
+      let result: any;
+      try {
+        result = await apiClient.delete(`/constraints/${selectedFK.constraintId}/foreign-key`);
+      } catch (err: any) {
+        const data = err?.response?.data;
+        throw new Error(data?.message || data?.error || t.schemacontroller1328);
       }
 
       // Close modal
@@ -1886,29 +1728,16 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/constraints/${selectedFK.constraintId}/foreign-key`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      let result: any;
+      try {
+        result = await apiClient.put(`/constraints/${selectedFK.constraintId}/foreign-key`, {
           constraint_name: editFKName.trim(),
           on_delete: editFKOnDelete,
           on_update: editFKOnUpdate,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || t.panelt21891);
+        });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        throw new Error(data?.message || data?.error || t.panelt21891);
       }
 
       // Close modal
@@ -1947,11 +1776,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
       // Get the source table from the source field
       const sourceTable = nodes
         .map(n => (n.data as any).table as SchemaTable | undefined)
@@ -1963,30 +1787,22 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         throw new Error(t.panelt21943);
       }
 
-      const response = await fetch(`/api/tables/${sourceTable.id}/foreign-key`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      let result: any;
+      try {
+        result = await apiClient.post(`/tables/${sourceTable.id}/foreign-key`, {
           source_field_id: createFKSourceFieldId,
           target_field_id: createFKTargetFieldId,
           constraint_name: createFKName.trim() || undefined,
           on_delete: createFKOnDelete,
           on_update: createFKOnUpdate,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
+        });
+      } catch (err: any) {
+        const data = err?.response?.data;
         // Show more specific error for incompatible types or SET NULL on NOT NULL
-        if (result.error_type === 'incompatible_types' || result.error_type === 'set_null_on_not_null') {
-          throw new Error(result.message);
+        if (data?.error_type === 'incompatible_types' || data?.error_type === 'set_null_on_not_null') {
+          throw new Error(data.message);
         }
-        throw new Error(result.message || result.error || t.panelt21969);
+        throw new Error(data?.message || data?.error || t.panelt21969);
       }
 
       // Show warnings if any (after successful creation)
@@ -2050,22 +1866,11 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
       setLoadingFKSuggestions(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/schema-versions/${selectedVersion.id}/fk-suggestions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || t.panelt22048);
+      let result: any;
+      try {
+        result = await apiClient.get(`/schema-versions/${selectedVersion.id}/fk-suggestions`);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.panelt22048);
       }
 
       setFkSuggestions(result.suggestions || []);
@@ -2075,7 +1880,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     } finally {
       setLoadingFKSuggestions(false);
     }
-  }, [selectedVersion, t.applicationsmodal66]);
+  }, [selectedVersion]);
 
   // Create FK from suggestion
   const handleCreateFKFromSuggestion = useCallback((suggestion: typeof fkSuggestions[0]) => {
@@ -2112,18 +1917,13 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           accept: async () => {
             try {
               setLoading(true);
-              const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-              const response = await fetch(`/api/floating-schemas/${selectedSchema!.id}/versions`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${token}`,
-                  'Accept': 'application/json',
-                },
-                body: JSON.stringify({ description: t.panelt22102 }),
-              });
-
-              if (!response.ok) throw new Error(t.panelt22105);
+              try {
+                await apiClient.post(`/floating-schemas/${selectedSchema!.id}/versions`, {
+                  description: t.panelt22102,
+                });
+              } catch {
+                throw new Error(t.panelt22105);
+              }
 
               // Reload versions
               await loadSchemaVersions(selectedSchema!);
@@ -2200,23 +2000,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         }
       });
 
-      const response = await fetch('/api/diagram/layout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      let layoutData: any;
+      try {
+        layoutData = await apiClient.post('/diagram/layout', {
           tables: tables,
           foreignKeys: foreignKeys,
           project_id: selectedProject.id
-        })
-      });
-
-      const layoutData = await response.json();
-
-      if (!response.ok) {
-        throw new Error(`${t.panelt22198}${response.statusText}`);
+        });
+      } catch (err: any) {
+        throw new Error(`${t.panelt22198}${err?.message || ''}`);
       }
 
       if (layoutData && layoutData.nodes) {
@@ -2856,6 +2648,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
               onEdgeDoubleClick={onEdgeDoubleClick}
+              onMoveEnd={persistViewport}
               onSelectionChange={(params) => {
                 // Track selected table IDs in order of selection
                 const newlySelectedNodes = params.nodes;
@@ -2896,10 +2689,15 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
               nodesConnectable={false}
               elementsSelectable={true}
               selectNodesOnDrag={false}
-              fitView
+              // fitView only runs when there's no saved viewport for the
+              // current (schema, version). When a saved one exists, we pass
+              // it as defaultViewport so ReactFlow renders with the right
+              // camera from the very first frame — no post-mount setViewport
+              // dance that could lose a race against fitView.
+              fitView={!savedViewport}
               minZoom={0.05}
               maxZoom={4}
-              defaultViewport={{ zoom: 0.8, x: 0, y: 0 }}
+              defaultViewport={savedViewport || { zoom: 0.8, x: 0, y: 0 }}
               className="panelt2-reactflow"
               proOptions={{ hideAttribution: true }}
               style={{
@@ -3276,24 +3074,28 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         </div>
       )}
 
-      {/* FK Suggestions Modal */}
-      {showFKSuggestionsModal && (
-        <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <div className="rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold" style={{ color: colors.textPrimary }}>
-                <i className="pi pi-lightbulb mr-2" style={{ color: colors.warningText }}></i>
-                {t.panelt23067}({fkSuggestions.length})
-              </h3>
-              <button
-                onClick={() => setShowFKSuggestionsModal(false)}
-                className="p-2 rounded hover:opacity-80"
-                style={{ color: colors.textSecondary }}
-              >
-                <i className="pi pi-times"></i>
-              </button>
-            </div>
-
+      {/* FK Suggestions Modal — standard PrimeReact Dialog (header bar with X,
+       * drag/resize handles, p-dialog-custom themed chrome). Content uses
+       * h-full flex flex-col so the table area scrolls internally instead
+       * of pushing the close button off-screen. */}
+      <Dialog
+        visible={showFKSuggestionsModal}
+        onHide={() => setShowFKSuggestionsModal(false)}
+        header={
+          <span>
+            <i className="pi pi-lightbulb mr-2" style={{ color: colors.warningText }}></i>
+            {t.panelt23067}({fkSuggestions.length})
+          </span>
+        }
+        style={{ width: '900px', height: '80vh' }}
+        modal
+        draggable
+        resizable
+        className="p-fluid p-dialog-custom"
+        contentStyle={{ padding: '0' }}
+      >
+        <div className="h-full flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto p-6">
             {fkSuggestions.length === 0 ? (
               <div className="text-center py-8" style={{ color: colors.textMuted }}>
                 <i className="pi pi-check-circle text-4xl mb-4" style={{ color: colors.successText }}></i>
@@ -3301,7 +3103,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 <p className="text-sm mt-2">{t.panelt23085}</p>
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto">
+              <div>
                 <table className="w-full">
                   <thead>
                     <tr style={{ backgroundColor: colors.bgTertiary }}>
@@ -3381,22 +3183,26 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 </table>
               </div>
             )}
+          </div>
 
-            <div className="flex justify-end mt-4 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
-              <button
-                onClick={() => setShowFKSuggestionsModal(false)}
-                className="px-4 py-2 rounded hover:opacity-80"
-                style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
-              >
-                {t.panelt23175}
-              </button>
-            </div>
+          {/* Footer — Close button, anchored at the bottom of the fixed-
+           * height Dialog via flex-shrink-0 so it stays visible even when
+           * the table above scrolls. */}
+          <div className="flex justify-end gap-2 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+            <Button
+              label={t.panelt23175}
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setShowFKSuggestionsModal(false)}
+            />
           </div>
         </div>
-      )}
+      </Dialog>
 
-      {/* Create FK Modal */}
-      {showCreateFKModal && (() => {
+      {/* Create FK Modal — standard PrimeReact Dialog. cancelCreateFK
+       * resets every field so closing via X / Esc / Cancel button all
+       * end in the same clean state. */}
+      {(() => {
         // Extract tables from nodes
         const availableTables = nodes
           .map(n => (n.data as any).table as SchemaTable | undefined)
@@ -3418,11 +3224,30 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           : null;
         const sourceFieldIsNotNull = !!(selectedSourceField && !selectedSourceField.is_nullable);
 
-        return (
-          <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <div className="rounded-lg p-6 max-w-2xl w-full mx-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
-              <h3 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.panelt23199}</h3>
+        const cancelCreateFK = () => {
+          setShowCreateFKModal(false);
+          setCreateFKSourceTableId(null);
+          setCreateFKSourceFieldId(null);
+          setCreateFKTargetTableId(null);
+          setCreateFKTargetFieldId(null);
+          setCreateFKName('');
+          setCreateFKOnDelete('NO ACTION');
+          setCreateFKOnUpdate('NO ACTION');
+        };
 
+        return (
+          <Dialog
+            visible={showCreateFKModal}
+            onHide={cancelCreateFK}
+            header={t.panelt23199}
+            style={{ width: '720px' }}
+            modal
+            draggable
+            resizable
+            className="p-fluid p-dialog-custom"
+            contentStyle={{ padding: '0' }}
+          >
+            <div className="p-6">
               <div className="space-y-4">
                 {/* Source Table and Field */}
                 <div className="grid grid-cols-2 gap-4">
@@ -3598,35 +3423,24 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
                 ) : null}
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowCreateFKModal(false);
-                    setCreateFKSourceTableId(null);
-                    setCreateFKSourceFieldId(null);
-                    setCreateFKTargetTableId(null);
-                    setCreateFKTargetFieldId(null);
-                    setCreateFKName('');
-                    setCreateFKOnDelete('NO ACTION');
-                    setCreateFKOnUpdate('NO ACTION');
-                  }}
-                  className="px-4 py-2 rounded transition-colors hover:opacity-90"
-                  style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
-                  disabled={loading}
-                >
-                  {t.panelt23401}
-                </button>
-                <button
-                  onClick={handleCreateFK}
-                  className="px-4 py-2 text-white rounded transition-colors disabled:opacity-50 hover:opacity-90"
-                  style={{ backgroundColor: colors.accent }}
-                  disabled={loading || !createFKSourceFieldId || !createFKTargetFieldId}
-                >
-                  {loading ? t.saving : t.panelt23409}
-                </button>
-              </div>
             </div>
-          </div>
+            <div className="flex justify-end gap-2 px-6 pb-6" style={{ borderTop: `1px solid ${colors.borderPrimary}`, paddingTop: '12px' }}>
+              <Button
+                label={t.panelt23401}
+                icon="pi pi-times"
+                className="p-button-text"
+                onClick={cancelCreateFK}
+                disabled={loading}
+              />
+              <Button
+                label={loading ? t.saving : t.panelt23409}
+                icon={loading ? 'pi pi-spinner pi-spin' : 'pi pi-plus'}
+                className="p-button-primary"
+                onClick={handleCreateFK}
+                disabled={loading || !createFKSourceFieldId || !createFKTargetFieldId}
+              />
+            </div>
+          </Dialog>
         );
       })()}
 

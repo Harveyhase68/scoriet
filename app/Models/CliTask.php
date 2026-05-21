@@ -57,6 +57,54 @@ class CliTask extends Model
     const STATUS_FAILED = 'failed';
 
     /**
+     * How long a pending task may wait to be picked up before it is
+     * considered stale (in minutes). Tasks older than this MUST NOT be
+     * served by getQueue and SHOULD be auto-failed by the cleanup
+     * scheduler. Different types get different TTLs because user-interactive
+     * actions (connection test, single-row preview) become useless quickly,
+     * while database import/export and full project deploys can legitimately
+     * sit a while if the service was offline.
+     */
+    const PICKUP_TIMEOUT_MINUTES = [
+        self::TYPE_CONNECTION_TEST => 5,
+        self::TYPE_DATA_QUERY      => 5,
+        self::TYPE_PROJECT_DOWNLOAD => 30,
+        self::TYPE_TEMPLATE_UPLOAD => 30,
+        self::TYPE_FILE_EDIT       => 30,
+        self::TYPE_DATABASE_IMPORT => 60,
+        self::TYPE_DATABASE_EXPORT => 60,
+    ];
+
+    /**
+     * Default TTL used when a new task_type appears that isn't in the
+     * map above. Conservative on purpose - new types fail-closed at 30
+     * minutes rather than waiting forever.
+     */
+    const PICKUP_TIMEOUT_DEFAULT_MINUTES = 30;
+
+    /**
+     * Pickup TTL for this task. Wraps the constant lookup so callers don't
+     * have to know the map exists.
+     */
+    public function getPickupTimeoutMinutes(): int
+    {
+        return self::PICKUP_TIMEOUT_MINUTES[$this->task_type] ?? self::PICKUP_TIMEOUT_DEFAULT_MINUTES;
+    }
+
+    /**
+     * Has this still-pending task waited too long for a service to claim it?
+     * Returns false for tasks that are already past pickup (processing /
+     * completed / failed) because the TTL only governs the queue-wait window.
+     */
+    public function isPickupExpired(): bool
+    {
+        if ($this->status !== self::STATUS_PENDING) {
+            return false;
+        }
+        return $this->created_at->lt(now()->subMinutes($this->getPickupTimeoutMinutes()));
+    }
+
+    /**
      * Relationships
      */
     public function user(): BelongsTo

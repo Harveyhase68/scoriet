@@ -398,35 +398,13 @@ html {
    DIALOG DARK THEME WITH BLUE/VIOLET GRADIENT
    ============================================== */
 
-/* Dialog Header with Blue/Violet Gradient - Override Arya-Blue Theme */
-.p-dialog .p-dialog-header {
-    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
-    background-color: transparent !important;
-    background-image: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
-    color: white !important;
-    border-bottom: 1px solid #4b5563 !important;
-}
-
-/* Even more specific - override any theme */
-html body .p-dialog-mask .p-dialog .p-dialog-header,
-html body .p-component .p-dialog .p-dialog-header,
-html body div.p-dialog .p-dialog-header,
-html body .p-dialog.p-dialog .p-dialog-header,
-html body .p-dialog .p-dialog-header.p-dialog-header {
-    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
-    background-color: transparent !important;
-    background-image: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
-    color: white !important;
-    border-bottom: 1px solid #4b5563 !important;
-}
-
-/* Arya-Blue theme specific override */
-.p-theme-arya-blue .p-dialog .p-dialog-header {
-    background: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
-    background-color: transparent !important;
-    background-image: linear-gradient(135deg, #1e40af 0%, #7c3aed 100%) !important;
-    color: white !important;
-}
+/* Modal-header gradient lives in Components/Panels/styles.css (single source
+ * of truth). Three high-specificity override blocks used to sit here with
+ * "html body ..." selectors and !important to beat the arya-blue theme — they
+ * have been removed because they now compete with (and visually shadow) the
+ * canonical rule. If the gradient ever stops showing again, look in
+ * styles.css around the ".p-dialog .p-dialog-header" rules first.
+ */
 
 /* Dialog Content Dark Theme - uses CSS variables */
 .p-dialog .p-dialog-content {
@@ -847,36 +825,12 @@ textarea::placeholder {
    PRIMEREACT DIALOG THEME STYLING
    ============================================== */
 
-.p-dialog {
-    background-color: var(--theme-bg-secondary) !important;
-    color: var(--theme-text-primary) !important;
-    border-color: var(--theme-border-primary) !important;
-}
-
-.p-dialog .p-dialog-header {
-    background-color: var(--theme-bg-tertiary) !important;
-    color: var(--theme-text-primary) !important;
-    border-color: var(--theme-border-primary) !important;
-}
-
-.p-dialog .p-dialog-header .p-dialog-header-icon {
-    color: var(--theme-text-muted) !important;
-}
-
-.p-dialog .p-dialog-header .p-dialog-header-icon:hover {
-    color: var(--theme-text-primary) !important;
-    background-color: var(--theme-bg-hover) !important;
-}
-
-.p-dialog .p-dialog-content {
-    background-color: var(--theme-bg-secondary) !important;
-    color: var(--theme-text-primary) !important;
-}
-
-.p-dialog .p-dialog-footer {
-    background-color: var(--theme-bg-tertiary) !important;
-    border-color: var(--theme-border-primary) !important;
-}
+/* PrimeReact Dialog theming moved to Components/Panels/styles.css to keep a
+ * single source of truth. The duplicate "background-color" rules that used to
+ * live here did not contradict the gradient (different property names, same
+ * specificity), but having the same selectors declared twice in different
+ * files is fragile — any future tweak risked drifting between the two copies.
+ */
 
 /* ==============================================
    PRIMEREACT BUTTON THEME STYLING

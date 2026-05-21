@@ -12,11 +12,10 @@ import { Column } from 'primereact/column';
 import { ProgressBar } from 'primereact/progressbar';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-};
+// Auth headers + 401-refresh handled inside apiClient.cliRequest; the
+// local getAuthToken() helper this file used to ship is no longer needed.
 import { EditorState, Extension } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap } from '@codemirror/commands';
@@ -613,15 +612,13 @@ const FileModal: React.FC<FileModalProps> = ({
 
         servicePollingRef.current = setInterval(async () => {
             try {
-                const response = await fetch(`/cli/svc/file-edit/${sessionId}/status`, {
-                    headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
+                // cliRequest throws on !response.ok; the old version silently
+                // skipped that case via the early `return`, which we preserve
+                // here by catching and returning.
+                let data: any;
+                try {
+                    data = await apiClient.cliRequest(`/svc/file-edit/${sessionId}/status`);
+                } catch {
                     return;
                 }
 
@@ -664,24 +661,22 @@ const FileModal: React.FC<FileModalProps> = ({
         setServiceEditLogs('');
 
         try {
-            const response = await fetch('/cli/svc/tasks/file-edit', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    template_id: templateId,
-                    file_id: editingFile.id,
-                    file_name: editingFile.file_name,
-                    file_content: editingFile.file_content,
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || t.filemodal641);
+            // Auth handled by apiClient.cliRequest; throws on !response.ok
+            // so the explicit status check the raw-fetch version did has
+            // moved into the catch below.
+            let data: any;
+            try {
+                data = await apiClient.cliRequest('/svc/tasks/file-edit', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        template_id: templateId,
+                        file_id: editingFile.id,
+                        file_name: editingFile.file_name,
+                        file_content: editingFile.file_content,
+                    })
+                });
+            } catch (err: any) {
+                throw new Error(err?.response?.data?.message || t.filemodal641);
             }
 
             setServiceEditSessionId(data.session_id);
@@ -699,12 +694,7 @@ const FileModal: React.FC<FileModalProps> = ({
     const handleStopServiceEdit = useCallback(async () => {
         if (serviceEditSessionId) {
             try {
-                await fetch(`/cli/svc/file-edit/${serviceEditSessionId}/stop`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                    }
-                });
+                await apiClient.cliRequest(`/svc/file-edit/${serviceEditSessionId}/stop`, { method: 'POST' });
             } catch {
                 // Ignore errors
             }
@@ -769,7 +759,7 @@ const FileModal: React.FC<FileModalProps> = ({
         // 🎯 Check 100MB size limit
         const maxSize = 100 * 1024 * 1024; // 100MB in bytes
         if (file.size > maxSize) {
-            toast.showError(`${t.filemodal729}(${(file.size / 1024 / 1024).toFixed(1)}MB){t.filemodal729_2}`);
+            toast.showError(`${t.filemodal729}(${(file.size / 1024 / 1024).toFixed(1)}MB)${t.filemodal729_2}`);
             return false;
         }
 

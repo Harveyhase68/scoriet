@@ -3,7 +3,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { useToast } from '@/contexts/ToastContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from 'primereact/button';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
@@ -186,14 +187,21 @@ export default function SystemSettingsPanel() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <TabView
+      {/* flex-1 min-h-0 lets the side-menu region claim the remaining height
+       * while exposing flex's intrinsic-minimum so the inner panels can size
+       * correctly. overflow-auto removed — vertical scroll happens INSIDE
+       * each tab panel via the .p-tabview-vertical .p-tabview-panels rule in
+       * styles.css; stacking an outer overflow on top would produce a second
+       * scrollbar whenever a tab's content was taller than the viewport. */}
+      <div className="flex-1 min-h-0">
+        <TabViewSideMenu
+          storageKey="systemSettingsPanel"
+          defaultWidth={200}
           activeIndex={activeTabIndex}
-          onTabChange={(e) => setActiveTabIndex(e.index)}
-          className="h-full themed-tabview"
+          onTabChange={(e: { index: number }) => setActiveTabIndex(e.index)}
         >
           {/* Settings Tab */}
-          <TabPanel header={t.systemsettingspanel197} leftIcon="pi pi-cog">
+          <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.systemsettingspanel197}</span>}>
             <div className="p-6">
               <div className="max-w-4xl">
                 <form onSubmit={handleSubmit(onSubmit)}>
@@ -456,7 +464,7 @@ export default function SystemSettingsPanel() {
           </TabPanel>
 
           {/* User Management Tab */}
-          <TabPanel header={t.systemsettingspanel460} leftIcon="pi pi-users">
+          <TabPanel header={<span><i className="pi pi-users mr-2" />{t.systemsettingspanel460}</span>}>
             <div className="p-6">
               <div className="rounded-lg p-6 mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex items-center justify-between mb-4">
@@ -574,7 +582,7 @@ export default function SystemSettingsPanel() {
               </div>
             </div>
           </TabPanel>
-        </TabView>
+        </TabViewSideMenu>
       </div>
     </div>
   );

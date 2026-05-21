@@ -62,7 +62,7 @@ export const de: Translations = {
  // app\Http\Controllers\CustomTokenController.php
 
  // app\Http\Controllers\DbSchemaController.php
- dbschemacontroller288: '(Kopie)',
+ dbschemacontroller288: '_copy',
 
  // app\Http\Controllers\PageController.php
 
@@ -498,7 +498,7 @@ export const de: Translations = {
  // resources/js\Components\Modals\CreateTableModal.tsx
 
  // resources/js/Components/Modals/CreateTableModal.tsx
- createtablemodal339: 'z. B. CustomUser, ProductCatalog',
+ createtablemodal339: 'z. B. CustomUser, ProductCatalog',
 
  // resources/js\Components\Modals\CreateTableModal.tsx
 
@@ -997,12 +997,12 @@ export const de: Translations = {
  debugmanualgeneratorpanel127: 'Fira Code',
  debugmanualgeneratorpanel136: 'Hier erscheint der generierte JavaScript-Code...',
 
- debugmanualgeneratorpanel214:  'Clipboard-API nicht verfügbar. Bitte manuell kopieren: 214',
- debugmanualgeneratorpanel217:  'Fehler beim Kopieren in die Zwischenablage',
- debugmanualgeneratorpanel486:  'Keine gültigen Template-Dateien für Template ',
+ debugmanualgeneratorpanel214: 'Clipboard-API nicht verfügbar. Bitte manuell kopieren: 214',
+ debugmanualgeneratorpanel217: 'Fehler beim Kopieren in die Zwischenablage',
+ debugmanualgeneratorpanel486: 'Keine gültigen Template-Dateien für Template ',
  debugmanualgeneratorpanel486a: 'gefunden',
- debugmanualgeneratorpanel490:  'Fehler beim Laden der Template-Dateien: ',
- debugmanualgeneratorpanel990:  'Backend-Template zu umfangreich ',
+ debugmanualgeneratorpanel490: 'Fehler beim Laden der Template-Dateien: ',
+ debugmanualgeneratorpanel990: 'Backend-Template zu umfangreich ',
  debugmanualgeneratorpanel990a: 'von max. ',
  debugmanualgeneratorpanel990b: 'Template enthält zu viele Tabellen oder komplexe Strukturen.',
  debugmanualgeneratorpanel1035: '❌ Datei für ausgewählte Konfiguration nicht gefunden',
@@ -1151,14 +1151,14 @@ export const de: Translations = {
  filemodal130: 'Bitte Dateinamen eingeben!',
 
  // resources/js/Components/Panels/FileModal.tsx
- filemodal135: 'z. B. Model.php, component.tsx, config.json',
+ filemodal135: 'z. B. Model.php, component.tsx, config.json',
 
  // resources/js\Components\Panels\FileModal.tsx
  filemodal153: 'Bitte Typ auswählen!',
  filemodal182: 'Bitte Zielverzeichnis eingeben!',
 
  // resources/js/Components/Panels/FileModal.tsx
- filemodal189: 'z. B. /Komponenten/, /Dienste/, /App/Http/Controllers/',
+ filemodal189: 'z. B. /Komponenten/, /Dienste/, /App/Http/Controllers/',
 
  // resources/js\Components\Panels\FileModal.tsx
  filemodal232: 'Bitte Dateiinhalt eingeben!',
@@ -1206,7 +1206,7 @@ export const de: Translations = {
 
  // resources/js\Components\Panels\LanguageManagementPanel.tsx
  languagemanagementpanel133: 'Sprache erfolgreich gelöscht',
- languagemanagementpanel142: 'PATCH',
+ languagemanagementpanel142: 'Fehler beim Löschen der Sprache: ',
 
  // resources/js/Components/Panels/LanguageManagementPanel.tsx
  languagemanagementpanel153: 'Standardsprache erfolgreich aktualisiert',
@@ -2150,8 +2150,8 @@ export const de: Translations = {
  changePlan: 'Plan ändern',
  logout: 'Abmelden',
  gotoApp: 'Zur App',
- title: 'Enterprise Code Generator',
- subtitle: 'Verwandeln Sie Ihre Datenbankschemas in produktionsreifen Code mit intelligenten Templates. Reduzieren Sie die Entwicklungszeit um 80% durch automatisierte Code-Generierung.',
+ title: 'Scoriet - Schema-to-Stack Studio',
+ subtitle: 'Bekämpfe die KI nicht – nutze sie sinnvoll. Scoriet legt den Grundstein. Die KI baut darauf auf.',
  startFree: 'Kostenlos starten',
  tryDemo: 'Demo testen',
  watchDemo: 'Video ansehen',
@@ -2164,7 +2164,7 @@ export const de: Translations = {
 
  // resources/js/pages/LandingPage.tsx
  ctaTitle: 'Bereit Ihre Entwicklungsgeschwindigkeit zu verzehnfachen?',
- ctaSubtitle: 'Schließen Sie sich tausenden von Entwicklern an, die bereits Scoriet verwenden, um bessere Software schneller zu entwickeln.',
+ ctaSubtitle: 'Schließen Sie sich der Community zukunftsorientierter Entwickler an, die bessere Software schneller entwickeln.',
  startFreeTrial: 'Kostenlose Testversion starten',
  tryDemoNow: 'Demo jetzt testen',
  contactSales: 'Vertrieb kontaktieren',
@@ -2200,6 +2200,10 @@ export const de: Translations = {
  // resources/js/pages/LandingPage.tsx
  contactUsLink: 'Kontakt',
  communityLink: 'Community',
+ forumLink: 'Forum',
+ devlogLink: 'Dev-Log',
+ ticketsLink: 'Tickets',
+ issuesLink: 'Issues',
  allRightsReserved: '© 2026 Scoriet, alle Rechte vorbehalten',
 
  // resources/js/pages/LandingPage.tsx
@@ -2249,7 +2253,7 @@ export const de: Translations = {
  // resources/js/pages/PublicProjectPage.tsx
  publicProjectBy: 'von',
  publicProjectPoweredBy: 'Powered by',
- publicProjectTagline: 'Enterprise Code Generator',
+ publicProjectTagline: 'Schema-to-Stack Studio',
  projectSettings: 'Projekteinstellungen',
  languages: 'Sprachen',
  dateFormat: 'Datumsformat',
@@ -2657,9 +2661,9 @@ export const de: Translations = {
  templatemanagementpanel2057: 'Projekt',
  templatemanagementpanel2057_2: 'Projekte',
  templatemanagementpanel2036: 'Projekte',
- templatemanagementpanel2069: 'Aktiv',
+ templatemanagementpanel2069: 'System',
  templatemanagementpanel2085: 'Freigegeben',
- templatemanagementpanel2095: 'Prüfung',
+ templatemanagementpanel2095: 'Wartet auf Review',
  templatemanagementpanel2133: 'Mit Projekten verknüpfen',
  templatemanagementpanel2142: 'Verknüpfungen verwalten',
  templatemanagementpanel2155: 'Bereits gecloned',
@@ -4110,6 +4114,8 @@ export const de: Translations = {
  twofactorsection587: 'Abbrechen',
  twofactorsection593: 'Weiter',
  twofactorsection604: 'Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein:',
+ twofactorsection_trust_device_label: 'Diesen Browser für 30 Tage vertrauen',
+ twofactorsection_trust_device_hint: 'Sie müssen dann auf diesem Browser keinen 2FA-Code mehr eingeben.',
  twofactorsection621: 'Zurück',
  twofactorsection627: 'Verifizieren',
  twofactorsection639: '2FA wurde erfolgreich aktiviert!',
@@ -4577,7 +4583,7 @@ export const de: Translations = {
  projectinvitationresponse383: 'Sie können nun auf das Projekt zugreifen und mit Ihrem Team zusammenarbeiten.',
  projectinvitationresponse384: 'Der Projektinhaber wurde über Ihre Entscheidung informiert.',
  projectinvitationresponse390: 'Gehe zur Scoriet-App',
- projectinvitationresponse403: 'Dies ist eine automatische Nachricht von Scoriet – Enterprise Code Generator',
+ projectinvitationresponse403: 'Dies ist eine automatische Nachricht von Scoriet – Schema-to-Stack Studio',
  projectinvitationresponse411: 'Erstellen Sie Ihr Scoriet-Konto',
  projectinvitationresponse421: 'Vollständiger Name *',
  projectinvitationresponse426: 'John Doe',
@@ -4812,7 +4818,7 @@ export const de: Translations = {
  projectwizardmodal1947: 'Wähle ein Team aus...',
  projectwizardmodal1968: '🔓 Teamfunktion freischalten',
  projectwizardmodal1973: 'Team-Feature – Kostenlose Version',
- projectwizardmodal1976: 'Teams ist eine Zusatzfunktion für kostenlose Nutzer. Jedes Team kostet [Betrag einfügen]. ',
+ projectwizardmodal1976: 'Teams ist eine Zusatzfunktion für kostenlose Nutzer. Schalte unbegrenzte Teams frei für ',
  projectwizardmodal1976_2: '50 Credits pro Jahr',
  projectwizardmodal1980: 'Sie haben derzeit ',
  projectwizardmodal1980_1: ' Teams',
@@ -5465,7 +5471,7 @@ export const de: Translations = {
  codegenerationpanel2766: 'Downloadaufgabe konnte nicht erstellt werden: ',
  codegenerationpanel2773: '✅ Aufgabe erstellt: #',
  codegenerationpanel2773_2: '📂 Ziel: ',
- codegenerationpanel2773_3: 't.codegenerationpanel2773_2',
+ codegenerationpanel2773_3: '📂 Ziel: ',
  codegenerationpanel2773_4: '⏳ Warten auf die Übernahme des Auftrags durch scoriet-svc...',
  codegenerationpanel2784: '✅ Aufgabe ',
  codegenerationpanel2784_2: ' An scoriet-svc gesendet!',
@@ -6934,7 +6940,7 @@ export const de: Translations = {
  createtablemodal658: 'Richtung',
  createtablemodal702: 'Wird erstellt...',
  createtablemodal707: 'Tabelle erstellen',
- edittablemodal404: 'Tabelle bearbeiten: {table?.table_name}',
+ edittablemodal404: 'Tabelle bearbeiten: ',
  edittablemodal422: 'Tabellenname *',
  edittablemodal439: 'Dateischlüsselname *',
  edittablemodal456: 'Für das Template verwendete Feld ',
@@ -7056,7 +7062,7 @@ export const de: Translations = {
  teammodal276: 'Nicht genug Credits! Sie benötigen ',
  teammodal276_2: ' Credits, haben aber nur ',
  teammodal328: 'Abonnement wird geprüft...',
- teammodal340: 'Teams ist eine Zusatzfunktion für kostenlose Nutzer. Jedes Team kostet [Betrag einfügen]. ',
+ teammodal340: 'Teams ist eine Zusatzfunktion für kostenlose Nutzer. Schalte unbegrenzte Teams frei für ',
  teammodal340_2: '50 Credits pro Jahr',
  teammodal356: 'Erforderliche Credits:',
  teammodal361: 'Nach dem Entsperren:',
@@ -7275,10 +7281,10 @@ export const de: Translations = {
  kanbanboardpanel1534: 'ausgewählt',
  panelt21740: 'Kein Schema ausgewählt',
   codegenerationpanel2955: ' ausgewählt',
-  codegenerationpanel2955_2: '  von  ',
+  codegenerationpanel2955_2: ' von ',
   profilemodal774: 'Unbekannter Fehler',
-  codeadjustmentspanel1181: '  Fehler',
-  debugmanualgeneratorpanel454: 'Fehler beim Laden der Templates:  ',
+  codeadjustmentspanel1181: ' Fehler',
+  debugmanualgeneratorpanel454: 'Fehler beim Laden der Templates: ',
   performancemetricspanel411: 'Übersicht',
   panelt23358: '(Quellfeld ist NOT NULL)',
   emailverification13: 'E-Mail bestätigen - Scoriet',
@@ -7302,14 +7308,14 @@ export const de: Translations = {
   createteammodal280: 'Erforderliche Credits:',
   createteammodal285: 'Nach dem Entsperren:',
   createteammodal285_2: 'Nach dem Entsperren:',
-  createteammodal264: 'Teams ist eine Zusatzfunktion für kostenlose Nutzer. Jedes Team kostet [Betrag einfügen]. ',
+  createteammodal264: 'Teams ist eine Zusatzfunktion für kostenlose Nutzer. Schalte unbegrenzte Teams frei für ',
   createteammodal264_2: '50 Credits pro Jahr',
   createteammodal261: 'Team-Feature – Kostenlose Version',
   createteammodal252: 'Abonnement wird geprüft...',
   createteammodal239: 'Teamfunktion freischalten',
   createteammodal239_2: ' \'Neues Team erstellen\'',
-  createteammodal198: 'Nicht genug Credits! Sie benötigen  ',
-  createteammodal198_2: '  Credits, haben aber nur  ',
+  createteammodal198: 'Nicht genug Credits! Sie benötigen ',
+  createteammodal198_2: ' Credits, haben aber nur ',
   createteammodal158: 'Nur Kleinbuchstaben, Zahlen und Unterstriche sind erlaubt.',
   createteammodal121: 'Fehler beim Aktualisieren der Credits:',
   createteammodal97: 'Fehler bei der Überprüfung des Team-Abonnements:',

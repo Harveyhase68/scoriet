@@ -404,11 +404,6 @@ export default function SchemaTranslationPanel() {
 
     setImporting(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
       const formData = new FormData();
       formData.append('file', importFile);
       formData.append('project_id', selectedProject.id.toString());
@@ -418,20 +413,12 @@ export default function SchemaTranslationPanel() {
         formData.append('languages[]', lang);
       });
 
-      const response = await fetch('/api/translations/import', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.databasemanagementpanel294);
+      let result: any;
+      try {
+        result = await api.uploadFile('/translations/import', formData);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.databasemanagementpanel294);
       }
-
-      const result = await response.json();
       setShowImportDialog(false);
       setImportFile(null);
       toast.showSuccess(`${t.schematranslationpanel375}${result.imported_count}${t.schematranslationpanel375_2}(${result.updated_count}${t.schematranslationpanel375_3}${result.created_count}${t.schematranslationpanel375_4})`);
@@ -552,27 +539,18 @@ export default function SchemaTranslationPanel() {
     }
   };
 
-  const translateSingleItem = async (token: string, itemName: string, sourceText: string) => {
-    const response = await fetch('/api/translations/auto-translate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
+  const translateSingleItem = async (_token: string, itemName: string, sourceText: string) => {
+    let result: any;
+    try {
+      result = await api.post('/translations/auto-translate', {
         project_id: selectedProject!.id,
         text: sourceText,
         source_language: sourceLanguageForTranslate,
         target_languages: targetLanguagesForTranslate
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || t.autotranslatecontroller83);
+      });
+    } catch (err: any) {
+      throw new Error(err?.response?.data?.message || t.autotranslatecontroller83);
     }
-
-    const result = await response.json();
 
     // Fill in the translations (keep existing source language)
     const newTranslations: Record<string, string> = { ...selectedItemTranslations };
@@ -627,41 +605,25 @@ export default function SchemaTranslationPanel() {
       setTranslationProgress({ current: i + 1, total: itemsToTranslate.length });
 
       try {
-        const response = await fetch('/api/translations/auto-translate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            project_id: selectedProject!.id,
-            text: item.sourceText,
-            source_language: sourceLanguageForTranslate,
-            target_languages: targetLanguagesForTranslate
-          }),
+        const result = await api.post('/translations/auto-translate', {
+          project_id: selectedProject!.id,
+          text: item.sourceText,
+          source_language: sourceLanguageForTranslate,
+          target_languages: targetLanguagesForTranslate
         });
 
-        if (response.ok) {
-          const result = await response.json();
+        // Save translations immediately
+        const translationsToSave = result.translations.map((t: any) => ({
+          code: t.language,
+          translated_text: t.text
+        }));
 
-          // Save translations immediately
-          const translationsToSave = result.translations.map((t: any) => ({
-            code: t.language,
-            translated_text: t.text
-          }));
+        await api.post('/schema-translations/bulk-update', {
+          item_name: item.itemName,
+          translations: translationsToSave
+        });
 
-          await api.request('/schema-translations/bulk-update', {
-            method: 'POST',
-            body: JSON.stringify({
-              item_name: item.itemName,
-              translations: translationsToSave
-            })
-          });
-
-          successCount++;
-        } else {
-          errorCount++;
-        }
+        successCount++;
       } catch {
         errorCount++;
       }

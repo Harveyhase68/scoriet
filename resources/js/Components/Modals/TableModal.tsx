@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
-import { TabView, TabPanel } from 'primereact/tabview';
-import { SchemaTable, DisplayState, GenerationMode } from '@/lib/api';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
+import { SchemaTable, DisplayState, GenerationMode, apiClient } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -15,6 +16,11 @@ export interface TableField {
   autoIncrement: boolean;
   constraintType: 'none' | 'primary' | 'index' | 'unique';
   comment: string;
+  // Default value: null means the column has no default (or DEFAULT NULL when
+  // the column is nullable); '' is a valid default (empty string). The NULL
+  // checkbox in the UI toggles between null and '' so the user can distinguish
+  // "no value at all" from "empty default".
+  defaultValue: string | null;
   // Control Type & Link Fields
   controlType: string;
   linkTable: string;
@@ -132,6 +138,37 @@ function detectControlType(fieldType: string, fieldName: string, linkTable: stri
   return 'TEXT';
 }
 
+/**
+ * Normalise the `translations` payload from /api/schema-translations/item/{name}
+ * into a flat { langCode: translated_text } map.
+ *
+ * The backend's getAllTranslationsForItem() returns a Laravel Collection
+ * keyed by language code, which JSON-encodes as an OBJECT:
+ *   {"de": {"code":"de","translated_text":"Email"}, "en": {...}}
+ *
+ * Our earlier code assumed an ARRAY (`forEach((t) => ...)`), which on an
+ * object silently no-ops — leaving every caption field empty even when
+ * translations existed in the DB. This helper accepts both shapes:
+ *   - object (current backend): iterate values
+ *   - array (defensive, in case wire format reverts): iterate entries
+ */
+function extractTranslationsToMap(raw: unknown, target: Record<string, string>): void {
+  if (!raw || typeof raw !== 'object') return;
+  if (Array.isArray(raw)) {
+    raw.forEach((t: any) => {
+      if (t && typeof t.code === 'string' && typeof t.translated_text === 'string') {
+        target[t.code] = t.translated_text;
+      }
+    });
+    return;
+  }
+  Object.entries(raw as Record<string, any>).forEach(([langCode, t]) => {
+    if (t && typeof t.translated_text === 'string') {
+      target[langCode] = t.translated_text;
+    }
+  });
+}
+
 function createDefaultField(): TableField {
   return {
     id: '1',
@@ -143,6 +180,7 @@ function createDefaultField(): TableField {
     autoIncrement: true,
     constraintType: 'primary',
     comment: '',
+    defaultValue: null,
     controlType: 'TEXT',
     linkTable: '',
     linkField: '',
@@ -204,20 +242,41 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
   const [isMaximized, setIsMaximized] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
+  // ---- Caption translations (Fields tab) -----------------------------
+  // Active languages (loaded once when the modal opens) and the language
+  // currently being edited in the detail pane's caption row.
+  const [availableLanguages, setAvailableLanguages] = useState<Array<{ code: string; name: string; native_name?: string }>>([]);
+  const [captionLangCode, setCaptionLangCode] = useState<string>('en');
+  // Captions per field per language. Lazy-loaded the first time a field is
+  // selected (loadedCaptionFieldIdsRef ensures we hit /api once per field
+  // per modal open). Saved via /api/schema-translations/bulk-update inside
+  // handleSubmit, keyed by `tableName.fieldName`.
+  const [captions, setCaptions] = useState<Record<string, Record<string, string>>>({});
+  const loadedCaptionFieldIdsRef = React.useRef<Set<string>>(new Set());
+
+  // Fields tab: which row in the left-side table is currently selected.
+  // When null, the right-side detail pane is hidden and the list spans the
+  // full panel width — keeps the screen tidy when the user is just scanning.
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const selectedField = React.useMemo(
+    () => fields.find(f => f.id === selectedFieldId) || null,
+    [fields, selectedFieldId]
+  );
+  const selectedFieldIndex = React.useMemo(
+    () => fields.findIndex(f => f.id === selectedFieldId),
+    [fields, selectedFieldId]
+  );
+
   useEffect(() => {
     if (!isOpen) return;
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
-    const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
-    fetch('/api/form-sets', { headers })
-      .then(r => r.ok ? r.json() : null)
+    apiClient.get('/form-sets')
       .then(data => {
         if (data?.data) {
           setAvailableFormSets(data.data.map((fs: { id: number; name: string }) => ({ id: fs.id, name: fs.name })));
         }
       })
       .catch(() => {});
-    fetch('/api/report-patterns', { headers })
-      .then(r => r.ok ? r.json() : null)
+    apiClient.get('/report-patterns')
       .then(data => {
         if (data?.data) {
           setAvailableReportPatterns(data.data.map((rp: { id: number; name: string }) => ({ id: rp.id, name: rp.name })));
@@ -228,15 +287,118 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
 
   useEffect(() => {
     if (!isOpen) return;
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
     const targetLang = localStorage.getItem('scoriet_target_language') || 'html';
-    fetch(`/api/editmask-presets?language=${targetLang}`, {
-      headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
-    })
-      .then(r => r.ok ? r.json() : null)
+    apiClient.get(`/editmask-presets?language=${targetLang}`)
       .then(data => { if (data?.presets) setEditmaskPresets(data.presets); })
       .catch(() => {});
   }, [isOpen]);
+
+  // Load active languages once per modal open, for the caption-translation
+  // dropdown in the Fields tab. /api/active-languages returns the array
+  // directly (not wrapped) — matches the existing pattern in
+  // DatabaseManagementPanel + DebugManualGeneratorPanel.
+  useEffect(() => {
+    if (!isOpen) return;
+    apiClient.get('/active-languages')
+      .then((data: unknown) => {
+        const arr = Array.isArray(data) ? (data as Array<{ code: string; name: string; native_name?: string }>) : [];
+        setAvailableLanguages(arr);
+        // Default to the user's UI language if it's in the list, otherwise
+        // first entry, otherwise stay on 'en'. Keeps the user editing the
+        // language they likely care about first.
+        const ui = (localStorage.getItem('scoriet_language') || 'en').toLowerCase();
+        if (arr.some(l => l.code === ui)) setCaptionLangCode(ui);
+        else if (arr.length > 0) setCaptionLangCode(arr[0].code);
+      })
+      .catch(() => {});
+    // Reset caption cache when modal closes (so next open starts fresh
+    // and picks up any external edits made via the translations panel).
+    return () => {
+      setCaptions({});
+      loadedCaptionFieldIdsRef.current = new Set();
+    };
+  }, [isOpen]);
+
+  // Preload caption translations for EVERY field as soon as the modal opens
+  // with a real table+field set. This means when the user clicks a row in
+  // the field list, the caption input is already populated for every
+  // language — no spinner, no lazy round-trip per click.
+  //
+  // Runs only ONCE per modal-open (per table) via the bulkPreloadedRef
+  // guard. It also still serves as the loader for fields that already
+  // exist when the modal opens. Newly-added fields (Add button) fall
+  // through to the per-field lazy-load below.
+  const bulkPreloadedRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    if (!isOpen) {
+      bulkPreloadedRef.current = null;
+      return;
+    }
+    if (!tableName.trim() || fields.length === 0) return;
+    // Re-preload when the table name changes (e.g., user retitled mid-edit)
+    // because translations are keyed by the new name.
+    if (bulkPreloadedRef.current === tableName) return;
+    bulkPreloadedRef.current = tableName;
+
+    // Fire all field fetches in parallel; merge results as they arrive.
+    // Promise.allSettled so one 404 doesn't block the rest.
+    const targets = fields.filter(f => f.name.trim());
+    targets.forEach(f => loadedCaptionFieldIdsRef.current.add(f.id));
+
+    Promise.allSettled(targets.map(f =>
+      apiClient.get(`/schema-translations/item/${encodeURIComponent(`${tableName}.${f.name}`)}`)
+        .then((data: unknown) => {
+          const payload = data as { translations?: unknown } | null;
+          const map: Record<string, string> = {};
+          // Backend returns `translations` as a Collection keyed by language
+          // code (so JSON-encoded as an object: {de: {...}, en: {...}}),
+          // NOT as a plain array. Handle both shapes defensively in case the
+          // wire format ever changes back to a list.
+          extractTranslationsToMap(payload?.translations, map);
+          return { fieldId: f.id, map };
+        })
+    )).then(results => {
+      setCaptions(prev => {
+        const next = { ...prev };
+        results.forEach(r => {
+          if (r.status === 'fulfilled') {
+            next[r.value.fieldId] = { ...(next[r.value.fieldId] || {}), ...r.value.map };
+          }
+        });
+        return next;
+      });
+    });
+  }, [isOpen, tableName, fields]);
+
+  // Lazy-load caption translations for the currently-selected field. This
+  // handles two cases the bulk preload above can't: (1) the user clicks a
+  // field that was added AFTER modal open via the "+ Add" button — bulk
+  // preload already ran, but this field wasn't in `fields` at that point;
+  // (2) the user renames a field — translations under the new name need
+  // a fresh fetch since the bulk preload used the old name.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!selectedFieldId) return;
+    if (loadedCaptionFieldIdsRef.current.has(selectedFieldId)) return;
+    const field = fields.find(f => f.id === selectedFieldId);
+    if (!field || !field.name.trim() || !tableName.trim()) return;
+    // Mark as "in flight" up-front so rapid clicks don't fire duplicate
+    // requests for the same field while the first one is pending.
+    loadedCaptionFieldIdsRef.current.add(selectedFieldId);
+    const itemName = `${tableName}.${field.name}`;
+    apiClient.get(`/schema-translations/item/${encodeURIComponent(itemName)}`)
+      .then((data: unknown) => {
+        const payload = data as { translations?: unknown } | null;
+        const map: Record<string, string> = {};
+        // Same object-vs-array dual handling as the bulk preload above.
+        extractTranslationsToMap(payload?.translations, map);
+        setCaptions(prev => ({ ...prev, [selectedFieldId]: { ...(prev[selectedFieldId] || {}), ...map } }));
+      })
+      .catch(() => {
+        // Allow a retry on next select if the network call failed.
+        loadedCaptionFieldIdsRef.current.delete(selectedFieldId);
+      });
+  }, [isOpen, selectedFieldId, fields, tableName]);
 
   const [availableTables, setAvailableTables] = useState<string[]>([]);
   const [linkFieldOptions, setLinkFieldOptions] = useState<{[key: string]: string[]}>({});
@@ -326,6 +488,9 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
           autoIncrement: isAutoIncrement,
           constraintType,
           comment: field.comment || '',
+          // default_value is nullable on the backend; preserve null vs ''
+          // so the UI's NULL checkbox can show the right state.
+          defaultValue: field.default_value === undefined ? null : field.default_value,
           controlType,
           linkTable,
           linkField,
@@ -366,26 +531,16 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
 
   const fetchAvailableTables = async (svId: number) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/schema-versions/${svId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        }
+      const data = await apiClient.get(`/schema-versions/${svId}`);
+      const schemaVersion = data.schema_version || data;
+      const tables = schemaVersion.tables?.map((tbl: { table_name: string }) => tbl.table_name) || [];
+      setAvailableTables(tables);
+
+      const fieldOpts: {[key: string]: string[]} = {};
+      schemaVersion.tables?.forEach((tbl: { table_name: string; fields?: { field_name: string }[] }) => {
+        fieldOpts[tbl.table_name] = tbl.fields?.map((f) => f.field_name) || [];
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        const schemaVersion = data.schema_version || data;
-        const tables = schemaVersion.tables?.map((tbl: { table_name: string }) => tbl.table_name) || [];
-        setAvailableTables(tables);
-
-        const fieldOpts: {[key: string]: string[]} = {};
-        schemaVersion.tables?.forEach((tbl: { table_name: string; fields?: { field_name: string }[] }) => {
-          fieldOpts[tbl.table_name] = tbl.fields?.map((f) => f.field_name) || [];
-        });
-        setLinkFieldOptions(fieldOpts);
-      }
+      setLinkFieldOptions(fieldOpts);
     } catch {
       // Error fetching tables
     }
@@ -414,6 +569,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       autoIncrement: false,
       constraintType: 'none',
       comment: '',
+      defaultValue: null,
       controlType: 'TEXT',
       linkTable: '',
       linkField: '',
@@ -427,10 +583,42 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
     setFields([...fields, newField]);
   };
 
-  const removeField = (id: string) => {
-    if (fields.length > 1) {
-      setFields(fields.filter(field => field.id !== id));
-    }
+  // Reorder helpers — operate on the currently-selected field. Because the
+  // backend assigns `field_order` from the array index on save, swapping
+  // positions in this array is all that's needed; no extra metadata to track.
+  // The selection stays on the moved field (selectedFieldId is field-ID-
+  // based, not index-based) so the highlight visually "follows" the row.
+  const swapFields = (i: number, j: number) => {
+    if (i < 0 || j < 0 || i >= fields.length || j >= fields.length || i === j) return;
+    const next = [...fields];
+    [next[i], next[j]] = [next[j], next[i]];
+    setFields(next);
+  };
+  const moveFieldFirst = () => {
+    if (selectedFieldIndex <= 0) return;
+    const next = [...fields];
+    const [moved] = next.splice(selectedFieldIndex, 1);
+    next.unshift(moved);
+    setFields(next);
+  };
+  const moveFieldLast = () => {
+    if (selectedFieldIndex < 0 || selectedFieldIndex >= fields.length - 1) return;
+    const next = [...fields];
+    const [moved] = next.splice(selectedFieldIndex, 1);
+    next.push(moved);
+    setFields(next);
+  };
+  const moveFieldPrev = () => swapFields(selectedFieldIndex, selectedFieldIndex - 1);
+  const moveFieldNext = () => swapFields(selectedFieldIndex, selectedFieldIndex + 1);
+  const deleteSelectedField = () => {
+    if (!selectedField || fields.length <= 1) return;
+    const idx = selectedFieldIndex;
+    setFields(fields.filter(f => f.id !== selectedField.id));
+    // Move selection to the previous row (or first row if we deleted index 0)
+    // so the user can keep clicking through without re-clicking the table.
+    const nextIdx = Math.max(0, idx - 1);
+    const newSelected = fields.filter(f => f.id !== selectedField.id)[nextIdx];
+    setSelectedFieldId(newSelected ? newSelected.id : null);
   };
 
   const updateField = (id: string, updates: Partial<TableField>) => {
@@ -485,6 +673,29 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       }
     }
 
+    // Persist caption translations for every field whose dict has at least
+    // one entry. The backend's bulk-update endpoint is upsert-by-(item_name,
+    // code), so re-sending identical values is harmless idempotency, and we
+    // don't have to track a "dirty" flag per language.
+    //
+    // Fire-and-forget on purpose: a translation save failure must not block
+    // the table create/update. If the bulk-update fails, the user keeps an
+    // unsaved caption in memory; they'll notice the missing translation in
+    // the generated output and can retry. Blocking the modal would be worse
+    // — they'd lose all their field edits with no way to recover.
+    fields.forEach(f => {
+      const fieldCaptions = captions[f.id];
+      if (!fieldCaptions || !f.name.trim()) return;
+      const translations = Object.entries(fieldCaptions)
+        .filter(([, text]) => text && text.trim())
+        .map(([code, translated_text]) => ({ code, translated_text }));
+      if (translations.length === 0) return;
+      apiClient.post('/schema-translations/bulk-update', {
+        item_name: `${tableName}.${f.name}`,
+        translations,
+      }).catch(() => { /* best-effort */ });
+    });
+
     onSave(
       tableName,
       fields,
@@ -538,14 +749,25 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       header={
         <span>
           <i className={isEditMode ? 'pi pi-pencil mr-2' : 'pi pi-table mr-2'}></i>
-          {isEditMode ? t.edittablemodal404 : t.createtablemodal302}
+          {/* The i18n string now ends at the "Edit Table: " prefix; the actual
+           * table name comes from the live `table` prop and is interpolated
+           * here. (Earlier the placeholder "{table?.table_name}" sat inside
+           * the translation string itself and was rendered as literal text.) */}
+          {isEditMode ? <>{t.edittablemodal404}{table?.table_name}</> : t.createtablemodal302}
         </span>
       }
       visible={isOpen}
       onHide={handleClose}
-      style={{ width: isMaximized ? '95vw' : '1000px', height: isMaximized ? '95vh' : 'auto' }}
-      contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
-      headerStyle={{ backgroundColor: colors.dialogHeader || colors.bgSecondary, color: colors.textPrimary }}
+      /* Fixed height (85vh / 95vh when maximized) so the inner flex layout
+       * has a concrete height to distribute. `height: auto` would collapse
+       * the TabViewSideMenu wrapper because flex-1 + min-h-0 only work
+       * meaningfully inside a constrained container. */
+      style={{ width: isMaximized ? '95vw' : '1400px', height: isMaximized ? '95vh' : '85vh' }}
+      /* contentStyle is intentionally pared down — global .p-dialog styling
+       * + the :has(.p-tabview-vertical-wrapper) override in styles.css set
+       * background, padding, and overflow. headerStyle removed for the same
+       * reason: the global purple-gradient header rule now handles it. */
+      contentStyle={{ padding: '0' }}
       modal
       closable
       draggable
@@ -553,17 +775,25 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       maximizable
       maximized={isMaximized}
       onMaximize={(e) => setIsMaximized(e.maximized)}
-      className="table-modal"
+      className="p-dialog-custom table-modal"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col" style={{ maxHeight: isMaximized ? 'calc(95vh - 200px)' : '75vh' }}>
-        <TabView
+      {/* Outer flex-column container shares the dialog-content height across:
+       *   [1] TabViewSideMenu region  – flex-1, fills available space
+       *   [2] error banner            – flex-shrink-0, natural height when shown
+       *   [3] footer buttons          – flex-shrink-0
+       * Previously the form carried a hard `maxHeight: 75vh / 95vh` calc;
+       * that's no longer needed once the dialog itself supplies a fixed
+       * height and the panels region scrolls internally. */}
+      <form onSubmit={handleSubmit} className="flex flex-col h-full min-h-0">
+        <div className="flex-1 min-h-0">
+        <TabViewSideMenu
+          storageKey="tableModal"
+          defaultWidth={200}
           activeIndex={activeTab}
-          onTabChange={(e) => setActiveTab(e.index)}
-          className="flex-1 overflow-hidden"
-          panelContainerStyle={{ backgroundColor: colors.bgSecondary, padding: '1rem 0 0 0' }}
+          onTabChange={(e: { index: number }) => setActiveTab(e.index)}
         >
           {/* ------------------ TAB 1: Table Settings ------------------ */}
-          <TabPanel header={i18nExtra.tablemodal_tab_settings || 'Table Settings'} leftIcon="pi pi-cog mr-2">
+          <TabPanel header={<span><i className="pi pi-cog mr-2" />{i18nExtra.tablemodal_tab_settings || 'Table Settings'}</span>}>
             <div className="space-y-4 overflow-y-auto pr-2" style={{ maxHeight: isMaximized ? 'calc(95vh - 320px)' : '55vh' }}>
 
               {/* Table Name (full width) */}
@@ -783,45 +1013,267 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
           </TabPanel>
 
           {/* ------------------ TAB 2: Fields ------------------ */}
-          <TabPanel header={`${i18nExtra.tablemodal_tab_fields || 'Fields'} (${fields.length})`} leftIcon="pi pi-list mr-2">
-            <div className="flex flex-col" style={{ maxHeight: isMaximized ? 'calc(95vh - 320px)' : '55vh' }}>
-              <div className="flex justify-between items-center mb-3">
+          {/* contentClassName="panel-fill" — this tab pins the toolbar at
+           * the top and runs an internal scroll on the split list/detail
+           * area below. See the .panel-fill rule in Panels/styles.css.
+           *
+           * Layout (NEW): toolbar across the top, then a horizontal split:
+           *   LEFT  — compact field table (name/type/length/key icon).
+           *           Clicking a row selects that field.
+           *   RIGHT — full detail editor for the selected field. Hidden
+           *           when nothing is selected so the list spans the full
+           *           panel width, which keeps the screen un-cluttered. */}
+          <TabPanel
+            header={<span><i className="pi pi-list mr-2" />{`${i18nExtra.tablemodal_tab_fields || 'Fields'} (${fields.length})`}</span>}
+            contentClassName="panel-fill"
+          >
+            <div className="flex flex-col h-full min-h-0">
+              {/* Toolbar: title + per-row actions. Reorder buttons (first/
+               * prev/next/last) and delete operate on `selectedField`, so
+               * they're disabled when no row is selected — saves a confusing
+               * "click did nothing" state. */}
+              <div className="flex justify-between items-center mb-2 flex-shrink-0">
                 <label className="block text-sm font-medium" style={{ color: colors.textSecondary }}>
-                  {isEditMode ? t.edittablemodal505 : t.createtablemodal403}
+                  {isEditMode ? t.edittablemodal505 : t.createtablemodal403} ({fields.length})
                 </label>
-                <button
-                  type="button"
-                  onClick={addField}
-                  disabled={loading}
-                  className="px-3 py-1 rounded text-white text-sm flex items-center space-x-1 hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: colors.accent }}
-                >
-                  <i className="pi pi-plus"></i>
-                  <span>{isEditMode ? t.edittablemodal515 : t.createtablemodal413}</span>
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={addField}
+                    disabled={loading}
+                    className="px-2 py-1 rounded text-white text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-50"
+                    style={{ backgroundColor: colors.accent }}
+                    title={isEditMode ? t.edittablemodal515 : t.createtablemodal413}
+                  >
+                    <i className="pi pi-plus" style={{ fontSize: '11px' }}></i>
+                    <span>{isEditMode ? t.edittablemodal515 : t.createtablemodal413}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deleteSelectedField}
+                    disabled={loading || !selectedField || fields.length <= 1}
+                    className="px-2 py-1 rounded text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: colors.errorBg, color: colors.errorText, border: `1px solid ${colors.errorBorder}` }}
+                    title="Delete selected field"
+                  >
+                    <i className="pi pi-trash" style={{ fontSize: '11px' }}></i>
+                  </button>
+                  <div className="w-px h-5 mx-1" style={{ backgroundColor: colors.borderPrimary }}></div>
+                  <button
+                    type="button"
+                    onClick={moveFieldFirst}
+                    disabled={loading || !selectedField || selectedFieldIndex <= 0}
+                    className="px-2 py-1 rounded text-xs hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                    title="Move to first"
+                  >
+                    <i className="pi pi-angle-double-up" style={{ fontSize: '11px' }}></i>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={moveFieldPrev}
+                    disabled={loading || !selectedField || selectedFieldIndex <= 0}
+                    className="px-2 py-1 rounded text-xs hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                    title="Move up"
+                  >
+                    <i className="pi pi-angle-up" style={{ fontSize: '11px' }}></i>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={moveFieldNext}
+                    disabled={loading || !selectedField || selectedFieldIndex < 0 || selectedFieldIndex >= fields.length - 1}
+                    className="px-2 py-1 rounded text-xs hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                    title="Move down"
+                  >
+                    <i className="pi pi-angle-down" style={{ fontSize: '11px' }}></i>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={moveFieldLast}
+                    disabled={loading || !selectedField || selectedFieldIndex < 0 || selectedFieldIndex >= fields.length - 1}
+                    className="px-2 py-1 rounded text-xs hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
+                    title="Move to last"
+                  >
+                    <i className="pi pi-angle-double-down" style={{ fontSize: '11px' }}></i>
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-3 overflow-y-auto pr-2 flex-1">
-                {fields.map((field) => (
-                  <div key={field.id} className="rounded-lg p-4" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
-                    {/* Row 1: Main field properties */}
-                    <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
-                      <div className="lg:col-span-2">
-                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+              {/* Split: list + detail. When no field is selected, the list
+               * takes the full width. When a field is selected, list shrinks
+               * to ~420px (enough for name+type+length+key columns) and the
+               * detail pane fills the rest. */}
+              <div className="flex-1 min-h-0 flex gap-3">
+                {/* LEFT — Field list table. 11px font keeps it dense, fixed
+                 * widths on type/length/key let the name column take the
+                 * rest of the row. */}
+                <div
+                  className="flex flex-col overflow-y-auto rounded"
+                  style={{
+                    width: selectedField ? '420px' : '100%',
+                    flexShrink: 0,
+                    border: `1px solid ${colors.borderPrimary}`,
+                    backgroundColor: colors.bgTertiary,
+                    fontSize: '11px',
+                  }}
+                >
+                  <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                    <thead style={{ position: 'sticky', top: 0, backgroundColor: colors.bgSecondary, zIndex: 1 }}>
+                      <tr>
+                        <th className="px-2 py-1 text-left font-medium" style={{ color: colors.textSecondary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
                           {isEditMode ? t.edittablemodal526 : t.createtablemodal424}
+                        </th>
+                        <th className="px-2 py-1 text-left font-medium" style={{ color: colors.textSecondary, width: 90, borderBottom: `1px solid ${colors.borderPrimary}` }}>
+                          {isEditMode ? t.edittablemodal540 : t.createtablemodal438}
+                        </th>
+                        <th className="px-2 py-1 text-right font-medium" style={{ color: colors.textSecondary, width: 60, borderBottom: `1px solid ${colors.borderPrimary}` }}>
+                          {isEditMode ? 'Length' : t.createtablemodal463}
+                        </th>
+                        <th className="px-2 py-1 text-center font-medium" style={{ color: colors.textSecondary, width: 40, borderBottom: `1px solid ${colors.borderPrimary}` }}>
+                          Key
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fields.map((field) => {
+                        const isSelected = field.id === selectedFieldId;
+                        // Key symbol legend:
+                        //   🗝  Primary key
+                        //   ①  Unique constraint
+                        //   ⧉  Non-unique index ("duplicates" allowed)
+                        const keySymbol =
+                          field.constraintType === 'primary' ? '🗝' :
+                          field.constraintType === 'unique'  ? '①' :
+                          field.constraintType === 'index'   ? '⧉' : '';
+                        return (
+                          <tr
+                            key={field.id}
+                            onClick={() => setSelectedFieldId(field.id)}
+                            style={{
+                              cursor: 'pointer',
+                              backgroundColor: isSelected ? colors.accent : 'transparent',
+                              color: isSelected ? '#fff' : colors.textPrimary,
+                            }}
+                          >
+                            <td className="px-2 py-1" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>{field.name || <span style={{ opacity: 0.5 }}>(unnamed)</span>}</td>
+                            <td className="px-2 py-1" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>{field.type}</td>
+                            <td className="px-2 py-1 text-right" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>{field.length ?? '–'}</td>
+                            <td className="px-2 py-1 text-center" style={{ borderBottom: `1px solid ${colors.borderPrimary}`, fontSize: '14px' }}>{keySymbol}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* RIGHT — Detail pane, only when a field is selected. Same
+                 * inputs as the old in-row card, just vertically stacked so
+                 * everything fits in the narrower column. */}
+                {selectedField && (() => {
+                  // Alias so the existing per-field input bindings below
+                  // (carried over from the old in-row layout, hundreds of
+                  // references to `field.X` / `updateField(field.id, ...)`)
+                  // keep working without a rename pass.
+                  const field = selectedField;
+                  return (
+                  <div
+                    className="flex-1 min-w-0 overflow-y-auto rounded p-4"
+                    style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}
+                  >
+                    {/* (a) Field name — wide, full width. */}
+                    <div className="mb-3">
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                        {isEditMode ? t.edittablemodal526 : t.createtablemodal424}
+                      </label>
+                      <input
+                        type="text"
+                        value={field.name}
+                        onChange={(e) => updateField(field.id, { name: e.target.value })}
+                        disabled={loading}
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={fieldSelectStyle}
+                        placeholder={t.createtablemodal398}
+                      />
+                    </div>
+
+                    {/* (b) Language picker + caption for that language. The
+                     * caption is persisted to schema_translations by
+                     * `item_name = tableName.fieldName` on Save. Local state
+                     * lives in `captions[fieldId][langCode]`. */}
+                    <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: '140px 1fr' }}>
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                          {i18nExtra.tablemodal_caption_language || 'Language'}
+                        </label>
+                        <select
+                          value={captionLangCode}
+                          onChange={(e) => setCaptionLangCode(e.target.value)}
+                          disabled={loading || availableLanguages.length === 0}
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={fieldSelectStyle}
+                        >
+                          {availableLanguages.length === 0 ? (
+                            <option value="">—</option>
+                          ) : (
+                            availableLanguages.map(l => (
+                              <option key={l.code} value={l.code}>
+                                {l.code.toUpperCase()} — {l.native_name || l.name}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                          {i18nExtra.tablemodal_caption || 'Caption'}
                         </label>
                         <input
                           type="text"
-                          value={field.name}
-                          onChange={(e) => updateField(field.id, { name: e.target.value })}
-                          disabled={loading}
+                          value={captions[field.id]?.[captionLangCode] || ''}
+                          onChange={(e) => setCaptions(prev => ({
+                            ...prev,
+                            [field.id]: { ...(prev[field.id] || {}), [captionLangCode]: e.target.value },
+                          }))}
+                          disabled={loading || !captionLangCode || !field.name.trim() || !tableName.trim()}
                           className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
                           style={fieldSelectStyle}
-                          placeholder={t.createtablemodal398}
+                          placeholder={
+                            !tableName.trim() || !field.name.trim()
+                              ? (i18nExtra.tablemodal_caption_needs_names || 'Set table + field name first')
+                              : (i18nExtra.tablemodal_caption_placeholder || 'Translated caption shown in generated UI')
+                          }
                         />
                       </div>
+                    </div>
 
-                      <div>
+                    {/* (c) Comment — full width. */}
+                    <div className="mb-3">
+                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                        {isEditMode ? t.edittablemodal640 : t.createtablemodal538}
+                      </label>
+                      <input
+                        type="text"
+                        value={field.comment}
+                        onChange={(e) => updateField(field.id, { comment: e.target.value })}
+                        disabled={loading}
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                        style={fieldSelectStyle}
+                        placeholder={isEditMode ? t.edittablemodal621 : t.createtablemodal546}
+                      />
+                    </div>
+
+                    {/* (d) Type | Length | Constraint | [Auto-Inc | Null |
+                     * Unsigned grouped]. Uses an explicit 12-col grid (no
+                     * `lg:` responsive prefix) because at 1400px modal width
+                     * the right pane is still under Tailwind's 1024px `lg`
+                     * breakpoint and would otherwise collapse to a single
+                     * column. Checkbox labels sit ABOVE the box so they
+                     * don't read as "stuck to" the input. */}
+                    <div className="grid grid-cols-12 gap-3 mb-3">
+                      <div className="col-span-3">
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                           {isEditMode ? t.edittablemodal540 : t.createtablemodal438}
                         </label>
@@ -845,8 +1297,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           ))}
                         </select>
                       </div>
-
-                      <div>
+                      <div className="col-span-2">
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                           {isEditMode ? 'Length' : t.createtablemodal463}
                         </label>
@@ -863,7 +1314,139 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           style={fieldSelectStyle}
                         />
                       </div>
+                      <div className="col-span-3">
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                          {isEditMode ? t.edittablemodal606 : t.createtablemodal504}
+                        </label>
+                        <select
+                          value={field.constraintType}
+                          onChange={(e) => updateField(field.id, { constraintType: e.target.value as 'none' | 'primary' | 'index' | 'unique' })}
+                          disabled={loading}
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={fieldSelectStyle}
+                        >
+                          <option value="none">None</option>
+                          <option value="primary">Primary Key</option>
+                          <option value="index">Index</option>
+                          <option value="unique">Unique</option>
+                        </select>
+                      </div>
+                      {/* The three flag checkboxes share the remaining 4
+                       * columns, laid out as 3 equal cells with label-above-
+                       * checkbox stacks. text-center keeps the label and
+                       * checkbox vertically aligned over the same axis. */}
+                      <div className="col-span-4 grid grid-cols-3 gap-2">
+                        <div className="text-center">
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                            {isEditMode ? t.edittablemodal682 : t.createtablemodal580}
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={field.autoIncrement}
+                            onChange={(e) => updateField(field.id, { autoIncrement: e.target.checked })}
+                            disabled={loading}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                            {t.createtablemodal560}
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={field.nullable}
+                            onChange={(e) => updateField(field.id, { nullable: e.target.checked })}
+                            disabled={loading}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                            {t.createtablemodal570}
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={field.unsigned}
+                            onChange={(e) => updateField(field.id, { unsigned: e.target.checked })}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                    </div>
 
+                    {/* (e) Default Value group. The outer "Default Value"
+                     * header makes it explicit that the NULL checkbox refers
+                     * to THIS default value, not to the column's nullability
+                     * (which is a separate flag a row above). NULL = no
+                     * default at all (defaultValue=null); un-checking gives
+                     * an empty-string default the user can then edit. */}
+                    <div className="mb-3">
+                      <div className="text-xs mb-1" style={{ color: colors.textMuted }}>
+                        {i18nExtra.tablemodal_default_value || 'Default Value'}
+                      </div>
+                      <div className="grid gap-3" style={{ gridTemplateColumns: '90px 1fr' }}>
+                        <div className="text-center">
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>NULL</label>
+                          <input
+                            type="checkbox"
+                            checked={field.defaultValue === null}
+                            onChange={(e) => updateField(field.id, { defaultValue: e.target.checked ? null : '' })}
+                            disabled={loading}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                            {i18nExtra.tablemodal_default_value_label || 'Value'}
+                          </label>
+                          <input
+                            type="text"
+                            value={field.defaultValue ?? ''}
+                            onChange={(e) => updateField(field.id, { defaultValue: e.target.value })}
+                            disabled={loading || field.defaultValue === null}
+                            className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                            style={{ ...fieldSelectStyle, opacity: field.defaultValue === null ? 0.5 : 1 }}
+                            placeholder={field.defaultValue === null ? 'NULL' : (i18nExtra.tablemodal_default_value_placeholder || 'e.g., 0, ""')}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* (f) Display State | Generation Mode. */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                          {i18nExtra.tablemodal_field_display_state || 'Display State'}
+                        </label>
+                        <select
+                          value={field.displayState}
+                          onChange={(e) => updateField(field.id, { displayState: e.target.value as DisplayState })}
+                          disabled={loading}
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={fieldSelectStyle}
+                        >
+                          {DISPLAY_STATE_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                          {i18nExtra.tablemodal_field_generation_mode || 'Generation Mode'}
+                        </label>
+                        <select
+                          value={field.generationMode}
+                          onChange={(e) => updateField(field.id, { generationMode: e.target.value as GenerationMode })}
+                          disabled={loading}
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                          style={fieldSelectStyle}
+                        >
+                          {GENERATION_MODE_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* (g) Control Type + Edit Mask. */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                       <div>
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                           {isEditMode ? t.edittablemodal582 : 'Control'}
@@ -887,128 +1470,33 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           ))}
                         </select>
                       </div>
-
                       <div>
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {isEditMode ? t.edittablemodal606 : t.createtablemodal504}
+                          Edit Mask
                         </label>
-                        <select
-                          value={field.constraintType}
-                          onChange={(e) => updateField(field.id, { constraintType: e.target.value as 'none' | 'primary' | 'index' | 'unique' })}
+                        <input
+                          type="text"
+                          list={`editmask-presets-${field.id}`}
+                          value={field.editmask || ''}
+                          onChange={(e) => updateField(field.id, { editmask: e.target.value })}
+                          placeholder="Select preset or type custom mask..."
                           disabled={loading}
                           className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
                           style={fieldSelectStyle}
-                        >
-                          <option value="none">None</option>
-                          <option value="primary">Primary Key</option>
-                          <option value="index">Index</option>
-                          <option value="unique">Unique</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => removeField(field.id)}
-                          disabled={loading || fields.length <= 1}
-                          className="disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-80"
-                          style={{ color: colors.errorText }}
-                          title={t.createtablemodal497}
-                        >
-                          <i className="pi pi-trash"></i>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Row 2: Display State | Generation Mode | Comment */}
-                    <div className="grid grid-cols-1 lg:grid-cols-7 gap-3 mb-3">
-                      <div className="lg:col-span-2">
-                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {i18nExtra.tablemodal_field_display_state || 'Display State'}
-                        </label>
-                        <select
-                          value={field.displayState}
-                          onChange={(e) => updateField(field.id, { displayState: e.target.value as DisplayState })}
-                          disabled={loading}
-                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
-                          style={fieldSelectStyle}
-                        >
-                          {DISPLAY_STATE_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        />
+                        <datalist id={`editmask-presets-${field.id}`}>
+                          {(editmaskPresets || []).map((p) => (
+                            <option key={p.key} value={p.mask}>{p.label}</option>
                           ))}
-                        </select>
-                      </div>
-
-                      <div className="lg:col-span-2">
-                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {i18nExtra.tablemodal_field_generation_mode || 'Generation Mode'}
-                        </label>
-                        <select
-                          value={field.generationMode}
-                          onChange={(e) => updateField(field.id, { generationMode: e.target.value as GenerationMode })}
-                          disabled={loading}
-                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
-                          style={fieldSelectStyle}
-                        >
-                          {GENERATION_MODE_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="lg:col-span-3 flex items-end gap-4">
-                        <label className="flex items-center text-xs" style={{ color: colors.textMuted }}>
-                          <input
-                            type="checkbox"
-                            checked={field.nullable}
-                            onChange={(e) => updateField(field.id, { nullable: e.target.checked })}
-                            disabled={loading}
-                            className="mr-1"
-                          />
-                          {t.createtablemodal560}
-                        </label>
-                        <label className="flex items-center text-xs" style={{ color: colors.textMuted }}>
-                          <input
-                            type="checkbox"
-                            checked={field.unsigned}
-                            onChange={(e) => updateField(field.id, { unsigned: e.target.checked })}
-                            disabled={loading}
-                            className="mr-1"
-                          />
-                          {t.createtablemodal570}
-                        </label>
-                        <label className="flex items-center text-xs" style={{ color: colors.textMuted }}>
-                          <input
-                            type="checkbox"
-                            checked={field.autoIncrement}
-                            onChange={(e) => updateField(field.id, { autoIncrement: e.target.checked })}
-                            disabled={loading}
-                            className="mr-1"
-                          />
-                          {isEditMode ? t.edittablemodal682 : t.createtablemodal580}
-                        </label>
+                        </datalist>
                       </div>
                     </div>
 
-                    {/* Row 3: Comment (full width) */}
-                    <div className="mb-3">
-                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                        {isEditMode ? t.edittablemodal640 : t.createtablemodal538}
-                      </label>
-                      <input
-                        type="text"
-                        value={field.comment}
-                        onChange={(e) => updateField(field.id, { comment: e.target.value })}
-                        disabled={loading}
-                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
-                        style={fieldSelectStyle}
-                        placeholder={isEditMode ? t.edittablemodal621 : t.createtablemodal546}
-                      />
-                    </div>
-
-                    {/* Row 4: Link fields - only for COMBOBOX/LISTBOX/RADIOBUTTONS */}
+                    {/* (h) Link table — only for COMBOBOX / LISTBOX /
+                     * RADIOBUTTONS. 5 fields: table, value (linkField),
+                     * display, order, direction. */}
                     {(field.controlType === 'COMBOBOX' || field.controlType === 'LISTBOX' || field.controlType === 'RADIOBUTTONS') && (
-                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 mt-2 pt-2" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 pt-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                             {isEditMode ? t.edittablemodal692 : t.createtablemodal590}
@@ -1026,7 +1514,6 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                             ))}
                           </select>
                         </div>
-
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                             {isEditMode ? t.edittablemodal709 : t.createtablemodal607}
@@ -1044,7 +1531,6 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                             ))}
                           </select>
                         </div>
-
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                             {isEditMode ? t.edittablemodal726 : t.createtablemodal624}
@@ -1062,7 +1548,6 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                             ))}
                           </select>
                         </div>
-
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                             {isEditMode ? t.edittablemodal743 : t.createtablemodal641}
@@ -1080,7 +1565,6 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                             ))}
                           </select>
                         </div>
-
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
                             {isEditMode ? t.edittablemodal760 : t.createtablemodal658}
@@ -1098,42 +1582,22 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                         </div>
                       </div>
                     )}
-
-                    {/* Row 5: Edit Mask */}
-                    <div className="mt-2" style={{ borderTop: `1px solid ${colors.borderPrimary}`, paddingTop: 6 }}>
-                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                        Edit Mask
-                      </label>
-                      <input
-                        type="text"
-                        list={`editmask-presets-${field.id}`}
-                        value={field.editmask || ''}
-                        onChange={(e) => updateField(field.id, { editmask: e.target.value })}
-                        placeholder="Select preset or type custom mask..."
-                        disabled={loading}
-                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
-                        style={{ ...fieldSelectStyle, fontSize: 11 }}
-                      />
-                      <datalist id={`editmask-presets-${field.id}`}>
-                        {(editmaskPresets || []).map((p) => (
-                          <option key={p.key} value={p.mask}>{p.label}</option>
-                        ))}
-                      </datalist>
-                    </div>
                   </div>
-                ))}
+                  );
+                })()}
               </div>
             </div>
           </TabPanel>
-        </TabView>
+        </TabViewSideMenu>
+        </div>
 
         {error && (
-          <div className="rounded-lg p-3 mt-3" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
+          <div className="rounded-lg p-3 mx-6 mt-3 flex-shrink-0" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorBorder}` }}>
             <p className="text-sm" style={{ color: colors.errorText }}>{error}</p>
           </div>
         )}
 
-        <div className="flex justify-end space-x-3 pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+        <div className="flex justify-end space-x-3 p-6 pt-4 flex-shrink-0" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
           <button
             type="button"
             onClick={handleClose}
@@ -1174,14 +1638,10 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
           background-color: var(--theme-bg-secondary);
           color: var(--theme-text-primary);
         }
-        .table-modal .p-tabview-nav {
-          background-color: var(--theme-bg-secondary) !important;
-          border-color: var(--theme-border-primary) !important;
-        }
-        .table-modal .p-tabview-panels {
-          background-color: var(--theme-bg-secondary) !important;
-          padding-top: 1rem !important;
-        }
+        /* .table-modal .p-tabview-nav / .p-tabview-panels overrides removed —
+         * the vertical TabView styling now lives centrally in
+         * Components/Panels/styles.css under .p-tabview-vertical, so any
+         * per-modal redeclaration would just fight the global rules. */
       `}</style>
     </Dialog>
   );

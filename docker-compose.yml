@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    container_name: scoriet-app
+    ports:
+      - "8888:80"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=admin
+      - DB_DATABASE=scoriet
+      - AUTO_MIGRATE=true
+      - APP_ENV=local
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Read-only: schützt die Host-Datei davor, durch artisan-Kommandos
+      # (z.B. key:generate --force) im Container überschrieben zu werden.
+      - ./.env.docker:/var/www/scoriet/.env:ro
+    restart: on-failure
+      
+  db:
+    image: mysql:8.0
+    container_name: scoriet-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_DATABASE=scoriet
+      - MYSQL_ROOT_HOST=%
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-padmin"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    restart: on-failure
+
+volumes:
+  db_data:
+    driver: local
+  app_storage:
+    driver: local
+  app_bootstrap:
+    driver: local

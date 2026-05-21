@@ -282,10 +282,18 @@ class DbSchemaController extends Controller
                 ], 409);
             }
 
-            // Create the new schema (copy)
+            // Create the new schema (copy). Suffix the description with "_copy"
+            // (lowercase / underscore-safe — same character set we require for
+            // schema names) instead of the older " (Copy)" which mixed spaces
+            // and parentheses that other places had to special-case.
+            $copiedDescription = trim($sourceSchema->description ?? '');
+            $copiedDescription = $copiedDescription === ''
+                ? '_copy'
+                : $copiedDescription . '_copy';
+
             $newSchema = FloatingSchema::create([
                 'name' => $validated['name'],
-                'description' => ($sourceSchema->description ?? '') . ' (Copy)',
+                'description' => $copiedDescription,
                 'owner_id' => $user->id,
                 'visibility' => $sourceSchema->visibility,
                 'last_version' => 0, // Will be set to 1 after copying

@@ -4,19 +4,31 @@ import { TabContentProps } from '@/types';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
-import { Card } from 'primereact/card';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Message } from 'primereact/message';
 import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 const TabContent: React.FC<TabContentProps & { colors: any }> = ({ children, style = {}, colors, ...rest }) => {
   const ref = useRef<HTMLDivElement>(null);
   const setFocus = () => ref.current?.focus();
 
+  // rc-dock wraps us in `.dock-tabpane` which is `position: relative;
+  // height: 100%; overflow: hidden` (see rs-dock.css) — NOT display:flex.
+  // So a plain `flex: 1` would be ignored and we'd shrink to content,
+  // which silently breaks the inner panel-fill scroll chain whenever the
+  // panel is smaller than the content (most visibly in a floating window).
+  //
+  // height: 100% + width: 100% gives us an explicit, definite size that
+  // works regardless of the parent's layout mode. flex: 1 stays as a
+  // belt-and-braces fallback in case rc-dock ever switches dock-tabpane
+  // to a flex layout.
   return (
     <div
       {...rest}
@@ -24,10 +36,13 @@ const TabContent: React.FC<TabContentProps & { colors: any }> = ({ children, sty
       tabIndex={-1}
       style={{
         flex: 1,
+        width: '100%',
+        height: '100%',
         padding: '5px 10px',
-        maxHeight: '100%',
-        overflowY: 'auto',
-        overflowX: 'hidden',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
         backgroundColor: colors.bgPrimary,
         color: colors.textPrimary,
         ...style
@@ -143,25 +158,16 @@ const CacheDebugPanel: React.FC = () => {
   const [showContentDialog, setShowContentDialog] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
 
-  const getToken = () => {
-    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  };
+  // Vertical-side-menu tab state. Indices kept as named constants so the
+  // "click Inspect → jump to Actions tab" logic below reads clearly.
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
 
   const fetchStats = React.useCallback(async () => {
-    const token = getToken();
-    if (!token) {
-      setError(t.cachedebugpanel154);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/cache/stats', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw { response: { data: err } }; }
-      setStats(await response.json());
+      const data = await apiClient.get('/cache/stats');
+      setStats(data);
     } catch (err: any) {
       setError(err.response?.data?.message || t.cachedebugpanel166);
     } finally {
@@ -170,16 +176,10 @@ const CacheDebugPanel: React.FC = () => {
   }, []);
 
   const fetchConfig = React.useCallback(async () => {
-    const token = getToken();
-    if (!token) return;
-
     setConfigLoading(true);
     try {
-      const response = await fetch('/api/cache/config', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-      });
-      if (!response.ok) throw new Error('Failed to load config');
-      setCacheConfig(await response.json());
+      const data = await apiClient.get('/cache/config');
+      setCacheConfig(data);
     } catch (err: any) {
       console.error(t.cachedebugpanel183, err);
     } finally {
@@ -188,23 +188,11 @@ const CacheDebugPanel: React.FC = () => {
   }, []);
 
   const clearCache = async (type: 'all' | 'template') => {
-    const token = getToken();
-    if (!token) {
-      setError(t.cachedebugpanel192);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch('/api/cache/clear', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ type })
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw { response: { data: err } }; }
-      const data = await response.json();
+      const data = await apiClient.post('/cache/clear', { type });
       setSuccess(data.message);
       // Refresh stats after clearing
       await fetchStats();
@@ -216,23 +204,11 @@ const CacheDebugPanel: React.FC = () => {
   };
 
   const cleanupCache = async () => {
-    const token = getToken();
-    if (!token) {
-      setError(t.cachedebugpanel217);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     setSuccess(null);
     try {
-      const response = await fetch('/api/cache/cleanup', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({})
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw { response: { data: err } }; }
-      const data = await response.json();
+      const data = await apiClient.post('/cache/cleanup', {});
       setSuccess(data.message);
       // Refresh stats after cleanup
       await fetchStats();
@@ -248,23 +224,15 @@ const CacheDebugPanel: React.FC = () => {
   };
 
   const testGeneration = async () => {
-    const token = getToken();
-    if (!token) {
-      setError(t.cachedebugpanel246);
-      return;
-    }
-
     setTestLoading(true);
     setError(null);
     setTestResult(null);
     try {
-      const response = await fetch('/api/cache/test-generation', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ template_id: testTemplateId, use_cache: useCache })
+      const data = await apiClient.post('/cache/test-generation', {
+        template_id: testTemplateId,
+        use_cache: useCache,
       });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw { response: { data: err } }; }
-      setTestResult(await response.json());
+      setTestResult(data);
       // Refresh stats to show new cache entry
       await fetchStats();
     } catch (err: any) {
@@ -275,21 +243,16 @@ const CacheDebugPanel: React.FC = () => {
   };
 
   const fetchInspector = async () => {
-    const token = getToken();
-    if (!token) {
-      setError(t.cachedebugpanel271);
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/cache/inspect', {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw { response: { data: err } }; }
-      setInspectorData(await response.json());
+      const data = await apiClient.get('/cache/inspect');
+      setInspectorData(data);
       setShowInspector(true);
+      // Inspector result renders inside the Cache Entries tab (alongside the
+      // entries table); auto-switching saves the user a click after pressing
+      // the Inspect button in Cache Actions.
+      setActiveTabIndex(4);
     } catch (err: any) {
       setError(err.response?.data?.message || t.cachedebugpanel284);
     } finally {
@@ -298,25 +261,14 @@ const CacheDebugPanel: React.FC = () => {
   };
 
   const viewKeyContent = async (key: string) => {
-    const token = getToken();
-    if (!token) {
-      setError(t.cachedebugpanel293);
-      return;
-    }
-
     setSelectedKey(key);
     setLoadingContent(true);
     setShowContentDialog(true);
     setKeyContent(null);
 
     try {
-      const response = await fetch('/api/cache/get-content', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ key })
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw { response: { data: err } }; }
-      setKeyContent(await response.json());
+      const data = await apiClient.post('/cache/get-content', { key });
+      setKeyContent(data);
     } catch (err: any) {
       setError(err.response?.data?.message || t.cachedebugpanel309);
       setShowContentDialog(false);
@@ -355,11 +307,14 @@ const CacheDebugPanel: React.FC = () => {
     return () => clearInterval(interval);
   }, [autoRefresh, fetchStats]);
 
-  // Hide panel for non-system users
+  // Hide panel for non-system users. TabContent is now display:flex /
+  // flex-direction:column (so the system view's TabViewSideMenu can claim
+  // height correctly), so this fallback needs justify-center on the inner
+  // wrapper to recover the previous vertical-centered look.
   if (userType !== 'system') {
     return (
       <TabContent colors={colors}>
-        <div className="p-4 text-center">
+        <div className="flex-1 min-h-0 flex items-center justify-center p-4 text-center overflow-auto">
           <div className="p-8 rounded" style={{ backgroundColor: colors.bgSecondary }}>
             <i className="pi pi-lock text-6xl mb-4" style={{ color: colors.warningText }}></i>
             <h3 className="text-2xl mb-2" style={{ color: colors.textPrimary }}>{t.cachedebugpanel353}</h3>
@@ -374,7 +329,10 @@ const CacheDebugPanel: React.FC = () => {
 
   return (
     <TabContent colors={colors}>
-      <div className="p-4">
+      {/* Sticky header (title + error/success banners) — stays visible while
+       * each tab scrolls its own content. flex-shrink-0 prevents it from
+       * yielding height to the TabViewSideMenu region below. */}
+      <div className="flex-shrink-0 p-4">
         <h2 className="text-2xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.cachedebugpanel366}</h2>
 
         {error && (
@@ -384,9 +342,22 @@ const CacheDebugPanel: React.FC = () => {
         {success && (
           <Message severity="success" text={success} className="mb-4" />
         )}
+      </div>
 
+      {/* TabViewSideMenu region — flex-1 min-h-0 claims the remaining
+       * height and exposes intrinsic-minimum so the panels can scroll
+       * internally (via the .p-tabview-vertical .p-tabview-panels rule
+       * in styles.css). The Card chrome that used to wrap each section
+       * is gone — the tab header acts as the section title now. */}
+      <div className="flex-1 min-h-0">
+      <TabViewSideMenu
+        storageKey="cacheDebugPanel"
+        defaultWidth={260}
+        activeIndex={activeTabIndex}
+        onTabChange={(e: { index: number }) => setActiveTabIndex(e.index)}
+      >
         {/* Environment Configuration */}
-        <Card title={t.cachedebugpanel377} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        <TabPanel header={<span><i className="pi pi-server mr-2" />{t.cachedebugpanel377}</span>}>
           {configLoading && !cacheConfig ? (
             <div className="flex justify-center p-4">
               <ProgressSpinner />
@@ -560,10 +531,10 @@ const CacheDebugPanel: React.FC = () => {
               </div>
             </div>
           ) : null}
-        </Card>
+        </TabPanel>
 
         {/* Cache Statistics */}
-        <Card title={t.cachedebugpanel554} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        <TabPanel header={<span><i className="pi pi-chart-bar mr-2" />{t.cachedebugpanel554}</span>}>
           {loading && !stats ? (
             <div className="flex justify-center p-4">
               <ProgressSpinner />
@@ -610,10 +581,25 @@ const CacheDebugPanel: React.FC = () => {
               </div>
             </>
           ) : null}
-        </Card>
+
+          {/* Auto-refresh toggle — controls how often these statistics
+           * re-fetch (every 10s). Belongs here, not in Cache Actions,
+           * because it governs the data shown ABOVE rather than triggering
+           * an action. */}
+          <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+            <Checkbox
+              inputId="autoRefresh"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.checked || false)}
+            />
+            <label htmlFor="autoRefresh" className="text-sm" style={{ color: colors.textPrimary }}>
+              {t.cachedebugpanel652}
+            </label>
+          </div>
+        </TabPanel>
 
         {/* Cache Actions */}
-        <Card title={t.cachedebugpanel604_2} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.cachedebugpanel604_2}</span>}>
           <div className="flex flex-col gap-3">
             <div className="flex gap-2 flex-wrap">
               <Button
@@ -654,21 +640,11 @@ const CacheDebugPanel: React.FC = () => {
                 tooltip={t.cachedebugpanel406}
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                inputId="autoRefresh"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.checked || false)}
-              />
-              <label htmlFor="autoRefresh" className="text-sm" style={{ color: colors.textPrimary }}>
-                {t.cachedebugpanel652}
-              </label>
-            </div>
           </div>
-        </Card>
+        </TabPanel>
 
         {/* Test Template Generation */}
-        <Card title="Test Template Generation" className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        <TabPanel header={<span><i className="pi pi-play mr-2" />Test Template Generation</span>}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm mb-2" style={{ color: colors.textMuted }}>{t.cachedebugpanel662}</label>
@@ -739,11 +715,29 @@ const CacheDebugPanel: React.FC = () => {
               </div>
             </div>
           )}
-        </Card>
+        </TabPanel>
 
-        {/* Cache Entries Table */}
-        {stats && stats.entries.length > 0 && (
-          <Card title={t.cachedebugpanel734} style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+        {/* Cache Entries Table — empty-state shown when no entries are loaded
+         * yet so the tab itself remains visible (otherwise the tab would
+         * disappear conditionally and break menu numbering).
+         *
+         * contentClassName="panel-fill" pins THIS panel to the exact
+         * container height (default panel grows-to-content) so the inner
+         * `h-full overflow-y-auto` wrapper below has a concrete height to
+         * scroll against. Needed here because the panel can contain TWO
+         * DataTables (Entries + Redis Inspector) plus headers — together
+         * easily ~1500px, which overflowed without any scrollbar engaging
+         * under the default growing-panel rule. */}
+        <TabPanel
+          header={<span><i className="pi pi-database mr-2" />{t.cachedebugpanel734}</span>}
+          contentClassName="panel-fill"
+        >
+          {/* pb-4 gives the last element (Close Inspector button / scrollable
+           * DataTable bottom) a small breathing band against the panel edge —
+           * without it the content sits flush against the bottom and reads
+           * as "cut off" even when nothing is actually hidden. */}
+          <div className="h-full overflow-y-auto pb-4">
+          {stats && stats.entries.length > 0 ? (
             <DataTable
               value={stats.entries}
               paginator
@@ -791,12 +785,24 @@ const CacheDebugPanel: React.FC = () => {
                 body={(row) => row.expires_at || t.cachedebugpanel779}
               />
             </DataTable>
-          </Card>
-        )}
+          ) : (
+            <div className="p-8 text-center rounded" style={{ backgroundColor: colors.bgTertiary }}>
+              <i className="pi pi-inbox text-4xl mb-3" style={{ color: colors.textMuted }}></i>
+              <p style={{ color: colors.textMuted }}>
+                {t.cachedebugpanel608} →
+              </p>
+            </div>
+          )}
 
-        {/* Redis Inspector */}
-        {showInspector && inspectorData && (
-          <Card title={t.cachedebugpanel787} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+          {/* Redis Inspector — shown after pressing "Inspect" in the Cache
+           * Actions tab. Lives in the Entries tab because both views show
+           * cache CONTENT (entries = our app's cache, inspector = raw Redis
+           * keys). The Inspect button auto-switches to this tab. */}
+          {showInspector && inspectorData && (
+            <div className="mt-6 p-4 rounded" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold" style={{ color: colors.textPrimary }}>{t.cachedebugpanel787}</h3>
+              </div>
             <div className="mb-4 p-4 rounded" style={{ backgroundColor: colors.bgTertiary }}>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-3">
                 <div>
@@ -839,10 +845,18 @@ const CacheDebugPanel: React.FC = () => {
                 </p>
               </div>
             ) : (
+              // scrollable + scrollHeight gives the table its own internal
+              // vertical scrollbar with a fixed visible area. Without this
+              // the table tried to render all 20 rows of a page unbounded
+              // (~800px tall), the outer tab-scroll didn't engage in time,
+              // and the bottom rows + the paginator got clipped under the
+              // panel edge. Fixed 400px keeps ~10 rows visible at once.
               <DataTable
                 value={inspectorData.keys}
                 paginator
                 rows={20}
+                scrollable
+                scrollHeight="400px"
               >
                 <Column
                   field="raw_key"
@@ -906,10 +920,14 @@ const CacheDebugPanel: React.FC = () => {
                 severity="secondary"
               />
             </div>
-          </Card>
-        )}
+            </div>
+          )}
+          </div>
+        </TabPanel>
+      </TabViewSideMenu>
+      </div>
 
-        {/* Key Content Dialog */}
+      {/* Key Content Dialog */}
         <Dialog
           header={
             <div className="flex flex-col">
@@ -984,7 +1002,6 @@ const CacheDebugPanel: React.FC = () => {
             </div>
           )}
         </Dialog>
-      </div>
     </TabContent>
   );
 };

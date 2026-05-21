@@ -6,7 +6,7 @@ title: Welcome to Scoriet
 
 # Welcome to Scoriet 🚀
 
-Welcome to **Scoriet**, the Enterprise Code Generator that transforms how development teams build software. Whether you're managing a team of developers or working solo, Scoriet automates repetitive code generation tasks, ensuring consistency, quality, and speed across your entire organization.
+Welcome to **Scoriet**, the Schema-to-Stack Studio that transforms how development teams build software. Whether you're managing a team of developers or working solo, Scoriet automates repetitive code generation tasks, ensuring consistency, quality, and speed across your entire organization.
 
 ## What is Scoriet?
 

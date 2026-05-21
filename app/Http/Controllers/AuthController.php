@@ -15,6 +15,8 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Notifications\NewUserRegistered;
 use Illuminate\Support\Facades\Notification;
 use App\Services\RegistrationValidationService;
+use GuzzleHttp\Psr7\ServerRequest as PsrServerRequest;
+use GuzzleHttp\Psr7\Response as PsrResponse;
 
 class AuthController extends Controller
 {
@@ -346,7 +348,20 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // Delete the pending token
+        // Decrypt the password that was stashed at the start of the 2FA flow.
+        // If decryption fails the cache row is corrupt or the app key has
+        // changed - either way treat it as an expired session.
+        try {
+            $password = decrypt($pendingData['password']);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => __('authcontrollerphp279'),
+            ], 401);
+        }
+
+        $rememberMe = $pendingData['remember_me'] ?? false;
+
+        // Delete the pending token now that we have the data we need.
         \Cache::forget('2fa_pending_' . $request->two_factor_token);
 
         // Trust device if requested
@@ -358,9 +373,72 @@ class AuthController extends Controller
             );
         }
 
-        // Complete login with remember_me from pending data
-        $rememberMe = $pendingData['remember_me'] ?? false;
-        return $this->completeLogin($user, $request, $isRecoveryCode, $rememberMe);
+        // Auto-attach a pending project invitation for this email if one
+        // exists - this used to live inside completeLogin().
+        if (!$user->hasPendingInvitation()) {
+            $invitation = \App\Models\ProjectInvitation::where('invited_email', $user->email)
+                ->where('status', 'pending')
+                ->whereDate('expires_at', '>=', now())
+                ->first();
+
+            if ($invitation) {
+                $user->update(['pending_project_invitation_id' => $invitation->id]);
+            }
+        }
+
+        // Mark this user as 2FA-verified so the upcoming OAuth password-grant
+        // call can bypass the 2FA gate inside CustomTokenController. The
+        // marker is single-use (Cache::pull) and only valid for 10 seconds.
+        \Cache::put('2fa_verified_' . $user->id, true, now()->addSeconds(10));
+
+        // Re-issue the token through the standard OAuth password grant. This
+        // gives us a real access_token + refresh_token pair (instead of a
+        // personal-access-token without refresh capability) and reuses all
+        // the recordLogin / claimMonthlyCredits / single-session-revoke /
+        // remember_me-expiry logic that lives in CustomTokenController.
+        $psrRequest = (new PsrServerRequest('POST', '/api/oauth/token'))
+            ->withParsedBody([
+                'grant_type' => 'password',
+                'client_id' => env('PASSPORT_CLIENT_ID') ?: env('VITE_PASSPORT_CLIENT_ID', '1'),
+                'client_secret' => env('PASSPORT_CLIENT_SECRET') ?: env('VITE_PASSPORT_CLIENT_SECRET', ''),
+                'username' => $user->email,
+                'password' => $password,
+                'remember_me' => $rememberMe,
+            ])
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('Accept', 'application/json');
+
+        $tokenController = app(CustomTokenController::class);
+        $tokenResponse = $tokenController->issueToken($psrRequest, new PsrResponse());
+
+        $tokenData = json_decode($tokenResponse->getContent(), true);
+
+        if ($tokenResponse->getStatusCode() !== 200 || !is_array($tokenData) || !isset($tokenData['access_token'])) {
+            \Log::error('2FA login: OAuth token issuance failed', [
+                'user_id' => $user->id,
+                'status' => $tokenResponse->getStatusCode(),
+                'body' => $tokenResponse->getContent(),
+            ]);
+            return response()->json([
+                'message' => 'Token issuance failed after 2FA verification.',
+            ], 500);
+        }
+
+        // Decorate the OAuth response with 2FA-specific metadata that the
+        // frontend's handle2FASuccess expects (user object, recovery state,
+        // pending-invitation flag). The OAuth body already carries
+        // access_token/refresh_token/expires_in/other_sessions_revoked etc.
+        $user->refresh();
+        $tokenData['user'] = $user;
+        $tokenData['has_pending_invitation'] = $user->hasPendingInvitation();
+        $tokenData['message'] = __('authcontrollerphp371');
+
+        if ($isRecoveryCode) {
+            $tokenData['recovery_code_used'] = true;
+            $tokenData['recovery_codes_remaining'] = $user->getRecoveryCodesCount();
+        }
+
+        return response()->json($tokenData);
     }
 
     /**
@@ -389,11 +467,24 @@ class AuthController extends Controller
         // This prevents account sharing and ensures only one active web session per user
         // CLI/Service tokens (name starts with "Scoriet CLI") are preserved across web logins
         // Skip in demo mode to allow multiple users sharing the same demo accounts
+        //
+        // Filter handles MySQL three-valued logic: NULL NOT LIKE 'x' returns
+        // NULL (not TRUE), so plain "not like" silently leaves OAuth2 password
+        // grant tokens (name = NULL) alive. Explicitly include them.
         $existingTokenCount = 0;
         if (!config('scoriet.demo')) {
-            $existingTokenCount = $user->tokens()->where('revoked', false)->count();
+            $webTokenFilter = function ($q) {
+                $q->whereNull('name')
+                  ->orWhere('name', 'not like', 'Scoriet CLI%');
+            };
+
+            $existingTokenCount = $user->tokens()
+                ->where('revoked', false)
+                ->where($webTokenFilter)
+                ->count();
+
             $user->tokens()
-                ->where('name', 'not like', 'Scoriet CLI%')
+                ->where($webTokenFilter)
                 ->update(['revoked' => true]);
         }
 

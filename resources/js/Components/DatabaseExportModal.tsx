@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import Editor from 'react-simple-code-editor';
@@ -10,6 +12,13 @@ import Prism from 'prismjs';
 import 'prismjs/components/prism-sql';
 // Note: We don't import a Prism theme - we use our own theme-aware styles instead
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
+
+// Tab order in the side menu — named constants instead of magic numbers
+// so the conditional rendering stays readable.
+const TAB_VIEW = 0;
+const TAB_DOWNLOAD = 1;
+const TAB_DATABASE = 2;
 
 interface DatabaseExportModalProps {
   isOpen: boolean;
@@ -56,7 +65,8 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [exportedSQL, setExportedSQL] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'view' | 'download' | 'database'>('view');
+  // Tab index used by <TabViewSideMenu> — see TAB_* constants at top of file.
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(TAB_VIEW);
   const downloadLinkRef = useRef<HTMLAnchorElement>(null);
 
   // Database export states
@@ -93,19 +103,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/projects/${selectedProject.id}/schemas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get(`/projects/${selectedProject.id}/schemas`);
+      } catch {
         throw new Error(t.databaseexportmodal71);
       }
-
-      const data = await response.json();
 
       // Handle different possible response formats
       let schemasArray = [];
@@ -136,19 +139,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/floating-schemas/${schemaId}/versions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get(`/floating-schemas/${schemaId}/versions`);
+      } catch {
         throw new Error(t.databaseexportmodal114);
       }
-
-      const data = await response.json();
 
       // Handle different possible response formats
       let versionsArray = [];
@@ -186,7 +182,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setExportedSQL('');
     setError(null);
     setSuccessMessage(null);
-    setActiveTab('view');
+    setActiveTabIndex(TAB_VIEW);
     setServiceLog([]);
     setServiceTaskId(null);
     setConnectionTestResult(null);
@@ -286,27 +282,20 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     try {
       // Determine export format based on project's database_type
       const exportFormat = getExportFormat();
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
 
-      const response = await fetch(`/api/schemas/${selectedSchemaId}/export/${exportFormat}?version=${selectedVersion}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
+      let data: any;
+      try {
+        data = await apiClient.get(`/schemas/${selectedSchemaId}/export/${exportFormat}?version=${selectedVersion}`);
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 404) {
           throw new Error(t.databaseexportmodal214);
-        } else if (response.status === 403) {
+        } else if (status === 403) {
           throw new Error(t.databaseexportmodal216);
         } else {
-          throw new Error(`Export failed: HTTP ${response.status}`);
+          throw new Error(`Export failed: HTTP ${status || ''}`);
         }
       }
-
-      const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || t.databaseexportmodal225);
@@ -377,12 +366,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     setServiceLog([t.databaseexportmodal377]);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.databaseexportmodal382);
-      }
-
-      // Create connection test task
+      // Create connection test task (auth handled by apiClient.cliRequest)
       const payload = {
         payload: {
           connection_type: dbConnectionType,
@@ -394,19 +378,14 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         }
       };
 
-      const response = await fetch('/cli/svc/tasks/connection-test', {
+      // cliRequest throws on !response.ok; the success:false case (200 with
+      // an application-level error) still needs an explicit check below.
+      const result = await apiClient.cliRequest('/svc/tasks/connection-test', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || t.databaseexportmodal410);
       }
 
@@ -421,14 +400,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         pollCount++;
 
         try {
-          const statusResponse = await fetch(`/cli/svc/tasks/${taskId}`, {
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          const statusResult = await statusResponse.json();
+          const statusResult = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
           const taskData = statusResult.task;
 
           if (taskData.status === 'completed') {
@@ -526,35 +498,23 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       setServicePolling(true);
       setServiceLog([t.databaseexportmodal527]);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.databaseexportmodal531);
-      }
-
       // First, get the SQL export
       const exportFormat = getExportFormat();
       setServiceLog(prev => [...prev, `${t.databaseexportmodal536}${exportFormat.toUpperCase()}${t.databaseexportmodal536_2}`]);
 
-      const exportResponse = await fetch(`/api/schemas/${selectedSchemaId}/export/${exportFormat}?version=${selectedVersion}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!exportResponse.ok) {
+      let exportData: any;
+      try {
+        exportData = await apiClient.get(`/schemas/${selectedSchemaId}/export/${exportFormat}?version=${selectedVersion}`);
+      } catch {
         throw new Error(t.databaseexportmodal547);
       }
-
-      const exportData = await exportResponse.json();
       if (!exportData.success || !exportData.sql) {
         throw new Error(exportData.error || t.databaseexportmodal552);
       }
 
       setServiceLog(prev => [...prev, `${t.databaseexportmodal555}(${exportData.table_count}${t.databaseexportmodal555_2})`]);
 
-      // Create export task
+      // Create export task (auth handled by apiClient.cliRequest)
       const payload = {
         task_type: 'database_export',
         payload: {
@@ -572,19 +532,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
 
       setServiceLog(prev => [...prev, t.databaseexportmodal573]);
 
-      const response = await fetch('/cli/svc/tasks/database-export', {
+      const result = await apiClient.cliRequest('/svc/tasks/database-export', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || t.databaseexportmodal588);
       }
 
@@ -592,7 +545,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       setServiceLog(prev => [...prev, `${t.databaseexportmodal592}${result.task_id})`, t.databaseexportmodal592_2]);
 
       // Start polling
-      startPolling(result.task_id, token);
+      startPolling(result.task_id);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start export');
@@ -601,7 +554,9 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     }
   };
 
-  const startPolling = (taskId: number, token: string) => {
+  // Token plumbing removed: apiClient.cliRequest reads the token internally
+  // and handles 401-refresh, so the caller doesn't need to thread one through.
+  const startPolling = (taskId: number) => {
     // Clear any existing polling interval
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -615,19 +570,8 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       pollCount++;
 
       try {
-        const response = await fetch(`/cli/svc/tasks/${taskId}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || t.databaseexportmodal628);
-        }
-
+        // cliRequest throws on !response.ok; catch below handles the failure.
+        const result = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
         const taskData = result.task;
 
         // Update log based on status
@@ -746,24 +690,17 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       header={t.databaseexportmodal285}
       visible={isOpen}
       onHide={handleClose}
-      style={{ width: '60vw', maxWidth: '900px', minHeight: '70vh', backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
+      /* Fixed height (85vh) replaces the old 70vh minHeight/contentStyle.height
+       * combo. With TabViewSideMenu the inner flex layout needs a concrete
+       * dialog height to distribute. headerStyle removed — the unified purple
+       * gradient header from styles.css now handles it via p-dialog-custom. */
+      style={{ width: '60vw', maxWidth: '900px', height: '85vh' }}
       modal
       closable={!loading && !servicePolling}
       draggable={true}
       resizable={true}
-      className="database-export-modal"
-      contentStyle={{
-        padding: '0',
-        backgroundColor: colors.bgSecondary,
-        color: colors.textPrimary,
-        height: '70vh',
-        overflow: 'hidden'
-      }}
-      headerStyle={{
-        backgroundColor: colors.dialogHeader,
-        color: colors.textPrimary,
-        borderBottom: `1px solid ${colors.borderPrimary}`
-      }}
+      className="p-dialog-custom database-export-modal"
+      contentStyle={{ padding: '0' }}
     >
       <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgPrimary }}>
         <p className="text-sm px-6 pt-4 pb-2" style={{ color: colors.textMuted }}>
@@ -775,79 +712,58 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
           )}
         </p>
 
-        {/* Tabs */}
-        <div className="flex" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('view')}
-            className="px-6 py-3 text-sm font-medium transition-colors"
-            style={{
-              color: activeTab === 'view' ? colors.accent : colors.textMuted,
-              borderBottom: activeTab === 'view' ? `2px solid ${colors.accent}` : '2px solid transparent',
-              backgroundColor: activeTab === 'view' ? colors.bgSecondary : 'transparent'
-            }}
-          >
-            {t.databaseexportmodal790}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('download')}
-            className="px-6 py-3 text-sm font-medium transition-colors"
-            style={{
-              color: activeTab === 'download' ? colors.accent : colors.textMuted,
-              borderBottom: activeTab === 'download' ? `2px solid ${colors.accent}` : '2px solid transparent',
-              backgroundColor: activeTab === 'download' ? colors.bgSecondary : 'transparent'
-            }}
-          >
-            {t.databaseexportmodal802}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('database')}
-            className="px-6 py-3 text-sm font-medium transition-colors"
-            style={{
-              color: activeTab === 'database' ? colors.accent : colors.textMuted,
-              borderBottom: activeTab === 'database' ? `2px solid ${colors.accent}` : '2px solid transparent',
-              backgroundColor: activeTab === 'database' ? colors.bgSecondary : 'transparent'
-            }}
-          >
-            {t.databaseexportmodal814}
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-auto">
-          {/* Success Display */}
-          {successMessage && (
-            <div className="mx-6 mt-4 p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}`, color: colors.successText }}>
-              <div className="flex items-center justify-between">
-                <span>✅ {successMessage}</span>
-                <button
-                  type="button"
-                  onClick={() => setSuccessMessage(null)}
-                  className="ml-4 hover:opacity-80"
-                  style={{ color: colors.successText }}
-                >
-                  ✕
-                </button>
-              </div>
+        {/* Status banners (success / error) — flex-shrink-0 so they keep
+         * their natural height above the TabViewSideMenu region. */}
+        {successMessage && (
+          <div className="mx-6 mt-2 p-3 rounded flex-shrink-0" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successText}`, color: colors.successText }}>
+            <div className="flex items-center justify-between">
+              <span>✅ {successMessage}</span>
+              <button
+                type="button"
+                onClick={() => setSuccessMessage(null)}
+                className="ml-4 hover:opacity-80"
+                style={{ color: colors.successText }}
+              >
+                ✕
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Error Display */}
-          {error && (
-            <div className="mx-6 mt-4 p-3 rounded" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}`, color: colors.errorText }}>
-              <div className="flex items-center">
-                <span className="mr-2">⚠️</span>
-                <span>{error}</span>
-              </div>
+        {error && (
+          <div className="mx-6 mt-2 p-3 rounded flex-shrink-0" style={{ backgroundColor: colors.errorBg, border: `1px solid ${colors.errorText}`, color: colors.errorText }}>
+            <div className="flex items-center">
+              <span className="mr-2">⚠️</span>
+              <span>{error}</span>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Tab Content */}
-          <div className="p-6">
-            {/* View SQL Tab */}
-            {activeTab === 'view' && (
-              <div>
+        {/* TabViewSideMenu region — fills the remaining vertical space.
+         * Replaces the previous 3 custom <button> tab bar plus three
+         * "{activeTab === 'X' && ...}" content conditionals. */}
+        <div className="flex-1 min-h-0">
+          <TabViewSideMenu
+            storageKey="databaseExportModal"
+            defaultWidth={200}
+            activeIndex={activeTabIndex}
+            onTabChange={(e) => setActiveTabIndex(e.index)}
+          >
+            {/* contentClassName="panel-fill" because this tab uses h-full
+             * + flex-1 on the SQL editor below so the editor fills the rest
+             * of the visible panel height. Without panel-fill the panel
+             * defaults to natural height and h-full would resolve to "auto",
+             * collapsing the editor. */}
+            <TabPanel
+              header={<span><i className="pi pi-eye mr-2" />{t.databaseexportmodal790}</span>}
+              contentClassName="panel-fill"
+            >
+              {/* flex-col h-full so the SQL output viewer below can grow into
+               * the remaining vertical space. Previously the Editor sat in a
+               * hardcoded h-64 (256px) container — the inner `minHeight: 100%`
+               * only filled those 256px, which is why the editor capped at
+               * ~60% of the available tab height regardless of modal size. */}
+              <div className="flex flex-col h-full">
                 {renderSchemaSelection()}
 
                 {/* Export Info */}
@@ -866,10 +782,11 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   />
                 </div>
 
-                {/* SQL Output Viewer */}
+                {/* SQL Output Viewer — flex-1 + flex-col so the editor below
+                 * absorbs the leftover height after the header bar. */}
                 {exportedSQL && (
-                  <div className="rounded" style={{ border: `1px solid ${colors.borderPrimary}` }}>
-                    <div className="flex justify-between items-center p-3 rounded-t" style={{ backgroundColor: colors.bgSecondary }}>
+                  <div className="rounded flex-1 min-h-0 flex flex-col" style={{ border: `1px solid ${colors.borderPrimary}` }}>
+                    <div className="flex justify-between items-center p-3 rounded-t flex-shrink-0" style={{ backgroundColor: colors.bgSecondary }}>
                       <h3 className="text-sm font-medium" style={{ color: colors.textPrimary }}>{t.databaseexportmodal873}</h3>
                       <div className="flex space-x-2">
                         <button
@@ -888,7 +805,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                         </button>
                       </div>
                     </div>
-                    <div className="h-64 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
+                    <div className="flex-1 min-h-0 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
                       <Editor
                         value={exportedSQL}
                         onValueChange={() => {}} // Read-only
@@ -905,10 +822,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   </div>
                 )}
               </div>
-            )}
+            </TabPanel>
 
             {/* Download SQL Tab */}
-            {activeTab === 'download' && (
+            <TabPanel header={<span><i className="pi pi-download mr-2" />{t.databaseexportmodal802}</span>}>
               <div>
                 {renderSchemaSelection()}
 
@@ -944,10 +861,10 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   </button>
                 </div>
               </div>
-            )}
+            </TabPanel>
 
             {/* Direct Database Export Tab */}
-            {activeTab === 'database' && (
+            <TabPanel header={<span><i className="pi pi-server mr-2" />{t.databaseexportmodal814}</span>}>
               <div className="space-y-4">
                 {renderSchemaSelection()}
 
@@ -1196,12 +1113,12 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </TabPanel>
+          </TabViewSideMenu>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-4" style={{ borderTop: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+        <div className="flex justify-end gap-3 p-4 flex-shrink-0" style={{ borderTop: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
           <button
             type="button"
             onClick={handleClose}

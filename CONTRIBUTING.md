@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to **Scoriet**! 🎉
 
-We welcome contributions from the community and are excited to work with you to make Scoriet even better. This guide will help you get started with contributing to our Enterprise Code Generator.
+We welcome contributions from the community and are excited to work with you to make Scoriet even better. This guide will help you get started with contributing to our Schema-to-Stack Studio.
 
 ## 📋 Table of Contents
 

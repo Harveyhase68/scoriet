@@ -211,7 +211,10 @@ class ReportPatternController extends Controller
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
 
-        $newName = $request->input('name', $pattern->name . ' (Kopie)');
+        // Let the model derive a unique "_copy" / "_copy_<n>" name when the
+        // caller didn't provide one, so we don't end up with the old
+        // " (Kopie)" suffix that mixed spaces and parentheses.
+        $newName = $request->input('name');
         $clone = $pattern->cloneForUser($user->id, $newName);
 
         return response()->json([

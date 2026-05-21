@@ -629,7 +629,10 @@ Route::middleware('auth:api')->group(function () {
         ]);
     });
 
-    
+
+    // Must be declared BEFORE Route::resource so /teams/check-name isn't matched
+    // as /teams/{team} with team="check-name".
+    Route::get('/teams/check-name', [TeamController::class, 'checkName']);
     Route::resource('teams', TeamController::class);
     Route::get('/teams/{team}/members', [TeamController::class, 'getMembers']);
     Route::post('/teams/{team}/members', [TeamController::class, 'addMember']);
@@ -766,6 +769,7 @@ Route::middleware('auth:api')->group(function () {
     // Translation Export/Import
     Route::get('/translations/export', [TranslationExportController::class, 'export']);
     Route::post('/translations/import', [TranslationExportController::class, 'import']);
+    Route::post('/translations/import-preview', [TranslationExportController::class, 'importPreview']);
 
     // Auto-Translate
     Route::post('/translations/auto-translate', [AutoTranslateController::class, 'translate']);

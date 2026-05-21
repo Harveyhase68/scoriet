@@ -57,7 +57,15 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
       
       // Save token in localStorage
       localStorage.setItem('access_token', tokenData.access_token);
-      localStorage.setItem('refresh_token', tokenData.refresh_token);
+      if (tokenData.refresh_token) {
+        localStorage.setItem('refresh_token', tokenData.refresh_token);
+      } else {
+        localStorage.removeItem('refresh_token');
+      }
+
+      // Login succeeded - clear stale logout/notify markers
+      localStorage.removeItem('logout_in_progress');
+      sessionStorage.removeItem('session_revoke_notified');
 
       // Get user data
       const userResponse = await fetch('/api/user', {

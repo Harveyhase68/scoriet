@@ -173,7 +173,7 @@ class CodeAdjustmentController extends Controller
             ->findOrFail($id);
 
         $newAdjustment = $original->replicate();
-        $newAdjustment->name = $original->name . ' (Copy)';
+        $newAdjustment->name = $this->suggestCopyName($original->name, $projectId);
         $newAdjustment->created_by_user_id = Auth::id();
         $newAdjustment->save();
 
@@ -191,6 +191,23 @@ class CodeAdjustmentController extends Controller
             'message' => __('codeadjustmentcontrollerphp191'),
             'data' => $newAdjustment->toApiArray(),
         ], 201);
+    }
+
+    /**
+     * Build a unique copy-name suggestion within a project. Delegates to the
+     * shared CopyNameSuggester so re-cloning "x_copy" yields "x_copy_1"
+     * instead of "x_copy_copy". Scope: per project (Code Adjustments are
+     * project-bound).
+     */
+    private function suggestCopyName(string $base, int $projectId): string
+    {
+        return \App\Support\CopyNameSuggester::suggest(
+            $base,
+            fn (string $candidate) => CodeAdjustment::where('project_id', $projectId)
+                ->where('name', $candidate)
+                ->exists(),
+            255 // name column is varchar(255)
+        );
     }
 
     // ========== INSERTIONS ==========

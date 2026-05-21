@@ -10,6 +10,7 @@ import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface ProjectWizardModalProps {
   isOpen: boolean;
@@ -181,20 +182,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load languages
   const loadLanguages = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/active-languages', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableLanguages(Array.isArray(data) ? data : []);
-      }
+      const data = await apiClient.get('/active-languages');
+      setAvailableLanguages(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(t.projectwizardmodal199, err);
     }
@@ -203,22 +192,10 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load existing schemas
   const loadExistingSchemas = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/schemas', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // API returns { schemas: [...], subscription_info: {...} } now
-        const schemas = Array.isArray(data) ? data : (data.schemas || []);
-        setExistingSchemas(schemas);
-      }
+      const data = await apiClient.get('/schemas');
+      // API returns { schemas: [...], subscription_info: {...} } now
+      const schemas = Array.isArray(data) ? data : (data.schemas || []);
+      setExistingSchemas(schemas);
     } catch (err) {
       console.error(t.projectwizardmodal223, err);
     }
@@ -227,20 +204,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Refresh user credits (call after Buy Credits or when entering Step 6)
   const refreshCredits = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser((prev: any) => ({ ...prev, credits: userData.credits }));
-      }
+      const userData = await apiClient.get('/user');
+      setCurrentUser((prev: any) => ({ ...prev, credits: userData.credits }));
     } catch (err) {
       console.error(t.projectwizardmodal245, err);
     }
@@ -249,20 +214,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load templates
   const loadTemplates = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/templates', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data.templates || []);
-      }
+      const data = await apiClient.get('/templates');
+      setTemplates(data.templates || []);
     } catch (err) {
       console.error(t.projectwizardmodal267, err);
     }
@@ -271,29 +224,17 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
   // Load existing teams
   const loadExistingTeams = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
+      const data = await apiClient.get('/teams?all=1');
+      // Combine owned and member teams
+      const allTeams = [
+        ...(data.owned_teams || []),
+        ...(data.member_teams || [])
+      ];
+      setExistingTeams(allTeams);
 
-      const response = await fetch('/api/teams?all=1', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Combine owned and member teams
-        const allTeams = [
-          ...(data.owned_teams || []),
-          ...(data.member_teams || [])
-        ];
-        setExistingTeams(allTeams);
-
-        // Store subscription info
-        if (data.subscription_info) {
-          setTeamSubscriptionInfo(data.subscription_info);
-        }
+      // Store subscription info
+      if (data.subscription_info) {
+        setTeamSubscriptionInfo(data.subscription_info);
       }
     } catch (err) {
       console.error(t.projectwizardmodal299, err);
@@ -312,28 +253,15 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       setIsCheckingAccess(true);
 
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) {
-          setShowActualWizard(true);
-          setIsCheckingAccess(false);
-          return;
-        }
-
         // Load user data
-        const userResponse = await fetch('/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (!userResponse.ok) {
+        let userData: any;
+        try {
+          userData = await apiClient.get('/user');
+        } catch {
           setShowActualWizard(true);
           setIsCheckingAccess(false);
           return;
         }
-
-        const userData = await userResponse.json();
         setCurrentUser(userData);
 
         const isFreeUser = userData.user_type === 'free' || !userData.user_type;
@@ -341,19 +269,10 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         // Load user's schema count for database unlock check later
         if (isFreeUser) {
           try {
-            const schemasResponse = await fetch('/api/schemas', {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-              }
-            });
-
-            if (schemasResponse.ok) {
-              const schemasData = await schemasResponse.json();
-              const schemas = Array.isArray(schemasData) ? schemasData : [];
-              const userOwnedSchemas = schemas.filter((s: any) => s.owner_id === userData.id);
-              setUserSchemaCount(userOwnedSchemas.length);
-            }
+            const schemasData = await apiClient.get('/schemas');
+            const schemas = Array.isArray(schemasData) ? schemasData : [];
+            const userOwnedSchemas = schemas.filter((s: any) => s.owner_id === userData.id);
+            setUserSchemaCount(userOwnedSchemas.length);
           } catch (err) {
             console.error(t.projectwizardmodal358, err);
             setUserSchemaCount(0);
@@ -362,15 +281,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
         // If user is Free, check project subscription info
         if (isFreeUser) {
-          const projectsResponse = await fetch('/api/projects', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json'
-            }
-          });
-
-          if (projectsResponse.ok) {
-            const data = await projectsResponse.json();
+          try {
+            const data = await apiClient.get('/projects');
             const subscriptionInfo = data.subscription_info;
 
             // Store subscription info for UI display
@@ -389,6 +301,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               setIsCheckingAccess(false);
               return;
             }
+          } catch {
+            // Could not load projects - proceed to wizard, server will reject if needed
           }
         }
 
@@ -446,23 +360,11 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     const timeoutId = setTimeout(async () => {
       setCheckingProjectName(true);
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) return;
-
-        const response = await fetch('/api/projects', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // API returns { projects: [...], current_project: ..., total_projects: ... }
-          const projects = data.projects || data;
-          const exists = Array.isArray(projects) && projects.some((p: any) => p.name.toLowerCase() === projectName.toLowerCase());
-          setProjectNameExists(exists);
-        }
+        const data = await apiClient.get('/projects');
+        // API returns { projects: [...], current_project: ..., total_projects: ... }
+        const projects = data.projects || data;
+        const exists = Array.isArray(projects) && projects.some((p: any) => p.name.toLowerCase() === projectName.toLowerCase());
+        setProjectNameExists(exists);
       } catch (err) {
         console.error(t.projectwizardmodal467, err);
       } finally {
@@ -484,23 +386,11 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     const timeoutId = setTimeout(async () => {
       setCheckingSchemaName(true);
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) return;
-
-        const response = await fetch('/api/schemas', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          // API returns { schemas: [...], subscription_info: {...} }
-          const schemas = Array.isArray(data) ? data : (data.schemas || []);
-          const exists = schemas.some((s: any) => s.name.toLowerCase() === schemaName.toLowerCase());
-          setSchemaNameExists(exists);
-        }
+        const data = await apiClient.get('/schemas');
+        // API returns { schemas: [...], subscription_info: {...} }
+        const schemas = Array.isArray(data) ? data : (data.schemas || []);
+        const exists = schemas.some((s: any) => s.name.toLowerCase() === schemaName.toLowerCase());
+        setSchemaNameExists(exists);
       } catch (err) {
         console.error(t.projectwizardmodal505, err);
       } finally {
@@ -522,22 +412,10 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     const timeoutId = setTimeout(async () => {
       setCheckingTeamName(true);
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) return;
-
-        const response = await fetch('/api/teams', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const teams = Array.isArray(data) ? data : (data.teams || []);
-          const exists = teams.some((t: any) => t.name.toLowerCase() === teamName.toLowerCase());
-          setTeamNameExists(exists);
-        }
+        const data = await apiClient.get('/teams');
+        const teams = Array.isArray(data) ? data : (data.teams || []);
+        const exists = teams.some((tm: any) => tm.name.toLowerCase() === teamName.toLowerCase());
+        setTeamNameExists(exists);
       } catch (err) {
         console.error(t.projectwizardmodal542, err);
       } finally {
@@ -579,35 +457,22 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       // Check if user needs database unlock
       const isFreeUser = currentUser?.user_type === 'free' || !currentUser?.user_type;
       if (databaseOption === 'new' && isFreeUser) {
-        // Get subscription info from API
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (token) {
-          try {
-            const schemasResponse = await fetch('/api/schemas', {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-              }
-            });
+        try {
+          const schemasData = await apiClient.get('/schemas');
+          const subscriptionInfo = schemasData.subscription_info;
 
-            if (schemasResponse.ok) {
-              const schemasData = await schemasResponse.json();
-              const subscriptionInfo = schemasData.subscription_info;
-
-              if (subscriptionInfo && subscriptionInfo.needs_unlock) {
-                // User needs to unlock database - Step 6 will show unlock screen
-                setNeedsDatabaseUnlock(true);
-                setDatabaseUnlockConfirmed(false);
-                // Refresh credits before showing Step 6
-                await refreshCredits();
-                // Continue to Step 6 (unlock screen)
-                setCurrentStep(6);
-                return;
-              }
-            }
-          } catch (err) {
-            console.error(t.projectwizardmodal609, err);
+          if (subscriptionInfo && subscriptionInfo.needs_unlock) {
+            // User needs to unlock database - Step 6 will show unlock screen
+            setNeedsDatabaseUnlock(true);
+            setDatabaseUnlockConfirmed(false);
+            // Refresh credits before showing Step 6
+            await refreshCredits();
+            // Continue to Step 6 (unlock screen)
+            setCurrentStep(6);
+            return;
           }
+        } catch (err) {
+          console.error(t.projectwizardmodal609, err);
         }
       }
 
@@ -845,24 +710,12 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.projectwizardmodal850);
-      }
-
       // Pre-check: Calculate total credits needed
       const totalCreditsNeeded = reservedCreditsForProject + reservedCreditsForDatabase + reservedCreditsForTeam;
       if (totalCreditsNeeded > 0) {
         // Refresh user data to get current credits
-        const userCheckResponse = await fetch('/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (userCheckResponse.ok) {
-          const userData = await userCheckResponse.json();
+        try {
+          const userData = await apiClient.get('/user');
           if (userData.credits < totalCreditsNeeded) {
             const parts = [];
             if (reservedCreditsForProject > 0) parts.push(`${reservedCreditsForProject}${t.projectwizardmodal868}`);
@@ -876,22 +729,34 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           }
           // Update currentUser with fresh data
           setCurrentUser(userData);
+        } catch {
+          // Could not refresh credits - server will reject if insufficient
+        }
+      }
+
+      // Pre-flight: team names are globally unique. Verify BEFORE we create the
+      // project so the wizard doesn't leave a project with no team behind when
+      // the chosen name turns out to be taken.
+      if (teamOption === 'new' && teamName.trim()) {
+        try {
+          const check = await apiClient.get(`/teams/check-name?name=${encodeURIComponent(teamName.trim())}`);
+          if (check?.exists) {
+            setError(`${t.teammodal132}: "${teamName.trim()}" is already taken. Please choose a different team name.`);
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // Network error during preflight — fall through; backend will still
+          // reject with a 422 if there's a real conflict.
         }
       }
 
       // Check if project with same name already exists (from a previous failed attempt)
-      const existingProjectResponse = await fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
       let projectId: number | null = null;
       let projectAlreadyExisted = false;
 
-      if (existingProjectResponse.ok) {
-        const existingData = await existingProjectResponse.json();
+      try {
+        const existingData = await apiClient.get('/projects');
         const existingProjects = existingData.projects || existingData;
         const existingProject = Array.isArray(existingProjects)
           ? existingProjects.find((p: any) => p.name.toLowerCase() === projectName.toLowerCase() && p.owner_id === currentUser?.id)
@@ -901,6 +766,8 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           projectId = existingProject.id;
           projectAlreadyExisted = true;
         }
+      } catch {
+        // Could not list projects - proceed with create attempt
       }
 
       // Step 1: Create Project (only if not already exists)
@@ -922,18 +789,11 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
           database_type: databaseType,
         };
 
-        const projectResponse = await fetch('/api/projects', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(projectPayload),
-        });
-
-        if (!projectResponse.ok) {
-          const errorData = await projectResponse.json();
+        let project: any;
+        try {
+          project = await apiClient.post('/projects', projectPayload);
+        } catch (err: any) {
+          const errorData = err?.response?.data || {};
 
           // Handle insufficient credits error
           if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -946,24 +806,18 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
           throw new Error(errorData.message || t.projectwizardmodal947);
         }
-
-        const project = await projectResponse.json();
         projectId = project.id;
       }
 
       // Step 2: Update language settings
-      await fetch(`/api/projects/${projectId}/settings`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await apiClient.put(`/projects/${projectId}/settings`, {
           enabled_languages: selectedLanguages,
           default_language: defaultLanguage,
-        }),
-      });
+        });
+      } catch {
+        // Language settings update failure is non-critical for wizard completion
+      }
 
       // Step 3: Handle Database/Schema
       let schemaId = selectedSchemaId;
@@ -972,22 +826,13 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
         // Check if project already has a schema linked (from previous attempt)
         if (projectAlreadyExisted) {
           try {
-            const projectSchemasResponse = await fetch(`/api/projects/${projectId}/schemas`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-              },
-            });
+            const projectSchemas = await apiClient.get(`/projects/${projectId}/schemas`);
+            const existingSchema = Array.isArray(projectSchemas)
+              ? projectSchemas.find((s: any) => s.name?.toLowerCase() === schemaName.toLowerCase())
+              : null;
 
-            if (projectSchemasResponse.ok) {
-              const projectSchemas = await projectSchemasResponse.json();
-              const existingSchema = Array.isArray(projectSchemas)
-                ? projectSchemas.find((s: any) => s.name?.toLowerCase() === schemaName.toLowerCase())
-                : null;
-
-              if (existingSchema) {
-                schemaId = existingSchema.id;
-              }
+            if (existingSchema) {
+              schemaId = existingSchema.id;
             }
           } catch {
             // Could not check existing schemas, will create new one
@@ -996,22 +841,15 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
         // Create new schema only if we don't have one
         if (!schemaId) {
-          const schemaResponse = await fetch('/api/schemas', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
+          let schema: any;
+          try {
+            schema = await apiClient.post('/schemas', {
               name: schemaName,
               description: schemaDescription,
               visibility: schemaVisibility,
-            }),
-          });
-
-          if (!schemaResponse.ok) {
-            const errorData = await schemaResponse.json().catch(() => ({}));
+            });
+          } catch (err: any) {
+            const errorData = err?.response?.data || {};
 
             // Handle insufficient credits error specifically
             if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -1026,30 +864,20 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             console.error(t.projectwizardmodal1026, errorData);
             throw new Error(`${t.projectwizardmodal1027}${errorMessage}`);
           }
-
-          const schema = await schemaResponse.json();
           schemaId = schema.id;
         }
       }
 
       // Step 4: Associate schema with project (BEFORE SQL import!)
       if (schemaId) {
-        const associateResponse = await fetch(`/api/projects/${projectId}/schemas`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
+        try {
+          await apiClient.post(`/projects/${projectId}/schemas`, {
             schema_id: schemaId,
             association_type: 'linked',
             alias: null,
-          }),
-        });
-
-        if (!associateResponse.ok) {
-          const errorData = await associateResponse.json().catch(() => ({}));
+          });
+        } catch (err: any) {
+          const errorData = err?.response?.data || {};
           throw new Error(`${t.projectwizardmodal1053}${errorData.message || errorData.error || t.projectwizardmodal1053_2}`);
         }
       }
@@ -1057,22 +885,14 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       // Step 5: Handle team (optional)
       if (teamOption === 'new' && teamName.trim()) {
         // Create new team
-        const teamResponse = await fetch('/api/teams', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
+        try {
+          await apiClient.post('/teams', {
             name: teamName,
             description: teamDescription,
             project_ids: projectId ? [projectId] : [],
-          }),
-        });
-
-        if (!teamResponse.ok) {
-          const errorData = await teamResponse.json().catch(() => ({}));
+          });
+        } catch (err: any) {
+          const errorData = err?.response?.data || {};
 
           // Handle insufficient credits error
           if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -1083,22 +903,18 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
             return;
           }
 
-          // Non-critical error - warn but continue
-          alert(`${t.projectwizardmodal1087}\n\n${errorData.message || t.projectwizardmodal1087_2}\n\n${t.projectwizardmodal1087_3}`);
+          // Name conflict (race: someone took the name between preflight and submit)
+          const nameError = errorData.errors?.name?.[0];
+          const message = nameError || errorData.message || t.projectwizardmodal1087_2;
+
+          // Non-critical error - warn but continue (project is already created at this point)
+          alert(`${t.projectwizardmodal1087}\n\n${message}\n\n${t.projectwizardmodal1087_3}`);
         }
       } else if (teamOption === 'existing' && selectedTeamId && projectId) {
         // Assign existing team to project
         try {
-          await fetch(`/api/teams/${selectedTeamId}/projects`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              project_ids: [projectId],
-            }),
+          await apiClient.put(`/teams/${selectedTeamId}/projects`, {
+            project_ids: [projectId],
           });
         } catch {
           // Non-critical error - team linking failed but project is created
@@ -1109,21 +925,9 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       // The API expects: POST /api/templates/{templateId}/link with project_ids array
       for (const templateId of selectedTemplates) {
         try {
-          const linkResponse = await fetch(`/api/templates/${templateId}/link`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              project_ids: [projectId],
-            }),
+          await apiClient.post(`/templates/${templateId}/link`, {
+            project_ids: [projectId],
           });
-
-          if (!linkResponse.ok) {
-            // Template linking failed - non-critical, continue
-          }
         } catch {
           // Error linking template - non-critical, continue
         }
@@ -1132,42 +936,29 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
       // Step 7: Import SQL (LAST STEP - after everything else is set up)
       if (databaseOption === 'new' && !skipSqlImport && sqlScript.trim() && schemaId) {
         try {
-          const importResponse = await fetch('/api/sql-parse-and-store', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              sql_script: sqlScript,
-              schema_id: schemaId,
-              description: importDescription || t.projectwizardmodal1145,
-            }),
+          await apiClient.post('/sql-parse-and-store', {
+            sql_script: sqlScript,
+            schema_id: schemaId,
+            description: importDescription || t.projectwizardmodal1145,
           });
-
-          if (!importResponse.ok) {
-            const errorData = await importResponse.json();
-
+        } catch (err: any) {
+          const errorData = err?.response?.data;
+          if (errorData) {
             // Show warning but don't fail the entire wizard
             alert(`${t.projectwizardmodal1153}\n\n${errorData.error || 'Unknown error'}\n\n${t.projectwizardmodal1153_2}`);
+          } else {
+            // Continue anyway - project is already set up
+            alert(`${t.projectwizardmodal1157}\n\n${t.projectwizardmodal1157_2}`);
           }
-        } catch {
-          // Continue anyway - project is already set up
-          alert(`${t.projectwizardmodal1157}\n\n${t.projectwizardmodal1157_2}`);
         }
       }
 
       // Reload user data to get updated credits
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
+      } catch {
+        // Non-critical
       }
 
       // Success!
@@ -1965,7 +1756,6 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
 
         // Get accurate info from subscription data
         const ownedTeams = teamSubscriptionInfo?.owned_teams || 0;
-        const activeTeamSubscriptions = teamSubscriptionInfo?.active_subscriptions || 0;
 
         return (
           <div className="space-y-4">
@@ -1982,8 +1772,7 @@ export default function ProjectWizardModal({ isOpen, onClose, onSuccess }: Proje
               </p>
               {ownedTeams > 0 && (
                 <p className="text-sm mt-2" style={{ color: colors.textSecondary }}>
-                  {t.projectwizardmodal1980}<strong>{ownedTeams}{ownedTeams > 1 ? t.projectwizardmodal1980_1 : t.projectwizardmodal1980_2}</strong>
-                  {activeTeamSubscriptions > 0 && ` (${activeTeamSubscriptions}${activeTeamSubscriptions > 1 ? t.projectwizardmodal1981 : t.projectwizardmodal1981_2})`}.
+                  {t.projectwizardmodal1980}<strong>{ownedTeams}{ownedTeams > 1 ? t.projectwizardmodal1980_1 : t.projectwizardmodal1980_2}</strong>.
                 </p>
               )}
             </div>

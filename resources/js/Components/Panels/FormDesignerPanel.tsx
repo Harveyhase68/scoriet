@@ -31,6 +31,7 @@ import { TabContentProps } from '@/types';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 // ========== INTERFACES ==========
 
@@ -136,15 +137,6 @@ const DEFAULT_ICONS: Record<string, string> = {
 const MULTI_SELECTION_KEYS = ['Control', 'Shift', 'Meta'];
 
 // ========== HELPER FUNCTIONS ==========
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-};
 
 const getElementColor = (elementType: string): string => {
   if (elementType.startsWith('container') || elementType === 'tab_container' || elementType === 'menu_container') {
@@ -586,15 +578,8 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const checkAccess = useCallback(async () => {
     try {
       setCheckingAccess(true);
-      const response = await fetch('/api/form-designer/access', {
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setAccessStatus(data);
-      } else {
-        showToast('error', t.messageError, t.formdesignerpanel555);
-      }
+      const data = await apiClient.get('/form-designer/access');
+      setAccessStatus(data);
     } catch (error) {
       console.error(t.formdesignerpanel573, error);
       showToast('error', t.messageError, t.formdesignerpanel574);
@@ -606,11 +591,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const _unlockFeature = useCallback(async () => {
     try {
       setUnlocking(true);
-      const response = await fetch('/api/form-designer/unlock', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.post('/form-designer/unlock');
       if (data.success) {
         showToast('success', t.formdesignerpanel589, data.message);
         await checkAccess();
@@ -628,39 +609,33 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const loadFormSets = useCallback(async () => {
     try {
       setLoadingFormSets(true);
-      const response = await fetch('/api/form-sets?own_only=true', {
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const formSetList = data.data || [];
-        setFormSets(formSetList);
+      const data = await apiClient.get('/form-sets?own_only=true');
+      const formSetList = data.data || [];
+      setFormSets(formSetList);
 
-        // Determine which FormSet to select (priority: prop > localStorage > none)
-        const storedFormSetId = localStorage.getItem(STORAGE_KEY_FORMSET);
-        const storedWindowId = localStorage.getItem(STORAGE_KEY_WINDOW);
-        const targetFormSetId = initialFormSetId || (storedFormSetId ? parseInt(storedFormSetId, 10) : null);
+      // Determine which FormSet to select (priority: prop > localStorage > none)
+      const storedFormSetId = localStorage.getItem(STORAGE_KEY_FORMSET);
+      const storedWindowId = localStorage.getItem(STORAGE_KEY_WINDOW);
+      const targetFormSetId = initialFormSetId || (storedFormSetId ? parseInt(storedFormSetId, 10) : null);
 
-        if (targetFormSetId && formSetList.length > 0) {
-          const found = formSetList.find((fs: FormSet) => fs.id === targetFormSetId);
-          if (found) {
-            // Load full details for this FormSet
-            const detailResponse = await fetch(`/api/form-sets/${found.id}`, {
-              headers: getAuthHeaders(),
-            });
-            if (detailResponse.ok) {
-              const detailData = await detailResponse.json();
-              setSelectedFormSet(detailData.data);
+      if (targetFormSetId && formSetList.length > 0) {
+        const found = formSetList.find((fs: FormSet) => fs.id === targetFormSetId);
+        if (found) {
+          // Load full details for this FormSet
+          try {
+            const detailData = await apiClient.get(`/form-sets/${found.id}`);
+            setSelectedFormSet(detailData.data);
 
-              // Restore window selection from localStorage or select first
-              if (detailData.data?.windows?.length > 0) {
-                const targetWindowId = storedWindowId ? parseInt(storedWindowId, 10) : null;
-                const targetWindow = targetWindowId
-                  ? detailData.data.windows.find((w: FormWindow) => w.id === targetWindowId)
-                  : detailData.data.windows[0];
-                setSelectedWindow(targetWindow || detailData.data.windows[0]);
-              }
+            // Restore window selection from localStorage or select first
+            if (detailData.data?.windows?.length > 0) {
+              const targetWindowId = storedWindowId ? parseInt(storedWindowId, 10) : null;
+              const targetWindow = targetWindowId
+                ? detailData.data.windows.find((w: FormWindow) => w.id === targetWindowId)
+                : detailData.data.windows[0];
+              setSelectedWindow(targetWindow || detailData.data.windows[0]);
             }
+          } catch {
+            // Detail load failure is non-critical - list is still shown
           }
         }
       }
@@ -674,22 +649,17 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
   const loadFormSetDetails = useCallback(async (formSetId: number) => {
     try {
-      const response = await fetch(`/api/form-sets/${formSetId}`, {
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSelectedFormSet(data.data);
+      const data = await apiClient.get(`/form-sets/${formSetId}`);
+      setSelectedFormSet(data.data);
 
-        // Save to localStorage for persistence
-        localStorage.setItem(STORAGE_KEY_FORMSET, String(formSetId));
+      // Save to localStorage for persistence
+      localStorage.setItem(STORAGE_KEY_FORMSET, String(formSetId));
 
-        // Auto-select first window
-        if (data.data?.windows?.length > 0) {
-          const firstWindow = data.data.windows[0];
-          setSelectedWindow(firstWindow);
-          localStorage.setItem(STORAGE_KEY_WINDOW, String(firstWindow.id));
-        }
+      // Auto-select first window
+      if (data.data?.windows?.length > 0) {
+        const firstWindow = data.data.windows[0];
+        setSelectedWindow(firstWindow);
+        localStorage.setItem(STORAGE_KEY_WINDOW, String(firstWindow.id));
       }
     } catch (error) {
       console.error(t.formdesignerpanel669, error);
@@ -705,17 +675,16 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
     try {
       setSaving(true);
-      const response = await fetch('/api/form-sets', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      let data: any;
+      try {
+        data = await apiClient.post('/form-sets', {
           name: newFormSetName,
           description: newFormSetDescription,
           visibility: newFormSetVisibility,
-        }),
-      });
-
-      const data = await response.json();
+        });
+      } catch (err: any) {
+        data = err?.response?.data || { success: false };
+      }
       if (data.success) {
         showToast('success', t.formdesignerpanel694, t.formdesignerpanel694_2);
         setCreateFormSetModalVisible(false);
@@ -744,33 +713,24 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           const newId = data.data.id as number;
           const projectId = selectedProject.id;
           try {
-            const checkRes = await fetch(`/api/projects/${projectId}/form-set`, {
-              headers: getAuthHeaders(),
-            });
-            if (checkRes.ok) {
-              const checkData = await checkRes.json();
-              if (!checkData?.data?.id) {
-                confirmDialog({
-                  group: 'form-designer',
-                  header: (t as unknown as Record<string, string>).formsetdefault_prompt_title || 'Set as project default?',
-                  message: (t as unknown as Record<string, string>).formsetdefault_prompt_message
-                    || 'This is the first Form Set in this project. Use it as the default? You can change this anytime in the project settings.',
-                  icon: 'pi pi-question-circle',
-                  acceptLabel: (t as unknown as Record<string, string>).formdesignerpanel_yes || 'Yes',
-                  rejectLabel: (t as unknown as Record<string, string>).formdesignerpanel_no || 'No',
-                  accept: async () => {
-                    try {
-                      await fetch(`/api/projects/${projectId}/form-set`, {
-                        method: 'POST',
-                        headers: getAuthHeaders(),
-                        body: JSON.stringify({ form_set_id: newId }),
-                      });
-                    } catch {
-                      // ignore — user can always set it manually in project settings
-                    }
-                  },
-                });
-              }
+            const checkData = await apiClient.get(`/projects/${projectId}/form-set`);
+            if (!checkData?.data?.id) {
+              confirmDialog({
+                group: 'form-designer',
+                header: (t as unknown as Record<string, string>).formsetdefault_prompt_title || 'Set as project default?',
+                message: (t as unknown as Record<string, string>).formsetdefault_prompt_message
+                  || 'This is the first Form Set in this project. Use it as the default? You can change this anytime in the project settings.',
+                icon: 'pi pi-question-circle',
+                acceptLabel: (t as unknown as Record<string, string>).formdesignerpanel_yes || 'Yes',
+                rejectLabel: (t as unknown as Record<string, string>).formdesignerpanel_no || 'No',
+                accept: async () => {
+                  try {
+                    await apiClient.post(`/projects/${projectId}/form-set`, { form_set_id: newId });
+                  } catch {
+                    // ignore — user can always set it manually in project settings
+                  }
+                },
+              });
             }
           } catch {
             // ignore — fallback path: user sets default manually in project settings
@@ -844,13 +804,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         };
       });
 
-      const response = await fetch(`/api/form-windows/${selectedWindow.id}/elements`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ elements }),
-      });
-
-      const data = await response.json();
+      let data: any;
+      try {
+        data = await apiClient.put(`/form-windows/${selectedWindow.id}/elements`, { elements });
+      } catch (err: any) {
+        data = err?.response?.data || { success: false };
+      }
       if (data.success) {
         showToast('success', t.formdesignerpanel783, t.formdesignerpanel783_2);
         setHasUnsavedChanges(false);
@@ -1097,10 +1056,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
     try {
       setSaving(true);
-      const response = await fetch(`/api/form-windows/${selectedWindow.id}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
+      let data: any;
+      try {
+        data = await apiClient.put(`/form-windows/${selectedWindow.id}`, {
           display_name: selectedWindow.display_name,
           min_width: selectedWindow.min_width,
           min_height: selectedWindow.min_height,
@@ -1109,10 +1067,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
           background_color: selectedWindow.background_color,
           window_color: selectedWindow.window_color,
           text_color: selectedWindow.text_color,
-        }),
-      });
-
-      const data = await response.json();
+        });
+      } catch (err: any) {
+        data = err?.response?.data || { success: false };
+      }
       if (data.success) {
         showToast('success', t.formdesignerpanel950, t.formdesignerpanel950_2);
         // Note: hasUnsavedChanges is handled by saveElements, we keep it for element changes
@@ -1293,18 +1251,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       // Refresh access status first
       try {
         setCheckingAccess(true);
-        const response = await fetch('/api/form-designer/access', {
-          headers: getAuthHeaders(),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setAccessStatus(data);
+        const data = await apiClient.get('/form-designer/access');
+        setAccessStatus(data);
 
-          if (data.has_access) {
-            setCreateFormSetModalVisible(true);
-          } else {
-            setUnlockModalVisible(true);
-          }
+        if (data.has_access) {
+          setCreateFormSetModalVisible(true);
         } else {
           setUnlockModalVisible(true);
         }
@@ -2929,20 +2880,15 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     acceptClassName: 'p-button-danger',
                     accept: async () => {
                       try {
-                        const response = await fetch(`/api/form-sets/${selectedFormSet.id}`, {
-                          method: 'DELETE',
-                          headers: getAuthHeaders(),
-                        });
-                        if (response.ok) {
-                          showToast('success', t.formdesignerpanel2536, t.formdesignerpanel2536_2);
-                          setEditFormSetModalVisible(false);
-                          setSelectedFormSet(null);
-                          setSelectedWindow(null);
-                          // Clear localStorage
-                          localStorage.removeItem(STORAGE_KEY_FORMSET);
-                          localStorage.removeItem(STORAGE_KEY_WINDOW);
-                          loadFormSets();
-                        }
+                        await apiClient.delete(`/form-sets/${selectedFormSet.id}`);
+                        showToast('success', t.formdesignerpanel2536, t.formdesignerpanel2536_2);
+                        setEditFormSetModalVisible(false);
+                        setSelectedFormSet(null);
+                        setSelectedWindow(null);
+                        // Clear localStorage
+                        localStorage.removeItem(STORAGE_KEY_FORMSET);
+                        localStorage.removeItem(STORAGE_KEY_WINDOW);
+                        loadFormSets();
                       } catch {
                         showToast('error', t.messageError, t.formdesignerpanel2546);
                       }
@@ -2963,10 +2909,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   onClick={async () => {
                     try {
                       setSaving(true);
-                      const response = await fetch(`/api/form-sets/${selectedFormSet.id}`, {
-                        method: 'PUT',
-                        headers: getAuthHeaders(),
-                        body: JSON.stringify({
+                      let data: any;
+                      try {
+                        data = await apiClient.put(`/form-sets/${selectedFormSet.id}`, {
                           name: selectedFormSet.name,
                           description: selectedFormSet.description,
                           visibility: selectedFormSet.visibility,
@@ -2975,9 +2920,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           default_text_color: selectedFormSet.default_text_color,
                           default_button_color: selectedFormSet.default_button_color,
                           default_button_text_color: selectedFormSet.default_button_text_color,
-                        }),
-                      });
-                      const data = await response.json();
+                        });
+                      } catch (err: any) {
+                        data = err?.response?.data || { success: false };
+                      }
                       if (data.success) {
                         showToast('success', t.formdesignerpanel2581, t.formdesignerpanel2581_2);
                         setEditFormSetModalVisible(false);
@@ -3050,11 +2996,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 onClick={async () => {
                   try {
                     setUnlocking(true);
-                    const response = await fetch('/api/form-designer/unlock', {
-                      method: 'POST',
-                      headers: getAuthHeaders(),
-                    });
-                    const data = await response.json();
+                    let data: any;
+                    try {
+                      data = await apiClient.post('/form-designer/unlock');
+                    } catch (err: any) {
+                      data = err?.response?.data || { success: false };
+                    }
                     if (data.success) {
                       showToast('success', t.formdesignerpanel2658_2, data.message || t.formdesignerpanel2658);
                       setUnlockModalVisible(false);
