@@ -9,7 +9,8 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Splitter, SplitterPanel } from 'primereact/splitter';
@@ -19,6 +20,7 @@ import { Tag } from 'primereact/tag';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 // ========== INTERFACES ==========
 
@@ -204,65 +206,46 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
   // ========== API CALLS ==========
 
-  const getAuthHeaders = useCallback(() => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    };
-  }, []);
-
   // Load Code Adjustments access status
   const loadCodeAdjustmentsAccess = useCallback(async () => {
     setLoadingAccess(true);
     try {
-      const response = await fetch('/api/subscriptions/code-adjustments/status', {
-        headers: getAuthHeaders(),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCodeAdjustmentsAccess(data);
-      }
+      const data = await apiClient.get('/subscriptions/code-adjustments/status');
+      setCodeAdjustmentsAccess(data);
     } catch (error) {
       console.error(t.codeadjustmentspanel228, error);
     } finally {
       setLoadingAccess(false);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   // Unlock Code Adjustments with credits
   const unlockCodeAdjustments = async () => {
     setUnlocking(true);
     try {
-      const response = await fetch('/api/subscriptions/unlock-code-adjustments', {
-        method: 'POST',
-        headers: getAuthHeaders(),
+      const data = await apiClient.post('/subscriptions/unlock-code-adjustments');
+      setCodeAdjustmentsAccess(data.access_status);
+      toast.current?.show({
+        severity: 'success',
+        summary: t.codeadjustmentspanel248,
+        detail: data.message || t.codeadjustmentspanel249,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCodeAdjustmentsAccess(data.access_status);
-        toast.current?.show({
-          severity: 'success',
-          summary: t.codeadjustmentspanel248,
-          detail: data.message || t.codeadjustmentspanel249,
-        });
-      } else {
-        const error = await response.json();
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message;
+      if (errorMsg) {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: error.message || t.codeadjustmentspanel256,
+          detail: errorMsg,
+        });
+      } else {
+        console.error(t.codeadjustmentspanel260, err);
+        toast.current?.show({
+          severity: 'error',
+          summary: t.messageError,
+          detail: t.codeadjustmentspanel264,
         });
       }
-    } catch (err) {
-      console.error(t.codeadjustmentspanel260, err);
-      toast.current?.show({
-        severity: 'error',
-        summary: t.messageError,
-        detail: t.codeadjustmentspanel264,
-      });
     } finally {
       setUnlocking(false);
     }
@@ -273,10 +256,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/projects/${selectedProject.id}/code-adjustments`, {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get(`/projects/${selectedProject.id}/code-adjustments`);
 
       if (data.success) {
         setAdjustments(data.data);
@@ -297,31 +277,25 @@ const CodeAdjustmentsPanel: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedProject?.id, getAuthHeaders]);
+  }, [selectedProject?.id]);
 
   const loadVariables = useCallback(async () => {
     try {
-      const response = await fetch('/api/code-adjustments/variables', {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get('/code-adjustments/variables');
       if (data.success) {
         setAvailableVariables(data.data);
       }
     } catch (error) {
       console.error(t.codeadjustmentspanel312, error);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const loadGenerations = useCallback(async () => {
     if (!selectedProject?.id) return;
 
     setLoadingGenerations(true);
     try {
-      const response = await fetch(`/api/projects/${selectedProject.id}/generations`, {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get(`/projects/${selectedProject.id}/generations`);
       if (data.success) {
         setGenerations(data.data);
         // Auto-select the latest generation for both dropdowns
@@ -339,7 +313,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     } finally {
       setLoadingGenerations(false);
     }
-  }, [selectedProject?.id, getAuthHeaders, selectedGenerationId, selectedGenerationForCompare]);
+  }, [selectedProject?.id, selectedGenerationId, selectedGenerationForCompare]);
 
   const loadGenerationFiles = useCallback(async (generationId: number) => {
     if (!selectedProject?.id) return;
@@ -347,11 +321,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     setLoadingFiles(true);
     setGenerationFiles([]);
     try {
-      const response = await fetch(
-        `/api/projects/${selectedProject.id}/generations/${generationId}/files`,
-        { headers: getAuthHeaders() }
-      );
-      const data = await response.json();
+      const data = await apiClient.get(`/projects/${selectedProject.id}/generations/${generationId}/files`);
       if (data.success) {
         setGenerationFiles(data.data.files);
       }
@@ -360,17 +330,14 @@ const CodeAdjustmentsPanel: React.FC = () => {
     } finally {
       setLoadingFiles(false);
     }
-  }, [selectedProject?.id, getAuthHeaders]);
+  }, [selectedProject?.id]);
 
   // ========== GIT FUNCTIONS ==========
 
   const loadGitProviders = useCallback(async () => {
     setLoadingGitProviders(true);
     try {
-      const response = await fetch('/api/git/providers', {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get('/git/providers');
       // API returns { providers: [...], git_integration_access: {...} }
       if (data.providers && data.providers.length > 0) {
         setGitProviders(data.providers.map((p: any) => ({
@@ -383,7 +350,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     } finally {
       setLoadingGitProviders(false);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const loadGitRepositories = useCallback(async (provider: string) => {
     setLoadingRepositories(true);
@@ -392,10 +359,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     setGitBranches([]);
     setSelectedBranch(null);
     try {
-      const response = await fetch(`/api/git/${provider}/repositories`, {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get(`/git/${provider}/repositories`);
       if (data.repositories) {
         setGitRepositories(data.repositories.map((r: any) => ({
           full_name: r.full_name,
@@ -407,7 +371,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     } finally {
       setLoadingRepositories(false);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const loadGitBranches = useCallback(async (provider: string, repository: string) => {
     setLoadingBranches(true);
@@ -415,10 +379,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
     setSelectedBranch(null);
     try {
       // API expects 'repo' parameter, not 'repository'
-      const response = await fetch(`/api/git/${provider}/branches?repo=${encodeURIComponent(repository)}`, {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get(`/git/${provider}/branches?repo=${encodeURIComponent(repository)}`);
       if (data.branches) {
         setGitBranches(data.branches);
         // Auto-select main/master branch
@@ -432,22 +393,17 @@ const CodeAdjustmentsPanel: React.FC = () => {
     } finally {
       setLoadingBranches(false);
     }
-  }, [getAuthHeaders]);
+  }, []);
 
   const fetchFileFromGeneration = useCallback(async () => {
     if (!selectedProject?.id || !selectedGenerationId || !selectedFilePath) return;
 
     setFetchingFile(true);
     try {
-      const response = await fetch(
-        `/api/projects/${selectedProject.id}/generations/${selectedGenerationId}/fetch-file`,
-        {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ file_path: selectedFilePath }),
-        }
+      const data = await apiClient.post(
+        `/projects/${selectedProject.id}/generations/${selectedGenerationId}/fetch-file`,
+        { file_path: selectedFilePath }
       );
-      const data = await response.json();
       if (data.success) {
         setTemplateContent(data.data.content);
         setAnalysisFilename(data.data.file_path);
@@ -463,17 +419,17 @@ const CodeAdjustmentsPanel: React.FC = () => {
           detail: data.message || t.codeadjustmentspanel463,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Fetch file error:', error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: t.codeadjustmentspanel471,
+        detail: error?.response?.data?.message || t.codeadjustmentspanel471,
       });
     } finally {
       setFetchingFile(false);
     }
-  }, [selectedProject?.id, selectedGenerationId, selectedFilePath, getAuthHeaders]);
+  }, [selectedProject?.id, selectedGenerationId, selectedFilePath]);
 
   // Load access status on mount
   useEffect(() => {
@@ -502,17 +458,14 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!selectedProject?.id) return;
 
     const isNew = !editingAdjustment.id;
-    const url = isNew
-      ? `/api/projects/${selectedProject.id}/code-adjustments`
-      : `/api/projects/${selectedProject.id}/code-adjustments/${editingAdjustment.id}`;
+    const endpoint = isNew
+      ? `/projects/${selectedProject.id}/code-adjustments`
+      : `/projects/${selectedProject.id}/code-adjustments/${editingAdjustment.id}`;
 
     try {
-      const response = await fetch(url, {
-        method: isNew ? 'POST' : 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(editingAdjustment),
-      });
-      const data = await response.json();
+      const data = isNew
+        ? await apiClient.post(endpoint, editingAdjustment)
+        : await apiClient.put(endpoint, editingAdjustment);
 
       if (data.success) {
         toast.current?.show({
@@ -529,12 +482,12 @@ const CodeAdjustmentsPanel: React.FC = () => {
           detail: data.message || t.codeadjustmentspanel529,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save adjustment error:', error);
       toast.current?.show({
         severity: 'error',
         summary: t.codeadjustmentspanel536,
-        detail: t.codeadjustmentspanel537,
+        detail: error?.response?.data?.message || t.codeadjustmentspanel537,
       });
     }
   };
@@ -548,11 +501,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const response = await fetch(
-            `/api/projects/${selectedProject?.id}/code-adjustments/${adjustment.id}`,
-            { method: 'DELETE', headers: getAuthHeaders() }
+          const data = await apiClient.delete(
+            `/projects/${selectedProject?.id}/code-adjustments/${adjustment.id}`
           );
-          const data = await response.json();
 
           if (data.success) {
             toast.current?.show({
@@ -574,11 +525,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
   const toggleActive = async (adjustment: CodeAdjustment) => {
     try {
-      const response = await fetch(
-        `/api/projects/${selectedProject?.id}/code-adjustments/${adjustment.id}/toggle`,
-        { method: 'PATCH', headers: getAuthHeaders() }
+      const data = await apiClient.patch(
+        `/projects/${selectedProject?.id}/code-adjustments/${adjustment.id}/toggle`
       );
-      const data = await response.json();
 
       if (data.success) {
         loadAdjustments();
@@ -590,11 +539,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
   const duplicateAdjustment = async (adjustment: CodeAdjustment) => {
     try {
-      const response = await fetch(
-        `/api/projects/${selectedProject?.id}/code-adjustments/${adjustment.id}/duplicate`,
-        { method: 'POST', headers: getAuthHeaders() }
+      const data = await apiClient.post(
+        `/projects/${selectedProject?.id}/code-adjustments/${adjustment.id}/duplicate`
       );
-      const data = await response.json();
 
       if (data.success) {
         toast.current?.show({
@@ -615,17 +562,14 @@ const CodeAdjustmentsPanel: React.FC = () => {
     if (!selectedAdjustment?.id || !selectedProject?.id) return;
 
     const isNew = !editingInsertion.id;
-    const url = isNew
-      ? `/api/projects/${selectedProject.id}/code-adjustments/${selectedAdjustment.id}/insertions`
-      : `/api/projects/${selectedProject.id}/code-adjustments/${selectedAdjustment.id}/insertions/${editingInsertion.id}`;
+    const endpoint = isNew
+      ? `/projects/${selectedProject.id}/code-adjustments/${selectedAdjustment.id}/insertions`
+      : `/projects/${selectedProject.id}/code-adjustments/${selectedAdjustment.id}/insertions/${editingInsertion.id}`;
 
     try {
-      const response = await fetch(url, {
-        method: isNew ? 'POST' : 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(editingInsertion),
-      });
-      const data = await response.json();
+      const data = isNew
+        ? await apiClient.post(endpoint, editingInsertion)
+        : await apiClient.put(endpoint, editingInsertion);
 
       if (data.success) {
         toast.current?.show({
@@ -635,17 +579,18 @@ const CodeAdjustmentsPanel: React.FC = () => {
         });
         setShowInsertionDialog(false);
         // Reload adjustments and update selectedAdjustment with fresh data
-        const adjResponse = await fetch(`/api/projects/${selectedProject.id}/code-adjustments`, {
-          headers: getAuthHeaders(),
-        });
-        const adjData = await adjResponse.json();
-        if (adjData.success) {
-          setAdjustments(adjData.data);
-          // Update selectedAdjustment to the fresh version with same ID
-          const updatedAdjustment = adjData.data.find((a: CodeAdjustment) => a.id === selectedAdjustment.id);
-          if (updatedAdjustment) {
-            setSelectedAdjustment(updatedAdjustment);
+        try {
+          const adjData = await apiClient.get(`/projects/${selectedProject.id}/code-adjustments`);
+          if (adjData.success) {
+            setAdjustments(adjData.data);
+            // Update selectedAdjustment to the fresh version with same ID
+            const updatedAdjustment = adjData.data.find((a: CodeAdjustment) => a.id === selectedAdjustment.id);
+            if (updatedAdjustment) {
+              setSelectedAdjustment(updatedAdjustment);
+            }
           }
+        } catch {
+          // Reload failed - non-fatal, save itself succeeded
         }
       }
     } catch (error) {
@@ -664,11 +609,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const response = await fetch(
-            `/api/projects/${selectedProject.id}/code-adjustments/${selectedAdjustment.id}/insertions/${insertion.id}`,
-            { method: 'DELETE', headers: getAuthHeaders() }
+          const data = await apiClient.delete(
+            `/projects/${selectedProject.id}/code-adjustments/${selectedAdjustment.id}/insertions/${insertion.id}`
           );
-          const data = await response.json();
 
           if (data.success) {
             toast.current?.show({
@@ -699,16 +642,11 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
     setAnalyzing(true);
     try {
-      const response = await fetch('/api/code-adjustments/analyze', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          template_content: templateContent,
-          modified_content: modifiedContent,
-          filename: analysisFilename,
-        }),
+      const data = await apiClient.post('/code-adjustments/analyze', {
+        template_content: templateContent,
+        modified_content: modifiedContent,
+        filename: analysisFilename,
       });
-      const data = await response.json();
 
       if (data.success) {
         setAnalysisResult(data.data);
@@ -852,26 +790,17 @@ const CodeAdjustmentsPanel: React.FC = () => {
     setDirectoryCompareResult(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      let response;
+      let data: any;
 
       if (directorySource === 'git') {
         // Use the new Git comparison endpoint
-        response = await fetch('/api/code-adjustments/compare-git', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            project_id: selectedProject.id,
-            generation_id: selectedGenerationForCompare,
-            provider: selectedGitProvider,
-            repository: selectedRepository,
-            branch: selectedBranch,
-            directory: gitDirectory || '',
-          }),
+        data = await apiClient.post('/code-adjustments/compare-git', {
+          project_id: selectedProject.id,
+          generation_id: selectedGenerationForCompare,
+          provider: selectedGitProvider,
+          repository: selectedRepository,
+          branch: selectedBranch,
+          directory: gitDirectory || '',
         });
       } else {
         // Use FormData for upload/service
@@ -884,17 +813,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
           formData.append('archive', uploadedArchive);
         }
 
-        response = await fetch('/api/code-adjustments/compare-directory', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: formData,
-        });
+        data = await apiClient.uploadFile('/code-adjustments/compare-directory', formData);
       }
-
-      const data = await response.json();
 
       if (data.success) {
         setDirectoryCompareResult(data.data);
@@ -921,12 +841,12 @@ const CodeAdjustmentsPanel: React.FC = () => {
           detail: data.message || t.codeadjustmentspanel919,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(t.codeadjustmentspanel923, error);
       toast.current?.show({
         severity: 'error',
         summary: t.messageError,
-        detail: t.codeadjustmentspanel927,
+        detail: error?.response?.data?.message || t.codeadjustmentspanel927,
       });
     } finally {
       setComparingDirectory(false);
@@ -1035,26 +955,21 @@ const CodeAdjustmentsPanel: React.FC = () => {
     }
 
     try {
-      const response = await fetch(
-        `/api/projects/${selectedProject.id}/code-adjustments/from-analysis`,
+      const data = await apiClient.post(
+        `/projects/${selectedProject.id}/code-adjustments/from-analysis`,
         {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            name: newAdjustmentData.name,
-            description: newAdjustmentData.description,
-            file_pattern: newAdjustmentData.file_pattern,
-            insertions: editableInsertions.map(ins => ({
-              insertion_type: ins.insertion_type,
-              anchor_text: ins.anchor_text,
-              insertion_content: ins.insertion_content,
-              line_offset: ins.line_offset,
-              description: ins.description || null,
-            })),
-          }),
+          name: newAdjustmentData.name,
+          description: newAdjustmentData.description,
+          file_pattern: newAdjustmentData.file_pattern,
+          insertions: editableInsertions.map(ins => ({
+            insertion_type: ins.insertion_type,
+            anchor_text: ins.anchor_text,
+            insertion_content: ins.insertion_content,
+            line_offset: ins.line_offset,
+            description: ins.description || null,
+          })),
         }
       );
-      const data = await response.json();
 
       if (data.success) {
         toast.current?.show({
@@ -1120,16 +1035,11 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
         try {
           // Step 1: Analyze the file
-          const analyzeResponse = await fetch('/api/code-adjustments/analyze', {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-              template_content: file.template_content,
-              modified_content: file.modified_content,
-              filename: file.path,
-            }),
+          const analyzeData = await apiClient.post('/code-adjustments/analyze', {
+            template_content: file.template_content,
+            modified_content: file.modified_content,
+            filename: file.path,
           });
-          const analyzeData = await analyzeResponse.json();
 
           if (!analyzeData.success || !analyzeData.data.insertions || analyzeData.data.insertions.length === 0) {
             // No insertions found or analysis failed, skip
@@ -1140,26 +1050,21 @@ const CodeAdjustmentsPanel: React.FC = () => {
           const insertions = analyzeData.data.insertions;
           const adjustmentName = file.path.split('/').pop() || file.path; // Use filename as name
 
-          const createResponse = await fetch(
-            `/api/projects/${selectedProject.id}/code-adjustments/from-analysis`,
+          const createData = await apiClient.post(
+            `/projects/${selectedProject.id}/code-adjustments/from-analysis`,
             {
-              method: 'POST',
-              headers: getAuthHeaders(),
-              body: JSON.stringify({
-                name: `Auto: ${adjustmentName}`,
-                description: t.codeadjustmentspanel1148,
-                file_pattern: file.path,
-                insertions: insertions.map((ins: AnalysisInsertion) => ({
-                  insertion_type: ins.insertion_type,
-                  anchor_text: ins.anchor_text,
-                  insertion_content: ins.insertion_content,
-                  line_offset: ins.line_offset,
-                  description: `${ins.line_count}${t.codeadjustmentspanel1155}`,
-                })),
-              }),
+              name: `Auto: ${adjustmentName}`,
+              description: t.codeadjustmentspanel1148,
+              file_pattern: file.path,
+              insertions: insertions.map((ins: AnalysisInsertion) => ({
+                insertion_type: ins.insertion_type,
+                anchor_text: ins.anchor_text,
+                insertion_content: ins.insertion_content,
+                line_offset: ins.line_offset,
+                description: `${ins.line_count}${t.codeadjustmentspanel1155}`,
+              })),
             }
           );
-          const createData = await createResponse.json();
 
           if (createData.success) {
             successCount++;
@@ -1219,10 +1124,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
     setExporting(true);
     try {
-      const response = await fetch(`/api/projects/${selectedProject.id}/code-adjustments/export`, {
-        headers: getAuthHeaders(),
-      });
-      const data = await response.json();
+      const data = await apiClient.get(`/projects/${selectedProject.id}/code-adjustments/export`);
 
       if (data.success) {
         // Create and download JSON file
@@ -1309,15 +1211,10 @@ const CodeAdjustmentsPanel: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`/api/projects/${selectedProject.id}/code-adjustments/import`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          data: importData,
-          mode: importMode,
-        }),
+      const data = await apiClient.post(`/projects/${selectedProject.id}/code-adjustments/import`, {
+        data: importData,
+        mode: importMode,
       });
-      const data = await response.json();
 
       if (data.success) {
         toast.current?.show({
@@ -1514,24 +1411,21 @@ const CodeAdjustmentsPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <TabView
+      {/* Tabs — vertical side-menu layout via TabViewSideMenu. flex-1 min-h-0
+       * on the wrapper lets the side menu claim the remaining panel height
+       * while exposing the intrinsic minimum so internal scroll/splitter
+       * children can size correctly. The previous inline --theme-* overrides
+       * were dropped: those variables are already set on document root by
+       * ThemeContext and inherit down to every TabView descendant. */}
+      <div className="flex-1 min-h-0">
+      <TabViewSideMenu
+        storageKey="codeAdjustmentsPanel"
+        defaultWidth={220}
         activeIndex={activeTabIndex}
-        onTabChange={(e) => setActiveTabIndex(e.index)}
-        className="flex-1 flex flex-col themed-tabview overflow-hidden"
-        style={{
-          backgroundColor: colors.bgPrimary,
-          minHeight: 0,
-          ['--theme-bg-primary' as string]: colors.bgPrimary,
-          ['--theme-bg-secondary' as string]: colors.bgSecondary,
-          ['--theme-bg-tertiary' as string]: colors.bgTertiary,
-          ['--theme-border-primary' as string]: colors.borderPrimary,
-          ['--theme-text-primary' as string]: colors.textPrimary,
-          ['--theme-text-secondary' as string]: colors.textSecondary,
-        }}
+        onTabChange={(e: { index: number }) => setActiveTabIndex(e.index)}
       >
         {/* Tab 1: Management */}
-        <TabPanel header={t.codeadjustmentspanel1532} leftIcon="pi pi-list mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
+        <TabPanel header={<span><i className="pi pi-list mr-2" />{t.codeadjustmentspanel1532}</span>}>
           {loading ? (
             <div className="flex items-center justify-center h-64" style={{ backgroundColor: colors.bgPrimary }}>
               <ProgressSpinner />
@@ -1757,7 +1651,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         </TabPanel>
 
         {/* Tab 2: Einzelcode Vergleich */}
-        <TabPanel header={t.codeadjustmentspanel1758} leftIcon="pi pi-file mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
+        <TabPanel header={<span><i className="pi pi-file mr-2" />{t.codeadjustmentspanel1758}</span>}>
           <div className="p-4">
             {/* Hidden file inputs */}
             <input
@@ -1992,7 +1886,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
         </TabPanel>
 
         {/* Tab 3: Verzeichnis Vergleich */}
-        <TabPanel header={t.codeadjustmentspanel1993} leftIcon="pi pi-folder mr-2" style={{ backgroundColor: colors.bgPrimary, padding: '1rem', overflow: 'auto', flex: 1 }}>
+        <TabPanel header={<span><i className="pi pi-folder mr-2" />{t.codeadjustmentspanel1993}</span>}>
           <div className="p-4 overflow-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
             {/* Hidden file input for archive */}
             <input
@@ -2310,7 +2204,8 @@ const CodeAdjustmentsPanel: React.FC = () => {
             )}
           </div>
         </TabPanel>
-      </TabView>
+      </TabViewSideMenu>
+      </div>
 
       {/* Adjustment Dialog */}
       <Dialog

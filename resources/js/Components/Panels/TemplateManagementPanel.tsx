@@ -229,32 +229,22 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     setProjectLanguagesForFiles([]);
                     return;
                 }
-                const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-                if (!token) return;
 
-                const [projectRes, langRes] = await Promise.all([
-                    fetch(`/api/projects/${currentProjectId}`, {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-                    }),
-                    fetch('/api/active-languages', {
-                        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-                    }),
+                const [project, allLangs] = await Promise.all([
+                    api.get(`/projects/${currentProjectId}`),
+                    api.get('/active-languages'),
                 ]);
 
-                if (projectRes.ok && langRes.ok) {
-                    const project = await projectRes.json();
-                    const allLangs = await langRes.json();
-                    const allLangsArray = allLangs.data || allLangs;
-                    const enabledCodes = Array.isArray(project.enabled_languages)
-                        ? project.enabled_languages
-                        : (typeof project.enabled_languages === 'string'
-                            ? JSON.parse(project.enabled_languages)
-                            : []);
-                    const filtered = (Array.isArray(allLangsArray) ? allLangsArray : [])
-                        .filter((lang: any) => enabledCodes.includes(lang.code))
-                        .map((lang: any) => ({ code: lang.code, name: lang.name }));
-                    setProjectLanguagesForFiles(filtered);
-                }
+                const allLangsArray = allLangs.data || allLangs;
+                const enabledCodes = Array.isArray(project.enabled_languages)
+                    ? project.enabled_languages
+                    : (typeof project.enabled_languages === 'string'
+                        ? JSON.parse(project.enabled_languages)
+                        : []);
+                const filtered = (Array.isArray(allLangsArray) ? allLangsArray : [])
+                    .filter((lang: any) => enabledCodes.includes(lang.code))
+                    .map((lang: any) => ({ code: lang.code, name: lang.name }));
+                setProjectLanguagesForFiles(filtered);
             } catch {
                 // Silently fail - language override is optional
             }
@@ -573,14 +563,8 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             // Update is_active for each linked project
             for (const [projectIdStr, isActive] of Object.entries(projectActivationStates)) {
                 const projectId = parseInt(projectIdStr);
-                await fetch(`/api/templates/${templateToToggle.id}/projects/${projectId}/toggle-active`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ is_active: isActive })
+                await api.patch(`/templates/${templateToToggle.id}/projects/${projectId}/toggle-active`, {
+                    is_active: isActive,
                 });
             }
 
@@ -605,49 +589,28 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         setTemplateToUnlock(template);
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) {
-                throw new Error(t.templatemanagementpanel557);
-            }
-
             if (makePublic) {
                 // Change visibility to public (free unlock) - use dedicated endpoint
-                const response = await fetch(`/api/templates/${template.id}/visibility`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ visibility: 'public' }),
-                });
-
-                if (!response.ok) {
-                    const data = await response.json();
+                try {
+                    await api.patch(`/templates/${template.id}/visibility`, { visibility: 'public' });
+                } catch (err: any) {
+                    const data = err?.response?.data || {};
                     throw new Error(data.error || data.message || t.templatemanagementpanel574);
                 }
 
                 toast.showSuccess(tpl(t.templatemanagementpanel577,{ name: template.name}));
             } else {
                 // Renew subscription for 50 credits
-                const response = await fetch(`/api/subscriptions/${template.subscription_data!.id}/renew`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    if (data.required_credits) {
-                        toast.showError(`${t.templatemanagementpanel593}${data.required_credits}${t.templatemanagementpanel593_2}${data.current_credits}`);
-                    } else {
-                        throw new Error(data.error || data.message || t.templatemanagementpanel595);
+                let data: any;
+                try {
+                    data = await api.post(`/subscriptions/${template.subscription_data!.id}/renew`);
+                } catch (err: any) {
+                    const errData = err?.response?.data || {};
+                    if (errData.required_credits) {
+                        toast.showError(`${t.templatemanagementpanel593}${errData.required_credits}${t.templatemanagementpanel593_2}${errData.current_credits}`);
+                        return;
                     }
-                    return;
+                    throw new Error(errData.error || errData.message || t.templatemanagementpanel595);
                 }
 
                 toast.showSuccess(tpl(t.templatemanagementpanel600,{name: template.name})+" "+tpl(t.templatemanagementpanel600_2,{tage: data.bonus_days || 0}));
@@ -953,7 +916,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
 
         confirmDialog({
             group: 'template-management',
-            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? t.templatemanagementpanel902 : t.templatemanagementpanel902_2}$({t.templatemanagementpanel902})`,
+            message: `${mediaType === 'logo' ? 'Logo' : mediaType === 'image' ? t.templatemanagementpanel902 : t.templatemanagementpanel902_2}${t.templatemanagementpanel902}`,
             header: t.templatemanagementpanel903,
             icon: 'pi pi-exclamation-triangle',
             acceptClassName: 'p-button-danger',

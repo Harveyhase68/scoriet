@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
+
+// Tab order in the side menu — keep these constants in sync with the
+// <TabPanel> children below. Numeric indices because TabView/TabViewSideMenu
+// speaks indices, not labels.
+const TAB_OVERVIEW = 0;
+const TAB_MEMBERS = 1;
+const TAB_INVITATIONS = 2;
 
 interface Team {
   id: number;
@@ -62,7 +72,8 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'invitations'>('overview');
+  // TabViewSideMenu speaks numeric indices — see TAB_* constants above.
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(TAB_OVERVIEW);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [inviteForm, setInviteForm] = useState({
@@ -82,18 +93,8 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team || !isAdmin) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${team.id}/invitations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTeamInvitations(data.invitations || []);
-      }
+      const data = await apiClient.get(`/teams/${team.id}/invitations`);
+      setTeamInvitations(data.invitations || []);
     } catch {
       // Error fetching invitations
     }
@@ -113,25 +114,14 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${team.id}/invitations`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(inviteForm),
-      });
-
-      if (response.ok) {
+      try {
+        await apiClient.post(`/teams/${team.id}/invitations`, inviteForm);
         setInviteForm({ invited_user_id: '', invited_email: '', role: 'member', message: '' });
         setShowInviteForm(false);
         await fetchTeamInvitations();
         onTeamUpdated();
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || t.manageteammodal129);
+      } catch (err: any) {
+        setError(err?.response?.data?.message || t.manageteammodal129);
       }
     } catch {
       setError(t.createteammodal52);
@@ -144,23 +134,10 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team || !confirm(t.manageteammodal139)) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${team.id}/members/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        onTeamUpdated();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || t.manageteammodal155);
-      }
-    } catch {
-      alert(t.manageteammodal155);
+      await apiClient.delete(`/teams/${team.id}/members/${userId}`);
+      onTeamUpdated();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || t.manageteammodal155);
     }
   };
 
@@ -168,25 +145,10 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${team.id}/members/${userId}/role`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (response.ok) {
-        onTeamUpdated();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || t.manageteammodal181);
-      }
-    } catch {
-      alert(t.manageteammodal181);
+      await apiClient.put(`/teams/${team.id}/members/${userId}/role`, { role: newRole });
+      onTeamUpdated();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || t.manageteammodal181);
     }
   };
 
@@ -194,24 +156,11 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
     if (!team || !confirm(t.manageteammodal189)) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${team.id}/invitations/${invitationId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        await fetchTeamInvitations();
-        onTeamUpdated();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || t.manageteammodal206);
-      }
-    } catch {
-      alert(t.manageteammodal206);
+      await apiClient.delete(`/teams/${team.id}/invitations/${invitationId}`);
+      await fetchTeamInvitations();
+      onTeamUpdated();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || t.manageteammodal206);
     }
   };
 
@@ -261,11 +210,16 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
       onClick={onClose}
     >
       <div
-        className="portal-modal-content rounded-lg w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden shadow-2xl"
+        /* h-[85vh] instead of max-h-[90vh] so the inner flex-column has a
+         * concrete height to distribute. flex flex-col turns the header /
+         * tab region / footer into proper flex children so the TabViewSideMenu
+         * in the middle can grow into the remaining vertical space. */
+        className="portal-modal-content rounded-lg w-full max-w-4xl mx-4 h-[85vh] overflow-hidden shadow-2xl flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="portal-modal-header flex justify-between items-center">
+        {/* Header — flex-shrink-0 keeps its natural height in the flex-column
+         * portal modal layout. */}
+        <div className="portal-modal-header flex justify-between items-center flex-shrink-0">
           <div>
             <h2 className="flex items-center">
               <i className="pi pi-cog mr-2"></i>
@@ -282,32 +236,20 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-gray-700">
-          {[
-            { key: 'overview', label: t.manageteammodal283, icon: 'pi-info-circle' },
-            { key: 'members', label: `${t.manageteammodal289}(${team.members?.length || 0})`, icon: 'pi-users' },
-            { key: 'invitations', label: `${t.manageteammodal290}(${teamInvitations.filter(i => i.status === 'pending').length})`, icon: 'pi-envelope' }
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`px-6 py-3 text-sm font-medium flex items-center space-x-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'bg-gray-700 text-white border-b-2 border-blue-400'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
-            >
-              <i className={`pi ${tab.icon}`}></i>
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="p-6 max-h-[60vh] overflow-auto">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
+        {/* Custom horizontal button tab-bar replaced by <TabViewSideMenu>
+         * (vertical side-menu) for consistency with every other modal in the
+         * app. activeTabIndex (number) replaces the previous string union.
+         * The TabViewSideMenu sits in a flex-1 / min-h-0 region so it
+         * absorbs whatever vertical space the header above and the footer
+         * below don't claim. */}
+        <div className="flex-1 min-h-0">
+          <TabViewSideMenu
+            storageKey="manageTeamModal"
+            defaultWidth={200}
+            activeIndex={activeTabIndex}
+            onTabChange={(e) => setActiveTabIndex(e.index)}
+          >
+            <TabPanel header={<span><i className="pi pi-info-circle mr-2" />{t.manageteammodal283}</span>}>
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-medium text-white mb-4">{t.manageteammodal313}</h3>
@@ -343,10 +285,10 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                 </div>
               </div>
             </div>
-          )}
+            </TabPanel>
 
-          {/* Members Tab */}
-          {activeTab === 'members' && (
+            {/* Members Tab */}
+            <TabPanel header={<span><i className="pi pi-users mr-2" />{`${t.manageteammodal289}(${team.members?.length || 0})`}</span>}>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-white">{t.manageteammodal352}</h3>
@@ -498,10 +440,10 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                 ))}
               </div>
             </div>
-          )}
+            </TabPanel>
 
-          {/* Invitations Tab */}
-          {activeTab === 'invitations' && (
+            {/* Invitations Tab */}
+            <TabPanel header={<span><i className="pi pi-envelope mr-2" />{`${t.manageteammodal290}(${teamInvitations.filter(i => i.status === 'pending').length})`}</span>}>
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-white">{t.manageteammodal506}</h3>
               {teamInvitations.filter(inv => inv.status === 'pending').length === 0 ? (
@@ -547,11 +489,12 @@ export default function ManageTeamModal({ isOpen, onClose, team, onTeamUpdated, 
                 </div>
               )}
             </div>
-          )}
+            </TabPanel>
+          </TabViewSideMenu>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end p-6 border-t border-gray-700">
+        <div className="flex justify-end p-6 border-t border-gray-700 flex-shrink-0">
           <button
             onClick={onClose}
             className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded text-white transition-colors"

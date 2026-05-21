@@ -9,6 +9,7 @@ import { Toast } from 'primereact/toast';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface TeamMember {
   id: number;
@@ -95,24 +96,13 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
       // Load team members
-      const teamResponse = await fetch(`/api/teams/${team.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!teamResponse.ok) {
+      let teamData: any;
+      try {
+        teamData = await apiClient.get(`/teams/${team.id}`);
+      } catch {
         throw new Error(t.membermodal191);
       }
-
-      const teamData = await teamResponse.json();
       setTeamMembers(teamData.team.members || []);
 
       // Load project members from all projects linked to this team
@@ -126,42 +116,28 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
         // If no linked projects, try to get from projects API
         if (linkedProjectIds.length === 0) {
-          const projectsResponse = await fetch('/api/projects', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-          });
-
-          if (projectsResponse.ok) {
-            const projectsData = await projectsResponse.json();
+          try {
+            const projectsData = await apiClient.get('/projects');
             const projects = projectsData.projects || [];
             // Find projects owned by the team owner
             const matchingProjects = projects.filter((p: any) => Number(p.owner_id) === Number(team.project_owner_id));
             linkedProjectIds.push(...matchingProjects.map((p: any) => p.id));
+          } catch {
+            // Could not list projects - proceed with empty list
           }
         }
 
         // Load members from each linked project
         for (const projectId of linkedProjectIds) {
           try {
-            const projectMembersResponse = await fetch(`/api/projects/${projectId}/members`, {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-              },
-            });
+            const projectMembersData = await apiClient.get(`/projects/${projectId}/members`);
+            const members = projectMembersData || [];
 
-            if (projectMembersResponse.ok) {
-              const projectMembersData = await projectMembersResponse.json();
-              const members = projectMembersData || [];
-
-              // Add unique members only
-              for (const member of members) {
-                if (!seenUserIds.has(member.user_id)) {
-                  seenUserIds.add(member.user_id);
-                  allProjectMembers.push(member);
-                }
+            // Add unique members only
+            for (const member of members) {
+              if (!seenUserIds.has(member.user_id)) {
+                seenUserIds.add(member.user_id);
+                allProjectMembers.push(member);
               }
             }
           } catch {
@@ -226,31 +202,14 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
 
     setAssigning(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/teams/${team.id}/members`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await apiClient.post(`/teams/${team.id}/members`, {
           user_id: member.user_id,
-          role: role
-        }),
-      });
-
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.membermodal316);
+          role: role,
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.membermodal316);
       }
-
-      await response.json();
 
       toast.current?.show({
         severity: 'success',
@@ -295,22 +254,10 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-          if (!token) {
-            throw new Error(t.applicationsmodal66);
-          }
-
-          const response = await fetch(`/api/teams/${team!.id}/members/${member.user_id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || t.manageteammodal155);
+          try {
+            await apiClient.delete(`/teams/${team!.id}/members/${member.user_id}`);
+          } catch (err: any) {
+            throw new Error(err?.response?.data?.message || t.manageteammodal155);
           }
 
           toast.current?.show({
@@ -347,24 +294,10 @@ export default function MemberModal({ visible, onHide, team, projectId, onSave }
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/teams/${team!.id}/members/${member.user_id}/role`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ role: newRole }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.membermodal432);
+      try {
+        await apiClient.put(`/teams/${team!.id}/members/${member.user_id}/role`, { role: newRole });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.membermodal432);
       }
 
       toast.current?.show({

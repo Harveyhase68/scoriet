@@ -10,13 +10,17 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { Dialog } from 'primereact/dialog';
 import { Splitter, SplitterPanel } from 'primereact/splitter';
 import { Toast } from 'primereact/toast';
-// TabView and TabPanel are available but not currently used
-// import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { Dropdown } from 'primereact/dropdown';
 import { AutoComplete } from 'primereact/autocomplete';
-import { SelectButton } from 'primereact/selectbutton';
+// SelectButton previously drove the recipient-type picker (Individual /
+// Project / Team / Broadcast) as a horizontal button group; it has been
+// replaced by TabViewSideMenu so the compose dialog matches the rest of
+// the app's vertical-side-menu pattern. Import removed.
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 import '@/Components/Panels/styles.css';
 
 interface User {
@@ -72,6 +76,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
   // Compose modal states
   const [composeVisible, setComposeVisible] = useState(false);
+  const [composeMaximized, setComposeMaximized] = useState(false);
   const [composeSubject, setComposeSubject] = useState('');
   const [composeBody, setComposeBody] = useState('');
   const [composeRecipient, setComposeRecipient] = useState<User | null>(null);
@@ -133,28 +138,18 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   const loadThreads = useCallback(async (silent: boolean = false, search?: string) => {
     try {
       if (!silent) setLoading(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.messagingpanel133);
-      }
 
-      const url = new URL('/api/messages/threads', window.location.origin);
+      let endpoint = '/messages/threads';
       if (search && search.trim()) {
-        url.searchParams.set('search', search.trim());
+        endpoint += `?search=${encodeURIComponent(search.trim())}`;
       }
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get(endpoint);
+      } catch {
         throw new Error(t.messagingpanel144);
       }
-
-      const data = await response.json();
       setThreads(data.threads || []);
 
       // Only select initial thread on FIRST load (not on refreshes)
@@ -185,18 +180,13 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   // Load thread details - defined as useCallback so it can be used in effects
   const loadThreadDetails = useCallback(async (threadId: number, isRefresh: boolean = false) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/messages/threads/${threadId}?limit=15`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      let data: any;
+      try {
+        data = await apiClient.get(`/messages/threads/${threadId}?limit=15`);
+      } catch {
+        return;
+      }
+      {
         setSelectedThread(data.thread);
         setHasMoreOlder(data.has_more_older || false);
         setOldestLoadedId(data.oldest_loaded_id || null);
@@ -228,22 +218,18 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
     try {
       setLoadingMoreMessages(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
 
       // Remember scroll position before loading
       const container = messagesContainerRef.current;
       const scrollHeightBefore = container?.scrollHeight || 0;
 
-      const response = await fetch(`/api/messages/threads/${selectedThread.id}?limit=10&before_id=${oldestLoadedId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      let data: any;
+      try {
+        data = await apiClient.get(`/messages/threads/${selectedThread.id}?limit=10&before_id=${oldestLoadedId}`);
+      } catch {
+        return;
+      }
+      {
         const olderMessages = data.thread.messages || [];
 
         if (olderMessages.length > 0) {
@@ -343,34 +329,22 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-          if (!token) return;
-
-          const response = await fetch(`/api/messages/threads/${thread.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
+          await apiClient.delete(`/messages/threads/${thread.id}`);
+          toast.current?.show({
+            severity: 'success',
+            summary: t.messagingpanel350,
+            detail: t.messagingpanel351,
+            life: 3000,
           });
-
-          if (response.ok) {
-            toast.current?.show({
-              severity: 'success',
-              summary: t.messagingpanel350,
-              detail: t.messagingpanel351,
-              life: 3000,
-            });
-            // Clear the message view if the deleted thread was selected
-            setSelectedThread(prev => {
-              if (prev?.id === thread.id) return null;
-              return prev;
-            });
-            setHasMoreOlder(false);
-            setTotalMessages(0);
-            loadThreads(false, searchQueryRef.current);
-            window.dispatchEvent(new CustomEvent('messagesUpdated'));
-          }
+          // Clear the message view if the deleted thread was selected
+          setSelectedThread(prev => {
+            if (prev?.id === thread.id) return null;
+            return prev;
+          });
+          setHasMoreOlder(false);
+          setTotalMessages(0);
+          loadThreads(false, searchQueryRef.current);
+          window.dispatchEvent(new CustomEvent('messagesUpdated'));
         } catch {
           toast.current?.show({
             severity: 'error',
@@ -385,24 +359,12 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
   const loadRecipientOptions = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/messages/recipient-options', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
+      const data = await apiClient.get('/messages/recipient-options');
+      setRecipientOptions({
+        projects: data.projects || [],
+        teams: data.teams || [],
+        can_broadcast: data.can_broadcast || false,
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRecipientOptions({
-          projects: data.projects || [],
-          teams: data.teams || [],
-          can_broadcast: data.can_broadcast || false,
-        });
-      }
     } catch {
       // Error loading recipient options
     }
@@ -411,21 +373,9 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   // Load attachment access status
   const loadAttachmentAccess = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/messages/attachments/access', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAttachmentAccessStatus(data.status);
-        setHasAttachmentAccess(data.status?.has_access || false);
-      }
+      const data = await apiClient.get('/messages/attachments/access');
+      setAttachmentAccessStatus(data.status);
+      setHasAttachmentAccess(data.status?.has_access || false);
     } catch {
       // Error loading attachment access
     }
@@ -435,21 +385,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
   const handleUnlockAttachments = async () => {
     try {
       setUnlocking(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/messages/attachments/unlock', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      try {
+        const data = await apiClient.post('/messages/attachments/unlock');
         setHasAttachmentAccess(true);
         setAttachmentAccessStatus(data.status);
         setShowUnlockDialog(false);
@@ -462,11 +399,11 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         });
         // Trigger credits refresh
         window.dispatchEvent(new CustomEvent('creditsUpdated'));
-      } else {
+      } catch (err: any) {
         toast.current?.show({
           severity: 'error',
           summary: t.messagingpanel454,
-          detail: data.message || t.messagingpanel455,
+          detail: err?.response?.data?.message || t.messagingpanel455,
           life: 3000,
         });
       }
@@ -563,20 +500,8 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/messages/users?search=${encodeURIComponent(query)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserSuggestions(data.users || []);
-      }
+      const data = await apiClient.get(`/messages/users?search=${encodeURIComponent(query)}`);
+      setUserSuggestions(data.users || []);
     } catch {
       // Error searching users
     }
@@ -641,91 +566,63 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
     try {
       setSending(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
 
-      let endpoint = '/api/messages/threads';
-      let response;
+      // Resolve the endpoint once - identical between FormData and JSON paths.
+      let endpoint = '/messages/threads';
+      if (recipientType === 'project') endpoint = '/messages/send-to-project';
+      else if (recipientType === 'team') endpoint = '/messages/send-to-team';
+      else if (recipientType === 'broadcast') endpoint = '/messages/broadcast';
 
-      // Use FormData if there are attachments and user has access
-      if (composeFiles.length > 0 && hasAttachmentAccess) {
-        const formData = new FormData();
-        formData.append('subject', composeSubject);
-        formData.append('body', composeBody);
+      let data: any;
+      try {
+        if (composeFiles.length > 0 && hasAttachmentAccess) {
+          // FormData path - file upload
+          const formData = new FormData();
+          formData.append('subject', composeSubject);
+          formData.append('body', composeBody);
 
-        if (recipientType === 'individual') {
-          formData.append('recipient_ids[0]', composeRecipient!.id.toString());
-        } else if (recipientType === 'project') {
-          endpoint = '/api/messages/send-to-project';
-          formData.append('project_id', selectedProject!.toString());
-        } else if (recipientType === 'team') {
-          endpoint = '/api/messages/send-to-team';
-          formData.append('team_id', selectedTeam!.toString());
-        } else if (recipientType === 'broadcast') {
-          endpoint = '/api/messages/broadcast';
+          if (recipientType === 'individual') {
+            formData.append('recipient_ids[0]', composeRecipient!.id.toString());
+          } else if (recipientType === 'project') {
+            formData.append('project_id', selectedProject!.toString());
+          } else if (recipientType === 'team') {
+            formData.append('team_id', selectedTeam!.toString());
+          }
+
+          composeFiles.forEach((file, index) => {
+            formData.append(`attachments[${index}]`, file);
+          });
+
+          data = await apiClient.uploadFile(endpoint, formData);
+        } else {
+          // JSON path - no attachments
+          const body: any = { subject: composeSubject, body: composeBody };
+          if (recipientType === 'individual') body.recipient_ids = [composeRecipient!.id];
+          else if (recipientType === 'project') body.project_id = selectedProject;
+          else if (recipientType === 'team') body.team_id = selectedTeam;
+
+          data = await apiClient.post(endpoint, body);
         }
-
-        composeFiles.forEach((file, index) => {
-          formData.append(`attachments[${index}]`, file);
-        });
-
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: formData,
-        });
-      } else {
-        // Standard JSON request without attachments
-        const body: any = { subject: composeSubject, body: composeBody };
-
-        if (recipientType === 'individual') {
-          body.recipient_ids = [composeRecipient!.id];
-        } else if (recipientType === 'project') {
-          endpoint = '/api/messages/send-to-project';
-          body.project_id = selectedProject;
-        } else if (recipientType === 'team') {
-          endpoint = '/api/messages/send-to-team';
-          body.team_id = selectedTeam;
-        } else if (recipientType === 'broadcast') {
-          endpoint = '/api/messages/broadcast';
-        }
-
-        response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.messagingpanel714);
       }
 
-      if (response.ok) {
-        const data = await response.json();
-        toast.current?.show({
-          severity: 'success',
-          summary: t.messagingpanel697,
-          detail: data.message || t.messagingpanel698,
-          life: 3000,
-        });
-        setComposeVisible(false);
-        setComposeSubject('');
-        setComposeBody('');
-        setComposeRecipient(null);
-        setSelectedProject(null);
-        setSelectedTeam(null);
-        setComposeFiles([]); // Clear compose attachments
-        loadThreads(false, searchQueryRef.current);
-        if (data.thread) {
-          setSelectedThread(data.thread);
-        }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.messagingpanel714);
+      toast.current?.show({
+        severity: 'success',
+        summary: t.messagingpanel697,
+        detail: data.message || t.messagingpanel698,
+        life: 3000,
+      });
+      setComposeVisible(false);
+      setComposeSubject('');
+      setComposeBody('');
+      setComposeRecipient(null);
+      setSelectedProject(null);
+      setSelectedTeam(null);
+      setComposeFiles([]); // Clear compose attachments
+      loadThreads(false, searchQueryRef.current);
+      if (data.thread) {
+        setSelectedThread(data.thread);
       }
     } catch (err: any) {
       toast.current?.show({
@@ -746,48 +643,26 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
 
     try {
       setReplying(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
 
-      // Use FormData if there are attachments
-      let response;
-      if (selectedFiles.length > 0 && hasAttachmentAccess) {
-        const formData = new FormData();
-        formData.append('body', replyBody);
-        selectedFiles.forEach((file, index) => {
-          formData.append(`attachments[${index}]`, file);
-        });
-
-        response = await fetch(`/api/messages/threads/${selectedThread.id}/reply`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: formData,
-        });
-      } else {
-        response = await fetch(`/api/messages/threads/${selectedThread.id}/reply`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            body: replyBody,
-          }),
-        });
-      }
-
-      if (response.ok) {
-        setReplyBody('');
-        setSelectedFiles([]); // Clear selected files
-        loadThreadDetails(selectedThread.id); // Will auto-scroll to bottom
-        loadThreads(true, searchQueryRef.current);
-      } else {
+      try {
+        if (selectedFiles.length > 0 && hasAttachmentAccess) {
+          const formData = new FormData();
+          formData.append('body', replyBody);
+          selectedFiles.forEach((file, index) => {
+            formData.append(`attachments[${index}]`, file);
+          });
+          await apiClient.uploadFile(`/messages/threads/${selectedThread.id}/reply`, formData);
+        } else {
+          await apiClient.post(`/messages/threads/${selectedThread.id}/reply`, { body: replyBody });
+        }
+      } catch {
         throw new Error(t.messagingpanel775);
       }
+
+      setReplyBody('');
+      setSelectedFiles([]); // Clear selected files
+      loadThreadDetails(selectedThread.id); // Will auto-scroll to bottom
+      loadThreads(true, searchQueryRef.current);
     } catch (err: any) {
       toast.current?.show({
         severity: 'error',
@@ -906,6 +781,21 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
       </div>
     );
   };
+
+  // The compose dialog's recipient-type picker is rendered as a vertical
+  // <TabViewSideMenu>. PrimeReact's TabView API speaks numeric indices, but
+  // the rest of this file (validation, submit URL building, disabled-state
+  // checks) keeps using the string value `recipientType`. This array is the
+  // single source for mapping between the two — the order of entries also
+  // dictates the visible order of tabs in the side menu. Broadcast is only
+  // included when the server says the user is allowed to broadcast.
+  const composeRecipientTabs: Array<'individual' | 'project' | 'team' | 'broadcast'> = [
+    'individual',
+    'project',
+    'team',
+    ...(recipientOptions.can_broadcast ? (['broadcast'] as const) : []),
+  ];
+  const composeRecipientTabIndex = Math.max(0, composeRecipientTabs.indexOf(recipientType));
 
   return (
     <div
@@ -1168,138 +1058,144 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
         </Splitter>
       </div>
 
-      {/* Compose Modal */}
+      {/* Compose Modal — fixed height + flex-column inside so the side
+       * menu + shared fields + footer split the dialog properly. Width
+       * bumped from 550px to 800px to give the side menu (180px) plus the
+       * recipient-selector + shared form area enough breathing room. */}
       <Dialog
         visible={composeVisible}
         onHide={() => setComposeVisible(false)}
         header={t.messagingpanel1142}
-        style={{ width: '550px' }}
+        style={{ width: composeMaximized ? '95vw' : '800px', height: composeMaximized ? '95vh' : '85vh' }}
         modal
-        className="p-fluid themed-dialog"
-        contentStyle={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
-        headerStyle={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
+        draggable
+        resizable
+        maximizable
+        maximized={composeMaximized}
+        onMaximize={(e) => setComposeMaximized(e.maximized)}
+        className="p-fluid p-dialog-custom"
+        contentStyle={{ padding: '0' }}
       >
-        <div className="space-y-4">
-          {/* Recipient Type Selection */}
-          <div>
-            <label className="block text-sm font-medium mb-2">{t.messagingpanel1152}</label>
-            <SelectButton
-              value={recipientType}
-              onChange={(e) => {
-                setRecipientType(e.value);
+        <div className="h-full flex flex-col">
+          {/* Recipient-Type Picker as a vertical side-menu — replaces the
+           * previous SelectButton (Individual / Project / Team / Broadcast)
+           * row. Each tab's body is the corresponding recipient selector
+           * (AutoComplete / Dropdown / warning banner). The shared fields
+           * (Subject, Body, Attachments) and the footer below stay outside
+           * the side menu so they apply to every recipient type. */}
+          <div className="flex-1 min-h-0">
+            <TabViewSideMenu
+              storageKey="composeMessageModal"
+              defaultWidth={180}
+              activeIndex={composeRecipientTabIndex}
+              onTabChange={(e: { index: number }) => {
+                const nextType = composeRecipientTabs[e.index];
+                if (!nextType) return;
+                setRecipientType(nextType);
                 setComposeRecipient(null);
                 setSelectedProject(null);
                 setSelectedTeam(null);
               }}
-              options={[
-                { label: t.messagingpanel1162, value: 'individual', icon: 'pi pi-user' },
-                { label: t.messagingpanel1163, value: 'project', icon: 'pi pi-briefcase' },
-                { label: t.messagingpanel1164, value: 'team', icon: 'pi pi-users' },
-                ...(recipientOptions.can_broadcast ? [{ label: t.messagingpanel1165, value: 'broadcast', icon: 'pi pi-globe' }] : []),
-              ]}
-              itemTemplate={(option) => (
-                <span className="flex items-center gap-1 text-sm">
-                  <i className={option.icon} />
-                  {option.label}
-                </span>
+            >
+              <TabPanel header={<span><i className="pi pi-user mr-2" />{t.messagingpanel1162}</span>}>
+                <label className="block text-sm font-medium mb-1">{t.messagingpanel1180}</label>
+                <AutoComplete
+                  value={composeRecipient}
+                  suggestions={userSuggestions}
+                  completeMethod={(e) => searchUsers(e.query)}
+                  field="name"
+                  onChange={(e) => setComposeRecipient(e.value)}
+                  placeholder={t.messagingpanel1187}
+                  className="w-full"
+                  minLength={2}
+                  itemTemplate={(item: User | null) => item && (
+                    <div className="flex flex-col py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{item.name}</span>
+                        {item.username && <span className="text-gray-400 text-sm">@{item.username}</span>}
+                      </div>
+                      {item.context_display && (
+                        <span className="text-xs text-blue-400">{item.context_display}</span>
+                      )}
+                    </div>
+                  )}
+                />
+                <small style={{ color: colors.textMuted }}>{t.messagingpanel1202}</small>
+              </TabPanel>
+
+              <TabPanel header={<span><i className="pi pi-briefcase mr-2" />{t.messagingpanel1163}</span>}>
+                <label className="block text-sm font-medium mb-1">{t.messagingpanel1209}</label>
+                <Dropdown
+                  value={selectedProject}
+                  options={recipientOptions.projects}
+                  onChange={(e) => setSelectedProject(e.value)}
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder={t.messagingpanel1216}
+                  className="w-full"
+                  itemTemplate={(option) => (
+                    <div className="flex justify-between items-center w-full">
+                      <span>{option.name}</span>
+                      <Badge value={`${option.member_count}${t.messagingpanel1221}`} severity="info" />
+                    </div>
+                  )}
+                  emptyMessage={t.messagingpanel1224}
+                />
+                <small style={{ color: colors.textMuted }}>{t.messagingpanel1226}</small>
+              </TabPanel>
+
+              <TabPanel header={<span><i className="pi pi-users mr-2" />{t.messagingpanel1164}</span>}>
+                <label className="block text-sm font-medium mb-1">{t.messagingpanel1233}</label>
+                <Dropdown
+                  value={selectedTeam}
+                  options={recipientOptions.teams}
+                  onChange={(e) => setSelectedTeam(e.value)}
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder={t.messagingpanel1240}
+                  className="w-full"
+                  itemTemplate={(option) => (
+                    <div className="flex justify-between items-center w-full">
+                      <div>
+                        <span>{option.name}</span>
+                        {option.project_name && <span className="text-gray-400 text-sm ml-2">({option.project_name})</span>}
+                      </div>
+                      <Badge value={`${option.member_count}${t.messagingpanel1248}`} severity="info" />
+                    </div>
+                  )}
+                  emptyMessage={t.messagingpanel1251}
+                />
+                <small style={{ color: colors.textMuted }}>{t.messagingpanel1253}</small>
+              </TabPanel>
+
+              {recipientOptions.can_broadcast && (
+                <TabPanel header={<span><i className="pi pi-globe mr-2" />{t.messagingpanel1165}</span>}>
+                  <div className="rounded p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
+                    <div className="flex items-center gap-2" style={{ color: colors.warningText }}>
+                      <i className="pi pi-exclamation-triangle" />
+                      <span className="font-medium">{t.messagingpanel1262}</span>
+                    </div>
+                    <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+                      {t.messagingpanel1265}
+                    </p>
+                  </div>
+                </TabPanel>
               )}
-              className="w-full"
-            />
+            </TabViewSideMenu>
           </div>
 
-          {/* Individual Recipient */}
-          {recipientType === 'individual' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">{t.messagingpanel1180}</label>
-              <AutoComplete
-                value={composeRecipient}
-                suggestions={userSuggestions}
-                completeMethod={(e) => searchUsers(e.query)}
-                field="name"
-                onChange={(e) => setComposeRecipient(e.value)}
-                placeholder={t.messagingpanel1187}
-                className="w-full"
-                minLength={2}
-                itemTemplate={(item: User | null) => item && (
-                  <div className="flex flex-col py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{item.name}</span>
-                      {item.username && <span className="text-gray-400 text-sm">@{item.username}</span>}
-                    </div>
-                    {item.context_display && (
-                      <span className="text-xs text-blue-400">{item.context_display}</span>
-                    )}
-                  </div>
-                )}
-              />
-              <small style={{ color: colors.textMuted }}>{t.messagingpanel1202}</small>
-            </div>
-          )}
-
-          {/* Project Selection */}
-          {recipientType === 'project' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">{t.messagingpanel1209}</label>
-              <Dropdown
-                value={selectedProject}
-                options={recipientOptions.projects}
-                onChange={(e) => setSelectedProject(e.value)}
-                optionLabel="name"
-                optionValue="id"
-                placeholder={t.messagingpanel1216}
-                className="w-full"
-                itemTemplate={(option) => (
-                  <div className="flex justify-between items-center w-full">
-                    <span>{option.name}</span>
-                    <Badge value={`${option.member_count}${t.messagingpanel1221}`} severity="info" />
-                  </div>
-                )}
-                emptyMessage={t.messagingpanel1224}
-              />
-              <small style={{ color: colors.textMuted }}>{t.messagingpanel1226}</small>
-            </div>
-          )}
-
-          {/* Team Selection */}
-          {recipientType === 'team' && (
-            <div>
-              <label className="block text-sm font-medium mb-1">{t.messagingpanel1233}</label>
-              <Dropdown
-                value={selectedTeam}
-                options={recipientOptions.teams}
-                onChange={(e) => setSelectedTeam(e.value)}
-                optionLabel="name"
-                optionValue="id"
-                placeholder={t.messagingpanel1240}
-                className="w-full"
-                itemTemplate={(option) => (
-                  <div className="flex justify-between items-center w-full">
-                    <div>
-                      <span>{option.name}</span>
-                      {option.project_name && <span className="text-gray-400 text-sm ml-2">({option.project_name})</span>}
-                    </div>
-                    <Badge value={`${option.member_count}${t.messagingpanel1248}`} severity="info" />
-                  </div>
-                )}
-                emptyMessage={t.messagingpanel1251}
-              />
-              <small style={{ color: colors.textMuted }}>{t.messagingpanel1253}</small>
-            </div>
-          )}
-
-          {/* Broadcast Info */}
-          {recipientType === 'broadcast' && (
-            <div className="rounded p-3" style={{ backgroundColor: colors.warningBg, border: `1px solid ${colors.warningBorder}` }}>
-              <div className="flex items-center gap-2" style={{ color: colors.warningText }}>
-                <i className="pi pi-exclamation-triangle" />
-                <span className="font-medium">{t.messagingpanel1262}</span>
-              </div>
-              <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
-                {t.messagingpanel1265}
-              </p>
-            </div>
-          )}
-
+          {/* Shared compose fields (Subject / Body / Attachments / Footer)
+           * sit below the side menu and apply to every recipient type.
+           *
+           * flex-shrink-0 (with the textarea's rows={10} default) makes this
+           * section claim a meaningful chunk of the dialog height by default,
+           * compressing the menu wrapper above so the empty band below the
+           * recipient selector stays small. The user can still drag the
+           * textarea's native resize handle DOWN to grow it further — since
+           * the footer below is flex-shrink-0 and the menu above is flex-1,
+           * the extra growth comes out of the menu's height ("dragging
+           * textarea up = shrinks menu" UX). */}
+          <div className="flex-shrink-0 px-6 pt-2 pb-3 space-y-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
           <div>
             <label className="block text-sm font-medium mb-1">{t.messagingpanel1271}</label>
             <InputText
@@ -1316,7 +1212,7 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               value={composeBody}
               onChange={(e) => setComposeBody(e.target.value)}
               placeholder={t.messagingpanel1285}
-              rows={6}
+              rows={10}
               className="w-full"
             />
           </div>
@@ -1367,8 +1263,12 @@ export default function MessagingPanel({ updateTabTitle: _updateTabTitle, initia
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.zip,.txt"
             />
           </div>
+          </div>
 
-          <div className="flex justify-end gap-2 pt-4">
+          {/* Footer — Cancel + Send. flex-shrink-0 keeps it docked at the
+           * bottom of the fixed-height dialog even when the side menu or
+           * shared fields above try to claim more space. */}
+          <div className="flex justify-end gap-2 p-6 pt-3 flex-shrink-0" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
             <Button
               label={t.messagingpanel1340}
               icon="pi pi-times"

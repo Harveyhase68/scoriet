@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import PlanModal from '@/Components/AuthModals/PlanModal';
+import { apiClient } from '@/lib/api';
 
 interface CreateTeamModalProps {
   isOpen: boolean;
@@ -57,15 +58,8 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
       }
 
       // Load user data
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
 
         const isFreeUser = userData.user_type === 'free' || !userData.user_type;
@@ -76,22 +70,19 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
           setCheckingSubscription(false);
           return;
         }
+      } catch {
+        // ignore - fall through to team subscription check
       }
 
       // Load team subscription info
-      const response = await fetch('/api/teams?all=1', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const data = await apiClient.get('/teams?all=1');
         if (data.subscription_info) {
           setSubscriptionInfo(data.subscription_info);
           setNeedsUnlock(data.subscription_info.needs_unlock);
         }
+      } catch {
+        // ignore
       }
     } catch (err) {
       console.error(t.createteammodal97, err);
@@ -106,17 +97,8 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
-      const response = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-      }
+      const userData = await apiClient.get('/user');
+      setCurrentUser(userData);
     } catch (err) {
       console.error(t.createteammodal121, err);
     }
@@ -163,25 +145,30 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
     setFormData({ ...formData, name: sanitized });
   };
 
+  // Team names are globally unique — check on blur so the user sees the
+  // conflict before the submit attempt and credit reservation.
+  const handleNameBlur = async () => {
+    const name = formData.name.trim();
+    if (!name || nameError) return;
+    try {
+      const result = await apiClient.get(`/teams/check-name?name=${encodeURIComponent(name)}`);
+      if (result?.exists) {
+        setNameError(`"${name}" is already taken. Team names must be globally unique.`);
+      }
+    } catch {
+      // Silent — submit will surface a 422 if it's a real conflict.
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+      try {
+        await apiClient.post('/teams', formData);
 
-      const response = await fetch('/api/teams', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
         setFormData({ name: '', description: '', project_ids: [] });
         // Dispatch event to notify other components about credit change (if credits were spent)
         if (unlockConfirmed) {
@@ -190,8 +177,8 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
         setUnlockConfirmed(false);
         onTeamCreated();
         onClose();
-      } else {
-        const errorData = await response.json();
+      } catch (err: any) {
+        const errorData = err?.response?.data || {};
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -199,6 +186,14 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
           // Re-show unlock screen
           setNeedsUnlock(true);
           setUnlockConfirmed(false);
+          return;
+        }
+
+        // Surface field-level Laravel validation errors (e.g. "name already taken")
+        // rather than the generic envelope message, otherwise the user can't tell
+        // which field is wrong.
+        if (errorData.errors?.name?.[0]) {
+          setError(errorData.errors.name[0]);
           return;
         }
 
@@ -217,7 +212,6 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
   const hasEnoughCredits = (currentUser?.credits || 0) >= 50;
   const creditsNeeded = 50 - (currentUser?.credits || 0);
   const ownedTeams = subscriptionInfo?.owned_teams || 0;
-  const activeSubscriptions = subscriptionInfo?.active_subscriptions || 0;
 
   const modalContent = (
     <div
@@ -265,8 +259,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               </p>
               {ownedTeams > 0 && (
                 <p className="text-gray-300 text-sm mt-2">
-                  You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>
-                  {activeSubscriptions > 0 && ` (${activeSubscriptions} subscription${activeSubscriptions > 1 ? 's' : ''})`}.
+                  You currently have <strong>{ownedTeams} team{ownedTeams > 1 ? 's' : ''}</strong>.
                 </p>
               )}
             </div>
@@ -345,6 +338,7 @@ export default function CreateTeamModal({ isOpen, onClose, onTeamCreated }: Crea
               required
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
+              onBlur={handleNameBlur}
               className={`w-full px-3 py-2 bg-gray-700 border rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 nameError ? 'border-red-500' : 'border-gray-600'
               }`}

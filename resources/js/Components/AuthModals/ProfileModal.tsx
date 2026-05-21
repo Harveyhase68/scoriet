@@ -4,7 +4,8 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { Badge } from 'primereact/badge';
 import { Dropdown } from 'primereact/dropdown';
 import { InputSwitch } from 'primereact/inputswitch';
@@ -16,6 +17,7 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 import { isPushSupported, getPushPermission, subscribeToPush, unsubscribeFromPush, hasPushSubscription } from '@/lib/pushNotifications';
 import TwoFactorSection from '@/Components/AuthModals/TwoFactorSection';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -416,25 +418,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
 
   const loadUserData = useCallback(async () => {
     try {
-      // Check both localStorage and sessionStorage (demo mode uses sessionStorage)
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setProfileError(t.profilemodal115);
-        return;
-      }
-
-      const response = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(t.profilemodal127);
-      }
-
-      const user = await response.json();
+      const user = await apiClient.get('/user');
 
       // Use the language from database if available, otherwise fallback to stored language
       const userLanguage = user.language || getStoredLanguage();
@@ -473,20 +457,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   // Load CLI/Service subscription status
   const loadCliStatus = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/cli-subscriptions/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCliStatus(data);
-      }
+      const data = await apiClient.get('/cli-subscriptions/status');
+      setCliStatus(data);
     } catch (err) {
       console.error(t.profilemodal478, err);
     }
@@ -496,20 +468,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const loadAllSubscriptions = useCallback(async () => {
     try {
       setLoadingSubscriptions(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAllSubscriptions(data.subscriptions || []);
-      }
+      const data = await apiClient.get('/subscriptions');
+      setAllSubscriptions(data.subscriptions || []);
     } catch (err) {
       console.error(t.profilemodal501, err);
     } finally {
@@ -521,20 +481,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const loadAllFeatures = useCallback(async () => {
     try {
       setLoadingFeatures(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions/all-features', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAllFeatures(data.features || []);
-      }
+      const data = await apiClient.get('/subscriptions/all-features');
+      setAllFeatures(data.features || []);
     } catch (err) {
       console.error(t.profilemodal526, err);
     } finally {
@@ -545,20 +493,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   // Load attachment storage status
   const loadStorageStatus = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/messages/attachments/access', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStorageStatus(data.storage || null);
-      }
+      const data = await apiClient.get('/messages/attachments/access');
+      setStorageStatus(data.storage || null);
     } catch (err) {
       console.error(t.profilemodal550, err);
     }
@@ -567,20 +503,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   // Load bundle discount info
   const loadBundleDiscount = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions/bundle-discount', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setBundleDiscountInfo(data);
-      }
+      const data = await apiClient.get('/subscriptions/bundle-discount');
+      setBundleDiscountInfo(data);
     } catch (err) {
       console.error(t.profilemodal572, err);
     }
@@ -590,31 +514,14 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const renewSubscription = async (subscriptionId: number) => {
     setRenewingSubscription(subscriptionId);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/subscriptions/${subscriptionId}/renew`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(data.message);
-        // Reload all data
-        loadAllSubscriptions();
-        loadCliStatus();
-      } else {
-        alert(data.error || t.profilemodal600);
-      }
-    } catch (err) {
+      const data = await apiClient.post(`/subscriptions/${subscriptionId}/renew`);
+      alert(data.message);
+      // Reload all data
+      loadAllSubscriptions();
+      loadCliStatus();
+    } catch (err: any) {
       console.error(t.profilemodal603, err);
-      alert(t.profilemodal604);
+      alert(err?.response?.data?.error || err?.message || t.profilemodal604);
     } finally {
       setRenewingSubscription(null);
     }
@@ -625,31 +532,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setUnlocking(type);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal115);
-      }
-
       const body: { type: string; bundle_option?: string } = { type };
       if (bundleOption) {
         body.bundle_option = bundleOption;
       }
 
-      const response = await fetch('/api/cli-subscriptions/unlock', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || t.profilemodal638);
-      }
+      await apiClient.post('/cli-subscriptions/unlock', body);
 
       // Reload status
       loadCliStatus();
@@ -657,9 +545,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       loadAllFeatures();
       loadBundleDiscount();
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Unlock error:', err);
-      alert(err instanceof Error ? err.message : t.profilemodal649);
+      alert(err?.response?.data?.error || err?.message || t.profilemodal649);
     } finally {
       setUnlocking(null);
     }
@@ -670,19 +558,14 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setUnlocking(featureType);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal115);
-      }
-
-      // Map feature types to API endpoints
+      // Map feature types to API endpoints (paths without /api prefix - apiClient adds it)
       const endpointMap: Record<string, string> = {
-        'database_designer': '/api/subscriptions/unlock-database-designer',
-        'form_designer': '/api/form-designer/unlock',
-        'code_adjustments': '/api/subscriptions/unlock-code-adjustments',
-        'schema_migration': '/api/subscriptions/unlock-schema-migration',
-        'git_integration': '/api/subscriptions/unlock-git-integration',
-        'team': '/api/subscriptions/unlock-teams',
+        'database_designer': '/subscriptions/unlock-database-designer',
+        'form_designer': '/form-designer/unlock',
+        'code_adjustments': '/subscriptions/unlock-code-adjustments',
+        'schema_migration': '/subscriptions/unlock-schema-migration',
+        'git_integration': '/subscriptions/unlock-git-integration',
+        'team': '/subscriptions/unlock-teams',
       };
 
       const endpoint = endpointMap[featureType];
@@ -690,20 +573,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         throw new Error(t.profilemodal677);
       }
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || t.profilemodal692);
-      }
+      await apiClient.post(endpoint);
 
       // Reload all data
       loadCliStatus();
@@ -711,9 +581,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       loadAllFeatures();
       loadGitProviders();
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(t.profilemodal702, err);
-      alert(err instanceof Error ? err.message : t.profilemodal703);
+      alert(err?.response?.data?.message || err?.response?.data?.error || err?.message || t.profilemodal703);
     } finally {
       setUnlocking(null);
     }
@@ -746,38 +616,17 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setSellerSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal115);
-      }
-
-      const response = await fetch('/api/profile/seller', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(sellerData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || t.profilemodal754);
-      }
-
+      await apiClient.put('/profile/seller', sellerData);
       setSellerSuccess(t.profilemodal757);
       loadUserData();
-
-    } catch (err) {
-      setSellerError(err instanceof Error ? err.message : t.profilemodal774);
+    } catch (err: any) {
+      setSellerError(err?.response?.data?.message || err?.message || t.profilemodal774);
     } finally {
       setSavingSeller(false);
     }
   };
 
-  // Load pricing from settings
+  // Load pricing from settings (public endpoint - no auth required, use direct fetch)
   const loadPricing = useCallback(async () => {
     try {
       const response = await fetch('/api/pricing', {
@@ -801,23 +650,11 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const loadGitProviders = useCallback(async () => {
     setLoadingGitProviders(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/git/providers', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setGitProviders(data.providers || []);
-        // Store Git Integration access status
-        if (data.git_integration_access) {
-          setGitIntegrationAccess(data.git_integration_access);
-        }
+      const data = await apiClient.get('/git/providers');
+      setGitProviders(data.providers || []);
+      // Store Git Integration access status
+      if (data.git_integration_access) {
+        setGitIntegrationAccess(data.git_integration_access);
       }
     } catch (err) {
       console.error(t.profilemodal810, err);
@@ -830,32 +667,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const unlockGitIntegration = async () => {
     setUnlockingGit(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions/unlock-git-integration', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setGitIntegrationAccess(data.access_status);
-        // Reload user data to update credits
-        loadUserData();
-        // Reload CLI status to update credits display
-        loadCliStatus();
-      } else {
-        const error = await response.json();
-        alert(error.message || t.profilemodal841);
-      }
-    } catch (err) {
+      const data = await apiClient.post('/subscriptions/unlock-git-integration');
+      setGitIntegrationAccess(data.access_status);
+      // Reload user data to update credits
+      loadUserData();
+      // Reload CLI status to update credits display
+      loadCliStatus();
+    } catch (err: any) {
       console.error(t.profilemodal844, err);
-      alert(t.profilemodal845);
+      alert(err?.response?.data?.message || err?.message || t.profilemodal841);
     } finally {
       setUnlockingGit(false);
     }
@@ -866,23 +686,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setConnectingProvider(provider);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal858);
-      }
-
-      const response = await fetch(`/api/git/authorize/${provider}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || t.profilemodal871);
-      }
+      const data = await apiClient.get(`/git/authorize/${provider}`);
 
       // Open popup window for OAuth
       const width = 600;
@@ -904,32 +708,16 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   // Complete OAuth flow after receiving callback
   const completeGitOAuth = async (provider: string, code: string, state: string) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`/api/git/callback/${provider}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Check for expired state error - prompt user to try again
-        if (data.error && data.error.includes('expired state')) {
-          alert(t.profilemodal911);
-        } else {
-          alert(data.error || t.profilemodal913);
-        }
-        throw new Error(data.error || t.profilemodal915);
-      }
-
+      await apiClient.get(`/git/callback/${provider}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
       loadGitProviders();
-    } catch (err) {
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.error;
+      // Check for expired state error - prompt user to try again
+      if (errorMsg && errorMsg.includes('expired state')) {
+        alert(t.profilemodal911);
+      } else {
+        alert(errorMsg || t.profilemodal913);
+      }
       console.error(t.profilemodal920, err);
     } finally {
       setConnectingProvider(null);
@@ -945,24 +733,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setDisconnectingProvider(provider);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal937);
-      }
-
-      const response = await fetch(`/api/git/disconnect/${provider}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || t.profilemodal950);
-      }
-
+      await apiClient.delete(`/git/disconnect/${provider}`);
       loadGitProviders();
     } catch (err) {
       console.error('Disconnect error:', err);
@@ -1016,33 +787,15 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     setProfileSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal115);
-      }
-
-      const response = await fetch('/api/profile/update', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          name: userData.name,
-          email: userData.email,
-          language: userData.language,
-          kanban_initials: userData.kanban_initials || null,
-          kanban_color: userData.kanban_color || null,
-          email_system_notifications: userData.email_system_notifications,
-          email_user_notifications: userData.email_user_notifications,
-        }),
+      await apiClient.put('/profile/update', {
+        name: userData.name,
+        email: userData.email,
+        language: userData.language,
+        kanban_initials: userData.kanban_initials || null,
+        kanban_color: userData.kanban_color || null,
+        email_system_notifications: userData.email_system_notifications,
+        email_user_notifications: userData.email_user_notifications,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.profilemodal186);
-      }
 
       setProfileSuccess(t.profileUpdateSuccess);
 
@@ -1051,8 +804,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         handleHide();
       }, 500);
 
-    } catch (error) {
-      setProfileError(error instanceof Error ? error.message : t.profilemodal197);
+    } catch (err: any) {
+      setProfileError(err?.response?.data?.message || err?.message || t.profilemodal197);
     } finally {
       setLoadingProfile(false);
     }
@@ -1071,23 +824,12 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       // Notify all components about language change
       window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language } }));
 
-      // Also save to backend
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (token) {
-        await fetch('/api/profile/update', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            name: userData.name,
-            email: userData.email,
-            language
-          }),
-        });
-      }
+      // Also save to backend (best-effort - silent if it fails)
+      await apiClient.put('/profile/update', {
+        name: userData.name,
+        email: userData.email,
+        language
+      });
     } catch {
       // Failed to update language
     }
@@ -1107,35 +849,17 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal115);
-      }
-
-      const response = await fetch('/api/profile/password', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          current_password: passwordData.current_password,
-          password: passwordData.password,
-          password_confirmation: passwordData.password_confirmation,
-        }),
+      await apiClient.put('/profile/password', {
+        current_password: passwordData.current_password,
+        password: passwordData.password,
+        password_confirmation: passwordData.password_confirmation,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.profilemodal273);
-      }
 
       setPasswordSuccess(t.passwordChangeSuccess);
       setPasswordData({ current_password: '', password: '', password_confirmation: '' });
-      
-    } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : t.authmodalsegistermodal109);
+
+    } catch (err: any) {
+      setPasswordError(err?.response?.data?.message || err?.message || t.profilemodal273);
     } finally {
       setLoadingPassword(false);
     }
@@ -1167,31 +891,20 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.profilemodal115);
-      }
-
-      const response = await fetch('/api/profile/delete', {
+      // DELETE with a body - apiClient.delete() doesn't accept one, so we
+      // call request() directly. apiClient.request() still handles the 401
+      // refresh-flow transparently for us.
+      await apiClient.request('/profile/delete', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
         body: JSON.stringify({
           password: deleteData.password,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.authcontroller492);
-      }
-
       setDeleteSuccess(t.profilemodal334);
-      
-      // Clear tokens and reload page after 2 seconds
+
+      // Clear tokens and reload page after 2 seconds. This is an explicit
+      // logout (account is gone), so we don't want any refresh attempts.
       setTimeout(() => {
         localStorage.removeItem('access_token');
         sessionStorage.removeItem('access_token');
@@ -1199,9 +912,9 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
         sessionStorage.removeItem('refresh_token');
         window.location.reload();
       }, 2000);
-      
-    } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : t.authmodalsegistermodal109);
+
+    } catch (err: any) {
+      setDeleteError(err?.response?.data?.message || err?.message || t.authcontroller492);
     } finally {
       setLoadingDelete(false);
     }
@@ -1234,14 +947,26 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
       header={t.profileTitle}
       visible={visible}
       onHide={handleHide}
-      style={{ width: '1165px' }}
+      /* Fixed height pins the dialog so it no longer resizes itself when the
+       * user switches between tabs with different amounts of content. The
+       * user can still drag the modal around and resize it (draggable +
+       * resizable below); this just sets the STARTING height instead of
+       * letting the content drive it.
+       *
+       * 85vh keeps the modal large but still leaves a small margin on top
+       * and bottom of the viewport on common laptop screens (768-1080px). */
+      style={{ width: '1165px', height: '85vh' }}
       modal
       closable
       draggable={true}
       resizable={true}
       className="p-dialog-custom"
     >
-      <TabView activeIndex={activeTabIndex} onTabChange={(e) => setActiveTabIndex(e.index)}>
+      <TabViewSideMenu
+        storageKey="profileModal"
+        activeIndex={activeTabIndex}
+        onTabChange={(e) => setActiveTabIndex(e.index)}
+      >
         {/* Icons moved inline into the header so a Tailwind-managed margin
             (mr-2) guarantees the spacing. PrimeReact's `leftIcon` prop relies
             on its own CSS margin which gets zeroed out by our theme reset,
@@ -2864,7 +2589,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             />
           </form>
         </TabPanel>
-      </TabView>
+      </TabViewSideMenu>
 
       {/* Plan Modal for subscriptions and credits */}
       <PlanModal

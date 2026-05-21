@@ -9,12 +9,14 @@ import { Dropdown } from 'primereact/dropdown';
 import { Checkbox } from 'primereact/checkbox';
 import { Button } from 'primereact/button';
 import { ProgressSpinner } from 'primereact/progressspinner';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { PickList } from 'primereact/picklist';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { ProjectProtectedFilesView } from '@/Components/ProjectProtectedFilesView';
 import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface Language {
     code: string;
@@ -250,27 +252,21 @@ export default function ProjectSettingsPanel() {
     // and an immediate "save on change" pattern (no global Save button).
     useEffect(() => {
         if (!selectedProject?.id) return;
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
-        const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
 
-        fetch('/api/form-sets', { headers })
-            .then(r => r.ok ? r.json() : null)
+        apiClient.get('/form-sets')
             .then(data => {
                 if (data?.data) setAvailableFormSets(data.data.map((fs: { id: number; name: string }) => ({ id: fs.id, name: fs.name })));
             }).catch(() => {});
-        fetch('/api/report-patterns', { headers })
-            .then(r => r.ok ? r.json() : null)
+        apiClient.get('/report-patterns')
             .then(data => {
                 if (data?.data) setAvailableReportPatterns(data.data.map((rp: { id: number; name: string }) => ({ id: rp.id, name: rp.name })));
             }).catch(() => {});
 
-        fetch(`/api/projects/${selectedProject.id}/form-set`, { headers })
-            .then(r => r.ok ? r.json() : null)
+        apiClient.get(`/projects/${selectedProject.id}/form-set`)
             .then(data => {
                 setDefaultFormSetId(data?.data?.id ?? null);
             }).catch(() => {});
-        fetch(`/api/projects/${selectedProject.id}/report-pattern`, { headers })
-            .then(r => r.ok ? r.json() : null)
+        apiClient.get(`/projects/${selectedProject.id}/report-pattern`)
             .then(data => {
                 setDefaultReportPatternId(data?.data?.id ?? null);
             }).catch(() => {});
@@ -278,28 +274,13 @@ export default function ProjectSettingsPanel() {
 
     // Save handlers — save immediately on dropdown change so the user has no
     // separate "Save defaults" button to remember.
-    //
-    // We check `response.ok` explicitly: `fetch()` only rejects on network
-    // errors, not on HTTP 4xx/5xx. Without this check a silently failing
-    // DELETE would still flip the UI state to "null" while the DB keeps the
-    // old row active — which is exactly what caused the earlier "snap back"
-    // bug when the user re-opened the panel.
     const saveDefaultFormSet = async (newId: number | null) => {
         if (!selectedProject?.id) return;
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
-        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
         try {
-            const resp = newId === null
-                ? await fetch(`/api/projects/${selectedProject.id}/form-set`, { method: 'DELETE', headers })
-                : await fetch(`/api/projects/${selectedProject.id}/form-set`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ form_set_id: newId }),
-                });
-
-            if (!resp.ok) {
-                toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
-                return; // keep the old state visible so the UI matches reality
+            if (newId === null) {
+                await apiClient.delete(`/projects/${selectedProject.id}/form-set`);
+            } else {
+                await apiClient.post(`/projects/${selectedProject.id}/form-set`, { form_set_id: newId });
             }
             setDefaultFormSetId(newId);
             toast.showSuccess?.((t as unknown as Record<string, string>).projectsettings_default_saved || 'Default saved');
@@ -310,20 +291,11 @@ export default function ProjectSettingsPanel() {
 
     const saveDefaultReportPattern = async (newId: number | null) => {
         if (!selectedProject?.id) return;
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || '';
-        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
         try {
-            const resp = newId === null
-                ? await fetch(`/api/projects/${selectedProject.id}/report-pattern`, { method: 'DELETE', headers })
-                : await fetch(`/api/projects/${selectedProject.id}/report-pattern`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ report_pattern_id: newId }),
-                });
-
-            if (!resp.ok) {
-                toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
-                return;
+            if (newId === null) {
+                await apiClient.delete(`/projects/${selectedProject.id}/report-pattern`);
+            } else {
+                await apiClient.post(`/projects/${selectedProject.id}/report-pattern`, { report_pattern_id: newId });
             }
             setDefaultReportPatternId(newId);
             toast.showSuccess?.((t as unknown as Record<string, string>).projectsettings_default_saved || 'Default saved');
@@ -334,22 +306,10 @@ export default function ProjectSettingsPanel() {
 
     const loadLanguages = useCallback(async () => {
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch('/api/active-languages', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setAvailableLanguages(Array.isArray(data) ? data : []);
-            }
+            const data = await apiClient.get('/active-languages');
+            setAvailableLanguages(Array.isArray(data) ? data : []);
         } catch {
-            // Error loading languages
+            // Error loading languages - apiClient already handled 401
         }
     }, []);
 
@@ -358,37 +318,22 @@ export default function ProjectSettingsPanel() {
 
         setLoading(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
             // Load project settings including enabled_languages
-            const settingsResponse = await fetch(`/api/projects/${selectedProject.id}/settings`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (settingsResponse.ok) {
-                const settings = await settingsResponse.json();
+            try {
+                const settings = await apiClient.get(`/projects/${selectedProject.id}/settings`);
                 setSelectedLanguages(settings.enabled_languages || []);
 
                 // Load protected files and deployment scripts
                 setProjectProtectedFiles(settings.protected_files || []);
                 setProjectInstallScript(settings.install_script || []);
                 setProjectUpdateScript(settings.update_script || []);
+            } catch {
+                // Settings endpoint failed - keep defaults
             }
 
             // Load full project data
-            const projectResponse = await fetch(`/api/projects/${selectedProject.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (projectResponse.ok) {
-                const project = await projectResponse.json();
+            try {
+                const project = await apiClient.get(`/projects/${selectedProject.id}`);
                 setFormData({
                     name: project.name || '',
                     description: project.description || '',
@@ -422,6 +367,8 @@ export default function ProjectSettingsPanel() {
                 });
                 // Sync target_language to localStorage for TableModal access
                 localStorage.setItem('scoriet_target_language', project.target_language || 'html');
+            } catch {
+                // Project endpoint failed - keep defaults
             }
         } catch {
             toast.showError(t.projectsettingspanel151);
@@ -434,32 +381,17 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
             // Load project with templates relationship
-            const response = await fetch(`/api/projects/${selectedProject.id}/templates-with-protected-files`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
+            try {
+                const data = await apiClient.get(`/projects/${selectedProject.id}/templates-with-protected-files`);
                 setLinkedTemplates(data.templates || []);
-            } else {
+            } catch {
                 // Fallback: Try loading templates directly
-                const fallbackResponse = await fetch(`/api/templates?project_id=${selectedProject.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                    },
-                });
-
-                if (fallbackResponse.ok) {
-                    const templates = await fallbackResponse.json();
+                try {
+                    const templates = await apiClient.get(`/templates?project_id=${selectedProject.id}`);
                     setLinkedTemplates(templates || []);
+                } catch {
+                    setLinkedTemplates([]);
                 }
             }
         } catch (error) {
@@ -473,31 +405,19 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-settings`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.data) {
-                    setFtpSettings({
-                        deployment_type: data.data.deployment_type || '',
-                        ftp_host: data.data.ftp_host || '',
-                        ftp_port: data.data.ftp_port || 21,
-                        ftp_username: data.data.ftp_username || '',
-                        ftp_password: data.data.ftp_password || '',
-                        ftp_directory: data.data.ftp_directory || '',
-                        ftp_passive: data.data.ftp_passive ?? true,
-                        ftp_ssl: data.data.ftp_ssl ?? false,
-                        has_credentials: data.data.has_credentials || false,
-                    });
-                }
+            const data = await apiClient.get(`/projects/${selectedProject.id}/ftp-settings`);
+            if (data.success && data.data) {
+                setFtpSettings({
+                    deployment_type: data.data.deployment_type || '',
+                    ftp_host: data.data.ftp_host || '',
+                    ftp_port: data.data.ftp_port || 21,
+                    ftp_username: data.data.ftp_username || '',
+                    ftp_password: data.data.ftp_password || '',
+                    ftp_directory: data.data.ftp_directory || '',
+                    ftp_passive: data.data.ftp_passive ?? true,
+                    ftp_ssl: data.data.ftp_ssl ?? false,
+                    has_credentials: data.data.has_credentials || false,
+                });
             }
         } catch (error) {
             console.error('Error loading FTP settings:', error);
@@ -512,28 +432,15 @@ export default function ProjectSettingsPanel() {
         setFtpTestResult(null);
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-test`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(ftpSettings),
-            });
-
-            const data = await response.json();
+            const data = await apiClient.post(`/projects/${selectedProject.id}/ftp-test`, ftpSettings);
             setFtpTestResult({
                 success: data.success,
                 message: data.message,
             });
-        } catch {
+        } catch (err: any) {
             setFtpTestResult({
                 success: false,
-                message: t.projectsettingspanel407,
+                message: err?.response?.data?.message || t.projectsettingspanel407,
             });
         } finally {
             setTestingFtp(false);
@@ -545,27 +452,11 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-settings`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(ftpSettings),
-            });
-
-            if (response.ok) {
-                toast.showSuccess(t.projectsettingspanel433);
-                loadFtpSettings();
-            } else {
-                toast.showError(t.projectsettingspanel436);
-            }
+            await apiClient.put(`/projects/${selectedProject.id}/ftp-settings`, ftpSettings);
+            toast.showSuccess(t.projectsettingspanel433);
+            loadFtpSettings();
         } catch {
-            toast.showError(t.projectsettingspanel439);
+            toast.showError(t.projectsettingspanel436);
         }
     };
 
@@ -574,36 +465,22 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/ftp-settings`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
+            await apiClient.delete(`/projects/${selectedProject.id}/ftp-settings`);
+            toast.showSuccess(t.projectsettingspanel460);
+            setFtpSettings({
+                deployment_type: '',
+                ftp_host: '',
+                ftp_port: 21,
+                ftp_username: '',
+                ftp_password: '',
+                ftp_directory: '',
+                ftp_passive: true,
+                ftp_ssl: false,
+                has_credentials: false,
             });
-
-            if (response.ok) {
-                toast.showSuccess(t.projectsettingspanel460);
-                setFtpSettings({
-                    deployment_type: '',
-                    ftp_host: '',
-                    ftp_port: 21,
-                    ftp_username: '',
-                    ftp_password: '',
-                    ftp_directory: '',
-                    ftp_passive: true,
-                    ftp_ssl: false,
-                    has_credentials: false,
-                });
-                setFtpTestResult(null);
-            } else {
-                toast.showError(t.projectsettingspanel474);
-            }
+            setFtpTestResult(null);
         } catch {
-            toast.showError(t.projectsettingspanel477);
+            toast.showError(t.projectsettingspanel474);
         }
     };
 
@@ -611,41 +488,29 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/git-settings`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
+            const data = await apiClient.get(`/projects/${selectedProject.id}/git-settings`);
+            setGitSettings(data.git_settings || {
+                provider_id: null,
+                provider: null,
+                provider_username: null,
+                repository: null,
+                default_branch: null,
+                main_branch: null,
+                target_directory: null,
+                workflow: 'push_only',
+                pr_title_template: null,
+                pr_description_template: null,
+                auto_delete_branch: true,
+                is_configured: false,
             });
+            setAvailableGitProviders(data.available_providers || []);
 
-            if (response.ok) {
-                const data = await response.json();
-                setGitSettings(data.git_settings || {
-                    provider_id: null,
-                    provider: null,
-                    provider_username: null,
-                    repository: null,
-                    default_branch: null,
-                    main_branch: null,
-                    target_directory: null,
-                    workflow: 'push_only',
-                    pr_title_template: null,
-                    pr_description_template: null,
-                    auto_delete_branch: true,
-                    is_configured: false,
-                });
-                setAvailableGitProviders(data.available_providers || []);
-
-                // If we have a provider selected, load repositories
-                if (data.git_settings?.provider_id && data.git_settings?.provider) {
-                    loadGitRepositories(data.git_settings.provider);
-                    // If we have a repository selected, load branches
-                    if (data.git_settings?.repository) {
-                        loadGitBranches(data.git_settings.provider, data.git_settings.repository);
-                    }
+            // If we have a provider selected, load repositories
+            if (data.git_settings?.provider_id && data.git_settings?.provider) {
+                loadGitRepositories(data.git_settings.provider);
+                // If we have a repository selected, load branches
+                if (data.git_settings?.repository) {
+                    loadGitBranches(data.git_settings.provider, data.git_settings.repository);
                 }
             }
         } catch (error) {
@@ -657,20 +522,8 @@ export default function ProjectSettingsPanel() {
         setLoadingGitRepos(true);
         setGitRepositories([]);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/git/${provider}/repositories`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setGitRepositories(data.repositories || []);
-            }
+            const data = await apiClient.get(`/git/${provider}/repositories`);
+            setGitRepositories(data.repositories || []);
         } catch (error) {
             console.error('Error loading git repositories:', error);
         } finally {
@@ -682,20 +535,8 @@ export default function ProjectSettingsPanel() {
         setLoadingGitBranches(true);
         setGitBranches([]);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/git/${provider}/branches?repo=${encodeURIComponent(repoFullName)}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setGitBranches(data.branches || []);
-            }
+            const data = await apiClient.get(`/git/${provider}/branches?repo=${encodeURIComponent(repoFullName)}`);
+            setGitBranches(data.branches || []);
         } catch (error) {
             console.error('Error loading git branches:', error);
         } finally {
@@ -741,38 +582,26 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/git-settings`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    git_provider_id: gitSettings.provider_id,
-                    git_repository: gitSettings.repository,
-                    git_default_branch: gitSettings.default_branch,
-                    git_main_branch: gitSettings.main_branch,
-                    git_target_directory: gitSettings.target_directory,
-                    git_workflow: gitSettings.workflow,
-                    git_pr_title_template: gitSettings.pr_title_template,
-                    git_pr_description_template: gitSettings.pr_description_template,
-                    git_auto_delete_branch: gitSettings.auto_delete_branch,
-                }),
+            await apiClient.put(`/projects/${selectedProject.id}/git-settings`, {
+                git_provider_id: gitSettings.provider_id,
+                git_repository: gitSettings.repository,
+                git_default_branch: gitSettings.default_branch,
+                git_main_branch: gitSettings.main_branch,
+                git_target_directory: gitSettings.target_directory,
+                git_workflow: gitSettings.workflow,
+                git_pr_title_template: gitSettings.pr_title_template,
+                git_pr_description_template: gitSettings.pr_description_template,
+                git_auto_delete_branch: gitSettings.auto_delete_branch,
             });
-
-            if (response.ok) {
-                toast.showSuccess(t.projectsettingspanel639);
+            toast.showSuccess(t.projectsettingspanel639);
+        } catch (err: any) {
+            const errorMsg = err?.response?.data?.error;
+            if (errorMsg) {
+                toast.showError(errorMsg);
             } else {
-                const data = await response.json();
-                toast.showError(data.error || t.projectsettingspanel642);
+                console.error(t.projectsettingspanel645, err);
+                toast.showError(t.projectsettingspanel642);
             }
-        } catch (error) {
-            console.error(t.projectsettingspanel645, error);
-            toast.showError(t.projectsettingspanel646);
         }
     };
 
@@ -784,41 +613,27 @@ export default function ProjectSettingsPanel() {
         }
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/git-settings`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
+            await apiClient.delete(`/projects/${selectedProject.id}/git-settings`);
+            setGitSettings({
+                provider_id: null,
+                provider: null,
+                provider_username: null,
+                repository: null,
+                default_branch: null,
+                main_branch: null,
+                target_directory: null,
+                workflow: 'push_only',
+                pr_title_template: null,
+                pr_description_template: null,
+                auto_delete_branch: true,
+                is_configured: false,
             });
-
-            if (response.ok) {
-                setGitSettings({
-                    provider_id: null,
-                    provider: null,
-                    provider_username: null,
-                    repository: null,
-                    default_branch: null,
-                    main_branch: null,
-                    target_directory: null,
-                    workflow: 'push_only',
-                    pr_title_template: null,
-                    pr_description_template: null,
-                    auto_delete_branch: true,
-                    is_configured: false,
-                });
-                setGitRepositories([]);
-                setGitBranches([]);
-                toast.showSuccess(t.projectsettingspanel686);
-            } else {
-                toast.showError(t.projectsettingspanel688);
-            }
+            setGitRepositories([]);
+            setGitBranches([]);
+            toast.showSuccess(t.projectsettingspanel686);
         } catch (error) {
             console.error(t.projectsettingspanel691, error);
-            toast.showError(t.projectsettingspanel692);
+            toast.showError(t.projectsettingspanel688);
         }
     };
 
@@ -826,22 +641,10 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
 
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
-            const response = await fetch(`/api/projects/${selectedProject.id}/members`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setProjectMembers(data || []);
-            }
+            const data = await apiClient.get(`/projects/${selectedProject.id}/members`);
+            setProjectMembers(data || []);
         } catch {
-            // Error loading project members
+            // Error loading project members - apiClient already handled 401
         }
     }, [selectedProject]);
 
@@ -850,35 +653,21 @@ export default function ProjectSettingsPanel() {
 
         setLoadingVariables(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-
             // Load all templates (or could be filtered by templates used in project)
-            const templatesResponse = await fetch('/api/templates', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!templatesResponse.ok) return;
-
-            const templatesData = await templatesResponse.json();
+            let templatesData: any;
+            try {
+                templatesData = await apiClient.get('/templates');
+            } catch {
+                return;
+            }
             const templates = templatesData.templates || [];
 
             // Load variables for each template
             const templatesWithVars: TemplateWithVariables[] = [];
 
             for (const template of templates) {
-                const varsResponse = await fetch(`/api/templates/${template.id}/variables`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                    },
-                });
-
-                if (varsResponse.ok) {
-                    const varsData = await varsResponse.json();
+                try {
+                    const varsData = await apiClient.get(`/templates/${template.id}/variables`);
                     const variables = varsData.variables || [];
 
                     // Only include templates that have variables
@@ -890,6 +679,8 @@ export default function ProjectSettingsPanel() {
                             variables: variables,
                         });
                     }
+                } catch {
+                    // Skip templates with failing variables endpoint
                 }
             }
 
@@ -899,18 +690,10 @@ export default function ProjectSettingsPanel() {
             const valuesMap: Record<string, Record<string, string>> = {};
 
             for (const template of templatesWithVars) {
-                const valuesResponse = await fetch(
-                    `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values`,
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                        },
-                    }
-                );
-
-                if (valuesResponse.ok) {
-                    const valuesData = await valuesResponse.json();
+                try {
+                    const valuesData = await apiClient.get(
+                        `/projects/${selectedProject.id}/templates/${template.id}/variable-values`
+                    );
                     const variables = valuesData.variables || [];
 
                     // Build map: variable_name -> { language -> value }
@@ -925,6 +708,8 @@ export default function ProjectSettingsPanel() {
                             }
                         }
                     }
+                } catch {
+                    // Skip templates with failing values endpoint
                 }
             }
 
@@ -940,17 +725,10 @@ export default function ProjectSettingsPanel() {
     const loadTranslations = useCallback(async () => {
         if (!selectedProject) return;
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-            const response = await fetch(`/api/projects/${selectedProject.id}/translations`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setTranslations(data);
-                // Set default selected language only on first load
-                setSelectedTransLang(prev => prev || selectedProject.default_language || 'en');
-            }
+            const data = await apiClient.get(`/projects/${selectedProject.id}/translations`);
+            setTranslations(data);
+            // Set default selected language only on first load
+            setSelectedTransLang(prev => prev || selectedProject.default_language || 'en');
         } catch { /* ignore */ }
     }, [selectedProject]);
 
@@ -958,20 +736,12 @@ export default function ProjectSettingsPanel() {
         if (!selectedProject) return;
         setSavingTranslation(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) return;
-            const response = await fetch(`/api/projects/${selectedProject.id}/translations`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify({ language_code: langCode, ...data }),
+            const result = await apiClient.post(`/projects/${selectedProject.id}/translations`, {
+                language_code: langCode,
+                ...data,
             });
-            if (response.ok) {
-                const result = await response.json();
-                setTranslations(prev => ({ ...prev, [langCode]: result.translation }));
-                toast.showSuccess(t.msgSaved || 'Saved successfully');
-            } else {
-                toast.showError(t.msgSaveError || 'Failed to save');
-            }
+            setTranslations(prev => ({ ...prev, [langCode]: result.translation }));
+            toast.showSuccess(t.msgSaved || 'Saved successfully');
         } catch {
             toast.showError(t.msgSaveError || 'Failed to save');
         } finally {
@@ -1082,7 +852,7 @@ export default function ProjectSettingsPanel() {
             const newOwner = projectMembers.find(m => Number(m.user_id) === Number(formData.new_owner_id));
             if (newOwner) {
                 const confirmed = window.confirm(
-                    `${t.projectsettingspanel834}${newOwner.user.name} (${newOwner.user.email}){t.projectsettingspanel834_2}\n\n${t.projectsettingspanel834_3}`
+                    `${t.projectsettingspanel834}${newOwner.user.name} (${newOwner.user.email})${t.projectsettingspanel834_2}\n\n${t.projectsettingspanel834_3}`
                 );
                 if (!confirmed) return;
             }
@@ -1092,82 +862,51 @@ export default function ProjectSettingsPanel() {
         // Clear any stale validation marks from previous attempts.
         setInvalidFields(new Set());
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) {
-                toast.showError(t.applicationsmodal66);
-                return;
-            }
-
             // Save project data
-            const projectResponse = await fetch(`/api/projects/${selectedProject.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            if (!projectResponse.ok) {
-                // Try to pick out Laravel's 422 validation payload so we can
-                // show the exact field + message and jump to the right tab.
-                // Shape: { message: string, errors: { field: [msg, ...] } }
-                if (projectResponse.status === 422) {
-                    try {
-                        const errBody = await projectResponse.json();
-                        const errors = (errBody?.errors || {}) as Record<string, string[]>;
-                        const firstField = Object.keys(errors)[0];
-                        if (firstField) {
-                            const firstMsg = errors[firstField]?.[0] || errBody?.message || t.editprojectmodal183;
-                            applyValidationError(firstField, firstMsg);
-                            return; // handled — don't fall through to generic error
-                        }
-                        if (errBody?.message) {
-                            toast.showError(errBody.message);
-                            return;
-                        }
-                    } catch { /* fall through to generic */ }
+            try {
+                await apiClient.put(`/projects/${selectedProject.id}`, formData);
+            } catch (err: any) {
+                // Laravel 422 validation payload: { message, errors: { field: [msg] } }
+                if (err?.response?.status === 422) {
+                    const errBody = err.response.data;
+                    const errors = (errBody?.errors || {}) as Record<string, string[]>;
+                    const firstField = Object.keys(errors)[0];
+                    if (firstField) {
+                        const firstMsg = errors[firstField]?.[0] || errBody?.message || t.editprojectmodal183;
+                        applyValidationError(firstField, firstMsg);
+                        return;
+                    }
+                    if (errBody?.message) {
+                        toast.showError(errBody.message);
+                        return;
+                    }
                 }
                 throw new Error(t.editprojectmodal183);
             }
 
             // Save language settings
-            const settingsResponse = await fetch(`/api/projects/${selectedProject.id}/settings`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
+            try {
+                await apiClient.put(`/projects/${selectedProject.id}/settings`, {
                     enabled_languages: selectedLanguages,
                     default_language: formData.default_language,
                     protected_files: projectProtectedFiles,
                     install_script: projectInstallScript,
                     update_script: projectUpdateScript,
-                }),
-            });
-
-            if (!settingsResponse.ok) {
-                // Same treatment as the main project save: if Laravel gave us
-                // a 422 validation payload, show the specific field message
-                // and jump to the tab where that input lives.
-                if (settingsResponse.status === 422) {
-                    try {
-                        const errBody = await settingsResponse.json();
-                        const errors = (errBody?.errors || {}) as Record<string, string[]>;
-                        const firstField = Object.keys(errors)[0];
-                        if (firstField) {
-                            const firstMsg = errors[firstField]?.[0] || errBody?.message || t.projectsettingspanel243;
-                            applyValidationError(firstField, firstMsg);
-                            return;
-                        }
-                        if (errBody?.message) {
-                            toast.showError(errBody.message);
-                            return;
-                        }
-                    } catch { /* fall through to generic */ }
+                });
+            } catch (err: any) {
+                if (err?.response?.status === 422) {
+                    const errBody = err.response.data;
+                    const errors = (errBody?.errors || {}) as Record<string, string[]>;
+                    const firstField = Object.keys(errors)[0];
+                    if (firstField) {
+                        const firstMsg = errors[firstField]?.[0] || errBody?.message || t.projectsettingspanel243;
+                        applyValidationError(firstField, firstMsg);
+                        return;
+                    }
+                    if (errBody?.message) {
+                        toast.showError(errBody.message);
+                        return;
+                    }
                 }
                 throw new Error(t.projectsettingspanel243);
             }
@@ -1178,7 +917,7 @@ export default function ProjectSettingsPanel() {
             // variable-save issue should be surfaced as a warning instead.
             let variableSaveWarning: string | null = null;
             try {
-                await saveTemplateVariablesInternal(token);
+                await saveTemplateVariablesInternal();
             } catch (varError) {
                 variableSaveWarning = varError instanceof Error ? varError.message : String(varError);
             }
@@ -1188,10 +927,9 @@ export default function ProjectSettingsPanel() {
                 const data = translations[langCode];
                 if (data && langCode) {
                     const { _visited, id: _id, project_id: _project_id, created_at: _created_at, updated_at: _updated_at, ...cleanData } = data;
-                    await fetch(`/api/projects/${selectedProject.id}/translations`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-                        body: JSON.stringify({ language_code: langCode, ...cleanData }),
+                    await apiClient.post(`/projects/${selectedProject.id}/translations`, {
+                        language_code: langCode,
+                        ...cleanData,
                     });
                 }
             }
@@ -1224,7 +962,7 @@ export default function ProjectSettingsPanel() {
     };
 
     // Internal function to save template variables (called by both save buttons)
-    const saveTemplateVariablesInternal = async (token: string) => {
+    const saveTemplateVariablesInternal = async () => {
         if (!selectedProject || templatesWithVariables.length === 0) {
             return; // Nothing to save
         }
@@ -1268,20 +1006,12 @@ export default function ProjectSettingsPanel() {
 
             // Bulk update via API (backend deletes all then inserts non-empty)
             // This ensures cleared/empty variables are properly deleted from DB
-            const response = await fetch(
-                `/api/projects/${selectedProject.id}/templates/${template.id}/variable-values/bulk`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ values: valuesToSave }),
-                }
-            );
-
-            if (!response.ok) {
+            try {
+                await apiClient.post(
+                    `/projects/${selectedProject.id}/templates/${template.id}/variable-values/bulk`,
+                    { values: valuesToSave }
+                );
+            } catch {
                 throw new Error(`${t.projectsettingspanel958}"${template.name}"`);
             }
         }
@@ -1296,14 +1026,7 @@ export default function ProjectSettingsPanel() {
 
         setSavingVariables(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            if (!token) {
-                toast.showError(t.projectsettingspanel975);
-                setSavingVariables(false);
-                return;
-            }
-
-            await saveTemplateVariablesInternal(token);
+            await saveTemplateVariablesInternal();
 
             toast.showSuccess(t.projectsettingspanel982);
         } catch (error) {
@@ -1356,10 +1079,17 @@ export default function ProjectSettingsPanel() {
 
     return (
         <div
-            className="h-full flex flex-col p-6 overflow-auto project-settings-panel"
+            /* overflow-auto removed — with TabViewSideMenu the scroll happens
+             * INSIDE each tab's panel (overflow-y on .p-tabview-panels in
+             * styles.css). Outer overflow:auto on top of that would produce
+             * a second scrollbar whenever a tab's form was longer than the
+             * panel height. */
+            className="h-full flex flex-col p-6 project-settings-panel"
             style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary }}
         >
-            <div className="mb-6 flex justify-between items-center">
+            {/* flex-shrink-0 keeps the title+save header at its natural height
+             * so the TabViewSideMenu below can claim the rest via flex-1. */}
+            <div className="mb-6 flex justify-between items-center flex-shrink-0">
                 <div>
                     <h2 className="text-2xl font-bold" style={{ color: colors.textPrimary }}>
                         {t.newnavigationpanel142}
@@ -1378,10 +1108,30 @@ export default function ProjectSettingsPanel() {
                 />
             </div>
 
-            <TabView
-                className="flex-1 tabview-wrap-tabs"
+            {/* TabViewSideMenu region — flex-1 takes whatever vertical space
+             * the header above didn't claim; min-h-0 unblocks flex from the
+             * children's intrinsic minimum so the panels can size correctly.
+             *
+             * The "tabview-wrap-tabs" class that used to live on <TabView>
+             * is no longer needed — that was a workaround so 12 horizontal
+             * tabs could wrap to multiple rows. Vertically they all just
+             * stack in the side menu, no wrapping required. */}
+            <div className="flex-1 min-h-0">
+            <TabViewSideMenu
+                storageKey="projectSettingsPanel"
+                defaultWidth={240}
                 activeIndex={activeTabIndex}
-                onTabChange={(e) => setActiveTabIndex(e.index)}
+                onTabChange={(e: { index: number }) => setActiveTabIndex(e.index)}
+                /* The outer panel container above already supplies p-6
+                 * (24px) padding all around. The side-menu's default 15px
+                 * left / 22px top inset would double that, leaving the
+                 * grey menu block oddly far from the panel edge. Setting
+                 * both to 0 lets the outer panel's padding be the single
+                 * source of spacing. */
+                style={{
+                  ['--p-tabview-vertical-pad-left' as string]: '0px',
+                  ['--p-tabview-vertical-pad-top' as string]: '0px',
+                } as React.CSSProperties}
             >
                 <TabPanel header={<span><i className="pi pi-cog mr-2"></i>{t.projectsettingspanel313}</span>}>
                             <div className="space-y-4 max-w-3xl">
@@ -2819,7 +2569,8 @@ export default function ProjectSettingsPanel() {
                         )}
                     </div>
                 </TabPanel>
-            </TabView>
+            </TabViewSideMenu>
+            </div>
         </div>
     );
 }

@@ -12,6 +12,7 @@ import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ProjectWizardModal from '@/Components/ProjectWizardModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface ExtendedNavigationPanelProps extends NavigationPanelProps {
   onOpenModal?: (modalType: AuthModalType) => void;
@@ -89,62 +90,36 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
   // Helper function to update auth status
   const updateAuthStatus = async () => {
-    const localToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    const sessionToken = sessionStorage.getItem('access_token');
-    const token = localToken || sessionToken;
-    
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+
     if (token) {
       try {
-        const response = await fetch('/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const user = await response.json();
-          setIsLoggedIn(true);
-          setUserName(user.name || user.email);
-          setUserType(user.user_type || '');
-          setUserCredits(user.credits || 0);
-          setPatronType(user.patron_type || null);
-          setIsInnerCore(user.is_inner_core || false);
-          return true;
-        } else if (response.status === 401) {
-          // Token truly invalid (unauthorized) - clean up and notify other components
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('remember_me');
-          localStorage.removeItem('user');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-          document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-          setIsLoggedIn(false);
-          setUserName('');
-          setUserType('');
-          setUserCredits(0);
-          setPatronType(null);
-          setIsInnerCore(false);
-
-          // Trigger storage event to notify other components (like Index.tsx)
-          window.dispatchEvent(new Event('storage'));
-          return false;
-        } else {
-          // Other error (500, 429, network timeout, etc.) - don't destroy tokens
-          // The token might still be valid, just a temporary server issue
-          setIsLoggedIn(false);
-          setUserName('');
-          setUserType('');
-          setUserCredits(0);
-          setPatronType(null);
-          setIsInnerCore(false);
-          return false;
-        }
-      } catch {
+        // apiClient.get() handles 401 transparently (refresh + retry, or
+        // clean logout via handleAuthError). We only land in catch on a
+        // final auth failure or transient error.
+        const user = await apiClient.get('/user');
+        setIsLoggedIn(true);
+        setUserName(user.name || user.email);
+        setUserType(user.user_type || '');
+        setUserCredits(user.credits || 0);
+        setPatronType(user.patron_type || null);
+        setIsInnerCore(user.is_inner_core || false);
+        return true;
+      } catch (err: any) {
+        const isAuthFailure = err?.message?.includes('Authentication') ||
+                              err?.response?.status === 401;
+        // Sync local React state regardless: either auth has failed (state
+        // must reflect logout) or a transient server error happened (we
+        // can't show stale credit data with confidence).
         setIsLoggedIn(false);
         setUserName('');
+        setUserType('');
+        setUserCredits(0);
+        setPatronType(null);
         setIsInnerCore(false);
+        if (isAuthFailure) {
+          window.dispatchEvent(new Event('storage'));
+        }
         return false;
       }
     } else {
@@ -175,15 +150,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         return;
       }
 
-      const response = await fetch('/api/form-designer/access', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const data = await apiClient.get('/form-designer/access');
         if (data.has_access) {
           // User has access - open the panel directly
           onOpenPanel(target);
@@ -200,7 +168,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           setShowFormPaywall(true);
           setFormPaywallLoading(false);
         }
-      } else {
+      } catch {
         // Error - try to open panel anyway (let the panel handle errors)
         onOpenPanel(target);
         setFormPaywallLoading(false);
@@ -221,16 +189,8 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
       const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       if (!token) return;
 
-      const response = await fetch('/api/form-designer/unlock', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
+      try {
+        await apiClient.post('/form-designer/unlock');
         // Unlock successful - update credits and open panel
         setShowFormPaywall(false);
         if (formPaywallTarget) {
@@ -239,9 +199,9 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
         // Trigger credits update
         window.dispatchEvent(new Event('creditsChanged'));
         updateAuthStatus();
-      } else {
-        const data = await response.json();
-        alert(data.message || t.newnavigationpanel213);
+      } catch (err: any) {
+        const data = err?.response?.data;
+        alert(data?.message || t.newnavigationpanel213);
       }
     } catch (error) {
       console.error(t.newnavigationpanel216, error);
@@ -637,6 +597,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           icon: 'pi pi-play',
           command: () => onOpenPanel('code-generation')
         },
+        {
+          label: t.index863,
+          icon: 'pi pi-list',
+          command: () => onOpenPanel('deployment-log')
+        },
         // "Code adjustments" was moved to Vorlagen → Code → Anpassungen
         ...(userType === 'system' ? [
           {
@@ -883,7 +848,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                           }
                         })} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                           <i className="pi pi-sliders-h"></i>
-                          <span>{t.newnavigationpanel142})</span>
+                          <span>{t.newnavigationpanel142}</span>
                         </button>
                       </div>
                     </div>
@@ -1160,6 +1125,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                     <i className="pi pi-play"></i>
                     <span>{t.panelsewnavigationpanel576}</span>
                   </button>
+                  <button onClick={blurAndRun(() => onOpenPanel('deployment-log'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                    <i className="pi pi-list"></i>
+                    <span>{t.index863}</span>
+                  </button>
                   {userType === 'system' && (
                     <>
                       <div className="border-t nav-separator my-2"></div>
@@ -1401,21 +1370,12 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           await loadProjects();
 
           // Find and set the newly created project as selected
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
           if (token) {
             try {
-              const response = await fetch(`/api/projects/${createdProjectId}`, {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Accept': 'application/json',
-                },
-              });
-
-              if (response.ok) {
-                const newProject = await response.json();
-                setSelectedProject(newProject);
-                localStorage.setItem('scoriet_selected_project_id', createdProjectId.toString());
-              }
+              const newProject = await apiClient.get(`/projects/${createdProjectId}`);
+              setSelectedProject(newProject);
+              localStorage.setItem('scoriet_selected_project_id', createdProjectId.toString());
             } catch (err) {
               console.error(t.newnavigationpanel1181, err);
             }

@@ -6,8 +6,11 @@ import { Message } from 'primereact/message';
 import { Dialog } from 'primereact/dialog';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { Divider } from 'primereact/divider';
+import { Checkbox } from 'primereact/checkbox';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { generateDeviceId, getBrowserInfo } from './TwoFactorVerifyDialog';
+import { apiClient } from '@/lib/api';
 // Note: Currently hardcoded in German. Add translations later if needed.
 
 interface TwoFactorStatus {
@@ -47,6 +50,7 @@ export default function TwoFactorSection() {
   const [qrCodeSvg, setQrCodeSvg] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [verifyCode, setVerifyCode] = useState('');
+  const [setupTrustDevice, setSetupTrustDevice] = useState(true);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [loadingSetup, setLoadingSetup] = useState(false);
 
@@ -67,35 +71,18 @@ export default function TwoFactorSection() {
   const [loadingRegenerate, setLoadingRegenerate] = useState(false);
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([]);
 
-  // Get auth token
-  const getToken = useCallback(() => {
-    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  }, []);
-
   // Fetch 2FA status
   const fetchStatus = useCallback(async () => {
     try {
       setLoading(true);
-      const token = getToken();
-      if (!token) return;
-
-      const response = await fetch('/api/two-factor/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStatus(data.two_factor);
-      }
+      const data = await apiClient.get('/two-factor/status');
+      setStatus(data.two_factor);
     } catch (err) {
       console.error(t.twofactorsection94, err);
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -129,24 +116,13 @@ export default function TwoFactorSection() {
     setError(null);
 
     try {
-      const token = getToken();
-      const response = await fetch('/api/two-factor/enable', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || t.twofactorsection146);
+      let data: any;
+      try {
+        data = await apiClient.post('/two-factor/enable', { password });
+      } catch (err: any) {
+        setError(err?.response?.data?.message || t.twofactorsection146);
         return;
       }
-
       setQrCodeSvg(data.qr_code_svg);
       setSecret(data.secret);
       setSetupStep('qr');
@@ -170,21 +146,16 @@ export default function TwoFactorSection() {
     setError(null);
 
     try {
-      const token = getToken();
-      const response = await fetch('/api/two-factor/confirm', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: verifyCode }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || t.twofactorsection187);
+      let data: any;
+      try {
+        data = await apiClient.post('/two-factor/confirm', {
+          code: verifyCode,
+          trust_device: setupTrustDevice,
+          device_id: setupTrustDevice ? generateDeviceId() : undefined,
+          browser: setupTrustDevice ? getBrowserInfo() : undefined,
+        });
+      } catch (err: any) {
+        setError(err?.response?.data?.message || t.twofactorsection187);
         return;
       }
 
@@ -206,6 +177,7 @@ export default function TwoFactorSection() {
     setQrCodeSvg(null);
     setSecret(null);
     setVerifyCode('');
+    setSetupTrustDevice(true);
     setRecoveryCodes([]);
     setSuccess(t.twofactorsection210);
     fetchStatus();
@@ -214,14 +186,7 @@ export default function TwoFactorSection() {
   // Cancel setup
   const handleCancelSetup = async () => {
     try {
-      const token = getToken();
-      await fetch('/api/two-factor/cancel-setup', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
+      await apiClient.post('/two-factor/cancel-setup');
     } catch (_err) {
       // Ignore errors
     }
@@ -232,6 +197,7 @@ export default function TwoFactorSection() {
     setQrCodeSvg(null);
     setSecret(null);
     setVerifyCode('');
+    setSetupTrustDevice(true);
   };
 
   // Disable 2FA
@@ -241,24 +207,14 @@ export default function TwoFactorSection() {
     setError(null);
 
     try {
-      const token = getToken();
-      const response = await fetch('/api/two-factor/disable', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      let data: any;
+      try {
+        data = await apiClient.post('/two-factor/disable', {
           password: disablePassword,
           code: disableCode,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || t.twofactorsection261);
+        });
+      } catch (err: any) {
+        setError(err?.response?.data?.message || t.twofactorsection261);
         return;
       }
 
@@ -280,18 +236,8 @@ export default function TwoFactorSection() {
     setLoadingDevices(true);
 
     try {
-      const token = getToken();
-      const response = await fetch('/api/two-factor/trusted-devices', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTrustedDevices(data.trusted_devices || []);
-      }
+      const data = await apiClient.get('/two-factor/trusted-devices');
+      setTrustedDevices(data.trusted_devices || []);
     } catch (err) {
       console.error(t.twofactorsection296, err);
     } finally {
@@ -302,20 +248,9 @@ export default function TwoFactorSection() {
   // Remove trusted device
   const handleRemoveDevice = async (deviceId: string) => {
     try {
-      const token = getToken();
-      const response = await fetch(`/api/two-factor/trusted-devices/${deviceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTrustedDevices(data.trusted_devices || []);
-        fetchStatus();
-      }
+      const data = await apiClient.delete(`/two-factor/trusted-devices/${deviceId}`);
+      setTrustedDevices(data.trusted_devices || []);
+      fetchStatus();
     } catch (err) {
       console.error(t.twofactorsection320, err);
     }
@@ -324,19 +259,9 @@ export default function TwoFactorSection() {
   // Remove all devices
   const handleRemoveAllDevices = async () => {
     try {
-      const token = getToken();
-      const response = await fetch('/api/two-factor/trusted-devices', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        setTrustedDevices([]);
-        fetchStatus();
-      }
+      await apiClient.delete('/two-factor/trusted-devices');
+      setTrustedDevices([]);
+      fetchStatus();
     } catch (err) {
       console.error(t.twofactorsection341, err);
     }
@@ -349,21 +274,13 @@ export default function TwoFactorSection() {
     setError(null);
 
     try {
-      const token = getToken();
-      const response = await fetch('/api/two-factor/regenerate-recovery-codes', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password: regeneratePassword }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || t.twofactorsection366);
+      let data: any;
+      try {
+        data = await apiClient.post('/two-factor/regenerate-recovery-codes', {
+          password: regeneratePassword,
+        });
+      } catch (err: any) {
+        setError(err?.response?.data?.message || t.twofactorsection366);
         return;
       }
 
@@ -614,6 +531,24 @@ export default function TwoFactorSection() {
                 autoFocus
               />
             </div>
+
+            {/* Trust this browser - user has just proven physical access to their authenticator on this device */}
+            <div className="flex items-start gap-2 py-2">
+              <Checkbox
+                inputId="setup-trust-device"
+                checked={setupTrustDevice}
+                onChange={(e) => setSetupTrustDevice(!!e.checked)}
+              />
+              <label htmlFor="setup-trust-device" className="text-sm cursor-pointer flex-1">
+                <div className="font-medium" style={{ color: colors.textPrimary }}>
+                  {t.twofactorsection_trust_device_label}
+                </div>
+                <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                  {t.twofactorsection_trust_device_hint}
+                </div>
+              </label>
+            </div>
+
             {error && <Message severity="error" text={error} className="w-full" />}
             <div className="flex justify-end gap-2">
               <Button

@@ -12,6 +12,7 @@ import { MultiSelect } from 'primereact/multiselect';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage, tpl } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 interface FormSet {
     id: number;
@@ -34,16 +35,6 @@ interface FormSet {
 interface FormSetManagementPanelProps {
     onOpenPanel?: (panelType: string, data: any) => void;
 }
-
-// Helper function to get auth headers
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    };
-};
 
 const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenPanel }) => {
     const { selectedProject } = useProject();
@@ -109,29 +100,24 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const loadMyFormSets = async () => {
         setMyFormSetsLoading(true);
         try {
-            const response = await fetch('/api/form-sets?own_only=true', {
-                headers: getAuthHeaders(),
-            });
-            if (response.ok) {
-                const data = await response.json();
-                let filtered = data.data || [];
+            const data = await apiClient.get('/form-sets?own_only=true');
+            let filtered = data.data || [];
 
-                // Apply visibility filter
-                if (myVisibilityFilter !== 'all') {
-                    filtered = filtered.filter((fs: FormSet) => fs.visibility === myVisibilityFilter);
-                }
-
-                // Apply search
-                if (mySearchTerm) {
-                    const search = mySearchTerm.toLowerCase();
-                    filtered = filtered.filter((fs: FormSet) =>
-                        fs.name?.toLowerCase().includes(search) ||
-                        fs.description?.toLowerCase().includes(search)
-                    );
-                }
-
-                setMyFormSets(filtered);
+            // Apply visibility filter
+            if (myVisibilityFilter !== 'all') {
+                filtered = filtered.filter((fs: FormSet) => fs.visibility === myVisibilityFilter);
             }
+
+            // Apply search
+            if (mySearchTerm) {
+                const search = mySearchTerm.toLowerCase();
+                filtered = filtered.filter((fs: FormSet) =>
+                    fs.name?.toLowerCase().includes(search) ||
+                    fs.description?.toLowerCase().includes(search)
+                );
+            }
+
+            setMyFormSets(filtered);
         } catch (error) {
             console.error(t.formsetmanagementpanel128, error);
             setMyFormSets([]);
@@ -144,26 +130,21 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const loadPublicFormSets = async () => {
         setPublicFormSetsLoading(true);
         try {
-            const response = await fetch('/api/form-sets', {
-                headers: getAuthHeaders(),
-            });
-            if (response.ok) {
-                const data = await response.json();
-                let filtered = (data.data || []).filter((fs: FormSet) =>
-                    fs.visibility === 'public' && Number(fs.creator_user_id) !== Number(currentUserId)
+            const data = await apiClient.get('/form-sets');
+            let filtered = (data.data || []).filter((fs: FormSet) =>
+                fs.visibility === 'public' && Number(fs.creator_user_id) !== Number(currentUserId)
+            );
+
+            // Apply search
+            if (publicSearchTerm) {
+                const search = publicSearchTerm.toLowerCase();
+                filtered = filtered.filter((fs: FormSet) =>
+                    fs.name?.toLowerCase().includes(search) ||
+                    fs.description?.toLowerCase().includes(search)
                 );
-
-                // Apply search
-                if (publicSearchTerm) {
-                    const search = publicSearchTerm.toLowerCase();
-                    filtered = filtered.filter((fs: FormSet) =>
-                        fs.name?.toLowerCase().includes(search) ||
-                        fs.description?.toLowerCase().includes(search)
-                    );
-                }
-
-                setPublicFormSets(filtered);
             }
+
+            setPublicFormSets(filtered);
         } catch (error) {
             console.error(t.formsetmanagementpanel160, error);
             setPublicFormSets([]);
@@ -176,30 +157,19 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const loadProjects = async () => {
         setLoadingProjects(true);
         try {
-            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-            const response = await fetch('/api/projects', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                // Handle different API response formats:
-                // - { projects: [...] } - standard format from ProjectController
-                // - { data: [...] } - alternative format
-                // - [...] - direct array
-                const projects = Array.isArray(data)
-                    ? data
-                    : (Array.isArray(data.projects)
-                        ? data.projects
-                        : (Array.isArray(data.data)
-                            ? data.data
-                            : []));
-                setAllProjects(projects);
-            } else {
-                setAllProjects([]);
-            }
+            const data = await apiClient.get('/projects');
+            // Handle different API response formats:
+            // - { projects: [...] } - standard format from ProjectController
+            // - { data: [...] } - alternative format
+            // - [...] - direct array
+            const projects = Array.isArray(data)
+                ? data
+                : (Array.isArray(data.projects)
+                    ? data.projects
+                    : (Array.isArray(data.data)
+                        ? data.data
+                        : []));
+            setAllProjects(projects);
         } catch (error) {
             console.error(t.formsetmanagementpanel196, error);
             setAllProjects([]);
@@ -211,13 +181,8 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     // Load linked projects for a FormSet
     const loadLinkedProjects = async (formSetId: number): Promise<number[]> => {
         try {
-            const response = await fetch(`/api/form-sets/${formSetId}/linked-projects`, {
-                headers: getAuthHeaders(),
-            });
-            if (response.ok) {
-                const data = await response.json();
-                return data.data || [];
-            }
+            const data = await apiClient.get(`/form-sets/${formSetId}/linked-projects`);
+            return data.data || [];
         } catch (error) {
             console.error(t.formsetmanagementpanel214, error);
         }
@@ -247,11 +212,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         try {
             // For each selected project, activate the formset
             for (const projectId of linkedProjectIds) {
-                await fetch(`/api/projects/${projectId}/form-set`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ form_set_id: formSetToLink.id }),
-                });
+                await apiClient.post(`/projects/${projectId}/form-set`, { form_set_id: formSetToLink.id });
             }
 
             toast.showSuccess(t.formsetmanagementpanel249);
@@ -279,20 +240,20 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         if (!editFormSet || !editFsName.trim()) return;
         setEditingSave(true);
         try {
-            const response = await fetch(`/api/form-sets/${editFormSet.id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ name: editFsName, description: editFsDescription || null, visibility: editFsVisibility }),
-            });
-            if (response.ok) {
+            try {
+                await apiClient.put(`/form-sets/${editFormSet.id}`, {
+                    name: editFsName,
+                    description: editFsDescription || null,
+                    visibility: editFsVisibility,
+                });
                 toast.showSuccess(t.formsetmanagementpanel_updated || 'Form Blueprint updated');
                 setEditModalVisible(false);
                 setEditFormSet(null);
                 loadMyFormSets();
                 loadPublicFormSets();
-            } else {
-                const err = await response.json();
-                toast.showError(err.error || err.message || 'Error updating');
+            } catch (err: any) {
+                const data = err?.response?.data || {};
+                toast.showError(data.error || data.message || 'Error updating');
             }
         } catch (error) {
             console.error('Edit error:', error);
@@ -331,20 +292,15 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
     const handleDelete = async (formSet: FormSet) => {
         try {
-            const res = await fetch(`/api/form-sets/${formSet.id}/usage`, {
-                headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data?.data?.in_use) {
-                    setInUseInfo({
-                        formSetName: formSet.name,
-                        tables: data.data.tables || [],
-                        projects: data.data.projects || [],
-                    });
-                    setInUseModalVisible(true);
-                    return;
-                }
+            const data = await apiClient.get(`/form-sets/${formSet.id}/usage`);
+            if (data?.data?.in_use) {
+                setInUseInfo({
+                    formSetName: formSet.name,
+                    tables: data.data.tables || [],
+                    projects: data.data.projects || [],
+                });
+                setInUseModalVisible(true);
+                return;
             }
         } catch {
             // If the usage check fails for any reason, fall through to the normal
@@ -366,17 +322,14 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
         setDeleting(true);
         try {
-            const response = await fetch(`/api/form-sets/${formSetToDelete.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(),
-            });
-            if (response.ok) {
+            try {
+                await apiClient.delete(`/form-sets/${formSetToDelete.id}`);
                 toast.showSuccess(t.formsetmanagementpanel289);
                 setDeleteModalVisible(false);
                 setFormSetToDelete(null);
                 setDeleteConfirmText('');
                 loadMyFormSets();
-            } else {
+            } catch {
                 toast.showError(t.formsetmanagementpanel295);
             }
         } catch (error) {
@@ -404,16 +357,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         }
 
         try {
-            const response = await fetch(`/api/projects/${selectedProject.id}/form-set`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ form_set_id: formSet.id }),
-            });
-            if (response.ok) {
+            try {
+                await apiClient.post(`/projects/${selectedProject.id}/form-set`, { form_set_id: formSet.id });
                 toast.showSuccess(`${t.formsetmanagementpanel328}"${formSet.name}"${t.formsetmanagementpanel328_2}`);
                 loadMyFormSets();
                 loadPublicFormSets();
-            } else {
+            } catch {
                 toast.showError(t.formsetmanagementpanel332);
             }
         } catch (error) {

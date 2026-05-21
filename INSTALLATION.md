@@ -1,6 +1,6 @@
 # 🚀 Scoriet - Windows Installation Guide
 
-**Scoriet** is an Enterprise Code Generator built with Laravel and React. This guide helps you set up the development environment on Windows.
+**Scoriet** is an Schema-to-Stack Studio built with Laravel and React. This guide helps you set up the development environment on Windows.
 
 ## 📋 Prerequisites
 

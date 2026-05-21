@@ -14,6 +14,7 @@ import { Toast } from 'primereact/toast';
 import { Dropdown } from 'primereact/dropdown';
 import { Accordion, AccordionTab } from 'primereact/accordion';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 import '@/Components/Panels/styles.css';
 
 interface Permission {
@@ -111,31 +112,18 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) throw new Error(t.teamrolespanel115);
 
       // Load all data in parallel
-      const [rolesRes, permissionsRes, membersRes] = await Promise.all([
-        fetch(`/api/teams/${teamId}/roles`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        }),
-        fetch('/api/team-roles/permissions', {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        }),
-        fetch(`/api/teams/${teamId}/members-with-roles`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        }),
-      ]);
-
-      if (!rolesRes.ok || !permissionsRes.ok || !membersRes.ok) {
+      let rolesData: any, permissionsData: any, membersData: any;
+      try {
+        [rolesData, permissionsData, membersData] = await Promise.all([
+          apiClient.get(`/teams/${teamId}/roles`),
+          apiClient.get('/team-roles/permissions'),
+          apiClient.get(`/teams/${teamId}/members-with-roles`),
+        ]);
+      } catch {
         throw new Error(t.teamrolespanel131);
       }
-
-      const [rolesData, permissionsData, membersData] = await Promise.all([
-        rolesRes.json(),
-        permissionsRes.json(),
-        membersRes.json(),
-      ]);
 
       setRoles(rolesData.roles || []);
       setPermissions(permissionsData.permissions || {});
@@ -197,31 +185,24 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const url = editingRole
-        ? `/api/teams/${teamId}/roles/${editingRole.id}`
-        : `/api/teams/${teamId}/roles`;
-      const method = editingRole ? 'PUT' : 'POST';
+      const endpoint = editingRole
+        ? `/teams/${teamId}/roles/${editingRole.id}`
+        : `/teams/${teamId}/roles`;
+      const body = {
+        name: roleName,
+        description: roleDescription || null,
+        permissions: selectedPermissions,
+        copy_from_role_id: !editingRole ? copyFromRoleId : undefined,
+      };
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: roleName,
-          description: roleDescription || null,
-          permissions: selectedPermissions,
-          copy_from_role_id: !editingRole ? copyFromRoleId : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || t.teamrolespanel224);
+      try {
+        if (editingRole) {
+          await apiClient.put(endpoint, body);
+        } else {
+          await apiClient.post(endpoint, body);
+        }
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.teamrolespanel224);
       }
 
       toast.current?.show({
@@ -265,16 +246,10 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-          const response = await fetch(`/api/teams/${teamId}/roles/${role.id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.message || t.teamrolespanel277);
+          try {
+            await apiClient.delete(`/teams/${teamId}/roles/${role.id}`);
+          } catch (err: any) {
+            throw new Error(err?.response?.data?.message || t.teamrolespanel277);
           }
 
           toast.current?.show({ severity: 'success', summary: t.teamrolespanel280, detail: t.teamrolespanel280_2, life: 3000 });
@@ -295,16 +270,10 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
   // Copy system role to team
   const handleCopyRoleToTeam = async (role: TeamRole) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${teamId}/roles/${role.id}/copy`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || t.teamrolespanel307);
+      try {
+        await apiClient.post(`/teams/${teamId}/roles/${role.id}/copy`);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.teamrolespanel307);
       }
 
       toast.current?.show({ severity: 'success', summary: t.teamrolespanel310, detail: t.teamrolespanel310_2, life: 3000 });
@@ -330,21 +299,12 @@ export default function TeamRolesPanel({ teamId, teamName, updateTabTitle }: Tea
     if (!selectedMember) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${teamId}/members/${selectedMember.id}/team-role`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ team_role_id: assignedRoleId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || t.teamrolespanel347);
+      try {
+        await apiClient.put(`/teams/${teamId}/members/${selectedMember.id}/team-role`, {
+          team_role_id: assignedRoleId,
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.teamrolespanel347);
       }
 
       toast.current?.show({ severity: 'success', summary: t.teamrolespanel350, detail: t.teamrolespanel350_2, life: 3000 });

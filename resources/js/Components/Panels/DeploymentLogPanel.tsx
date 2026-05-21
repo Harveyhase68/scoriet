@@ -3,6 +3,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from 'primereact/button';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 interface DeploymentLog {
   id: number;
@@ -59,35 +60,28 @@ export default function DeploymentLogPanel() {
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.deploymentlogpanel64);
-      }
-
-      const response = await fetch(`/api/projects/${selectedProjectId}/deployment-logs?limit=100`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let result: any;
+      try {
+        result = await apiClient.get(`/projects/${selectedProjectId}/deployment-logs?limit=200`);
+      } catch {
         throw new Error(t.deploymentlogpanel71);
       }
 
-      const result = await response.json();
-      setLogs(result.logs || []);
+      // Backend returns newest first (DESC) so limit slices off old history;
+      // we reverse for chronological reading (oldest → newest) in the panel.
+      const incoming: DeploymentLog[] = Array.isArray(result.logs) ? result.logs : [];
+      setLogs(incoming.slice().reverse());
 
-      // Check if there's an active task
-      const activeLogs = result.logs?.filter((log: DeploymentLog) =>
+      // Check if there's an active task — incoming is still DESC, so [0] is newest.
+      const activeLogs = incoming.filter((log: DeploymentLog) =>
         log.task_id && log.type === 'info' && log.message.includes('Task')
       );
 
-      if (activeLogs && activeLogs.length > 0) {
+      if (activeLogs.length > 0) {
         const latestTaskId = activeLogs[0].task_id;
         if (latestTaskId) {
           setActiveTaskId(latestTaskId);
-          checkTaskStatus(latestTaskId, token);
+          checkTaskStatus(latestTaskId);
         }
       }
     } catch (err: any) {
@@ -97,16 +91,11 @@ export default function DeploymentLogPanel() {
     }
   };
 
-  const checkTaskStatus = async (taskId: number, token: string) => {
+  // Token plumbing removed: apiClient.cliRequest reads the token internally
+  // and handles 401-refresh, so callers don't have to thread one through.
+  const checkTaskStatus = async (taskId: number) => {
     try {
-      const response = await fetch(`/cli/svc/tasks/${taskId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      const result = await response.json();
+      const result = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
 
       if (result.success && result.task) {
         const status = result.task.status;
@@ -115,7 +104,7 @@ export default function DeploymentLogPanel() {
           // Task is still running, start polling
           if (!polling) {
             setPolling(true);
-            startPolling(taskId, token);
+            startPolling(taskId);
           }
         }
       }
@@ -124,7 +113,7 @@ export default function DeploymentLogPanel() {
     }
   };
 
-  const startPolling = (taskId: number, token: string) => {
+  const startPolling = (taskId: number) => {
     // Clear any existing polling interval
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -138,19 +127,8 @@ export default function DeploymentLogPanel() {
       pollCount++;
 
       try {
-        const response = await fetch(`/cli/svc/tasks/${taskId}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || t.deploymentlogpanel151);
-        }
-
+        // cliRequest throws on !response.ok; catch below handles the failure.
+        const result = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
         const taskData = result.task;
 
         // Check if task is completed or failed
@@ -188,20 +166,9 @@ export default function DeploymentLogPanel() {
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.deploymentlogpanel193);
-      }
-
-      const response = await fetch(`/api/projects/${selectedProjectId}/deployment-logs`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      try {
+        await apiClient.delete(`/projects/${selectedProjectId}/deployment-logs`);
+      } catch {
         throw new Error(t.deploymentlogpanel205);
       }
 

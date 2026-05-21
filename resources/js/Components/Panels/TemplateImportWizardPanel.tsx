@@ -20,6 +20,7 @@ import { usePage } from '@inertiajs/react';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage, tpl } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 interface TemplateMeta {
     file_type: string | null;
@@ -69,10 +70,8 @@ interface TemplateImportWizardPanelProps {
 // Selection type: Record for React compatibility
 type SelectionMap = Record<string, boolean>;
 
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-};
+// Auth headers + 401-refresh handled inside apiClient.cliRequest; the
+// local getAuthToken() helper this file used to ship is no longer needed.
 
 // Default extension presets with exclude directories
 const DEFAULT_PRESETS: ExtensionPreset[] = [
@@ -401,60 +400,42 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const checkPrivateTemplateSubscription = useCallback(async () => {
         setCheckingSubscription(true);
         try {
-            const token = getAuthToken();
-            if (!token) {
-                setCheckingSubscription(false);
+            // Load user data
+            let userData: any;
+            try {
+                userData = await apiClient.get('/user');
+            } catch {
+                return;
+            }
+            setCurrentUser(userData);
+
+            const isFreeUser = userData.user_type === 'free' || !userData.user_type;
+
+            // If not a free user, they can create unlimited private templates
+            if (!isFreeUser) {
+                setNeedsPrivateUnlock(false);
                 return;
             }
 
-            // Load user data
-            const userResponse = await fetch('/api/user', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            });
+            // Check subscription_info from templates endpoint (slot-based system)
+            try {
+                const templatesData = await apiClient.get('/templates');
+                const subscriptionInfo = templatesData.subscription_info;
 
-            if (userResponse.ok) {
-                const userData = await userResponse.json();
-                setCurrentUser(userData);
+                // Store available slots for display
+                setAvailableSlots(subscriptionInfo?.available_slots || 0);
+                setHasCheckedSubscription(true);
 
-                const isFreeUser = userData.user_type === 'free' || !userData.user_type;
-
-                // If not a free user, they can create unlimited private templates
-                if (!isFreeUser) {
-                    setNeedsPrivateUnlock(false);
-                    setCheckingSubscription(false);
-                    return;
-                }
-
-                // Check subscription_info from templates endpoint (slot-based system)
-                const templatesResponse = await fetch('/api/templates', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (templatesResponse.ok) {
-                    const templatesData = await templatesResponse.json();
-                    const subscriptionInfo = templatesData.subscription_info;
-
-                    // Store available slots for display
-                    setAvailableSlots(subscriptionInfo?.available_slots || 0);
-                    setHasCheckedSubscription(true);
-
-                    // Use backend's needs_unlock flag (accounts for subscription slots)
-                    if (subscriptionInfo && subscriptionInfo.needs_unlock) {
-                        setNeedsPrivateUnlock(true);
-                    } else {
-                        setNeedsPrivateUnlock(false);
-                    }
-                } else {
-                    // Fallback: assume needs unlock for safety
+                // Use backend's needs_unlock flag (accounts for subscription slots)
+                if (subscriptionInfo && subscriptionInfo.needs_unlock) {
                     setNeedsPrivateUnlock(true);
-                    setHasCheckedSubscription(true);
+                } else {
+                    setNeedsPrivateUnlock(false);
                 }
+            } catch {
+                // Fallback: assume needs unlock for safety
+                setNeedsPrivateUnlock(true);
+                setHasCheckedSubscription(true);
             }
         } catch (err) {
             console.error(t.templateimportwizardpanel418, err);
@@ -466,20 +447,8 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     // Refresh user credits
     const refreshCredits = useCallback(async () => {
         try {
-            const token = getAuthToken();
-            if (!token) return;
-
-            const response = await fetch('/api/user', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const userData = await response.json();
-                setCurrentUser(userData);
-            }
+            const userData = await apiClient.get('/user');
+            setCurrentUser(userData);
         } catch (err) {
             console.error(t.templateimportwizardpanel442, err);
         }
@@ -515,12 +484,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         stopPolling();
         if (sessionId) {
             try {
-                await fetch(`/api/template-import/${sessionId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                    }
-                });
+                await apiClient.delete(`/template-import/${sessionId}`);
             } catch {
                 // Ignore cleanup errors
             }
@@ -582,18 +546,11 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         formData.append('archive', file);
 
         try {
-            const response = await fetch('/api/template-import/upload', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                },
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || t.templateimportwizardpanel545);
+            let data: any;
+            try {
+                data = await apiClient.uploadFile('/template-import/upload', formData);
+            } catch (err: any) {
+                throw new Error(err?.response?.data?.message || t.templateimportwizardpanel545);
             }
 
             setSessionId(data.session_id);
@@ -680,22 +637,17 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         setServiceLogs('');
 
         try {
-            // Create the service task
-            const response = await fetch('/cli/svc/tasks/template-upload', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    directory_path: serviceDirectoryPath.trim()
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || t.templateimportwizardpanel599);
+            // Create the service task (auth handled by apiClient.cliRequest)
+            let data: any;
+            try {
+                data = await apiClient.cliRequest('/svc/tasks/template-upload', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        directory_path: serviceDirectoryPath.trim()
+                    })
+                });
+            } catch (err: any) {
+                throw new Error(err?.response?.data?.message || t.templateimportwizardpanel599);
             }
 
             setServiceTaskId(data.task_id);
@@ -716,16 +668,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
         pollingRef.current = setInterval(async () => {
             try {
-                const response = await fetch(`/cli/svc/template-upload/${pollingSessionId}/status`, {
-                    headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
-                    }
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    if (data.status === 'not_found') {
+                // cliRequest throws on !response.ok; the not_found branch the
+                // raw-fetch version had now lives in the catch block below.
+                let data: any;
+                try {
+                    data = await apiClient.cliRequest(`/svc/template-upload/${pollingSessionId}/status`);
+                } catch (err: any) {
+                    const body = err?.response?.data;
+                    if (body?.status === 'not_found') {
                         setError(t.templateimportwizardpanel630);
                         stopPolling();
                         setLoading(false);
@@ -778,23 +728,12 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
         setLoadingPreview(true);
         try {
-            const response = await fetch(`/api/template-import/${sessionId}/preview`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ path })
+            const data = await apiClient.post(`/template-import/${sessionId}/preview`, { path });
+            setPreviewFile({
+                path,
+                content: data.content,
+                is_binary: data.is_binary
             });
-
-            const data = await response.json();
-            if (response.ok) {
-                setPreviewFile({
-                    path,
-                    content: data.content,
-                    is_binary: data.is_binary
-                });
-            }
         } catch {
             // Ignore preview errors
         } finally {
@@ -838,13 +777,9 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         setDuplicateTemplateId(null);
 
         try {
-            const response = await fetch(`/api/template-import/${sessionId}/create`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${getAuthToken()}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            let data: any;
+            try {
+                data = await apiClient.post(`/template-import/${sessionId}/create`, {
                     name: templateName,
                     description: templateDescription,
                     category: templateCategory,
@@ -858,20 +793,18 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     static_files: staticFilePaths,
                     static_directory_files: staticDirPaths,
                     static_directory_name: staticDirectoryName
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
+                });
+            } catch (err: any) {
+                const status = err?.response?.status;
+                const errData = err?.response?.data || {};
                 // Handle duplicate name - offer overwrite/merge options
-                if (response.status === 409 && data.error_code === 'DUPLICATE_NAME') {
-                    setDuplicateTemplateId(data.existing_template_id);
+                if (status === 409 && errData.error_code === 'DUPLICATE_NAME') {
+                    setDuplicateTemplateId(errData.existing_template_id);
                     setError(t.templateimportwizardpanelDuplicateName);
                     setLoading(false);
                     return;
                 }
-                throw new Error(data.message || t.templateimportwizardpanel761);
+                throw new Error(errData.message || t.templateimportwizardpanel761);
             }
 
             onSuccess?.(data.template);

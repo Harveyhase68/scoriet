@@ -16,6 +16,7 @@ import { Toast } from 'primereact/toast';
 import TeamModal from '@/Components/Modals/TeamModal';
 import MemberModal from '@/Components/Modals/MemberModal';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 import '@/Components/Panels/styles.css';
 
 const TabContent: React.FC<TabContentProps & { colors: any }> = ({ children, style = {}, colors, ...rest }) => {
@@ -148,22 +149,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     if (forceProjectId !== undefined) {
       const loadForcedProject = async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-          if (!token) {
-            throw new Error(t.applicationsmodal66);
-          }
-
-          const response = await fetch(`/api/projects/${forceProjectId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-          });
-
-          if (response.ok) {
-            const projectData = await response.json();
-            setForcedProject(projectData);
-          }
+          const projectData = await apiClient.get(`/projects/${forceProjectId}`);
+          setForcedProject(projectData);
         } catch {
           // Error loading forced project
         }
@@ -186,24 +173,13 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
   const loadTeams = useCallback(async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const url = projectId ? `/api/teams?project=${projectId}` : '/api/teams?all=true';
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      const endpoint = projectId ? `/teams?project=${projectId}` : '/teams?all=true';
+      let data: any;
+      try {
+        data = await apiClient.get(endpoint);
+      } catch {
         throw new Error(t.projectpanel416);
       }
-
-      const data = await response.json();
 
       // Teams API returns { owned_teams: [], member_teams: [] }
       let teamsArray = [];
@@ -252,22 +228,10 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
       acceptClassName: 'p-button-danger',
       accept: async () => {
         try {
-          const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-          if (!token) {
-            throw new Error(t.applicationsmodal66);
-          }
-
-          const response = await fetch(`/api/teams/${team.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || t.teammanagementpanel221);
+          try {
+            await apiClient.delete(`/teams/${team.id}`);
+          } catch (err: any) {
+            throw new Error(err?.response?.data?.message || t.teammanagementpanel221);
           }
 
           toast.current?.show({
@@ -346,24 +310,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     setTeamToUnlock(team);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.teammanagementpanel350);
-      }
-
       // Use the new unified unlock endpoint
-      const response = await fetch(`/api/teams/${team.id}/unlock`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
+      try {
+        await apiClient.post(`/teams/${team.id}/unlock`);
+      } catch (err: any) {
+        const data = err?.response?.data || {};
         if (data.required_credits) {
           toast.current?.show({
             severity: 'error',
@@ -371,10 +322,9 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
             detail: `${t.teammanagementpanel370_2}${data.required_credits}, ${t.teammanagementpanel370}${data.current_credits}`,
             life: 5000
           });
-        } else {
-          throw new Error(data.error || data.message || t.teammanagementpanel374);
+          return;
         }
-        return;
+        throw new Error(data.error || data.message || t.teammanagementpanel374);
       }
 
       // Notify about credit change
@@ -410,14 +360,8 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
     try {
       // Load all user's projects
-      const projects = await fetch('/api/user/projects', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Accept': 'application/json'
-        }
-      }).then(res => res.json()).then(data => data.projects || []);
-
-      setAllProjects(projects);
+      const data = await apiClient.get('/user/projects');
+      setAllProjects(data.projects || []);
 
       // Load linked projects for this team
       const linkedProjects = team.projects?.map(p => Number(p.id)) || [];
@@ -451,21 +395,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
     // Load team members (excluding owner) as potential recipients
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${team.id}/members`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const members = await response.json();
-        // Filter out the current owner
-        const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
-        const eligibleMembers = members.filter((m: TeamMember) => Number(m.user_id) !== currentUserId);
-        setTeamMembersForTransfer(eligibleMembers);
-      }
+      const members = await apiClient.get(`/teams/${team.id}/members`);
+      // Filter out the current owner
+      const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+      const eligibleMembers = members.filter((m: TeamMember) => Number(m.user_id) !== currentUserId);
+      setTeamMembersForTransfer(eligibleMembers);
     } catch (error) {
       console.error(t.teammanagementpanel469, error);
       setTeamMembersForTransfer([]);
@@ -481,30 +415,20 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     setTransferEligibility(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${teamToTransfer.id}/check-transfer`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ new_owner_id: recipientId }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+      try {
+        const data = await apiClient.post(`/teams/${teamToTransfer.id}/check-transfer`, {
+          new_owner_id: recipientId,
+        });
         setTransferEligibility(data);
         // Pre-select slot transfer if recommended
         if (data.recommendation === 'with_slot') {
           setTransferWithSlot(true);
         }
-      } else {
+      } catch (err: any) {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || t.teammanagementpanel506,
+          detail: err?.response?.data?.message || t.teammanagementpanel506,
           life: 3000,
         });
       }
@@ -527,23 +451,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     setExecutingTransfer(true);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/teams/${teamToTransfer.id}/transfer`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        const data = await apiClient.post(`/teams/${teamToTransfer.id}/transfer`, {
           new_owner_id: transferRecipientId,
           transfer_slot: transferWithSlot,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
+        });
         toast.current?.show({
           severity: 'success',
           summary: t.teammanagementpanel548,
@@ -556,11 +468,11 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
 
         // Notify NavigationPanel to refresh teams
         window.dispatchEvent(new CustomEvent('teams-updated'));
-      } else {
+      } catch (err: any) {
         toast.current?.show({
           severity: 'error',
           summary: t.messageError,
-          detail: data.message || t.teammanagementpanel561,
+          detail: err?.response?.data?.message || t.teammanagementpanel561,
           life: 5000,
         });
       }
@@ -580,19 +492,12 @@ export default function TeamManagementPanel({ filterByProject = false, updateTab
     if (!teamToLink) return;
 
     try {
-      const response = await fetch(`/api/teams/${teamToLink.id}/projects`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ project_ids: linkedProjectIds })
-      });
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
+      try {
+        await apiClient.put(`/teams/${teamToLink.id}/projects`, {
+          project_ids: linkedProjectIds,
+        });
+      } catch (err: any) {
+        const responseData = err?.response?.data || {};
         throw new Error(responseData.error || responseData.message || t.teammanagementpanel595);
       }
 

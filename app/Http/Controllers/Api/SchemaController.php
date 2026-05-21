@@ -674,6 +674,7 @@ class SchemaController extends Controller
             'columns.*.link_order_field' => 'nullable|string|max:64',
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
             'columns.*.editmask' => 'nullable|string|max:500',
+            'columns.*.default_value' => 'nullable|string',
             'columns.*.display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
             'columns.*.generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
         ]);
@@ -733,6 +734,9 @@ class SchemaController extends Controller
                         'link_order_field' => $columnData['link_order_field'] ?? null,
                         'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
                         'editmask' => $columnData['editmask'] ?? null,
+                        // array_key_exists vs ?? — preserve '' (empty-string
+                        // default) distinctly from null ("no default at all").
+                        'default_value' => array_key_exists('default_value', $columnData) ? $columnData['default_value'] : null,
                         'display_state' => $columnData['display_state'] ?? 'enabled',
                         'generation_mode' => $columnData['generation_mode'] ?? 'full',
                     ]);
@@ -877,6 +881,7 @@ class SchemaController extends Controller
             'columns.*.link_order_field' => 'nullable|string|max:64',
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
             'columns.*.editmask' => 'nullable|string|max:500',
+            'columns.*.default_value' => 'nullable|string',
             'columns.*.display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
             'columns.*.generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
         ]);
@@ -975,6 +980,9 @@ class SchemaController extends Controller
                         'link_order_field' => $columnData['link_order_field'] ?? null,
                         'link_order_direction' => $columnData['link_order_direction'] ?? 'ASC',
                         'editmask' => $columnData['editmask'] ?? null,
+                        // array_key_exists vs ?? — preserve '' (empty-string
+                        // default) distinctly from null ("no default at all").
+                        'default_value' => array_key_exists('default_value', $columnData) ? $columnData['default_value'] : null,
                         'display_state' => $columnData['display_state'] ?? 'enabled',
                         'generation_mode' => $columnData['generation_mode'] ?? 'full',
                     ];

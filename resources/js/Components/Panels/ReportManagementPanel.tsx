@@ -12,6 +12,7 @@ import { confirmDialog, ConfirmDialog } from 'primereact/confirmdialog';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { apiClient } from '@/lib/api';
 
 interface ReportPattern {
     id: number;
@@ -29,15 +30,6 @@ interface ReportPattern {
 interface ReportManagementPanelProps {
     onOpenPanel?: (panelType: string, data?: Record<string, unknown>) => void;
 }
-
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    };
-};
 
 const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPanel }) => {
     const { selectedProject } = useProject();
@@ -88,21 +80,18 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
     const loadMyPatterns = async () => {
         setMyLoading(true);
         try {
-            const response = await fetch('/api/report-patterns?own_only=true', { headers: getAuthHeaders() });
-            if (response.ok) {
-                const data = await response.json();
-                let filtered = data.data || [];
-                if (myVisibilityFilter !== 'all') {
-                    filtered = filtered.filter((p: ReportPattern) => p.visibility === myVisibilityFilter);
-                }
-                if (mySearchTerm) {
-                    const search = mySearchTerm.toLowerCase();
-                    filtered = filtered.filter((p: ReportPattern) =>
-                        p.name?.toLowerCase().includes(search) || p.description?.toLowerCase().includes(search)
-                    );
-                }
-                setMyPatterns(filtered);
+            const data = await apiClient.get('/report-patterns?own_only=true');
+            let filtered = data.data || [];
+            if (myVisibilityFilter !== 'all') {
+                filtered = filtered.filter((p: ReportPattern) => p.visibility === myVisibilityFilter);
             }
+            if (mySearchTerm) {
+                const search = mySearchTerm.toLowerCase();
+                filtered = filtered.filter((p: ReportPattern) =>
+                    p.name?.toLowerCase().includes(search) || p.description?.toLowerCase().includes(search)
+                );
+            }
+            setMyPatterns(filtered);
         } catch (error) {
             console.error('Error loading patterns:', error);
             setMyPatterns([]);
@@ -114,20 +103,17 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
     const loadPublicPatterns = async () => {
         setPublicLoading(true);
         try {
-            const response = await fetch('/api/report-patterns', { headers: getAuthHeaders() });
-            if (response.ok) {
-                const data = await response.json();
-                let filtered = (data.data || []).filter((p: ReportPattern) =>
-                    (p.visibility === 'public' || p.visibility === 'system') && Number(p.creator_user_id) !== Number(currentUserId)
+            const data = await apiClient.get('/report-patterns');
+            let filtered = (data.data || []).filter((p: ReportPattern) =>
+                (p.visibility === 'public' || p.visibility === 'system') && Number(p.creator_user_id) !== Number(currentUserId)
+            );
+            if (publicSearchTerm) {
+                const search = publicSearchTerm.toLowerCase();
+                filtered = filtered.filter((p: ReportPattern) =>
+                    p.name?.toLowerCase().includes(search) || p.description?.toLowerCase().includes(search)
                 );
-                if (publicSearchTerm) {
-                    const search = publicSearchTerm.toLowerCase();
-                    filtered = filtered.filter((p: ReportPattern) =>
-                        p.name?.toLowerCase().includes(search) || p.description?.toLowerCase().includes(search)
-                    );
-                }
-                setPublicPatterns(filtered);
             }
+            setPublicPatterns(filtered);
         } catch (error) {
             console.error('Error loading public patterns:', error);
             setPublicPatterns([]);
@@ -140,59 +126,53 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
         if (!newName.trim()) return;
         setCreating(true);
         try {
-            const response = await fetch('/api/report-patterns', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ name: newName, description: newDescription || null, visibility: newVisibility }),
-            });
-            if (response.ok) {
-                const created = await response.json();
-                toast.showSuccess(t.reportmanagementpanel_created || 'Report Pattern created');
-                setCreateModalVisible(false);
-                setNewName('');
-                setNewDescription('');
-                setNewVisibility('private');
-                loadMyPatterns();
+            let created: any;
+            try {
+                created = await apiClient.post('/report-patterns', {
+                    name: newName,
+                    description: newDescription || null,
+                    visibility: newVisibility,
+                });
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.error || 'Error creating pattern');
+                return;
+            }
 
-                // Offer to set the new pattern as project default — only if no
-                // default exists yet, so we don't pester on every create.
-                const newId = created?.data?.id as number | undefined;
-                if (newId && selectedProject?.id) {
-                    const projectId = selectedProject.id;
-                    try {
-                        const checkRes = await fetch(`/api/projects/${projectId}/report-pattern`, { headers: getAuthHeaders() });
-                        if (checkRes.ok) {
-                            const checkData = await checkRes.json();
-                            if (!checkData?.data?.id) {
-                                confirmDialog({
-                                    group: 'report-management',
-                                    header: (t as unknown as Record<string, string>).reportpatterndefault_prompt_title || 'Set as project default?',
-                                    message: (t as unknown as Record<string, string>).reportpatterndefault_prompt_message
-                                        || 'This is the first Report Pattern in this project. Use it as the default? You can change this anytime in the project settings.',
-                                    icon: 'pi pi-question-circle',
-                                    acceptLabel: (t as unknown as Record<string, string>).reportmanagementpanel_yes || 'Yes',
-                                    rejectLabel: (t as unknown as Record<string, string>).reportmanagementpanel_no || 'No',
-                                    accept: async () => {
-                                        try {
-                                            await fetch(`/api/projects/${projectId}/report-pattern`, {
-                                                method: 'POST',
-                                                headers: getAuthHeaders(),
-                                                body: JSON.stringify({ report_pattern_id: newId }),
-                                            });
-                                        } catch {
-                                            // ignore — user can set default manually in project settings
-                                        }
-                                    },
-                                });
-                            }
-                        }
-                    } catch {
-                        // ignore — fallback path
+            toast.showSuccess(t.reportmanagementpanel_created || 'Report Pattern created');
+            setCreateModalVisible(false);
+            setNewName('');
+            setNewDescription('');
+            setNewVisibility('private');
+            loadMyPatterns();
+
+            // Offer to set the new pattern as project default — only if no
+            // default exists yet, so we don't pester on every create.
+            const newId = created?.data?.id as number | undefined;
+            if (newId && selectedProject?.id) {
+                const projectId = selectedProject.id;
+                try {
+                    const checkData = await apiClient.get(`/projects/${projectId}/report-pattern`);
+                    if (!checkData?.data?.id) {
+                        confirmDialog({
+                            group: 'report-management',
+                            header: (t as unknown as Record<string, string>).reportpatterndefault_prompt_title || 'Set as project default?',
+                            message: (t as unknown as Record<string, string>).reportpatterndefault_prompt_message
+                                || 'This is the first Report Pattern in this project. Use it as the default? You can change this anytime in the project settings.',
+                            icon: 'pi pi-question-circle',
+                            acceptLabel: (t as unknown as Record<string, string>).reportmanagementpanel_yes || 'Yes',
+                            rejectLabel: (t as unknown as Record<string, string>).reportmanagementpanel_no || 'No',
+                            accept: async () => {
+                                try {
+                                    await apiClient.post(`/projects/${projectId}/report-pattern`, { report_pattern_id: newId });
+                                } catch {
+                                    // ignore — user can set default manually in project settings
+                                }
+                            },
+                        });
                     }
+                } catch {
+                    // ignore — fallback path
                 }
-            } else {
-                const err = await response.json();
-                toast.showError(err.error || 'Error creating pattern');
             }
         } catch (error) {
             console.error('Create error:', error);
@@ -204,17 +184,9 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
 
     const handleClone = async (pattern: ReportPattern) => {
         try {
-            const response = await fetch(`/api/report-patterns/${pattern.id}/clone`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({}),
-            });
-            if (response.ok) {
-                toast.showSuccess(t.reportmanagementpanel_cloned || 'Report Pattern cloned');
-                loadMyPatterns();
-            } else {
-                toast.showError('Error cloning pattern');
-            }
+            await apiClient.post(`/report-patterns/${pattern.id}/clone`, {});
+            toast.showSuccess(t.reportmanagementpanel_cloned || 'Report Pattern cloned');
+            loadMyPatterns();
         } catch (error) {
             console.error('Clone error:', error);
             toast.showError('Error cloning pattern');
@@ -233,20 +205,19 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
         if (!editPattern || !editName.trim()) return;
         setEditing(true);
         try {
-            const response = await fetch(`/api/report-patterns/${editPattern.id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ name: editName, description: editDescription || null, visibility: editVisibility }),
-            });
-            if (response.ok) {
+            try {
+                await apiClient.put(`/report-patterns/${editPattern.id}`, {
+                    name: editName,
+                    description: editDescription || null,
+                    visibility: editVisibility,
+                });
                 toast.showSuccess(t.reportmanagementpanel_updated || 'Report Pattern updated');
                 setEditModalVisible(false);
                 setEditPattern(null);
                 loadMyPatterns();
                 loadPublicPatterns();
-            } else {
-                const err = await response.json();
-                toast.showError(err.error || 'Error updating pattern');
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.error || 'Error updating pattern');
             }
         } catch (error) {
             console.error('Edit error:', error);
@@ -267,20 +238,15 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
 
     const handleDelete = async (pattern: ReportPattern) => {
         try {
-            const res = await fetch(`/api/report-patterns/${pattern.id}/usage`, {
-                headers: getAuthHeaders(),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data?.data?.in_use) {
-                    setInUseInfo({
-                        patternName: pattern.name,
-                        tables: data.data.tables || [],
-                        projects: data.data.projects || [],
-                    });
-                    setInUseModalVisible(true);
-                    return;
-                }
+            const data = await apiClient.get(`/report-patterns/${pattern.id}/usage`);
+            if (data?.data?.in_use) {
+                setInUseInfo({
+                    patternName: pattern.name,
+                    tables: data.data.tables || [],
+                    projects: data.data.projects || [],
+                });
+                setInUseModalVisible(true);
+                return;
             }
         } catch {
             // If usage check fails, fall through — the backend's destroy()
@@ -295,16 +261,13 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
         if (!patternToDelete || deleteConfirmText !== 'DELETE') return;
         setDeleting(true);
         try {
-            const response = await fetch(`/api/report-patterns/${patternToDelete.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(),
-            });
-            if (response.ok) {
+            try {
+                await apiClient.delete(`/report-patterns/${patternToDelete.id}`);
                 toast.showSuccess(t.reportmanagementpanel_deleted || 'Report Pattern deleted');
                 setDeleteModalVisible(false);
                 setPatternToDelete(null);
                 loadMyPatterns();
-            } else {
+            } catch {
                 toast.showError('Error deleting pattern');
             }
         } catch (error) {

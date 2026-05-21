@@ -1,9 +1,29 @@
 // resources/js/Components/SqlImportModal.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from 'primereact/dialog';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
+
+// Tab order in the side menu — kept as named constants instead of magic
+// numbers so the conditional footer logic and any future tab additions
+// stay readable. Index in <TabViewSideMenu> corresponds to <TabPanel> child
+// position.
+//
+// Order is Paste / Service / Upload (NOT Paste / Upload / Service) because
+// the Service panel's content is ~300 lines and was authored as the middle
+// branch of the original ternary; reordering it to the end purely for visual
+// alignment would mean moving a large block of stateful JSX with no behavioural
+// payoff. The user-visible labels still read in plain order.
+const TAB_PASTE = 0;
+const TAB_SERVICE = 1;
+// TAB_UPLOAD intentionally not exported as a constant — Upload is the third
+// tab (index 2) but is never referenced by name in this file (the reset
+// targets TAB_PASTE and the conditional footer keys off TAB_SERVICE). The
+// number lives implicitly in the <TabPanel> ordering inside the JSX.
 
 interface SqlImportModalProps {
   isOpen: boolean;
@@ -34,7 +54,11 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'paste' | 'upload' | 'service'>('paste');
+  // Index into the TabViewSideMenu panels (see TAB_* constants at top of file).
+  // We use a numeric index because that's what PrimeReact's TabView
+  // activeIndex / onTabChange API speaks. The named constants keep the
+  // call sites readable.
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(TAB_PASTE);
   const [schemas, setSchemas] = useState<FloatingSchema[]>([]);
   const [selectedSchemaId, setSelectedSchemaId] = useState<number | null>(preselectedSchemaId || null);
   const [loadingSchemas, setLoadingSchemas] = useState(false);
@@ -83,7 +107,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     setDescription('');
     setError(null);
     setSuccessMessage(null);
-    setActiveTab('paste');
+    setActiveTabIndex(TAB_PASTE);
     setSelectedSchemaId(preselectedSchemaId || null);
     setAppendToCurrentVersion(false);
     setSkipBreakingChangeCheck(false);
@@ -125,16 +149,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     if (!confirmed) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      // Delete the task
-      await fetch(`/cli/svc/tasks/${serviceTaskId}/cancel`, {
+      // Delete the task (auth header + token refresh handled by apiClient.cliRequest)
+      await apiClient.cliRequest(`/svc/tasks/${serviceTaskId}/cancel`, {
         method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
       });
 
       setServiceLog(prev => [...prev, '', t.sqlimportmodal140]);
@@ -156,25 +173,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/projects/${selectedProject.id}/editable-schemas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get(`/projects/${selectedProject.id}/editable-schemas`);
+      } catch {
         throw new Error(t.databaseexportmodal71);
       }
-
-      const data = await response.json();
       setSchemas(data);
-      
+
       // Auto-select first schema if available and no preselected schema
       if (data.length > 0 && !selectedSchemaId && !preselectedSchemaId) {
         setSelectedSchemaId(data[0].id);
@@ -249,82 +255,70 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     };
   }, []);
 
-  // Check for active tasks and resume polling if needed when modal opens
+  // Check for active tasks and resume polling if needed when modal opens.
+  // Token + bearer headers handled by apiClient.cliRequest; the manual
+  // localStorage/sessionStorage read this used to do was redundant with the
+  // helper's getAuthToken() lookup.
   useEffect(() => {
     if (!isOpen || !selectedProject) return;
 
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (!token) return;
-
     // If we already have a task ID, check its status
     if (serviceTaskId) {
-      fetch(`/cli/svc/tasks/${serviceTaskId}`, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-      .then(res => res.json())
-      .then(result => {
-        if (result.success && result.task) {
-          const status = result.task.status;
-          if (status === 'pending' || status === 'processing') {
-            // Task is still running, resume polling
-            if (!servicePolling) {
-              setServiceLog(prev => [...prev, '', t.sqlimportmodal273]);
-              setServicePolling(true);
-              startPolling(serviceTaskId, token);
+      apiClient.cliRequest(`/svc/tasks/${serviceTaskId}`)
+        .then(result => {
+          if (result.success && result.task) {
+            const status = result.task.status;
+            if (status === 'pending' || status === 'processing') {
+              // Task is still running, resume polling
+              if (!servicePolling) {
+                setServiceLog(prev => [...prev, '', t.sqlimportmodal273]);
+                setServicePolling(true);
+                startPolling(serviceTaskId);
+              }
+            } else if (status === 'completed') {
+              if (!serviceLog.some(log => log.includes(t.sqlimportmodal278))) {
+                setServiceLog(prev => [...prev, '', t.sqlimportmodal279]);
+              }
+              setServiceTaskId(null); // Clear so user can start new import
+            } else if (status === 'failed') {
+              if (!serviceLog.some(log => log.includes(t.sqlimportmodal283))) {
+                setServiceLog(prev => [...prev, '', `${t.sqlimportmodal284}${result.task.error_message || t.sqlimportmodal284_2}`, '', t.sqlimportmodal284_3]);
+              }
+              setServiceTaskId(null); // Clear so button becomes active again
             }
-          } else if (status === 'completed') {
-            if (!serviceLog.some(log => log.includes(t.sqlimportmodal278))) {
-              setServiceLog(prev => [...prev, '', t.sqlimportmodal279]);
-            }
-            setServiceTaskId(null); // Clear so user can start new import
-          } else if (status === 'failed') {
-            if (!serviceLog.some(log => log.includes(t.sqlimportmodal283))) {
-              setServiceLog(prev => [...prev, '', `${t.sqlimportmodal284}${result.task.error_message || t.sqlimportmodal284_2}`, '', t.sqlimportmodal284_3]);
-            }
-            setServiceTaskId(null); // Clear so button becomes active again
           }
-        }
-      })
-      .catch(err => {
-        console.error(t.sqlimportmodal291, err);
-      });
+        })
+        .catch(err => {
+          console.error(t.sqlimportmodal291, err);
+        });
     } else {
       // No task ID yet - check if there's any pending/processing task for this user
-      fetch(`/cli/svc/tasks/active`, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-      .then(res => res.json())
-      .then(result => {
-        if (result.success && result.task) {
-          // Found an active task - load it
-          const task = result.task;
-          setServiceTaskId(task.id);
-          setServiceLog([
-            t.sqlimportmodal308,
-            `${t.sqlimportmodal309}${task.id}`,
-            `${t.sqlimportmodal310}${task.status}`,
-            '',
-          ]);
+      apiClient.cliRequest(`/svc/tasks/active`)
+        .then(result => {
+          if (result.success && result.task) {
+            // Found an active task - load it
+            const task = result.task;
+            setServiceTaskId(task.id);
+            setServiceLog([
+              t.sqlimportmodal308,
+              `${t.sqlimportmodal309}${task.id}`,
+              `${t.sqlimportmodal310}${task.status}`,
+              '',
+            ]);
 
-          if (task.status === 'pending' || task.status === 'processing') {
-            setServicePolling(true);
-            startPolling(task.id, token);
-          } else if (task.status === 'completed') {
-            setServiceLog(prev => [...prev, t.sqlimportmodal318]);
-          } else if (task.status === 'failed') {
-            setServiceLog(prev => [...prev, `${t.sqlimportmodal320}${task.error_message || t.sqlimportmodal320_2}`]);
+            if (task.status === 'pending' || task.status === 'processing') {
+              setServicePolling(true);
+              startPolling(task.id);
+            } else if (task.status === 'completed') {
+              setServiceLog(prev => [...prev, t.sqlimportmodal318]);
+            } else if (task.status === 'failed') {
+              setServiceLog(prev => [...prev, `${t.sqlimportmodal320}${task.error_message || t.sqlimportmodal320_2}`]);
+            }
           }
-        }
-      })
-      .catch(err => {
-        console.error(t.sqlimportmodal325, err);
-      });
+        })
+        .catch(err => {
+          console.error(t.sqlimportmodal325, err);
+        });
     }
   }, [isOpen, selectedProject]);
 
@@ -360,11 +354,6 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
 
   // Validate SQL for missing FK references
   const validateSqlImport = async (): Promise<boolean> => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (!token) {
-      return true; // Skip validation if no token
-    }
-
     try {
       setValidating(true);
       setError(null);
@@ -376,19 +365,14 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         append_to_current_version: appendToCurrentVersion,
       };
 
-      const response = await fetch('/api/sql-validate-import', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      let result: any;
+      try {
+        result = await apiClient.post('/sql-validate-import', payload);
+      } catch (err: any) {
+        result = err?.response?.data || { success: false };
+      }
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         setError(result.error || t.sqlimportmodal390);
         return false;
       }
@@ -429,11 +413,6 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       setError(null);
       setShowFkWarning(false);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.panelt2405);
-      }
-
       const payload = {
         sql_script: sqlScript,
         schema_id: selectedSchemaId,
@@ -443,27 +422,22 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         skip_breaking_change_check: skipBreakingChangeCheck,
       };
 
-      const response = await fetch('/api/sql-parse-and-store', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      // Try to parse JSON response — read body as text first to avoid "body stream already read" error
       let result: any;
-      const responseText = await response.text();
       try {
-        result = JSON.parse(responseText);
-      } catch {
-        console.error(t.sqlimportmodal461, responseText.substring(0, 1000));
-        throw new Error(`${t.sqlimportmodal462}(${response.status}): ${response.statusText}\n\n${t.sqlimportmodal462}${responseText.substring(0, 500)}${responseText.length > 500 ? '...' : ''}`);
+        result = await apiClient.post('/sql-parse-and-store', payload);
+      } catch (err: any) {
+        // apiClient throws with parsed JSON body on non-2xx. If body isn't
+        // JSON (server returned HTML / plain text on 500), surface that
+        // explicitly so debugging stays readable.
+        const data = err?.response?.data;
+        if (data && typeof data === 'object') {
+          result = data;
+        } else {
+          throw new Error(`${t.sqlimportmodal462}(${err?.response?.status || ''}): ${err?.message || ''}`);
+        }
       }
 
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         // Create detailed error message
         let errorMessage = result.error || t.sqlimportmodal177;
 
@@ -559,12 +533,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     setServiceLog([t.sqlimportmodal558]);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.sqlimportmodal563);
-      }
-
-      // Create connection test task
+      // Create connection test task (auth handled by apiClient.cliRequest)
       const payload = {
         payload: {
           connection_type: serviceConnectionType,
@@ -576,19 +545,15 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         }
       };
 
-      const response = await fetch('/cli/svc/tasks/connection-test', {
+      // cliRequest throws on !response.ok (HTTP error). It does NOT inspect
+      // the parsed body, so an application-level `success: false` with a
+      // 200 status still has to be caught explicitly below.
+      const result = await apiClient.cliRequest('/svc/tasks/connection-test', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || t.sqlimportmodal591);
       }
 
@@ -603,14 +568,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         pollCount++;
 
         try {
-          const statusResponse = await fetch(`/cli/svc/tasks/${taskId}`, {
-            headers: {
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          const statusResult = await statusResponse.json();
+          const statusResult = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
           const taskData = statusResult.task;
 
           if (taskData.status === 'completed') {
@@ -708,12 +666,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       setServicePolling(true);
       setServiceLog([t.sqlimportmodal708]);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.sqlimportmodal712);
-      }
-
-      // Create task
+      // Create task (auth handled by apiClient.cliRequest)
       const payload = {
         task_type: 'database_import',
         payload: {
@@ -729,19 +682,12 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
         }
       };
 
-      const response = await fetch('/cli/svc/tasks/database-import', {
+      const result = await apiClient.cliRequest('/svc/tasks/database-import', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success) {
         throw new Error(result.message || t.sqlimportmodal744);
       }
 
@@ -749,7 +695,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       setServiceLog(prev => [...prev, `${t.sqlimportmodal748}${result.task_id})`, t.sqlimportmodal748_2]);
 
       // Start polling
-      startPolling(result.task_id, token);
+      startPolling(result.task_id);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : t.sqlimportmodal754);
@@ -758,7 +704,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
     }
   };
 
-  const startPolling = (taskId: number, token: string) => {
+  // Token plumbing removed: apiClient.cliRequest reads the token internally
+  // and handles 401-refresh, so the caller doesn't need to thread one through.
+  const startPolling = (taskId: number) => {
     // Clear any existing polling interval
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -772,18 +720,9 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       pollCount++;
 
       try {
-        const response = await fetch(`/cli/svc/tasks/${taskId}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || t.sqlimportmodal784);
-        }
+        // cliRequest throws on !response.ok, so we don't have to inspect the
+        // status code ourselves — the catch below handles the failure path.
+        const result = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
 
         const taskData = result.task;
 
@@ -825,13 +764,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
           ]);
 
           // Mark task as failed on backend (no retry for timeout!)
-          fetch(`/cli/svc/tasks/${taskId}/fail`, {
+          apiClient.cliRequest(`/svc/tasks/${taskId}/fail`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
             body: JSON.stringify({
               error_message: t.sqlimportmodal835,
               allow_retry: false, // Don't auto-retry timeouts
@@ -873,70 +807,57 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
       header={t.sqlimportmodal211}
       visible={isOpen}
       onHide={handleClose}
-      style={{ width: '50vw', maxWidth: '800px' }}
+      /* Wider than the original 50vw/800px so the new side-menu + content
+       * pair has room without the panels feeling cramped. Fixed height pins
+       * the dialog so it doesn't resize itself when the user flips between
+       * the three tabs (Paste is short, Service is tall — without a fixed
+       * height the modal would jump on every tab change). */
+      style={{ width: '900px', height: '85vh' }}
       modal
       closable={!loading}
       draggable={true}
       resizable={true}
-      className="sql-import-modal"
-      contentStyle={{
-        padding: '0',
-        backgroundColor: colors.dialogContent,
-        color: colors.textPrimary,
-        maxHeight: '80vh',
-        overflow: 'auto'
-      }}
-      headerStyle={{
-        backgroundColor: colors.dialogHeader,
-        color: colors.textPrimary,
-        borderBottom: `1px solid ${colors.borderPrimary}`
-      }}
+      /* p-dialog-custom: opt-in to the unified purple gradient header that
+       * every other migrated modal uses (matched against the .p-dialog-custom
+       * legacy class in styles.css; same look, semantic marker for "this is
+       * one of the app-wide styled dialogs"). The old "sql-import-modal"
+       * class is retained for any local CSS that might still target it. */
+      className="p-dialog-custom sql-import-modal"
+      /* contentStyle pares down to just padding: 0 — the rest is owned by
+       * the global .p-dialog .p-dialog-content rules in styles.css, plus
+       * the :has(.p-tabview-vertical-wrapper) override (which already sets
+       * overflow: hidden, padding: 0, and flex sizing). Specifying maxHeight
+       * here would have fought our fixed dialog height. */
+      contentStyle={{ padding: '0' }}
     >
-      <div className="h-full" style={{ backgroundColor: colors.bgSecondary }}>
-        <p className="text-sm px-6 pt-4 pb-2" style={{ color: colors.textMuted }}>{t.sqlimportmodal895}</p>
+      {/* Outer wrapper is a flex-column so the <p> notice and the <form>
+       * underneath share the available height correctly. Previously both
+       * were plain block siblings with h-full on the form, which made the
+       * form spill ~30px past the dialog-content's bottom — the footer
+       * was clipped under the dialog edge because our :has() rule sets
+       * overflow:hidden on .p-dialog-content. With flex-column the form
+       * takes only the remaining space (flex-1) and the footer stays
+       * visible at the bottom. min-h-0 on the scroll region lets it
+       * shrink below content height (a known flex quirk). */}
+      <div className="h-full flex flex-col" style={{ backgroundColor: colors.bgSecondary }}>
+        <p className="text-sm px-6 pt-4 pb-2 flex-shrink-0" style={{ color: colors.textMuted }}>{t.sqlimportmodal895}</p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col h-full">
-          {/* Tabs */}
-          <div className="flex" style={{ borderBottom: `1px solid ${colors.borderPrimary}` }}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('paste')}
-              className="px-6 py-3 text-sm font-medium transition-colors"
-              style={{
-                color: activeTab === 'paste' ? colors.accent : colors.textMuted,
-                borderBottom: activeTab === 'paste' ? `2px solid ${colors.accent}` : 'none',
-                backgroundColor: activeTab === 'paste' ? colors.bgTertiary : 'transparent'
-              }}
-            >
-              {t.sqlimportmodal910}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('upload')}
-              className="px-6 py-3 text-sm font-medium transition-colors"
-              style={{
-                color: activeTab === 'upload' ? colors.accent : colors.textMuted,
-                borderBottom: activeTab === 'upload' ? `2px solid ${colors.accent}` : 'none',
-                backgroundColor: activeTab === 'upload' ? colors.bgTertiary : 'transparent'
-              }}
-            >
-              {t.sqlimportmodal922}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('service')}
-              className="px-6 py-3 text-sm font-medium transition-colors"
-              style={{
-                color: activeTab === 'service' ? colors.accent : colors.textMuted,
-                borderBottom: activeTab === 'service' ? `2px solid ${colors.accent}` : 'none',
-                backgroundColor: activeTab === 'service' ? colors.bgTertiary : 'transparent'
-              }}
-            >
-              {t.sqlimportmodal934}
-            </button>
-          </div>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+          {/* Custom button tab-bar replaced by <TabViewSideMenu> further down
+              so the modal matches the rest of the app's "settings-style"
+              vertical tab pattern. activeTabIndex (number) replaces the
+              previous string union. */}
 
-          <div ref={modalContentRef} className="p-6 overflow-y-auto flex-1">
+          {/* Two-region layout below: a top "shared inputs" block that takes
+           * its natural height, and a TabView region that fills whatever's
+           * left. Previously this was a single block container with
+           * overflow-y-auto, but the .p-tabview-vertical-wrapper inside takes
+           * height:100% of its parent. Combined with the shared content
+           * already sitting above it, the parent had to grow taller than
+           * itself — which produced the extra outer scrollbar the user saw
+           * even when there wasn't enough actual content to scroll. */}
+          <div ref={modalContentRef} className="flex flex-col flex-1 min-h-0">
+            <div className="p-6 pb-4 flex-shrink-0">
             {/* Success Display */}
             {successMessage && (
               <div className="mb-4 p-3 rounded" style={{ backgroundColor: colors.successBg, border: `1px solid ${colors.successBorder}`, color: colors.successText }}>
@@ -1104,10 +1025,32 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                 {t.sqlimportmodal1103}
               </div>
             </div>
+            </div>
 
-            {/* Content Area */}
-            {activeTab === 'paste' ? (
-              <div>
+            {/* TabView region: flex-1 takes whatever vertical space the
+             * shared inputs above didn't claim; min-h-0 unblocks flex from
+             * the children's intrinsic minimum content height (the TabView
+             * panels can then size themselves via overflow:auto internally). */}
+            <div className="flex-1 min-h-0">
+            {/* Content Area — TabViewSideMenu replaces the previous
+                ternary on `activeTab`. Tab order matches the original button
+                bar: Paste, Service, Upload (Service sits in the middle because
+                its content was the original middle branch of the ternary; the
+                visual order in the side menu mirrors the constant declarations
+                at the top of this file). */}
+            <TabViewSideMenu
+              storageKey="sqlImportModal"
+              activeIndex={activeTabIndex}
+              onTabChange={(e) => setActiveTabIndex(e.index)}
+              defaultWidth={280}
+              /* Override the default 15px left inset (set in styles.css) so the
+               * grey menu band aligns flush with the upper input boxes — those
+               * sit inside the modalContentRef's p-6 padding (24px). The CSS
+               * variable is read by both the wrapper padding and the resizer
+               * left-offset calc, so a single override keeps both in sync. */
+              style={{ ['--p-tabview-vertical-pad-left' as string]: '0px'} as React.CSSProperties}
+            >
+              <TabPanel header={<span><i className="pi pi-clipboard mr-2" />{t.sqlimportmodal910}</span>}>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   {t.sqlimportmodal1111}
                 </label>
@@ -1123,8 +1066,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   {t.sqlimportmodal1122}
                   {t.sqlimportmodal1123}
                 </div>
-              </div>
-            ) : activeTab === 'service' ? (
+              </TabPanel>
+              <TabPanel header={<span><i className="pi pi-server mr-2" />{t.sqlimportmodal934}</span>}>
               <div className="space-y-4">
                 {/* Database Connection Form */}
                 <div className="grid grid-cols-2 gap-4">
@@ -1287,10 +1230,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                             setServiceLog(prev => [...prev, `${t.sqlimportmodal1283}'${selectedDb}'...`]);
 
                             try {
-                              const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-                              if (!token) return;
-
                               // Create a new connection test task with the selected database
+                              // (auth handled by apiClient.cliRequest)
                               const payload = {
                                 payload: {
                                   connection_type: serviceConnectionType,
@@ -1302,17 +1243,11 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                                 }
                               };
 
-                              const response = await fetch('/cli/svc/tasks/connection-test', {
+                              const result = await apiClient.cliRequest('/svc/tasks/connection-test', {
                                 method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Accept': 'application/json',
-                                  'Authorization': `Bearer ${token}`,
-                                },
                                 body: JSON.stringify(payload),
                               });
 
-                              const result = await response.json();
                               if (!result.success) return;
 
                               // Poll for schemas
@@ -1325,10 +1260,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                                   return;
                                 }
 
-                                const statusResponse = await fetch(`/cli/svc/tasks/${taskId}`, {
-                                  headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` },
-                                });
-                                const statusResult = await statusResponse.json();
+                                const statusResult = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
 
                                 if (statusResult.task?.status === 'completed') {
                                   clearInterval(pollInterval);
@@ -1449,7 +1381,8 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                 )}
               </div>
-            ) : (
+              </TabPanel>
+              <TabPanel header={<span><i className="pi pi-upload mr-2" />{t.sqlimportmodal922}</span>}>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
                   {t.sqlimportmodal1451}
@@ -1516,13 +1449,18 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   </div>
                 )}
               </div>
-            )}
+              </TabPanel>
+            </TabViewSideMenu>
+            </div>
           </div>
 
-          {/* Footer */}
-          {activeTab !== 'service' ? (
+          {/* Footer — flex-shrink-0 keeps it at its natural height even when
+           * the scroll region above wants to grow. Without it the footer
+           * could collapse and the buttons would sit invisible behind the
+           * dialog's bottom edge. */}
+          {activeTabIndex !== TAB_SERVICE ? (
             <div
-              className="flex justify-end gap-3 p-6"
+              className="flex justify-end gap-3 p-6 flex-shrink-0"
               style={{ borderTop: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}
             >
               <button
@@ -1562,7 +1500,7 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
             </div>
           ) : (
             <div
-              className="flex justify-between items-center p-6"
+              className="flex justify-between items-center p-6 flex-shrink-0"
               style={{ borderTop: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgPrimary }}
             >
               <div className="flex gap-3">

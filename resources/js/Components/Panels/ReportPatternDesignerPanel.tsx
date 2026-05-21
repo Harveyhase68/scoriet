@@ -17,6 +17,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import ImageUploadSection from './ReportImageUpload';
+import { apiClient } from '@/lib/api';
 
 // ============ INTERFACES ============
 
@@ -212,14 +213,6 @@ const TEXT_ALIGN_OPTIONS = [
 ];
 
 
-const getAuthHeaders = () => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    };
-};
 
 // ============ CUSTOM NODES ============
 
@@ -798,11 +791,8 @@ const ReportPatternDesignerPanelInner: React.FC<ReportPatternDesignerPanelProps>
 
     const loadPatterns = async () => {
         try {
-            const response = await fetch('/api/report-patterns?own_only=true', { headers: getAuthHeaders() });
-            if (response.ok) {
-                const data = await response.json();
-                setPatterns(data.data || []);
-            }
+            const data = await apiClient.get('/report-patterns?own_only=true');
+            setPatterns(data.data || []);
         } catch (error) {
             console.error('Error loading patterns:', error);
         }
@@ -811,23 +801,20 @@ const ReportPatternDesignerPanelInner: React.FC<ReportPatternDesignerPanelProps>
     const loadPatternDetails = async (patternId: number, preserveFormType?: string) => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/report-patterns/${patternId}`, { headers: getAuthHeaders() });
-            if (response.ok) {
-                const data = await response.json();
-                const pattern = data.data;
-                setSelectedPattern(pattern);
-                if (pattern.forms && pattern.forms.length > 0) {
-                    // Preserve the currently selected form type if requested
-                    const targetType = preserveFormType || selectedForm?.form_type;
-                    const matchingForm = targetType
-                        ? pattern.forms.find((f: ReportPatternForm) => f.form_type === targetType)
-                        : null;
-                    const formToSelect = matchingForm || pattern.forms[0];
-                    setSelectedForm(formToSelect);
-                    buildNodes(formToSelect);
-                    setHasUnsavedChanges(false);
-                    setSelectedTableSection(null);
-                }
+            const data = await apiClient.get(`/report-patterns/${patternId}`);
+            const pattern = data.data;
+            setSelectedPattern(pattern);
+            if (pattern.forms && pattern.forms.length > 0) {
+                // Preserve the currently selected form type if requested
+                const targetType = preserveFormType || selectedForm?.form_type;
+                const matchingForm = targetType
+                    ? pattern.forms.find((f: ReportPatternForm) => f.form_type === targetType)
+                    : null;
+                const formToSelect = matchingForm || pattern.forms[0];
+                setSelectedForm(formToSelect);
+                buildNodes(formToSelect);
+                setHasUnsavedChanges(false);
+                setSelectedTableSection(null);
             }
         } catch (error) {
             console.error('Error loading pattern:', error);
@@ -1083,27 +1070,20 @@ const ReportPatternDesignerPanelInner: React.FC<ReportPatternDesignerPanelProps>
             if (elementType === 'heading') { body.font_size = 14; body.font_weight = 'bold'; }
             if (['line_horizontal', 'line_vertical', 'box'].includes(elementType)) { body.border_width = 1; body.border_color = '#000000'; }
 
-            const response = await fetch(`/api/report-pattern-forms/${selectedForm.id}/elements`, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(body),
-            });
-            if (response.ok) {
-                const result = await response.json();
-                // Add new element(s) locally instead of full reload (prevents panel jump)
-                const newElements = Array.isArray(result.data) ? result.data : [result.data];
-                if (selectedForm && selectedPattern) {
-                    const currentElements = selectedForm.elements || [];
-                    const updatedForm = { ...selectedForm, elements: [...currentElements, ...newElements] };
-                    setSelectedForm(updatedForm);
-                    // Update pattern forms array
-                    const updatedForms = (selectedPattern.forms || []).map(f =>
-                        f.id === updatedForm.id ? updatedForm : f
-                    );
-                    setSelectedPattern({ ...selectedPattern, forms: updatedForms });
-                    buildNodes(updatedForm);
-                    setHasUnsavedChanges(true);
-                }
+            const result = await apiClient.post(`/report-pattern-forms/${selectedForm.id}/elements`, body);
+            // Add new element(s) locally instead of full reload (prevents panel jump)
+            const newElements = Array.isArray(result.data) ? result.data : [result.data];
+            if (selectedForm && selectedPattern) {
+                const currentElements = selectedForm.elements || [];
+                const updatedForm = { ...selectedForm, elements: [...currentElements, ...newElements] };
+                setSelectedForm(updatedForm);
+                // Update pattern forms array
+                const updatedForms = (selectedPattern.forms || []).map(f =>
+                    f.id === updatedForm.id ? updatedForm : f
+                );
+                setSelectedPattern({ ...selectedPattern, forms: updatedForms });
+                buildNodes(updatedForm);
+                setHasUnsavedChanges(true);
             }
         } catch (error) {
             console.error('Error adding element:', error);
@@ -1137,32 +1117,27 @@ const ReportPatternDesignerPanelInner: React.FC<ReportPatternDesignerPanelProps>
     const deleteElement = useCallback(async () => {
         if (!selectedElement?.id) return;
         try {
-            const response = await fetch(`/api/report-pattern-elements/${selectedElement.id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(),
-            });
-            if (response.ok) {
-                // Remove locally instead of full reload (prevents blink)
-                if (selectedForm && selectedPattern) {
-                    const deletedId = selectedElement.id;
-                    const currentElements = selectedForm.elements || [];
-                    // Also remove linked table_header if deleting a detail_section
-                    const filteredElements = currentElements.filter(el =>
-                        el.id !== deletedId && !(el.element_type === 'table_header' && el.linked_element_id === deletedId)
-                    );
-                    const updatedForm = { ...selectedForm, elements: filteredElements };
-                    setSelectedForm(updatedForm);
-                    const updatedForms = (selectedPattern.forms || []).map(f =>
-                        f.id === updatedForm.id ? updatedForm : f
-                    );
-                    setSelectedPattern({ ...selectedPattern, forms: updatedForms });
-                    buildNodes(updatedForm);
-                }
-                setSelectedElement(null);
-                setSelectedNodeId(null);
-                setSelectedTableSection(null);
-                setHasUnsavedChanges(true);
+            await apiClient.delete(`/report-pattern-elements/${selectedElement.id}`);
+            // Remove locally instead of full reload (prevents blink)
+            if (selectedForm && selectedPattern) {
+                const deletedId = selectedElement.id;
+                const currentElements = selectedForm.elements || [];
+                // Also remove linked table_header if deleting a detail_section
+                const filteredElements = currentElements.filter(el =>
+                    el.id !== deletedId && !(el.element_type === 'table_header' && el.linked_element_id === deletedId)
+                );
+                const updatedForm = { ...selectedForm, elements: filteredElements };
+                setSelectedForm(updatedForm);
+                const updatedForms = (selectedPattern.forms || []).map(f =>
+                    f.id === updatedForm.id ? updatedForm : f
+                );
+                setSelectedPattern({ ...selectedPattern, forms: updatedForms });
+                buildNodes(updatedForm);
             }
+            setSelectedElement(null);
+            setSelectedNodeId(null);
+            setSelectedTableSection(null);
+            setHasUnsavedChanges(true);
         } catch (error) {
             console.error('Error deleting element:', error);
             toast.showError('Error deleting element');
@@ -1253,57 +1228,16 @@ const ReportPatternDesignerPanelInner: React.FC<ReportPatternDesignerPanelProps>
                 }
             }
 
-            const response = await fetch(`/api/report-pattern-forms/${selectedForm.id}/elements`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ elements }),
-            });
-
-            if (response.ok) {
-                // Save form properties in background (non-blocking) — includes list_style_config
-                if (selectedForm) {
-                    fetch(`/api/report-pattern-forms/${selectedForm.id}`, {
-                        method: 'PUT',
-                        headers: getAuthHeaders(),
-                        body: JSON.stringify({
-                            paper_size: selectedForm.paper_size,
-                            paper_orientation: selectedForm.paper_orientation,
-                            paper_unit: selectedForm.paper_unit,
-                            paper_width: selectedForm.paper_width,
-                            paper_height: selectedForm.paper_height,
-                            margin_top: selectedForm.margin_top,
-                            margin_right: selectedForm.margin_right,
-                            margin_bottom: selectedForm.margin_bottom,
-                            margin_left: selectedForm.margin_left,
-                            row_height: selectedForm.row_height,
-                            max_columns: selectedForm.max_columns,
-                            header_height: selectedForm.header_height,
-                            footer_height: selectedForm.footer_height,
-                            list_style_config: selectedForm.list_style_config || null,
-                        }),
-                    }).catch(() => {}); // fire-and-forget
-                }
-                toast.showSuccess(t.reportpatterndesigner_saved || 'Elements saved');
-                setHasUnsavedChanges(false);
-            } else {
+            try {
+                await apiClient.put(`/report-pattern-forms/${selectedForm.id}/elements`, { elements });
+            } catch {
                 toast.showError('Error saving elements');
+                return;
             }
-        } catch (error) {
-            console.error('Error saving:', error);
-            toast.showError('Error saving elements');
-        } finally {
-            setSaving(false);
-        }
-    }, [selectedForm, selectedPattern, nodes]);
 
-    const saveFormProperties = useCallback(async () => {
-        if (!selectedForm) return;
-        setSaving(true);
-        try {
-            const response = await fetch(`/api/report-pattern-forms/${selectedForm.id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
+            // Save form properties in background (non-blocking) — includes list_style_config
+            if (selectedForm) {
+                apiClient.put(`/report-pattern-forms/${selectedForm.id}`, {
                     paper_size: selectedForm.paper_size,
                     paper_orientation: selectedForm.paper_orientation,
                     paper_unit: selectedForm.paper_unit,
@@ -1318,13 +1252,41 @@ const ReportPatternDesignerPanelInner: React.FC<ReportPatternDesignerPanelProps>
                     header_height: selectedForm.header_height,
                     footer_height: selectedForm.footer_height,
                     list_style_config: selectedForm.list_style_config || null,
-                }),
+                }).catch(() => {}); // fire-and-forget
+            }
+            toast.showSuccess(t.reportpatterndesigner_saved || 'Elements saved');
+            setHasUnsavedChanges(false);
+        } catch (error) {
+            console.error('Error saving:', error);
+            toast.showError('Error saving elements');
+        } finally {
+            setSaving(false);
+        }
+    }, [selectedForm, selectedPattern, nodes]);
+
+    const saveFormProperties = useCallback(async () => {
+        if (!selectedForm) return;
+        setSaving(true);
+        try {
+            await apiClient.put(`/report-pattern-forms/${selectedForm.id}`, {
+                paper_size: selectedForm.paper_size,
+                paper_orientation: selectedForm.paper_orientation,
+                paper_unit: selectedForm.paper_unit,
+                paper_width: selectedForm.paper_width,
+                paper_height: selectedForm.paper_height,
+                margin_top: selectedForm.margin_top,
+                margin_right: selectedForm.margin_right,
+                margin_bottom: selectedForm.margin_bottom,
+                margin_left: selectedForm.margin_left,
+                row_height: selectedForm.row_height,
+                max_columns: selectedForm.max_columns,
+                header_height: selectedForm.header_height,
+                footer_height: selectedForm.footer_height,
+                list_style_config: selectedForm.list_style_config || null,
             });
-            if (response.ok) {
-                toast.showSuccess(t.reportpatterndesigner_form_saved || 'Form properties saved');
-                if (selectedPattern) {
-                    loadPatternDetails(selectedPattern.id);
-                }
+            toast.showSuccess(t.reportpatterndesigner_form_saved || 'Form properties saved');
+            if (selectedPattern) {
+                loadPatternDetails(selectedPattern.id);
             }
         } catch (error) {
             console.error('Error saving form:', error);

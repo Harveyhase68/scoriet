@@ -146,8 +146,8 @@ export default function LanguageManagementPanel() {
 
   const handleToggleActive = async (language: Language) => {
     try {
-      await api.request(`/languages/${language.id}/toggle-active`, { method: t.languagemanagementpanel142 });
-      toast.showSuccess(`${t.languagemanagementpanel149}${language.is_active ? t.languagemanagementpanel149_2 : t.languagemanagementpanel149_3}{t.languagemanagementpanel149_4}`);
+      await api.request(`/languages/${language.id}/toggle-active`, { method: 'PATCH' });
+      toast.showSuccess(`${t.languagemanagementpanel149}${language.is_active ? t.languagemanagementpanel149_2 : t.languagemanagementpanel149_3}${t.languagemanagementpanel149_4}`);
       fetchLanguages();
     } catch (error: any) {
       toast.showError(t.languagemanagementpanel152 + (error.response?.data?.message || error.message));
@@ -156,7 +156,7 @@ export default function LanguageManagementPanel() {
 
   const handleSetDefault = async (language: Language) => {
     try {
-      await api.request(`/languages/${language.id}/set-default`, { method: t.languagemanagementpanel142 });
+      await api.request(`/languages/${language.id}/set-default`, { method: 'PATCH' });
       toast.showSuccess(t.languagemanagementpanel153);
       fetchLanguages();
     } catch (error: any) {

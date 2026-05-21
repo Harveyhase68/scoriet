@@ -6,6 +6,7 @@ import { Badge } from 'primereact/badge';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 export default function TopBar() {
   // i18n setup
@@ -43,42 +44,13 @@ export default function TopBar() {
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/projects/${selectedProject.id}/applications`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const applications = data.applications || [];
-        const pendingCount = applications.filter((app: any) => app.status === 'pending').length;
-        setPendingApplicationsCount(pendingCount);
-      } else if (response.status === 401) {
-        // Token was revoked (likely logged in on another device)
-        const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
-        const isLoggingOut = localStorage.getItem('logout_in_progress');
-
-        if (!alreadyNotified && !isLoggingOut) {
-          sessionStorage.setItem('session_revoke_notified', 'true');
-
-          // Clear tokens
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-
-          window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
-            detail: { reason: 'token_revoked' }
-          }));
-        }
-      }
+      const data = await apiClient.get(`/projects/${selectedProject.id}/applications`);
+      const applications = data.applications || [];
+      const pendingCount = applications.filter((app: any) => app.status === 'pending').length;
+      setPendingApplicationsCount(pendingCount);
     } catch {
-      // Error loading pending applications
+      // apiClient handled any 401 (refresh + retry, or clean logout). Anything
+      // else that lands here is a transient server/network issue - just zero out.
       setPendingApplicationsCount(0);
     }
   }, [selectedProject]);
@@ -86,43 +58,9 @@ export default function TopBar() {
   // Load unread messages count (also in demo mode)
   const loadUnreadMessages = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setUnreadMessagesCount(0);
-        setLatestUnreadThreadId(null);
-        return;
-      }
-
-      const response = await fetch('/api/messages/unread-count', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUnreadMessagesCount(data.count || 0);
-        setLatestUnreadThreadId(data.latest_unread_thread_id || null);
-      } else if (response.status === 401) {
-        // Token was revoked (likely logged in on another device)
-        const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
-        const isLoggingOut = localStorage.getItem('logout_in_progress');
-
-        if (!alreadyNotified && !isLoggingOut) {
-          sessionStorage.setItem('session_revoke_notified', 'true');
-
-          // Clear tokens
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          sessionStorage.removeItem('access_token');
-          sessionStorage.removeItem('refresh_token');
-
-          window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
-            detail: { reason: 'token_revoked' }
-          }));
-        }
-      }
+      const data = await apiClient.get('/messages/unread-count');
+      setUnreadMessagesCount(data.count || 0);
+      setLatestUnreadThreadId(data.latest_unread_thread_id || null);
     } catch {
       setUnreadMessagesCount(0);
       setLatestUnreadThreadId(null);
@@ -209,7 +147,7 @@ export default function TopBar() {
             alt={t.topbar71}
             className="h-8 w-auto cursor-pointer"
             style={{ maxHeight: '32px', width: 'auto' }}
-            title={`Scoriet v${import.meta.env.VITE_APP_VERSION || 'dev'}\n\nEnterprise Code Generator\nMySQL | PostgreSQL | SQLite | MS-SQL | Firebird`}
+            title={`Scoriet v${import.meta.env.VITE_APP_VERSION || 'dev'}\n\nSchema-to-Stack Studio\nMySQL | PostgreSQL | SQLite | MS-SQL | Firebird`}
           />
           <div className="text-xs hidden sm:block" style={{ color: colors.textMuted }}>{t.topbar195}</div>
         </div>

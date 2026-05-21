@@ -1,0 +1,22 @@
+node_modules
+vendor
+
+# Environment files: never bake other environments' credentials into the image.
+# Only .env.docker is the source of truth for Docker builds.
+.env
+.env.*
+!.env.docker
+
+# Vite dev-server marker. If this file exists, laravel-vite-plugin proxies
+# every asset request to the host dev server (e.g. http://10.0.0.8:5173),
+# which would load LoginModal.tsx etc. with the *host's* env vars — not the
+# container's. That bypasses our docker-mode Vite build entirely.
+public/hot
+
+# Local generated artifacts that should be produced inside the container,
+# not copied from the host build state. We deliberately keep the empty
+# storage/framework/{cache,sessions,views,testing} directories — Laravel
+# expects them to exist at runtime (cache:clear fails otherwise).
+public/build
+storage/logs/*.log
+bootstrap/cache/*.php

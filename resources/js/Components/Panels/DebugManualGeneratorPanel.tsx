@@ -18,6 +18,7 @@ import 'prismjs/plugins/line-numbers/prism-line-numbers.css';
 import 'prismjs/plugins/line-numbers/prism-line-numbers';
 import { useTranslation, SupportedLanguage, getStoredLanguage} from '@/i18n';
 import type { Translations } from '@/i18n/types';
+import { apiClient } from '@/lib/api';
 
 // Professional JavaScript syntax highlighter using Prism.js
 const highlightCode = (code: string) => {
@@ -416,48 +417,38 @@ export default function DebugManualGeneratorPanel({
 
   const loadTemplates = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
+      // IMPORTANT: If preSelectedTemplateId exists (from the TreeView), load ALL templates (without filters)
+      // Otherwise: Only load templates for the current project
+      let endpoint = '/templates';
+      if (!preSelectedTemplateId && preSelectedProjectId) {
+        // Filter only if NO preselected template is selected (normal panel opening)
+        endpoint = `/templates?project_id=${preSelectedProjectId}`;
+      }
+
+      let data: any;
+      try {
+        data = await apiClient.get(endpoint);
+      } catch (err: any) {
+        setError(`${t.debugmanualgeneratorpanel454}${err?.response?.status || ''}`);
         return;
       }
 
-      // IMPORTANT: If preSelectedTemplateId exists (from the TreeView), load ALL templates (without filters)
-      // Otherwise: Only load templates for the current project
-      let url = '/api/templates';
-      if (!preSelectedTemplateId && preSelectedProjectId) {
-        // Filter only if NO preselected template is selected (normal panel opening)
-        url = `/api/templates?project_id=${preSelectedProjectId}`;
+      let templatesArray = [];
+      if (Array.isArray(data.data)) {
+        templatesArray = data.data;
+      } else if (Array.isArray(data)) {
+        templatesArray = data;
+      } else if (data.templates && Array.isArray(data.templates)) {
+        templatesArray = data.templates;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        }
-      });
+      // Filter out inactive templates (is_active = false means template has schadcode or is disabled)
+      const activeTemplates = templatesArray.filter((m: Template) => m.is_active !== false);
 
-      if (response.ok) {
-        const data = await response.json();
+      setTemplates(activeTemplates);
 
-        let templatesArray = [];
-        if (Array.isArray(data.data)) {
-          templatesArray = data.data;
-        } else if (Array.isArray(data)) {
-          templatesArray = data;
-        } else if (data.templates && Array.isArray(data.templates)) {
-          templatesArray = data.templates;
-        }
-
-        // Filter out inactive templates (is_active = false means template has schadcode or is disabled)
-        const activeTemplates = templatesArray.filter((m: Template) => m.is_active !== false);
-
-        setTemplates(activeTemplates);
-
-        if (activeTemplates.length === 0) {
-          setError(t.debugmanualgeneratorpanel352);
-        }
-      } else {
-        setError(`${t.debugmanualgeneratorpanel454}${response.status}`);
+      if (activeTemplates.length === 0) {
+        setError(t.debugmanualgeneratorpanel352);
       }
     } catch {
       setError(t.debugmanualgeneratorpanel358);
@@ -466,61 +457,54 @@ export default function DebugManualGeneratorPanel({
 
   const loadTemplateFiles = useCallback(async (templateId: number) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-
-      const response = await fetch(`/api/template-output/${templateId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        let filesArray = [];
-        if (data.files && Array.isArray(data.files)) {
-          filesArray = data.files;
-        } else if (Array.isArray(data)) {
-          filesArray = data;
-        } else if (data.template_files && Array.isArray(data.template_files)) {
-          filesArray = data.template_files;
-        }
-
-        // More lenient filtering - accept any object with some identifier
-        const validFiles = filesArray.map((file: any, index: number) => {
-          // Extract filename (API returns 'filename' not 'id')
-          const extractedFilename = file.filename || file.file_name || file.name || file.template_file_name || `File ${index + 1}`;
-
-          // Create a normalized file object - KEEP ORIGINAL ID IF AVAILABLE!
-          const normalizedFile = {
-            id: file.id || index, // Use original file ID if available, otherwise index
-            file_name: extractedFilename,
-            filename: extractedFilename, // Store original filename for matching
-            file_type: file.file_type || file.type || file.template_file_type || file.extension || 'unknown',
-            file_order: file.file_order || file.order || index,
-            generation_type: file.generation_type || file.type || file.file_type || null,
-            // Copy all original properties
-            ...file
-          };
-
-          return normalizedFile;
-        }).filter((file: any) => file.filename !== undefined);
-
-        setTemplateFiles(validFiles);
-
-        // Auto-select first valid file - ONLY if NO preSelectedFileName exists!
-        // IMPORTANT: preSelectedFileName is read from the closure, NOT from dependencies!
-        if (validFiles.length > 0 && !preSelectedFileName) {
-          setSelectedFile(validFiles[0].id);
-        } else if (validFiles.length === 0) {
-          setSelectedFile(null);
-          setError(t.debugmanualgeneratorpanel486+`${templateId}`+t.debugmanualgeneratorpanel486a);
-        }
-        // If preSelectedFileName exists: DO NOT auto-select, wait for useEffect Pre-Selection!
-      } else {
-        setError(t.debugmanualgeneratorpanel490+`${response.status}`);
+      let data: any;
+      try {
+        data = await apiClient.get(`/template-output/${templateId}`);
+      } catch (err: any) {
+        setError(t.debugmanualgeneratorpanel490 + (err?.response?.status ?? ''));
+        return;
       }
+
+      let filesArray = [];
+      if (data.files && Array.isArray(data.files)) {
+        filesArray = data.files;
+      } else if (Array.isArray(data)) {
+        filesArray = data;
+      } else if (data.template_files && Array.isArray(data.template_files)) {
+        filesArray = data.template_files;
+      }
+
+      // More lenient filtering - accept any object with some identifier
+      const validFiles = filesArray.map((file: any, index: number) => {
+        // Extract filename (API returns 'filename' not 'id')
+        const extractedFilename = file.filename || file.file_name || file.name || file.template_file_name || `File ${index + 1}`;
+
+        // Create a normalized file object - KEEP ORIGINAL ID IF AVAILABLE!
+        const normalizedFile = {
+          id: file.id || index, // Use original file ID if available, otherwise index
+          file_name: extractedFilename,
+          filename: extractedFilename, // Store original filename for matching
+          file_type: file.file_type || file.type || file.template_file_type || file.extension || 'unknown',
+          file_order: file.file_order || file.order || index,
+          generation_type: file.generation_type || file.type || file.file_type || null,
+          // Copy all original properties
+          ...file
+        };
+
+        return normalizedFile;
+      }).filter((file: any) => file.filename !== undefined);
+
+      setTemplateFiles(validFiles);
+
+      // Auto-select first valid file - ONLY if NO preSelectedFileName exists!
+      // IMPORTANT: preSelectedFileName is read from the closure, NOT from dependencies!
+      if (validFiles.length > 0 && !preSelectedFileName) {
+        setSelectedFile(validFiles[0].id);
+      } else if (validFiles.length === 0) {
+        setSelectedFile(null);
+        setError(t.debugmanualgeneratorpanel486+`${templateId}`+t.debugmanualgeneratorpanel486a);
+      }
+      // If preSelectedFileName exists: DO NOT auto-select, wait for useEffect Pre-Selection!
     } catch {
       setError(t.debugmanualgeneratorpanel420);
     }
@@ -528,9 +512,6 @@ export default function DebugManualGeneratorPanel({
 
   const loadSchemaTables = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
       const allTables: SchemaTable[] = [];
 
       // Use preSelectedProjectId if available (from TreeView), otherwise use selectedProject from context
@@ -539,20 +520,14 @@ export default function DebugManualGeneratorPanel({
       // If we have a project (from TreeView or context), load its schemas
       if (projectIdToUse) {
         try {
-          const response = await fetch(`/api/projects/${projectIdToUse}/schemas`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            }
-          });
-
-          if (!response.ok) {
-            // API call failed - continue to fallback
+          let data: any = null;
+          try {
+            data = await apiClient.get(`/projects/${projectIdToUse}/schemas`);
+          } catch {
+            data = null;
           }
 
-          if (response.ok) {
-            const data = await response.json();
-
+          if (data) {
             // Parse schemas from project
             let schemas = [];
             if (Array.isArray(data.schemas)) {
@@ -570,70 +545,56 @@ export default function DebugManualGeneratorPanel({
               // Get schema versions to find latest one with tables
               if (schema.id) {
                 try {
-                  const versionsResponse = await fetch(`/api/floating-schemas/${schema.id}/versions`, {
-                    headers: {
-                      'Authorization': `Bearer ${token}`,
-                      'Accept': 'application/json',
-                    }
-                  });
+                  const versionsData = await apiClient.get(`/floating-schemas/${schema.id}/versions`);
 
-                  if (versionsResponse.ok) {
-                    const versionsData = await versionsResponse.json();
+                  // Get the latest version - API returns array directly OR wrapped in object
+                  const versions = Array.isArray(versionsData) ? versionsData : (versionsData.versions || versionsData.data || []);
 
-                    // Get the latest version - API returns array directly OR wrapped in object
-                    const versions = Array.isArray(versionsData) ? versionsData : (versionsData.versions || versionsData.data || []);
+                  if (versions.length > 0) {
+                    const latestVersion = versions[versions.length - 1]; // Assume last is latest
 
-                    if (versions.length > 0) {
-                      const latestVersion = versions[versions.length - 1]; // Assume last is latest
+                    // Get tables for this version
+                    try {
+                      const tablesData = await apiClient.get(`/schema-versions/${latestVersion.id}/tables`);
 
-                      // Get tables for this version
-                      const tablesResponse = await fetch(`/api/schema-versions/${latestVersion.id}/tables`, {
-                        headers: {
-                          'Authorization': `Bearer ${token}`,
-                          'Accept': 'application/json',
+                      // API returns tables directly as array OR wrapped in object
+                      const tables = Array.isArray(tablesData) ? tablesData : (tablesData.tables || tablesData.data || []);
+
+                      tables.forEach((table: any) => {
+                        const tableName = table.table_name || table.name || table.tablename || t.debugmanualgeneratorpanel499;
+
+                        // Get field count from table structure
+                        let fieldCount = 0;
+                        let tableFields = [];
+
+                        if (table.fields && Array.isArray(table.fields)) {
+                          fieldCount = table.fields.length;
+                          tableFields = table.fields.map((field: any) => ({
+                            name: field.field_name || field.name,
+                            type: field.field_type || field.type,
+                            controltype: field.controltype || 24,
+                          }));
+                        } else if (table.columns && Array.isArray(table.columns)) {
+                          fieldCount = table.columns.length;
+                          tableFields = table.columns.map((col: any) => ({
+                            name: col.column_name || col.name,
+                            type: col.data_type || col.type,
+                            controltype: 24,
+                          }));
                         }
-                      });
 
-                      if (tablesResponse.ok) {
-                        const tablesData = await tablesResponse.json();
-
-                        // API returns tables directly as array OR wrapped in object
-                        const tables = Array.isArray(tablesData) ? tablesData : (tablesData.tables || tablesData.data || []);
-
-                        tables.forEach((table: any) => {
-                          const tableName = table.table_name || table.name || table.tablename || t.debugmanualgeneratorpanel499;
-
-                          // Get field count from table structure
-                          let fieldCount = 0;
-                          let tableFields = [];
-
-                          if (table.fields && Array.isArray(table.fields)) {
-                            fieldCount = table.fields.length;
-                            tableFields = table.fields.map((field: any) => ({
-                              name: field.field_name || field.name,
-                              type: field.field_type || field.type,
-                              controltype: field.controltype || 24,
-                            }));
-                          } else if (table.columns && Array.isArray(table.columns)) {
-                            fieldCount = table.columns.length;
-                            tableFields = table.columns.map((col: any) => ({
-                              name: col.column_name || col.name,
-                              type: col.data_type || col.type,
-                              controltype: 24,
-                            }));
-                          }
-
-                          allTables.push({
-                            tablename: tableName,
-                            nmaxitems: fieldCount,
-                            database_name: schemaName,
-                            schema_id: schema.id,
-                            is_schema_locked: schema.is_soft_locked === true,
-                            generation_mode: table.generation_mode,
-                            items: tableFields
-                          });
+                        allTables.push({
+                          tablename: tableName,
+                          nmaxitems: fieldCount,
+                          database_name: schemaName,
+                          schema_id: schema.id,
+                          is_schema_locked: schema.is_soft_locked === true,
+                          generation_mode: table.generation_mode,
+                          items: tableFields
                         });
-                      }
+                      });
+                    } catch {
+                      // Error loading tables for this version
                     }
                   }
                 } catch {
@@ -650,36 +611,26 @@ export default function DebugManualGeneratorPanel({
       // Only use fallback if we have no project selected or no project schemas found
       if (allTables.length === 0 && !projectIdToUse) {
         try {
-          const globalResponse = await fetch('/api/template-db-schema/schemas', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            }
-          });
+          const globalData = await apiClient.get('/template-db-schema/schemas');
+          const globalSchemas = globalData.schemas || globalData.data || [];
 
-          if (globalResponse.ok) {
-            const globalData = await globalResponse.json();
+          globalSchemas.forEach((schema: any) => {
+            const schemaName = schema.name || schema.schema_name || `Demo Schema ${schema.id}`;
+            const tables = schema.tables || schema.parsed_tables || [];
 
-            const globalSchemas = globalData.schemas || globalData.data || [];
+            tables.forEach((table: any) => {
+              const tableName = table.table_name || table.name || table.tablename || t.debugmanualgeneratorpanel499;
+              const fieldCount = table.fields?.length || table.columns?.length || 0;
 
-            globalSchemas.forEach((schema: any) => {
-              const schemaName = schema.name || schema.schema_name || `Demo Schema ${schema.id}`;
-              const tables = schema.tables || schema.parsed_tables || [];
-
-              tables.forEach((table: any) => {
-                const tableName = table.table_name || table.name || table.tablename || t.debugmanualgeneratorpanel499;
-                const fieldCount = table.fields?.length || table.columns?.length || 0;
-
-                allTables.push({
-                  tablename: tableName,
-                  nmaxitems: fieldCount,
-                  database_name: `${schemaName} (Demo)`,
-                  schema_id: schema.id,
-                  items: table.fields || table.columns || []
-                });
+              allTables.push({
+                tablename: tableName,
+                nmaxitems: fieldCount,
+                database_name: `${schemaName} (Demo)`,
+                schema_id: schema.id,
+                items: table.fields || table.columns || []
               });
             });
-          }
+          });
         } catch {
           // Error loading global schemas
         }
@@ -689,16 +640,8 @@ export default function DebugManualGeneratorPanel({
 
       // Last fallback: gtree-test API (nur wenn gar kein Projekt ausgewählt)
       if (allTables.length === 0 && !projectIdToUse) {
-        const gtreeResponse = await fetch('/api/gtree-test/1', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          }
-        });
-
-        if (gtreeResponse.ok) {
-          const gtreeData = await gtreeResponse.json();
-
+        try {
+          const gtreeData = await apiClient.get('/gtree-test/1');
           if (gtreeData.gtree && gtreeData.gtree[0] && gtreeData.gtree[0].project[0]) {
             const tables = gtreeData.gtree[0].project[0].tables || [];
 
@@ -709,6 +652,8 @@ export default function DebugManualGeneratorPanel({
 
             allTables.push(...fallbackTables);
           }
+        } catch {
+          // gtree-test fallback failed - just leave allTables empty
         }
       }
 
@@ -724,44 +669,31 @@ export default function DebugManualGeneratorPanel({
 
   const loadLanguages = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        return;
+      const data = await apiClient.get('/active-languages');
+      let languages = Array.isArray(data) ? data : (data.languages || data.data || []);
+
+      // IMPORTANT: If preSelectedLanguageCode exists (from the TreeView), load ALL languages (without filter)
+      // Otherwise: Load only languages for the current project
+      if (!preSelectedLanguageCode && selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
+        // Filter only if NO preselected language (normal panel opening)
+        languages = languages.filter((lang: any) =>
+          selectedProject.enabled_languages?.includes(lang.code)
+        );
       }
-      const response = await fetch('/api/active-languages', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        }
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        let languages = Array.isArray(data) ? data : (data.languages || data.data || []);
+      const languageOpts = languages.map((lang: any) => ({
+        label: `${lang.flag} ${lang.name}`,
+        value: lang.code
+      }));
 
-        // IMPORTANT: If preSelectedLanguageCode exists (from the TreeView), load ALL languages (without filter)
-        // Otherwise: Load only languages for the current project
-        if (!preSelectedLanguageCode && selectedProject?.enabled_languages && Array.isArray(selectedProject.enabled_languages)) {
-          // Filter only if NO preselected language (normal panel opening)
-          languages = languages.filter((lang: any) =>
-            selectedProject.enabled_languages?.includes(lang.code)
-          );
-        }
+      setLanguageOptions(languageOpts);
 
-        const languageOpts = languages.map((lang: any) => ({
-          label: `${lang.flag} ${lang.name}`,
-          value: lang.code
-        }));
-
-        setLanguageOptions(languageOpts);
-
-        // Auto-select first language - ONLY if NO preSelectedLanguageCode is present!
-        // IMPORTANT: preSelectedLanguageCode is read from the closure, NOT from dependencies!
-        if (languageOpts.length > 0 && !selectedLanguage && !preSelectedLanguageCode) {
-          setSelectedLanguage(languageOpts[0].value);
-        }
-        // If preSelectedLanguageCode exists: DO NOT auto-select, wait for useEffect Pre-Selection!
+      // Auto-select first language - ONLY if NO preSelectedLanguageCode is present!
+      // IMPORTANT: preSelectedLanguageCode is read from the closure, NOT from dependencies!
+      if (languageOpts.length > 0 && !selectedLanguage && !preSelectedLanguageCode) {
+        setSelectedLanguage(languageOpts[0].value);
       }
+      // If preSelectedLanguageCode exists: DO NOT auto-select, wait for useEffect Pre-Selection!
     } catch {
       setLanguageOptions([]);
     }
@@ -788,26 +720,12 @@ export default function DebugManualGeneratorPanel({
   // Load schema versions when table is selected
   const loadSchemaVersions = useCallback(async (schemaId: number) => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/floating-schemas/${schemaId}/versions`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const versions = Array.isArray(data) ? data : (data.versions || data.data || []);
-        setSchemaVersions(versions.map((v: any) => ({
-          id: v.id,
-          version_number: v.version_number
-        })).sort((a: {version_number: number}, b: {version_number: number}) => b.version_number - a.version_number));
-      } else {
-        setSchemaVersions([]);
-      }
+      const data = await apiClient.get(`/floating-schemas/${schemaId}/versions`);
+      const versions = Array.isArray(data) ? data : (data.versions || data.data || []);
+      setSchemaVersions(versions.map((v: any) => ({
+        id: v.id,
+        version_number: v.version_number
+      })).sort((a: {version_number: number}, b: {version_number: number}) => b.version_number - a.version_number));
     } catch {
       setSchemaVersions([]);
     }
@@ -973,63 +891,62 @@ export default function DebugManualGeneratorPanel({
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-
-      // Build URL with project parameter to ensure backend uses only linked schemas
-      const url = new URL(`/api/ultimate-template/${selectedTemplate}`, window.location.origin);
+      // Build query parameters to ensure backend uses only linked schemas
+      const params = new URLSearchParams();
       if (selectedProject) {
-        url.searchParams.set('project_id', selectedProject.id.toString());
+        params.set('project_id', selectedProject.id.toString());
       }
 
       // Add table parameter for db_table_file types
       if ((fileGenerationType === 'db_table_file' || fileGenerationType === 'db_table_file_languages') && selectedTable !== null) {
         const selectedTableData = schemaTables[selectedTable];
         if (selectedTableData) {
-          url.searchParams.set('table_name', selectedTableData.tablename);
+          params.set('table_name', selectedTableData.tablename);
         }
       }
 
       // Add language parameter for language-enabled types
       if ((fileGenerationType === 'project_file_languages' || fileGenerationType === 'db_table_file_languages') && selectedLanguage) {
-        url.searchParams.set('language_code', selectedLanguage);
+        params.set('language_code', selectedLanguage);
       }
 
       // ✅ ALWAYS add language_code for validation (even for non-language files)
       // This ensures template variable validation uses the current language
-      if (selectedLanguage && !url.searchParams.has('language_code')) {
-        url.searchParams.set('language_code', selectedLanguage);
+      if (selectedLanguage && !params.has('language_code')) {
+        params.set('language_code', selectedLanguage);
       }
 
       // Add include_source parameter if checkbox is enabled
       if (includeTemplateSource) {
-        url.searchParams.set('include_source', '1');
+        params.set('include_source', '1');
       }
 
       // Skip Redis cache if checkbox is enabled (force fresh generation)
       if (skipCache) {
-        url.searchParams.set('skip_cache', '1');
+        params.set('skip_cache', '1');
       }
 
       // Add migration_from_version parameter if set
       if (migrationFromVersion !== null) {
-        url.searchParams.set('migration_from_version', migrationFromVersion.toString());
+        params.set('migration_from_version', migrationFromVersion.toString());
       }
 
       // 🎯 NEU: Add schema_version parameter for Project-Dateien
       // Damit das Backend die richtige Schema-Version lädt (nicht automatisch die neueste)
       if (selectedSchemaVersion !== null && shouldShowProjectDropdown()) {
-        url.searchParams.set('schema_version', selectedSchemaVersion.toString());
+        params.set('schema_version', selectedSchemaVersion.toString());
       }
 
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        }
-      });
+      let data: any = null;
+      let errorMessage: string | null = null;
+      try {
+        data = await apiClient.get(`/ultimate-template/${selectedTemplate}?${params.toString()}`);
+      } catch (err: any) {
+        errorMessage = err?.response?.data?.message || t.debugmanualgeneratorpanel959;
+        data = null;
+      }
 
-      if (response.ok) {
-        const data = await response.json();
+      if (data) {
 
         // ✅ Extract syntax validation errors/warnings
         if (data.validation) {
@@ -1206,8 +1123,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
           setError(errorMsg);
         }
       } else {
-        const errorData = await response.json();
-        setError(errorData.message || t.debugmanualgeneratorpanel959);
+        setError(errorMessage || t.debugmanualgeneratorpanel959);
       }
     } catch {
       setError(t.debugmanualgeneratorpanel959);
@@ -1455,7 +1371,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
         } catch (fallbackErr) {
           // Use the enhanced error message from the main catch block
           const fallbackError = fallbackErr as Error;
-          setExecutedResult(`${errorMessage}\n\n{t.debugmanualgeneratorpanel1444}\n${fallbackError.message || t.debugmanualgeneratorpanel1183}\n\n${t.debugmanualgeneratorpanel1444_2}\n${preparedCode.substring(0, 500)}...`);
+          setExecutedResult(`${errorMessage}\n\n${t.debugmanualgeneratorpanel1444}\n${fallbackError.message || t.debugmanualgeneratorpanel1183}\n\n${t.debugmanualgeneratorpanel1444_2}\n${preparedCode.substring(0, 500)}...`);
         }
       } else {
         // For non-SyntaxErrors (ReferenceError, TypeError, etc.), show error immediately without fallback

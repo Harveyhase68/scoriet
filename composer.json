@@ -18,7 +18,8 @@
         "laravel/reverb": "^1.8",
         "laravel/tinker": "^2.10.1",
         "minishlink/web-push": "^10.0",
-        "phpoffice/phpspreadsheet": "*",
+        "phpoffice/phpspreadsheet": "^5.7",
+        "pragmarx/google2fa": "^9.0",
         "predis/predis": "*",
         "srmklive/paypal": "^3.0",
         "stripe/stripe-php": "^19.0"
@@ -91,7 +92,7 @@
             "php-http/discovery": true
         },
         "audit": {
-            "ignore": ["PKSA-365x-2zjk-pt47", "PKSA-2cx9-ynrq-qdk3"]
+            "ignore": []
         }
     },
     "minimum-stability": "stable",

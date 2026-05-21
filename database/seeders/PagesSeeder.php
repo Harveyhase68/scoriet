@@ -44,10 +44,10 @@ DE 123456789</p>',
                 'slug' => 'help',
                 'locale' => 'de',
                 'title' => 'Hilfe',
-                'content' => '<p>Willkommen bei Scoriet! Hier erfahren Sie, wie Sie mit unserem Enterprise Code Generator starten.</p>
+                'content' => '<p>Willkommen bei Scoriet! Hier erfahren Sie, wie Sie mit unserem Schema-to-Stack Studio starten.</p>
 
 <h2>Erste Schritte</h2>
-<p>Willkommen bei Scoriet! Hier erfahren Sie, wie Sie mit unserem Enterprise Code Generator starten.</p>
+<p>Willkommen bei Scoriet! Hier erfahren Sie, wie Sie mit unserem Schema-to-Stack Studio starten.</p>
 
 <h3>Ihr erstes Projekt erstellen</h3>
 <ol>

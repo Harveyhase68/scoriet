@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Scoriet is an Enterprise Code Generator built with modern web technologies. It's a complete rewrite of a WinDev application, now implemented as a Laravel-React application using Inertia.js for seamless monolithic development.
+Scoriet is an Schema-to-Stack Studio built with modern web technologies. It's a complete rewrite of a WinDev application, now implemented as a Laravel-React application using Inertia.js for seamless monolithic development.
 
 **Core Purpose**: Automate code generation through intelligent templating, reducing repetitive development tasks and ensuring consistency across projects.
 

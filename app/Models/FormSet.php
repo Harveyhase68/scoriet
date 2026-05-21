@@ -240,7 +240,7 @@ class FormSet extends Model
     public function cloneForUser(int $userId, ?string $newName = null): FormSet
     {
         $clone = $this->replicate();
-        $clone->name = $newName ?? $this->name . ' (Kopie)';
+        $clone->name = $newName ?? static::suggestCopyName($this->name, $userId);
         $clone->creator_user_id = $userId;
         $clone->cloned_from_id = $this->id;
         $clone->visibility = 'private';
@@ -261,5 +261,21 @@ class FormSet extends Model
         }
 
         return $clone;
+    }
+
+    /**
+     * Build a unique copy-name suggestion (scoped per creator). Delegates to
+     * the shared CopyNameSuggester so re-cloning "x_copy" yields "x_copy_1"
+     * instead of "x_copy_copy".
+     */
+    public static function suggestCopyName(string $base, int $userId): string
+    {
+        return \App\Support\CopyNameSuggester::suggest(
+            $base,
+            fn (string $candidate) => static::where('creator_user_id', $userId)
+                ->where('name', $candidate)
+                ->exists(),
+            100 // name column is varchar(100)
+        );
     }
 }

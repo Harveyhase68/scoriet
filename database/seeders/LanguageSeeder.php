@@ -10,13 +10,20 @@ class LanguageSeeder extends Seeder
 {
     /**
      * Führt die Datenbank-Seeds aus, um die Sprachen-Daten einzufügen.
+     * Idempotent: löscht den bestehenden Inhalt und legt die Sprachen mit
+     * fixen IDs neu an, damit Foreign-Key-Referenzen aus anderen Tabellen
+     * (Translations, etc.) stabil bleiben.
      */
     public function run(): void
     {
-        // Die ID-Spalte wird weggelassen, um die Auto-Inkrementierung der Datenbank zu nutzen.
-        // Die Daten aus dem MariaDB-Export wurden in ein Array-Format konvertiert.
+        // FK-Checks deaktivieren, damit TRUNCATE nicht an Referenzen scheitert.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        DB::statement('TRUNCATE TABLE `scoriet`.`languages`;');
+        DB::table('languages')->truncate();
+
         DB::table('languages')->insert([
             [
+                'id' => 1,
                 'code' => 'en',
                 'name' => 'English',
                 'native_name' => 'English',
@@ -26,11 +33,11 @@ class LanguageSeeder extends Seeder
                 'sort_order' => 1,
                 'description' => 'English language for international users',
                 'created_by' => null,
-                // Die fixen Zeitstempel aus dem Export werden übernommen
                 'created_at' => '2025-09-28 16:33:11',
                 'updated_at' => '2025-09-28 18:33:00',
             ],
             [
+                'id' => 2,
                 'code' => 'de',
                 'name' => 'German',
                 'native_name' => 'Deutsch',
@@ -44,6 +51,7 @@ class LanguageSeeder extends Seeder
                 'updated_at' => '2025-09-28 18:32:57',
             ],
             [
+                'id' => 3,
                 'code' => 'fr',
                 'name' => 'French',
                 'native_name' => 'Français',
@@ -57,6 +65,7 @@ class LanguageSeeder extends Seeder
                 'updated_at' => '2025-09-28 16:33:11',
             ],
             [
+                'id' => 4,
                 'code' => 'es',
                 'name' => 'Spanish',
                 'native_name' => 'Español',
@@ -70,6 +79,7 @@ class LanguageSeeder extends Seeder
                 'updated_at' => '2025-09-28 16:33:11',
             ],
             [
+                'id' => 5,
                 'code' => 'it',
                 'name' => 'Italian',
                 'native_name' => 'Italiano',
@@ -83,5 +93,7 @@ class LanguageSeeder extends Seeder
                 'updated_at' => '2025-09-28 16:33:11',
             ],
         ]);
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
     }
 }

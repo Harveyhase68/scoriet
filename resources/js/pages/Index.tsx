@@ -11,6 +11,7 @@ import { TabContentProps } from '@/types';
 import ErrorFallback from '@/Components/ErrorFallback';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 // Global window interface for tab data
 declare global {
@@ -1482,7 +1483,15 @@ export default function Index(props: IndexProps = {}) {
 
             // Store tokens in sessionStorage (not persistent for demo)
             sessionStorage.setItem('access_token', data.access_token);
-            sessionStorage.setItem('refresh_token', data.refresh_token);
+            if (data.refresh_token) {
+              sessionStorage.setItem('refresh_token', data.refresh_token);
+            } else {
+              sessionStorage.removeItem('refresh_token');
+            }
+
+            // Demo login succeeded - clear stale logout/notify markers
+            localStorage.removeItem('logout_in_progress');
+            sessionStorage.removeItem('session_revoke_notified');
 
             // Mark as demo mode
             sessionStorage.setItem('demo_mode', 'true');
@@ -1748,74 +1757,51 @@ export default function Index(props: IndexProps = {}) {
 
       if (token) {
         try {
-          // Validate token with API call
-          const response = await fetch('/api/user', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json',
-            },
-          });
+          // Validate token. apiClient.get() handles 401 transparently:
+          // it tries one refresh and retries, falling back to handleAuthError
+          // (token cleanup + sessionForciblyEnded dispatch) only if refresh
+          // also fails. We only see a thrown error in that final-fail case
+          // or for non-auth network/server problems.
+          await apiClient.get('/user');
 
-          if (response.ok) {
-            // Token is valid - no need to change isAuthenticated if it's already true
-            if (!isAuthenticated) {
-              setIsAuthenticated(true);
+          // Token is valid - no need to change isAuthenticated if already true
+          if (!isAuthenticated) {
+            setIsAuthenticated(true);
 
-              // Check for pending invitations if just became authenticated
-              // Add delay to ensure all auth state is stable
-              setTimeout(() => {
-                if (isAuthenticated && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
-                  checkPendingInvitation();
-                }
-              }, 1000);
-            }
+            // Check for pending invitations if just became authenticated.
+            // Add delay to ensure all auth state is stable.
+            setTimeout(() => {
+              if (isAuthenticated && (localStorage.getItem('access_token') || sessionStorage.getItem('access_token'))) {
+                checkPendingInvitation();
+              }
+            }, 1000);
+          }
 
-            // Close login modal if authenticated (but keep other modals open)
-            if (activeModal === 'login') {
-              setActiveModal(null);
-            }
-          } else if (response.status === 401) {
-            // Token is truly invalid (unauthorized) - clean up and set as not authenticated
+          // Close login modal if authenticated (but keep other modals open)
+          if (activeModal === 'login') {
+            setActiveModal(null);
+          }
+        } catch (err: any) {
+          // Distinguish auth failure (final, after refresh) from transient
+          // server/network errors. apiClient throws an Error with the
+          // 'Authentication' message on auth failure; transient errors carry
+          // a response.status that is not 401 (because 401 was handled).
+          const isAuthFailure = err?.message?.includes('Authentication') ||
+                                err?.response?.status === 401;
+          if (isAuthFailure) {
             const isLoggingOut = localStorage.getItem('logout_in_progress');
-            const alreadyNotified = sessionStorage.getItem('session_revoke_notified');
-
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('remember_me');
-            localStorage.removeItem('user');
-            sessionStorage.removeItem('access_token');
-            sessionStorage.removeItem('refresh_token');
-            document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
             setIsAuthenticated(false);
-
-            // If user had a token and got 401 (not during explicit logout),
-            // show a notification that they were logged out from another device
-            // Only notify once per session to avoid multiple notifications
-            if (!isLoggingOut && !alreadyNotified) {
-              sessionStorage.setItem('session_revoke_notified', 'true');
-              // Dispatch event for session forcibly ended - will be handled by event listener
-              window.dispatchEvent(new CustomEvent('sessionForciblyEnded', {
-                detail: {
-                  reason: 'other_device_login'
-                }
-              }));
-            }
 
             // Show login modal for invalid tokens (but not during explicit logout)
             if (!isLoggingOut && !activeModal) {
               setActiveModal('login');
             }
 
-            // Trigger storage event for other components
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
-          } else {
-            // Other error (500, 429, etc.) - don't destroy tokens
-            // Temporary server issues shouldn't log out the user
           }
-        } catch {
-          // Network error - don't destroy tokens, just mark as temporarily unauthenticated
-          // The next periodic check will re-validate when the network recovers
+          // Transient errors (500, 429, network): leave state as-is, the next
+          // periodic check will re-validate when the issue clears.
         }
       } else {
         setIsAuthenticated(false);

@@ -138,7 +138,7 @@ The extension uses semantic token colors that work with most themes:
 
 ## About Scoriet
 
-Scoriet is an Enterprise Code Generator that automates code generation through intelligent templating. Learn more at [scoriet.com](https://scoriet.com).
+Scoriet is an Schema-to-Stack Studio that automates code generation through intelligent templating. Learn more at [scoriet.com](https://scoriet.com).
 
 ## License
 

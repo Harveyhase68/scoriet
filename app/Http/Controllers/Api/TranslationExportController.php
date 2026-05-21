@@ -139,6 +139,58 @@ class TranslationExportController extends Controller
     }
 
     /**
+     * 🔍 PREVIEW IMPORT - read headers only, no DB writes
+     *
+     * Used by the Import dialog so the user can see which languages the
+     * uploaded Excel actually contains and untick the ones they don't want
+     * before triggering the real import. Returns the detected language
+     * codes (column E onwards in the export schema) and a row count for
+     * an informational hint, without touching SchemaTranslation.
+     */
+    public function importPreview(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            $file = $request->file('file');
+            $spreadsheet = IOFactory::load($file->getPathname());
+            $sheet = $spreadsheet->getActiveSheet();
+            $highestRow = $sheet->getHighestRow();
+            $highestColumn = $sheet->getHighestColumn();
+
+            // Headers live in row 1. Columns A..D are fixed metadata
+            // (Type / Database / Table / Field) and any column from E onwards
+            // is a language code. We mirror the import() column convention so
+            // both endpoints agree on what is and isn't a language.
+            $languages = [];
+            $col = 'E';
+            while ($col <= $highestColumn) {
+                $headerValue = $sheet->getCell($col . '1')->getValue();
+                if ($headerValue !== null && $headerValue !== '') {
+                    $code = strtolower(trim((string) $headerValue));
+                    if ($code !== '') {
+                        $languages[] = $code;
+                    }
+                }
+                $col++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'languages' => array_values(array_unique($languages)),
+                'data_rows' => max(0, $highestRow - 1), // exclude header row
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Could not read Excel file: ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * 📥 IMPORT TRANSLATIONS FROM EXCEL
      */
     public function import(Request $request)

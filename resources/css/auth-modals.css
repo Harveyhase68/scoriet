@@ -1,13 +1,17 @@
-/* Custom styling for authentication modals */
+/* Custom styling for authentication modals.
+ * Gradient is the toned-down brand purple (also defined in
+ * Components/Panels/styles.css for non-auth dialogs) so every modal in
+ * the app shows the same header band regardless of which class it carries.
+ */
 .p-dialog-custom .p-dialog-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%);
   color: white;
   border-radius: 6px 6px 0 0;
 }
 
 /* Standard modal styling for consistency */
 .standard-modal .p-dialog-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%);
   color: white;
   border-radius: 6px 6px 0 0;
 }
@@ -35,17 +39,21 @@
 .dark-modal.ant-modal .ant-modal-content .ant-modal-header,
 .dark-modal .ant-modal-content .ant-modal-header,
 .ant-modal.dark-modal .ant-modal-content .ant-modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  background: linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%) !important;
   border-bottom: none !important;
   border-radius: 6px 6px 0 0 !important;
   margin: 0 !important;
-  padding: 16px 24px !important;
+  min-height: 56px !important;
+  padding: 0 24px !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .dark-modal.ant-modal .ant-modal-content .ant-modal-title,
 .dark-modal .ant-modal-content .ant-modal-title,
 .ant-modal.dark-modal .ant-modal-content .ant-modal-title {
   color: white !important;
+  font-size: 18px !important;
   font-weight: 600 !important;
   margin: 0 !important;
 }
@@ -235,18 +243,22 @@
 
 /* Custom Portal Modal Styling (for consistency) */
 .portal-modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #2f3d99 0%, #5b3db8 100%);
   color: white;
   border-radius: 6px 6px 0 0;
-  padding: 1rem 1.5rem;
+  min-height: 56px;
+  padding: 0 1.5rem;
   margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .portal-modal-header h2 {
   color: white;
   font-weight: 600;
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 18px;
 }
 
 .portal-modal-header button {
@@ -347,8 +359,8 @@
 
 .p-dialog-custom .p-inputtext:focus,
 .p-dialog-custom .p-password input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 1px #667eea;
+  border-color: #5b3db8;
+  box-shadow: 0 0 0 1px #5b3db8;
 }
 
 /* Loading states */

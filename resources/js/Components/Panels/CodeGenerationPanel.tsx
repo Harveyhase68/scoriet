@@ -5,6 +5,7 @@ import { Dropdown } from 'primereact/dropdown';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import ProfileModal from '@/Components/AuthModals/ProfileModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface Project {
   id: number;
@@ -322,6 +323,27 @@ export default function CodeGenerationPanel() {
     }
   }, [deploymentLogs]);
 
+  // Persist a single deployment log entry to the backend so it shows up in the
+  // dedicated Deployment Log panel. Fire-and-forget: failures must not break
+  // the generation/upload flow.
+  const persistDeploymentLog = useCallback((
+    type: 'info' | 'success' | 'warning' | 'error',
+    message: string,
+    metadata?: Record<string, unknown>,
+    taskId?: number,
+  ) => {
+    if (!selectedProjectId) return;
+    apiClient.post('/deployment-logs', {
+      project_id: selectedProjectId,
+      type,
+      message,
+      metadata: metadata ?? null,
+      task_id: taskId ?? null,
+    }).catch(() => {
+      // Swallow errors — logging must never block the user's work.
+    });
+  }, [selectedProjectId]);
+
   // Cleanup deployment polling interval on unmount
   useEffect(() => {
     return () => {
@@ -346,20 +368,8 @@ export default function CodeGenerationPanel() {
   // Load Code Adjustments access status
   const loadCodeAdjustmentsAccess = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions/code-adjustments/status', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCodeAdjustmentsAccess(data);
-      }
+      const data = await apiClient.get('/subscriptions/code-adjustments/status');
+      setCodeAdjustmentsAccess(data);
     } catch (error) {
       console.error(t.codegenerationpanel321, error);
     }
@@ -368,20 +378,8 @@ export default function CodeGenerationPanel() {
   // Load current user data for credit info
   const loadCurrentUser = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-      }
+      const userData = await apiClient.get('/user');
+      setCurrentUser(userData);
     } catch {
       // Error loading current user - silently fail
     }
@@ -532,29 +530,15 @@ export default function CodeGenerationPanel() {
     try {
       setLoadingGitData(true);
       setGitProvidersLoaded(false);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        console.warn('t.codegenerationpanel494');
-        return;
-      }
 
-      const response = await fetch('/api/git/providers', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const providers = data.providers || [];
-        setGitProviders(providers);
-        // Store Git Integration access status
-        if (data.git_integration_access) {
-          setGitIntegrationAccess(data.git_integration_access);
-        }
-        // Note: Auto-selection is handled separately in useEffect to avoid timing issues
+      const data = await apiClient.get('/git/providers');
+      const providers = data.providers || [];
+      setGitProviders(providers);
+      // Store Git Integration access status
+      if (data.git_integration_access) {
+        setGitIntegrationAccess(data.git_integration_access);
       }
+      // Note: Auto-selection is handled separately in useEffect to avoid timing issues
     } catch (err) {
       console.error(t.codegenerationpanel516, err);
     } finally {
@@ -567,33 +551,21 @@ export default function CodeGenerationPanel() {
   const unlockGitIntegration = async () => {
     setUnlockingGitIntegration(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/subscriptions/unlock-git-integration', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setGitIntegrationAccess(data.access_status);
-        // Reload git providers to refresh state
-        await loadGitProviders();
-        // Open ProfileModal on Git tab (index 5) so user can connect provider
-        setProfileModalDefaultTab(5);
-        setShowProfileModal(true);
+      const data = await apiClient.post('/subscriptions/unlock-git-integration');
+      setGitIntegrationAccess(data.access_status);
+      // Reload git providers to refresh state
+      await loadGitProviders();
+      // Open ProfileModal on Git tab (index 5) so user can connect provider
+      setProfileModalDefaultTab(5);
+      setShowProfileModal(true);
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message;
+      if (errorMsg) {
+        alert(errorMsg);
       } else {
-        const error = await response.json();
-        alert(error.message || t.codegenerationpanel549);
+        console.error('Error unlocking git integration:', err);
+        alert(t.codegenerationpanel553);
       }
-    } catch (err) {
-      console.error('Error unlocking git integration:', err);
-      alert(t.codegenerationpanel553);
     } finally {
       setUnlockingGitIntegration(false);
     }
@@ -603,20 +575,8 @@ export default function CodeGenerationPanel() {
   const loadGitRepositories = async (provider: string) => {
     try {
       setLoadingGitData(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/git/${provider}/repositories`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setGitRepositories(data.repositories || []);
-      }
+      const data = await apiClient.get(`/git/${provider}/repositories`);
+      setGitRepositories(data.repositories || []);
     } catch (err) {
       console.error(t.codegenerationpanel578, err);
     } finally {
@@ -628,21 +588,9 @@ export default function CodeGenerationPanel() {
   const loadGitBranches = async (provider: string, repoFullName: string) => {
     try {
       setLoadingGitData(true);
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
       // Use query parameter instead of path parameter to avoid URL encoding issues with slashes
-      const response = await fetch(`/api/git/${provider}/branches?repo=${encodeURIComponent(repoFullName)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setGitBranches(data.branches || []);
-      }
+      const data = await apiClient.get(`/git/${provider}/branches?repo=${encodeURIComponent(repoFullName)}`);
+      setGitBranches(data.branches || []);
     } catch (err) {
       console.error(t.codegenerationpanel604, err);
     } finally {
@@ -667,19 +615,11 @@ export default function CodeGenerationPanel() {
       setGitPushStatus('pushing');
       setDeploymentLogs(prev => [...prev, `${t.codegenerationpanel625}${selectedGitProvider.provider}/${selectedRepository.full_name}...`]);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) throw new Error(t.codegenerationpanel628);
-
       const baseBranch = selectedRepository.default_branch || 'main';
 
-      const response = await fetch(`/api/git/${selectedGitProvider.provider}/push-direct`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      let result: any;
+      try {
+        result = await apiClient.post(`/git/${selectedGitProvider.provider}/push-direct`, {
           repository: selectedRepository.full_name,
           branch: branch,
           commit_message: commitMessage || t.codegenerationpanel642,
@@ -691,15 +631,11 @@ export default function CodeGenerationPanel() {
           pr_description: `${t.codegenerationpanel648}\n\n${t.codegenerationpanel648_2}${branch}\n${t.codegenerationpanel648_3}${Object.keys(files).length}`,
           auto_merge: autoMerge,
           delete_branch_after_merge: deleteBranchAfterMerge,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.codegenerationpanel656);
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.codegenerationpanel656);
       }
 
-      const result = await response.json();
       setDeploymentLogs(prev => [
         ...prev,
         `${t.codegenerationpanel662}${result.files_count}${t.codegenerationpanel662_2}${branch}`,
@@ -744,37 +680,24 @@ export default function CodeGenerationPanel() {
     if (!selectedProjectId || !selectedGitProvider || !selectedRepository) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
       const branch = useNewBranch ? newBranchName : selectedBranch;
 
-      const response = await fetch(`/api/projects/${selectedProjectId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          git_provider_id: selectedGitProvider.id,
-          git_repository: selectedRepository.full_name,
-          git_default_branch: branch,
-          git_main_branch: selectedRepository.default_branch,
-        }),
+      await apiClient.put(`/projects/${selectedProjectId}`, {
+        git_provider_id: selectedGitProvider.id,
+        git_repository: selectedRepository.full_name,
+        git_default_branch: branch,
+        git_main_branch: selectedRepository.default_branch,
       });
 
-      if (response.ok) {
-        setDeploymentLogs(prev => [...prev, t.codegenerationpanel725]);
-        // Update local project state
-        setSelectedProject(prev => prev ? {
-          ...prev,
-          git_provider_id: selectedGitProvider.id,
-          git_repository: selectedRepository.full_name,
-          git_default_branch: branch,
-          git_main_branch: selectedRepository.default_branch,
-        } : null);
-      }
+      setDeploymentLogs(prev => [...prev, t.codegenerationpanel725]);
+      // Update local project state
+      setSelectedProject(prev => prev ? {
+        ...prev,
+        git_provider_id: selectedGitProvider.id,
+        git_repository: selectedRepository.full_name,
+        git_default_branch: branch,
+        git_main_branch: selectedRepository.default_branch,
+      } : null);
     } catch (err) {
       console.error(t.codegenerationpanel736, err);
     }
@@ -808,24 +731,12 @@ export default function CodeGenerationPanel() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setError(t.codegenerationpanel770);
-        return;
-      }
-
-      const response = await fetch('/api/user/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get('/user/projects');
+      } catch {
         throw new Error(t.codegenerationpanel782);
       }
-
-      const data = await response.json();
 
       let projectsArray = data.data || data.projects || data;
 
@@ -867,46 +778,26 @@ export default function CodeGenerationPanel() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setError(t.codegenerationpanel829);
-        return;
-      }
-
       // First, load the project details to get enabled_languages
-      const projectRes = await fetch(`/api/projects/${selectedProjectId}`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-      });
-
-      if (!projectRes.ok) {
+      let projectData: any;
+      try {
+        projectData = await apiClient.get(`/projects/${selectedProjectId}`);
+      } catch {
         throw new Error(t.codegenerationpanel839);
       }
-
-      const projectData = await projectRes.json();
       const project = projectData.data || projectData;
 
       // Load templates via template-usages, schemas, and languages in parallel
-      const [templatesRes, schemasRes, allLanguagesRes] = await Promise.all([
-        fetch(`/api/projects/${selectedProjectId}/template-usages`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        }),
-        fetch(`/api/projects/${selectedProjectId}/schemas`, {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        }),
-        fetch('/api/active-languages', {
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        }),
-      ]);
-
-      if (!templatesRes.ok || !schemasRes.ok || !allLanguagesRes.ok) {
+      let templatesData: any, schemasData: any, allLanguagesData: any;
+      try {
+        [templatesData, schemasData, allLanguagesData] = await Promise.all([
+          apiClient.get(`/projects/${selectedProjectId}/template-usages`),
+          apiClient.get(`/projects/${selectedProjectId}/schemas`),
+          apiClient.get('/active-languages'),
+        ]);
+      } catch {
         throw new Error(t.codegenerationpanel859);
       }
-
-      const [templatesData, schemasData, allLanguagesData] = await Promise.all([
-        templatesRes.json(),
-        schemasRes.json(),
-        allLanguagesRes.json(),
-      ]);
 
       // Extract templates from usages array
       let templatesArray: Template[] = [];
@@ -917,14 +808,9 @@ export default function CodeGenerationPanel() {
       const templatesWithFiles = await Promise.all(
         (Array.isArray(templatesArray) ? templatesArray : []).map(async (template: Template) => {
           try {
-            const filesRes = await fetch(`/api/templates/${template.id}/files`, {
-              headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-            });
-            if (filesRes.ok) {
-              const filesData = await filesRes.json();
-              const filesArray = filesData.data || filesData;
-              return { ...template, files: Array.isArray(filesArray) ? filesArray : [] };
-            }
+            const filesData = await apiClient.get(`/templates/${template.id}/files`);
+            const filesArray = filesData.data || filesData;
+            return { ...template, files: Array.isArray(filesArray) ? filesArray : [] };
           } catch {
             // If files can't be loaded, continue without them
           }
@@ -1179,30 +1065,8 @@ export default function CodeGenerationPanel() {
 
   // 💰 Charge credits before generation (skips for Patron Monthly users)
   const chargeCreditsForGeneration = async (): Promise<{ success: boolean; message?: string; isFree?: boolean }> => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (!token) {
-      return { success: false, message: t.codegenerationpanel1085 };
-    }
-
     try {
-      const response = await fetch('/api/generation/charge', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ project_id: selectedProjectId }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          success: false,
-          message: data.message || `${t.codegenerationpanel1104}${data.credits_required}${t.codegenerationpanel1104_2}${data.credits_available}`,
-        };
-      }
+      const data = await apiClient.post('/generation/charge', { project_id: selectedProjectId });
 
       // Reload user data to update credit display
       if (!data.is_free) {
@@ -1216,7 +1080,14 @@ export default function CodeGenerationPanel() {
         message: data.message,
         isFree: data.is_free,
       };
-    } catch (err) {
+    } catch (err: any) {
+      const data = err?.response?.data;
+      if (data) {
+        return {
+          success: false,
+          message: data.message || `${t.codegenerationpanel1104}${data.credits_required}${t.codegenerationpanel1104_2}${data.credits_available}`,
+        };
+      }
       console.error('Credit charge error:', err);
       return { success: false, message: t.codegenerationpanel1122};
     }
@@ -1224,9 +1095,6 @@ export default function CodeGenerationPanel() {
 
   // 🆕 Check for file conflicts between AND within templates
   const checkFileConflicts = async (): Promise<FileConflict[]> => {
-    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-    if (!token) return [];
-
     const conflicts: FileConflict[] = [];
 
     // Map for inter-template conflicts: filePath → template IDs
@@ -1235,13 +1103,12 @@ export default function CodeGenerationPanel() {
     // Fetch all template files for selected templates
     for (const templateId of Array.from(selectedTemplateIds)) {
       try {
-        const response = await fetch(`/api/templates/${templateId}/files`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) continue;
-
-        const filesData = await response.json();
+        let filesData: any;
+        try {
+          filesData = await apiClient.get(`/templates/${templateId}/files`);
+        } catch {
+          continue;
+        }
         const templateFiles = filesData.data || filesData || [];
 
         // Only check project_file and static_file (not db_table_file or language variants)
@@ -1332,21 +1199,9 @@ export default function CodeGenerationPanel() {
   /**
    * Fetch code adjustments for the current project
    */
-  const fetchCodeAdjustments = async (projectId: number, token: string): Promise<CodeAdjustment[]> => {
+  const fetchCodeAdjustments = async (projectId: number): Promise<CodeAdjustment[]> => {
     try {
-      const response = await fetch(`/api/projects/${projectId}/code-adjustments`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        console.warn(t.codegenerationpanel1245, response.status);
-        return [];
-      }
-
-      const data = await response.json();
+      const data = await apiClient.get(`/projects/${projectId}/code-adjustments`);
       if (data.success && Array.isArray(data.data)) {
         // Only return active adjustments
         return data.data.filter((adj: CodeAdjustment) => adj.is_active);
@@ -1469,7 +1324,7 @@ export default function CodeGenerationPanel() {
           eta: t.codegenerationpanel1369,
           currentTask: t.codegenerationpanel1370
         });
-        codeAdjustments = await fetchCodeAdjustments(selectedProjectId, token);
+        codeAdjustments = await fetchCodeAdjustments(selectedProjectId);
       }
 
       // ==========================================================================
@@ -1480,10 +1335,7 @@ export default function CodeGenerationPanel() {
       // ==========================================================================
       if (clearCacheBeforeGenerate && selectedProjectId) {
         try {
-          await fetch(`/api/projects/${selectedProjectId}/cache/clear`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-          });
+          await apiClient.post(`/projects/${selectedProjectId}/cache/clear`);
         } catch {
           // Non-fatal — proceed with generation even if the clear failed.
           // The user will still get fresh content if the cache happened to be empty,
@@ -1503,14 +1355,11 @@ export default function CodeGenerationPanel() {
       });
 
       const gtreeDataPromises = Array.from(selectedSchemaIds).map(async (schemaId) => {
-        const response = await fetch(`/api/schemas/${schemaId}/gtree`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`${t.codegenerationpanel1392}${schemaId}: ${errorText}`);
+        try {
+          return await apiClient.get(`/schemas/${schemaId}/gtree`);
+        } catch (err: any) {
+          throw new Error(`${t.codegenerationpanel1392}${schemaId}: ${err?.message || ''}`);
         }
-        return response.json();
       });
 
       const gtreeDataArray = await Promise.all(gtreeDataPromises);
@@ -1716,13 +1565,8 @@ export default function CodeGenerationPanel() {
         // Fetch template files to determine what API calls we need
         let templateFiles: any[] = [];
         try {
-          const filesResponse = await fetch(`/api/templates/${templateId}/files`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (filesResponse.ok) {
-            const filesData = await filesResponse.json();
-            templateFiles = filesData.data || filesData || [];
-          }
+          const filesData = await apiClient.get(`/templates/${templateId}/files`);
+          templateFiles = filesData.data || filesData || [];
         } catch {
           continue;
         }
@@ -1751,22 +1595,22 @@ export default function CodeGenerationPanel() {
           }
 
           try {
-            const url = new URL(`/api/ultimate-template/${templateId}`, window.location.origin);
-            url.searchParams.set('project_id', selectedProjectId!.toString());
+            const params = new URLSearchParams();
+            params.set('project_id', selectedProjectId!.toString());
 
             if (tableName) {
-              url.searchParams.set('table_name', tableName);
+              params.set('table_name', tableName);
             }
 
             // ✅ OPTIMIZATION: Only pass language on first call (for compilation)
             // We'll modify selectedlanguage in browser for other languages
             if (langCode) {
-              url.searchParams.set('language_code', langCode);
+              params.set('language_code', langCode);
             }
 
             // 🎯 Pass selected schema IDs so backend only includes those tables
             if (selectedSchemaIds.size > 0) {
-              url.searchParams.set('schema_ids', JSON.stringify(Array.from(selectedSchemaIds)));
+              params.set('schema_ids', JSON.stringify(Array.from(selectedSchemaIds)));
             }
 
             // 📊 Add per-schema migration versions if any are set
@@ -1774,22 +1618,17 @@ export default function CodeGenerationPanel() {
               Object.entries(migrationFromVersions).filter(([, v]) => v !== null)
             );
             if (Object.keys(activeVersions).length > 0) {
-              url.searchParams.set('migration_from_versions', JSON.stringify(activeVersions));
+              params.set('migration_from_versions', JSON.stringify(activeVersions));
             }
 
-            const response = await fetch(url.toString(), {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-              }
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`${t.codegenerationpanel1649}${response.status}: ${errorText}`);
+            let data: any;
+            try {
+              data = await apiClient.get(`/ultimate-template/${templateId}?${params.toString()}`);
+            } catch (err: any) {
+              const status = err?.response?.status;
+              const errorText = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || '';
+              throw new Error(`${t.codegenerationpanel1649}${status}: ${errorText}`);
             }
-
-            const data = await response.json();
 
             // Check for syntax errors from backend
             if (data.validation?.has_syntax_errors) {
@@ -1859,14 +1698,9 @@ export default function CodeGenerationPanel() {
           try {
             // Don't call updateProgress here - progress is tracked per table in processing loops!
 
-            const response = await fetch(`/api/ultimate-template/${templateId}/batch`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
+            let data: any;
+            try {
+              data = await apiClient.post(`/ultimate-template/${templateId}/batch`, {
                 tables: tables,
                 project_id: selectedProjectId!,
                 language_code: langCode,
@@ -1879,15 +1713,12 @@ export default function CodeGenerationPanel() {
                 migration_from_versions: Object.fromEntries(
                   Object.entries(migrationFromVersions).filter(([, v]) => v !== null)
                 ), // 📊 Per-schema migration versions
-              })
-            });
-
-            if (!response.ok) {
-              const errorText = await response.text();
-              throw new Error(`${t.codegenerationpanel1716}${response.status}: ${errorText}`);
+              });
+            } catch (err: any) {
+              const status = err?.response?.status;
+              const errorText = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || '';
+              throw new Error(`${t.codegenerationpanel1716}${status}: ${errorText}`);
             }
-
-            const data = await response.json();
 
             if (!data.success) {
               throw new Error(data.error || t.codegenerationpanel1722);
@@ -2162,7 +1993,7 @@ export default function CodeGenerationPanel() {
 
             // Integrity check: verify content wasn't truncated during API response delivery
             if (zipFile.file_content_length && base64Content.length !== zipFile.file_content_length) {
-              console.warn(`${t.codegenerationpanel1909}"${zipFile.file_name}":${t.codegenerationpanel1909_2}${zipFile.file_content_length},{t.codegenerationpanel1909_3}${base64Content.length}`);
+              console.warn(`${t.codegenerationpanel1909}"${zipFile.file_name}":${t.codegenerationpanel1909_2}${zipFile.file_content_length},${t.codegenerationpanel1909_3}${base64Content.length}`);
               throw new Error(`${t.codegenerationpanel1910}${zipFile.file_content_length}${t.codegenerationpanel1910_2}${base64Content.length})`);
             }
 
@@ -2800,6 +2631,27 @@ export default function CodeGenerationPanel() {
       setGenerationErrors(errors);
       setValidationWarnings(collectedValidationWarnings);
 
+      // Persist JavaScript / template generation errors to the Deployment Log panel.
+      // Cap at 50 entries to avoid flooding the table if a misconfigured template
+      // produces thousands of identical errors.
+      const MAX_PERSIST_ERRORS = 50;
+      errors.slice(0, MAX_PERSIST_ERRORS).forEach((err) => {
+        persistDeploymentLog('error', `Template error: ${err.error}`, {
+          source: 'template_eval',
+          template: err.template,
+          file: err.file,
+          table: err.table,
+          language: err.language,
+        });
+      });
+      if (errors.length > MAX_PERSIST_ERRORS) {
+        persistDeploymentLog('warning', `${errors.length - MAX_PERSIST_ERRORS} additional template errors omitted (see ERRORS.txt in archive).`, {
+          source: 'template_eval',
+          total_errors: errors.length,
+          omitted: errors.length - MAX_PERSIST_ERRORS,
+        });
+      }
+
       // 🔄 Persist current selections for next session
       saveCodegenSelections();
 
@@ -3001,14 +2853,7 @@ export default function CodeGenerationPanel() {
           }
 
           // Fire and forget - don't wait for response
-          fetch('/api/generated-projects/upload', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Accept': 'application/json'
-            },
-            body: uploadFormData
-          }).catch(() => {
+          apiClient.uploadFile('/generated-projects/upload', uploadFormData).catch(() => {
             // Silent fail - generation record is not critical
           });
         }
@@ -3114,6 +2959,13 @@ export default function CodeGenerationPanel() {
         `${t.codegenerationpanel2425}${ftpDir}`,
         ''
       ]);
+      persistDeploymentLog('info', `Starting ${ftpType} upload to ${ftpHost}${ftpDir}`, {
+        source: 'ftp_upload',
+        ftp_type: ftpType,
+        host: ftpHost,
+        directory: ftpDir,
+        project_name: projectName,
+      });
 
       // Perform generation with FTP upload callback (force ZIP format)
       await performGeneration(async (zipBlob) => {
@@ -3124,6 +2976,11 @@ export default function CodeGenerationPanel() {
           `${t.codegenerationpanel2435}${(zipBlob.size / 1024).toFixed(2)} KB`,
           ''
         ]);
+        persistDeploymentLog('info', `Generation complete: ${(zipBlob.size / 1024).toFixed(2)} KB archive`, {
+          source: 'ftp_upload',
+          phase: 'generation_complete',
+          archive_size_bytes: zipBlob.size,
+        });
 
         // Upload ZIP to server first (for FTP upload)
         setGenerationProgress({
@@ -3135,26 +2992,27 @@ export default function CodeGenerationPanel() {
         });
 
         setDeploymentLogs(prev => [...prev, t.codegenerationpanel2448]);
+        persistDeploymentLog('info', `📤 Uploading archive to server (${(zipBlob.size / 1024).toFixed(2)} KB)`, {
+          source: 'ftp_upload',
+          phase: 'upload_to_server_start',
+          archive_size_bytes: zipBlob.size,
+        });
 
         const formData = new FormData();
         formData.append('project_id', selectedProjectId!.toString());
         formData.append('archive', zipBlob, `${projectName}.zip`);
 
-        const uploadResponse = await fetch('/api/generated-projects/upload', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          },
-          body: formData
-        });
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
+        let uploadResult: any;
+        try {
+          uploadResult = await apiClient.uploadFile('/generated-projects/upload', formData);
+        } catch (err: any) {
+          const errorText = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || '';
+          persistDeploymentLog('error', `Archive upload to server failed: ${errorText}`, {
+            source: 'ftp_upload',
+            phase: 'upload_to_server_failed',
+          });
           throw new Error(`${t.codegenerationpanel2465}${errorText}`);
         }
-
-        const uploadResult = await uploadResponse.json();
         const filename = uploadResult.filename;
 
         setDeploymentLogs(prev => [
@@ -3162,6 +3020,11 @@ export default function CodeGenerationPanel() {
           t.codegenerationpanel2473,
           ''
         ]);
+        persistDeploymentLog('success', `✅ Archive uploaded to server: ${filename}`, {
+          source: 'ftp_upload',
+          phase: 'upload_to_server_complete',
+          filename,
+        });
 
         // Now trigger FTP upload
         setGenerationProgress({
@@ -3176,18 +3039,19 @@ export default function CodeGenerationPanel() {
           ...prev,
           `📡 Connecting to ${ftpType} server...`
         ]);
-
-        const ftpResponse = await fetch(`/api/projects/${selectedProjectId}/ftp-upload`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ filename })
+        persistDeploymentLog('info', `📡 Connecting to ${ftpType} server ${ftpHost}`, {
+          source: 'ftp_upload',
+          phase: 'connect',
+          ftp_type: ftpType,
+          host: ftpHost,
         });
 
-        const ftpResult = await ftpResponse.json();
+        let ftpResult: any;
+        try {
+          ftpResult = await apiClient.post(`/projects/${selectedProjectId}/ftp-upload`, { filename });
+        } catch (err: any) {
+          ftpResult = err?.response?.data || { success: false, message: err?.message };
+        }
 
         // Add FTP logs
         if (ftpResult.logs && Array.isArray(ftpResult.logs)) {
@@ -3195,7 +3059,14 @@ export default function CodeGenerationPanel() {
         }
 
         if (!ftpResult.success) {
-          throw new Error(ftpResult.message || `${ftpType}${t.codegenerationpanel2509}`);
+          const errMsg = ftpResult.message || `${ftpType}${t.codegenerationpanel2509}`;
+          persistDeploymentLog('error', `${ftpType} upload failed: ${errMsg}`, {
+            source: 'ftp_upload',
+            phase: 'upload_failed',
+            ftp_type: ftpType,
+            ftp_logs: Array.isArray(ftpResult.logs) ? ftpResult.logs : null,
+          });
+          throw new Error(errMsg);
         }
 
         setDeploymentLogs(prev => [
@@ -3204,6 +3075,13 @@ export default function CodeGenerationPanel() {
           `✅ ${ftpType}${t.codegenerationpanel2515}`,
           `📁 ${ftpResult.files_uploaded || 0}${t.codegenerationpanel2516}`
         ]);
+        persistDeploymentLog('success', `${ftpType} upload complete: ${ftpResult.files_uploaded || 0} files uploaded`, {
+          source: 'ftp_upload',
+          phase: 'upload_complete',
+          ftp_type: ftpType,
+          files_uploaded: ftpResult.files_uploaded || 0,
+          ftp_logs: Array.isArray(ftpResult.logs) ? ftpResult.logs : null,
+        });
 
         setGenerationProgress({
           current: 100,
@@ -3219,6 +3097,10 @@ export default function CodeGenerationPanel() {
       console.error(t.codegenerationpanel2530, err);
       setError(err.message || t.codegenerationpanel2531);
       setDeploymentLogs(prev => [...prev, '', `${t.codegenerationpanel2532}${err.message}`]);
+      persistDeploymentLog('error', `FTP/SSH flow aborted: ${err?.message || 'unknown error'}`, {
+        source: 'ftp_upload',
+        phase: 'flow_aborted',
+      });
     } finally {
       setGenerating(false);
       setActiveGenerateButton(null);
@@ -3227,36 +3109,68 @@ export default function CodeGenerationPanel() {
   };
 
   /**
-   * Poll deployment task status and update live log
+   * Poll deployment task status and update live log.
+   *
+   * Two separate timeouts apply:
+   *   - PICKUP_TIMEOUT_SEC: how long we wait for the service to claim the
+   *     task (status pending → processing). Short, because if no service
+   *     pulls the task in this window the service is almost certainly
+   *     offline and the user should hear about it quickly.
+   *   - PROCESSING_TIMEOUT_SEC: how long we let the service work on the
+   *     task once it has been picked up. Longer, because legitimate
+   *     deploys (large projects, slow disks, npm/composer install in the
+   *     install_script) can take many minutes.
+   *
+   * On either timeout we attempt to cancel the task on the backend so
+   * a service that comes online later does not silently start running
+   * a task the user has already given up on.
    */
-  const startDeploymentPolling = (taskId: number, token: string) => {
+  // Token plumbing removed: apiClient.cliRequest reads the token internally
+  // and handles 401-refresh, so the caller doesn't have to thread one through.
+  const startDeploymentPolling = (taskId: number) => {
     // Clear any existing polling interval
     if (deploymentPollIntervalRef.current) {
       clearInterval(deploymentPollIntervalRef.current);
       deploymentPollIntervalRef.current = null;
     }
 
-    let pollCount = 0;
-    const maxPolls = 300; // 10 minutes max (300 * 2 seconds)
+    const POLL_INTERVAL_SEC = 2;
+    const PICKUP_TIMEOUT_SEC = 180;      // 3 min - service must claim
+    const PROCESSING_TIMEOUT_SEC = 1800; // 30 min - service must finish
+    const startedAt = Date.now();
+    let processingStartedAt: number | null = null; // set when status flips to 'processing'
+
+    const stopPolling = () => {
+      setDeploymentPolling(false);
+      if (deploymentPollIntervalRef.current) {
+        clearInterval(deploymentPollIntervalRef.current);
+        deploymentPollIntervalRef.current = null;
+      }
+    };
+
+    const cancelOnBackend = async () => {
+      try {
+        await apiClient.cliRequest(`/svc/tasks/${taskId}/cancel`, { method: 'POST' });
+      } catch {
+        // Best-effort cancel; if it fails the scheduled cleanup will eventually
+        // mark it as expired via the per-type pickup TTL.
+      }
+    };
 
     const pollInterval = setInterval(async () => {
-      pollCount++;
+      const elapsedSec = Math.floor((Date.now() - startedAt) / 1000);
 
       try {
-        const response = await fetch(`/cli/svc/tasks/${taskId}`, {
-          headers: {
-            'Accept': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || t.codegenerationpanel2566);
-        }
-
+        // cliRequest throws on !response.ok; catch below handles the failure.
+        const result = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
         const taskData = result.task;
+
+        // Note when the task transitions from pending → processing so we
+        // can switch from the short pickup timeout to the longer processing
+        // timeout. We only set this once.
+        if (taskData.status === 'processing' && processingStartedAt === null) {
+          processingStartedAt = Date.now();
+        }
 
         // Update logs from backend (live streaming from service)
         if (taskData.logs) {
@@ -3282,36 +3196,93 @@ export default function CodeGenerationPanel() {
 
         // Stop polling when task is finished
         if (taskData.status === 'completed') {
-          setDeploymentPolling(false);
-          if (deploymentPollIntervalRef.current) {
-            clearInterval(deploymentPollIntervalRef.current);
-            deploymentPollIntervalRef.current = null;
-          }
-        } else if (taskData.status === 'failed') {
-          const errorMsg = taskData.error_message || t.codegenerationpanel2601;
-          setDeploymentLogs(prev => [...prev, '', `{t.codegenerationpanel2602}${errorMsg}`]);
-          setDeploymentPolling(false);
-          if (deploymentPollIntervalRef.current) {
-            clearInterval(deploymentPollIntervalRef.current);
-            deploymentPollIntervalRef.current = null;
-          }
+          persistDeploymentLog('success', `Deploy task #${taskId} completed by scoriet-svc`, {
+            source: 'service_deploy',
+            phase: 'task_completed',
+          }, taskId);
+          stopPolling();
+          return;
         }
 
-        // Stop polling after max attempts
-        if (pollCount >= maxPolls) {
-          setDeploymentLogs(prev => [...prev, '', t.codegenerationpanel2612]);
-          setDeploymentPolling(false);
-          if (deploymentPollIntervalRef.current) {
-            clearInterval(deploymentPollIntervalRef.current);
-            deploymentPollIntervalRef.current = null;
+        if (taskData.status === 'failed') {
+          const errorMsg = taskData.error_message || t.codegenerationpanel2601;
+          setDeploymentLogs(prev => [...prev, '', `${t.codegenerationpanel2602}${errorMsg}`]);
+          persistDeploymentLog('error', `Deploy task #${taskId} failed: ${errorMsg}`, {
+            source: 'service_deploy',
+            phase: 'task_failed',
+          }, taskId);
+          stopPolling();
+          return;
+        }
+
+        // PICKUP timeout: still pending after 3 min - service is almost certainly
+        // offline. Cancel on backend so it does not run later when the user has
+        // already moved on.
+        if (taskData.status === 'pending' && elapsedSec >= PICKUP_TIMEOUT_SEC) {
+          setDeploymentLogs(prev => [...prev, '',
+            `⏰ Service did not claim the deployment within ${Math.floor(PICKUP_TIMEOUT_SEC / 60)} minutes - is scoriet-svc running?`,
+            `🛑 Task #${taskId} was cancelled.`,
+          ]);
+          persistDeploymentLog('error', `Deploy task #${taskId} pickup timeout: scoriet-svc did not claim within ${Math.floor(PICKUP_TIMEOUT_SEC / 60)} minutes`, {
+            source: 'service_deploy',
+            phase: 'pickup_timeout',
+            timeout_minutes: Math.floor(PICKUP_TIMEOUT_SEC / 60),
+          }, taskId);
+          await cancelOnBackend();
+          stopPolling();
+          setError(`Service did not pick up the task within ${Math.floor(PICKUP_TIMEOUT_SEC / 60)} minutes.`);
+          return;
+        }
+
+        // PROCESSING timeout: picked up but still running 30 min later.
+        if (processingStartedAt !== null) {
+          const processingElapsedSec = Math.floor((Date.now() - processingStartedAt) / 1000);
+          if (processingElapsedSec >= PROCESSING_TIMEOUT_SEC) {
+            setDeploymentLogs(prev => [...prev, '',
+              `⏰ Deployment is still running after ${Math.floor(PROCESSING_TIMEOUT_SEC / 60)} minutes - giving up on this task.`,
+              `🛑 Task #${taskId} was cancelled.`,
+            ]);
+            persistDeploymentLog('error', `Deploy task #${taskId} processing timeout: exceeded ${Math.floor(PROCESSING_TIMEOUT_SEC / 60)} minutes`, {
+              source: 'service_deploy',
+              phase: 'processing_timeout',
+              timeout_minutes: Math.floor(PROCESSING_TIMEOUT_SEC / 60),
+            }, taskId);
+            await cancelOnBackend();
+            stopPolling();
+            setError(`Deployment did not complete within ${Math.floor(PROCESSING_TIMEOUT_SEC / 60)} minutes.`);
+            return;
           }
         }
       } catch (err: any) {
         console.error(t.codegenerationpanel2620, err);
       }
-    }, 2000); // Poll every 2 seconds
+    }, POLL_INTERVAL_SEC * 1000);
 
     deploymentPollIntervalRef.current = pollInterval;
+  };
+
+  /**
+   * User-initiated cancel of a deployment task. Stops the local poll loop
+   * AND tells the backend to mark the task as cancelled so a service that
+   * picks it up after this point bails out instead of running it.
+   */
+  const handleCancelDeployment = async () => {
+    if (!deploymentTaskId) return;
+    const taskId = deploymentTaskId;
+
+    try {
+      // Auth header + 401-refresh handled inside apiClient.cliRequest
+      await apiClient.cliRequest(`/svc/tasks/${taskId}/cancel`, { method: 'POST' });
+    } catch {
+      // Best-effort - even if backend cancel fails, we still want to stop polling
+    }
+
+    if (deploymentPollIntervalRef.current) {
+      clearInterval(deploymentPollIntervalRef.current);
+      deploymentPollIntervalRef.current = null;
+    }
+    setDeploymentPolling(false);
+    setDeploymentLogs(prev => [...prev, '', `🛑 Deployment cancelled by user (task #${taskId})`]);
   };
 
   /**
@@ -3337,24 +3308,38 @@ export default function CodeGenerationPanel() {
         return;
       }
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.codegenerationpanel2651);
-      }
-
+      // Auth + 401-refresh handled inside apiClient.cliRequest below;
+      // dropped the explicit token read that this block used to do.
       const projectName = selectedProject?.name || 'project';
 
       // Add initial log entry
       setDeploymentLogs([t.codegenerationpanel2657, `${t.codegenerationpanel2657_2}${projectName}`, '']);
+      persistDeploymentLog('info', `Starting service deploy for "${projectName}"`, {
+        source: 'service_deploy',
+        phase: 'started',
+        project_name: projectName,
+        git_push_enabled: pushToGit && !!selectedGitProvider && !!selectedRepository,
+      });
 
       // Perform generation with upload callback (force ZIP format for deployment)
       await performGeneration(async (zipBlob, zip) => {
         // Add log: Generation complete
         setDeploymentLogs(prev => [...prev, t.codegenerationpanel2662, `${t.codegenerationpanel2662_2}${(zipBlob.size / 1024).toFixed(2)} KB`, '']);
+        persistDeploymentLog('info', `Generation complete: ${(zipBlob.size / 1024).toFixed(2)} KB archive`, {
+          source: 'service_deploy',
+          phase: 'generation_complete',
+          archive_size_bytes: zipBlob.size,
+        });
 
         // 🔗 Git Push if enabled
         if (pushToGit && selectedGitProvider && selectedRepository) {
           setDeploymentLogs(prev => [...prev, t.codegenerationpanel2666]);
+          persistDeploymentLog('info', `🔗 Pushing generated files to ${selectedGitProvider.provider}/${selectedRepository.full_name}`, {
+            source: 'service_deploy',
+            phase: 'git_push_start',
+            provider: selectedGitProvider.provider,
+            repository: selectedRepository.full_name,
+          });
 
           // Extract files from ZIP for Git push
           const filesForGit: Record<string, string> = {};
@@ -3382,6 +3367,11 @@ export default function CodeGenerationPanel() {
         });
 
         setDeploymentLogs(prev => [...prev, t.codegenerationpanel2693]);
+        persistDeploymentLog('info', `📤 Uploading archive to server (${(zipBlob.size / 1024).toFixed(2)} KB)`, {
+          source: 'service_deploy',
+          phase: 'upload_to_server_start',
+          archive_size_bytes: zipBlob.size,
+        });
 
         const formData = new FormData();
         formData.append('project_id', selectedProjectId!.toString());
@@ -3405,24 +3395,25 @@ export default function CodeGenerationPanel() {
           formData.append('files_count', metadata.filesCount.toString());
         }
 
-        const uploadResponse = await fetch('/api/generated-projects/upload', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          },
-          body: formData
-        });
-
-        if (!uploadResponse.ok) {
-          const errorText = await uploadResponse.text();
+        let uploadResult: any;
+        try {
+          uploadResult = await apiClient.uploadFile('/generated-projects/upload', formData);
+        } catch (err: any) {
+          const errorText = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || '';
+          persistDeploymentLog('error', `Archive upload to server failed: ${errorText}`, {
+            source: 'service_deploy',
+            phase: 'upload_to_server_failed',
+          });
           throw new Error(`${t.codegenerationpanel2728}${errorText}`);
         }
-
-        const uploadResult = await uploadResponse.json();
         const downloadUrl = uploadResult.download_url;
 
         setDeploymentLogs(prev => [...prev, t.codegenerationpanel2734, `${t.codegenerationpanel2734_2}${downloadUrl}`, '']);
+        persistDeploymentLog('success', `✅ Archive uploaded; service download URL ready`, {
+          source: 'service_deploy',
+          phase: 'upload_to_server_complete',
+          download_url: downloadUrl,
+        });
 
         // Create download task for scoriet-svc
         setGenerationProgress({
@@ -3434,6 +3425,11 @@ export default function CodeGenerationPanel() {
         });
 
         setDeploymentLogs(prev => [...prev, t.codegenerationpanel2745]);
+        persistDeploymentLog('info', `📋 Creating deployment task for scoriet-svc`, {
+          source: 'service_deploy',
+          phase: 'creating_cli_task',
+          target_path: `C:\\deployed_projects\\${projectName}`,
+        });
 
         const taskPayload = {
           project_id: selectedProjectId,
@@ -3442,30 +3438,33 @@ export default function CodeGenerationPanel() {
           install_type: 'initial',
         };
 
-        const taskResponse = await fetch('/cli/svc/tasks/project-download', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(taskPayload)
-        });
-
-        if (!taskResponse.ok) {
-          const errorText = await taskResponse.text();
+        // cliRequest throws on !response.ok with the error body shape used
+        // everywhere else; the previous text() parse + manual ok-check is
+        // no longer needed.
+        let taskResult: any;
+        try {
+          taskResult = await apiClient.cliRequest('/svc/tasks/project-download', {
+            method: 'POST',
+            body: JSON.stringify(taskPayload),
+          });
+        } catch (err: any) {
+          const errorText = err?.response?.data?.message || err?.message || '';
           throw new Error(`${t.codegenerationpanel2766}${errorText}`);
         }
 
-        const taskResult = await taskResponse.json();
         const taskId = taskResult.task?.id || taskResult.task_id;
 
         setDeploymentTaskId(taskId);
         setDeploymentLogs(prev => [...prev, `${t.codegenerationpanel2773}${taskId}`, `${t.codegenerationpanel2773_3}C:\\deployed_projects\\${projectName}`, '', t.codegenerationpanel2773_4]);
+        persistDeploymentLog('info', `Deploy task #${taskId} created, waiting for scoriet-svc`, {
+          source: 'service_deploy',
+          phase: 'task_created',
+          target_path: `C:\\deployed_projects\\${projectName}`,
+        }, taskId);
 
         // Start polling for task status
         setDeploymentPolling(true);
-        startDeploymentPolling(taskId, token);
+        startDeploymentPolling(taskId);
 
         setGenerationProgress({
           current: 100,
@@ -3487,6 +3486,10 @@ export default function CodeGenerationPanel() {
 
       // Add error to deployment log
       setDeploymentLogs(prev => [...prev, '', `${t.codegenerationpanel2798}${errorMessage}`, '', t.codegenerationpanel2798_2]);
+      persistDeploymentLog('error', `Service deploy aborted: ${errorMessage}`, {
+        source: 'service_deploy',
+        phase: 'flow_aborted',
+      });
       setDeploymentPolling(false);
     } finally {
       setGenerating(false);
@@ -4506,15 +4509,26 @@ export default function CodeGenerationPanel() {
                         <span className="text-xs" style={{ color: colors.textMuted }}>Task #{deploymentTaskId}</span>
                       )}
                     </div>
-                    <button
-                      onClick={() => setDeploymentLogs([])}
-                      className="text-xs transition-colors"
-                      style={{ color: colors.textMuted }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = colors.textPrimary; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = colors.textMuted; }}
-                    >
-                      {t.codegenerationpanel3722}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {deploymentPolling && (
+                        <button
+                          onClick={handleCancelDeployment}
+                          className="text-xs px-2 py-1 rounded transition-colors bg-red-700 text-white hover:bg-red-600"
+                          title="Stop polling and cancel the task on the backend"
+                        >
+                          🛑 Cancel
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setDeploymentLogs([])}
+                        className="text-xs transition-colors"
+                        style={{ color: colors.textMuted }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = colors.textPrimary; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = colors.textMuted; }}
+                      >
+                        {t.codegenerationpanel3722}
+                      </button>
+                    </div>
                   </div>
                   <div className="p-4 font-mono text-xs max-h-96 overflow-y-auto bg-black">
                     {deploymentLogs.map((log, index) => (

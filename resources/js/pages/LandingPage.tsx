@@ -7,6 +7,7 @@ import { Divider } from 'primereact/divider';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
+import FeaturesModal from '@/Components/Modals/FeaturesModal';
 import {
   CodeBracketIcon as CodeIcon,
   CircleStackIcon as DatabaseIcon,
@@ -78,6 +79,7 @@ export default function LandingPage() {
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
+  const [showFeaturesModal, setShowFeaturesModal] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     // Initialize based on token existence to prevent flash of unauthenticated content
@@ -501,7 +503,7 @@ export default function LandingPage() {
                 </a>
                 <Badge value={t.landingpage502} severity="info" className="ml-2" />
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {/* Home Button - only shown on CMS pages */}
                 {isCMSPage && (
@@ -894,7 +896,7 @@ export default function LandingPage() {
 
         {/* Current Plan Section - Only for Authenticated Users */}
         {isAuthenticated && (
-          <section className="py-16" style={{ backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderSecondary}`, borderBottom: `1px solid ${colors.borderSecondary}` }}>
+          <section id="pricing" className="py-16" style={{ backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderSecondary}`, borderBottom: `1px solid ${colors.borderSecondary}` }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold mb-4" style={{ color: colors.textPrimary }}>
@@ -971,14 +973,26 @@ export default function LandingPage() {
                   <Button
                     icon="pi pi-github"
                     className="p-button-rounded landing-social-btn"
+                    aria-label="GitHub"
+                    tooltip="GitHub"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => window.open('https://github.com/Harveyhase68/scoriet', '_blank', 'noopener,noreferrer')}
                   />
                   <Button
                     icon="pi pi-twitter"
                     className="p-button-rounded landing-social-btn"
+                    aria-label="X"
+                    tooltip="X (Twitter)"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => window.open('https://x.com/Harveyhase68', '_blank', 'noopener,noreferrer')}
                   />
                   <Button
                     icon="pi pi-discord"
                     className="p-button-rounded landing-social-btn"
+                    aria-label="Discord"
+                    tooltip="Discord"
+                    tooltipOptions={{ position: 'top' }}
+                    onClick={() => window.open('https://discord.gg/ZtmpPmda', '_blank', 'noopener,noreferrer')}
                   />
                 </div>
               </div>
@@ -986,8 +1000,26 @@ export default function LandingPage() {
               <div>
                 <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.productLabel}</h4>
                 <ul className="space-y-2" style={{ color: colors.textMuted }}>
-                  <li><a href="#features" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.featuresLink}</a></li>
-                  <li><a href="#pricing" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.pricingLink}</a></li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setShowFeaturesModal(true)}
+                      className="hover:opacity-80 bg-transparent border-0 p-0 cursor-pointer text-left"
+                      style={{ color: colors.textMuted, font: 'inherit' }}
+                    >
+                      {t.featuresLink}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => setShowPlanModal(true)}
+                      className="hover:opacity-80 bg-transparent border-0 p-0 cursor-pointer text-left"
+                      style={{ color: colors.textMuted, font: 'inherit' }}
+                    >
+                      {t.pricingLink}
+                    </button>
+                  </li>
                 </ul>
               </div>
 
@@ -996,6 +1028,7 @@ export default function LandingPage() {
                 <ul className="space-y-2" style={{ color: colors.textMuted }}>
                   <li><a href="https://scoriet.com/docs/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.documentationLink}</a></li>
                   <li><a href="https://www.youtube.com/@Harveyhase68a" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.tutorialsLink}</a></li>
+                  <li><a href={`https://scoriet.com/devlog/?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.devlogLink}</a></li>
                   <li><a href={`/${currentLanguage}/downloads`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.downloadsLink}</a></li>
                 </ul>
               </div>
@@ -1003,8 +1036,10 @@ export default function LandingPage() {
               <div>
                 <h4 className="font-semibold mb-4" style={{ color: colors.textPrimary }}>{t.supportLabel}</h4>
                 <ul className="space-y-2" style={{ color: colors.textMuted }}>
-                  <li><a href={`/${currentLanguage}/contact`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.contactUsLink}</a></li>
-                  <li><a href="https://scoriet.com/forum/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.communityLink}</a></li>
+                  <li><a href={`https://scoriet.com/pages/kontakt?lang=${currentLanguage}`} className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.contactUsLink}</a></li>
+                  <li><a href={`https://scoriet.com/forum/?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.communityLink}</a></li>
+                  <li><a href={`https://scoriet.com/pages/tickets?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.ticketsLink}</a></li>
+                  <li><a href={`https://scoriet.com/pages/issues?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.issuesLink}</a></li>
                 </ul>
               </div>
             </div>
@@ -1014,9 +1049,9 @@ export default function LandingPage() {
             <div className="flex justify-between items-center" style={{ color: colors.textMuted }}>
               <p>{t.allRightsReserved}.</p>
               <div className="flex space-x-6">
-                <a href="https://scoriet.com/pages/datenschutz.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.privacyPolicy}</a>
-                <a href="https://scoriet.com/pages/agb.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.termsOfService}</a>
-                <a href="https://scoriet.com/pages/impressum.php" target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.landingpage1019}</a>
+                <a href={`https://scoriet.com/pages/datenschutz?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.privacyPolicy}</a>
+                <a href={`https://scoriet.com/pages/agb?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.termsOfService}</a>
+                <a href={`https://scoriet.com/pages/impressum?lang=${currentLanguage}`} target="_blank" rel="noopener noreferrer" className="hover:opacity-80" style={{ color: colors.textMuted }}>{t.landingpage1019}</a>
               </div>
             </div>
           </div>
@@ -1055,6 +1090,18 @@ export default function LandingPage() {
         visible={showPlanModal}
         onHide={() => setShowPlanModal(false)}
         initialTab={0}
+      />
+
+      {/* Features Modal */}
+      <FeaturesModal
+        visible={showFeaturesModal}
+        onHide={() => setShowFeaturesModal(false)}
+        onStartFree={
+          !isAuthenticated && !isDemoMode
+            ? () => handleOpenModal('register')
+            : undefined
+        }
+        t={t}
       />
 
       {/* Auth Modals */}

@@ -435,19 +435,33 @@ class TeamRoleController extends Controller
             return response()->json(['message' => __('teamrolecontrollerphp435')], 422);
         }
 
-        // Generate unique name and slug for the copy
-        $baseName = $sourceRole->name . ' (Kopie)';
-        $baseSlug = $sourceRole->slug . '-copy';
+        // Generate unique name and slug for the copy. Display name uses "_copy"
+        // (consistent with Report Pattern / Form Set / Code Adjustment / Schema
+        // clones); slug uses "-copy" so it stays URL-friendly. If the source
+        // already ends in _copy / _copy_<n> (we're cloning a clone), strip
+        // that suffix off first so we get "x_copy_2" instead of "x_copy_copy".
+        [$nameBase, $startCounter] = $this->stripCopySuffixes($sourceRole->name, $sourceRole->slug);
+        $newName = $nameBase['name'] . '_copy';
+        $newSlug = $nameBase['slug'] . '-copy';
 
-        // Check for duplicates and add number if needed
-        $counter = 1;
-        $newName = $baseName;
-        $newSlug = $baseSlug;
+        // Skip the unnumbered variant if we know we're at least the second clone.
+        if ($startCounter !== null) {
+            $newName = $nameBase['name'] . '_copy_' . $startCounter;
+            $newSlug = $nameBase['slug'] . '-copy-' . $startCounter;
+        }
 
+        // Walk forward until the slug is unique within this team. Cap the
+        // loop so a pathological state cannot spin forever.
+        $counter = $startCounter ?? 1;
         while (TeamRole::where('team_id', $teamId)->where('slug', $newSlug)->exists()) {
             $counter++;
-            $newName = $sourceRole->name . ' (Kopie ' . $counter . ')';
-            $newSlug = $sourceRole->slug . '-copy-' . $counter;
+            if ($counter > 9999) {
+                $newName = $nameBase['name'] . '_copy_' . time();
+                $newSlug = $nameBase['slug'] . '-copy-' . time();
+                break;
+            }
+            $newName = $nameBase['name'] . '_copy_' . $counter;
+            $newSlug = $nameBase['slug'] . '-copy-' . $counter;
         }
 
         // Get max sort order
@@ -520,5 +534,71 @@ class TeamRoleController extends Controller
         }
 
         return $member->canManageRoles();
+    }
+
+    /**
+     * Strip a trailing copy-marker from both the name ("_copy" / "_copy_<n>")
+     * and the slug ("-copy" / "-copy-<n>") so that re-cloning a clone resumes
+     * the counter instead of producing "<x>_copy_copy".
+     *
+     * Returns [['name' => baseName, 'slug' => baseSlug], $startCounter]
+     * where $startCounter is the number to resume from, or null if we should
+     * try the unnumbered "_copy" / "-copy" variant first.
+     *
+     * Manual character walking (no regex) — keeps it in line with the
+     * project-wide preference and is robust against multi-byte names.
+     *
+     * @return array{0: array{name: string, slug: string}, 1: int|null}
+     */
+    private function stripCopySuffixes(string $name, string $slug): array
+    {
+        // --- name: try "_copy_<digits>" then bare "_copy" -----------------
+        $nameBase = $name;
+        $nameStart = null;
+
+        $i = strlen($name);
+        while ($i > 0 && $name[$i - 1] >= '0' && $name[$i - 1] <= '9') {
+            $i--;
+        }
+        if ($i < strlen($name)) {
+            $beforeDigits = substr($name, 0, $i);
+            if (str_ends_with($beforeDigits, '_copy_')) {
+                $nameBase = substr($beforeDigits, 0, -strlen('_copy_'));
+                $nameStart = ((int) substr($name, $i)) + 1;
+            }
+        }
+        if ($nameStart === null && str_ends_with($name, '_copy')) {
+            $nameBase = substr($name, 0, -strlen('_copy'));
+            $nameStart = 1;
+        }
+
+        // --- slug: same logic with hyphens --------------------------------
+        $slugBase = $slug;
+        $slugStart = null;
+
+        $j = strlen($slug);
+        while ($j > 0 && $slug[$j - 1] >= '0' && $slug[$j - 1] <= '9') {
+            $j--;
+        }
+        if ($j < strlen($slug)) {
+            $beforeDigits = substr($slug, 0, $j);
+            if (str_ends_with($beforeDigits, '-copy-')) {
+                $slugBase = substr($beforeDigits, 0, -strlen('-copy-'));
+                $slugStart = ((int) substr($slug, $j)) + 1;
+            }
+        }
+        if ($slugStart === null && str_ends_with($slug, '-copy')) {
+            $slugBase = substr($slug, 0, -strlen('-copy'));
+            $slugStart = 1;
+        }
+
+        // Use whichever counter is higher so name and slug stay in sync even
+        // if one was edited separately.
+        $startCounter = null;
+        if ($nameStart !== null || $slugStart !== null) {
+            $startCounter = max($nameStart ?? 1, $slugStart ?? 1);
+        }
+
+        return [['name' => $nameBase, 'slug' => $slugBase], $startCounter];
     }
 }

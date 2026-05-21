@@ -6,7 +6,7 @@ sidebar_position: 1
 
 ## Introduction
 
-The Scoriet database is a comprehensive relational database system designed to support the Enterprise Code Generator platform. It manages users, projects, database schemas, code templates, forms, reports, kanban boards, messaging, and a complete marketplace ecosystem for templates.
+The Scoriet database is a comprehensive relational database system designed to support the Schema-to-Stack Studio platform. It manages users, projects, database schemas, code templates, forms, reports, kanban boards, messaging, and a complete marketplace ecosystem for templates.
 
 ![Database Management](/img/screenshots/database-management.png)
 *Database Management panel showing parsed schemas with status, visibility, and action buttons*

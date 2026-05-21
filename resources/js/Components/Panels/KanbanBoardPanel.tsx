@@ -37,11 +37,7 @@ import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import type { Translations } from '@/i18n/types';
 import { useTheme } from '@/contexts/ThemeContext';
-
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-    return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-};
+import { apiClient } from '@/lib/api';
 
 interface TabPanelProps {
     isActive: boolean;
@@ -439,36 +435,26 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
         setLoading(true);
         try {
-            const token = getAuthToken();
-            const response = await fetch(`/api/kanban/project/${effectiveProjectId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setBoard(data.board);
-                setProjectOwnerId(data.project?.owner_id || null);
-
-                // Load team members to check for initials conflicts and get roles
-                if (data.board?.id) {
-                    const membersResponse = await fetch(`/api/kanban/board/${data.board.id}/team-members`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                        },
-                    });
-                    if (membersResponse.ok) {
-                        const membersData = await membersResponse.json();
-                        setInitialsConflicts(membersData.initials_conflicts || []);
-                        setTeamMembers(membersData.members || []);
-                        setAvailableRoles(membersData.available_roles || []);
-                    }
-                }
-            } else {
+            let data: any;
+            try {
+                data = await apiClient.get(`/kanban/project/${effectiveProjectId}`);
+            } catch {
                 toast.showError(t.kanbanboardpanel469);
+                return;
+            }
+            setBoard(data.board);
+            setProjectOwnerId(data.project?.owner_id || null);
+
+            // Load team members to check for initials conflicts and get roles
+            if (data.board?.id) {
+                try {
+                    const membersData = await apiClient.get(`/kanban/board/${data.board.id}/team-members`);
+                    setInitialsConflicts(membersData.initials_conflicts || []);
+                    setTeamMembers(membersData.members || []);
+                    setAvailableRoles(membersData.available_roles || []);
+                } catch {
+                    // Non-critical - board still usable without team members
+                }
             }
         } catch (error) {
             console.error(t.kanbanboardpanel472, error);
@@ -482,19 +468,8 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
     const checkAccess = useCallback(async () => {
         try {
             setCheckingAccess(true);
-            const token = getAuthToken();
-            const response = await fetch('/api/kanban/access', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setAccessStatus(data);
-            } else {
-                toast.showError(t.kanbanboardpanel494);
-            }
+            const data = await apiClient.get('/kanban/access');
+            setAccessStatus(data);
         } catch (error) {
             console.error(t.kanbanboardpanel497, error);
             toast.showError(t.kanbanboardpanel498);
@@ -507,16 +482,12 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
     const unlockFeature = useCallback(async () => {
         try {
             setUnlocking(true);
-            const token = getAuthToken();
-            const response = await fetch('/api/kanban/unlock', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            });
-            const data = await response.json();
+            let data: any;
+            try {
+                data = await apiClient.post('/kanban/unlock');
+            } catch (err: any) {
+                data = err?.response?.data || { success: false };
+            }
             if (data.success) {
                 toast.showSuccess(data.message);
                 setUnlockModalVisible(false);
@@ -613,28 +584,14 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
 
         // API call
         try {
-            const token = getAuthToken();
-            const response = await fetch(`/api/kanban/cards/${cardId}/move`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    column_id: targetColumnId,
-                    position: targetPosition,
-                }),
+            await apiClient.put(`/kanban/cards/${cardId}/move`, {
+                column_id: targetColumnId,
+                position: targetPosition,
             });
-
-            if (!response.ok) {
-                // Revert on error
-                loadBoard();
-                toast.showError(t.kanbanboardpanel631);
-            }
         } catch (_error) {
+            // Revert on error
             loadBoard();
-            toast.showError(t.kanbanboardpanel635);
+            toast.showError(t.kanbanboardpanel631);
         }
     };
 
@@ -674,36 +631,30 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         }
 
         try {
-            const token = getAuthToken();
-            const url = editingCard
-                ? `/api/kanban/cards/${editingCard.id}`
-                : `/api/kanban/columns/${targetColumnId}/cards`;
+            const endpoint = editingCard
+                ? `/kanban/cards/${editingCard.id}`
+                : `/kanban/columns/${targetColumnId}/cards`;
+            const body = {
+                title: cardForm.title,
+                description: cardForm.description || null,
+                priority: cardForm.priority,
+                // Use local date format to avoid timezone shift (toISOString converts to UTC which can shift the date)
+                due_date: cardForm.due_date ? `${cardForm.due_date.getFullYear()}-${String(cardForm.due_date.getMonth() + 1).padStart(2, '0')}-${String(cardForm.due_date.getDate()).padStart(2, '0')}` : null,
+                assigned_to: cardForm.assigned_to,
+                label_ids: cardForm.label_ids,
+            };
 
-            const response = await fetch(url, {
-                method: editingCard ? 'PUT' : 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    title: cardForm.title,
-                    description: cardForm.description || null,
-                    priority: cardForm.priority,
-                    // Use local date format to avoid timezone shift (toISOString converts to UTC which can shift the date)
-                    due_date: cardForm.due_date ? `${cardForm.due_date.getFullYear()}-${String(cardForm.due_date.getMonth() + 1).padStart(2, '0')}-${String(cardForm.due_date.getDate()).padStart(2, '0')}` : null,
-                    assigned_to: cardForm.assigned_to,
-                    label_ids: cardForm.label_ids,
-                }),
-            });
-
-            if (response.ok) {
+            try {
+                if (editingCard) {
+                    await apiClient.put(endpoint, body);
+                } else {
+                    await apiClient.post(endpoint, body);
+                }
                 toast.showSuccess(editingCard ? t.kanbanboardpanel699 : t.kanbanboardpanel699_2);
                 setCardDialogVisible(false);
                 loadBoard();
-            } else {
-                const data = await response.json();
-                toast.showError(data.message || t.kanbanboardpanel704);
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.message || t.kanbanboardpanel704);
             }
         } catch (_error) {
             toast.showError(t.kanbanboardpanel707);
@@ -719,23 +670,11 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             acceptClassName: 'p-button-danger',
             accept: async () => {
                 try {
-                    const token = getAuthToken();
-                    const response = await fetch(`/api/kanban/cards/${cardId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                        },
-                    });
-
-                    if (response.ok) {
-                        toast.showSuccess(t.kanbanboardpanel730);
-                        loadBoard();
-                    } else {
-                        toast.showError(t.kanbanboardpanel733);
-                    }
-                } catch (_error) {
-                    toast.showError(t.kanbanboardpanel736);
+                    await apiClient.delete(`/kanban/cards/${cardId}`);
+                    toast.showSuccess(t.kanbanboardpanel730);
+                    loadBoard();
+                } catch {
+                    toast.showError(t.kanbanboardpanel733);
                 }
             },
         });
@@ -793,25 +732,15 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         }
 
         try {
-            const token = getAuthToken();
-            const response = await fetch(`/api/kanban/cards/${cardId}/assign-me`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
+            try {
+                const data = await apiClient.post(`/kanban/cards/${cardId}/assign-me`);
                 toast.showSuccess(t.kanbanboardpanel806);
                 // Update local state with returned card data
                 if (data.card) {
                     updateCardInBoard(cardId, data.card.assignees || []);
                 }
-            } else {
-                toast.showError(data.message || t.kanbanboardpanel812);
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.message || t.kanbanboardpanel812);
             }
         } catch (_error) {
             toast.showError(t.kanbanboardpanel815);
@@ -826,25 +755,15 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         }
 
         try {
-            const token = getAuthToken();
-            const response = await fetch(`/api/kanban/cards/${cardId}/unassign-me`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
+            try {
+                const data = await apiClient.delete(`/kanban/cards/${cardId}/unassign-me`);
                 toast.showSuccess(t.kanbanboardpanel839);
                 // Update local state with returned card data
                 if (data.card) {
                     updateCardInBoard(cardId, data.card.assignees || []);
                 }
-            } else {
-                toast.showError(data.message || t.kanbanboardpanel845);
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.message || t.kanbanboardpanel845);
             }
         } catch (_error) {
             toast.showError(t.kanbanboardpanel848);
@@ -1013,24 +932,13 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         if (!board) return;
 
         try {
-            const token = getAuthToken();
-            const response = await fetch(`/api/kanban/board/${board.id}/roles`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ user_id: userId, role }),
-            });
-
-            if (response.ok) {
+            try {
+                await apiClient.post(`/kanban/board/${board.id}/roles`, { user_id: userId, role });
                 toast.showSuccess(role ? t.kanbanboardpanel1026 : t.kanbanboardpanel1026_2);
                 // Reload board to get updated roles
                 loadBoard();
-            } else {
-                const data = await response.json();
-                toast.showError(data.message || t.kanbanboardpanel1031);
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.message || t.kanbanboardpanel1031);
             }
         } catch (_error) {
             toast.showError(t.kanbanboardpanel1034);
@@ -1070,28 +978,21 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
         }
 
         try {
-            const token = getAuthToken();
-            const url = editingColumn
-                ? `/api/kanban/columns/${editingColumn.id}`
-                : `/api/kanban/board/${board?.id}/columns`;
+            const endpoint = editingColumn
+                ? `/kanban/columns/${editingColumn.id}`
+                : `/kanban/board/${board?.id}/columns`;
 
-            const response = await fetch(url, {
-                method: editingColumn ? 'PUT' : 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify(columnForm),
-            });
-
-            if (response.ok) {
+            try {
+                if (editingColumn) {
+                    await apiClient.put(endpoint, columnForm);
+                } else {
+                    await apiClient.post(endpoint, columnForm);
+                }
                 toast.showSuccess(editingColumn ? t.kanbanboardpanel1087 : t.kanbanboardpanel1087_2);
                 setColumnDialogVisible(false);
                 loadBoard();
-            } else {
-                const data = await response.json();
-                toast.showError(data.message || t.kanbanboardpanel1092);
+            } catch (err: any) {
+                toast.showError(err?.response?.data?.message || t.kanbanboardpanel1092);
             }
         } catch (_error) {
             toast.showError(t.kanbanboardpanel1095);
@@ -1113,19 +1014,11 @@ export default function KanbanBoardPanel({ isActive, projectId }: TabPanelProps)
             acceptClassName: 'p-button-danger',
             accept: async () => {
                 try {
-                    const token = getAuthToken();
-                    const response = await fetch(`/api/kanban/columns/${columnId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                        },
-                    });
-
-                    if (response.ok) {
+                    try {
+                        await apiClient.delete(`/kanban/columns/${columnId}`);
                         toast.showSuccess(t.kanbanboardpanel1124);
                         loadBoard();
-                    } else {
+                    } catch {
                         toast.showError(t.kanbanboardpanel1127);
                     }
                 } catch (_error) {

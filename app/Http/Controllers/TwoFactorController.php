@@ -91,6 +91,9 @@ class TwoFactorController extends Controller
     {
         $request->validate([
             'code' => 'required|string|size:6',
+            'trust_device' => 'nullable|boolean',
+            'device_id' => 'nullable|string',
+            'browser' => 'nullable|string',
         ]);
 
         $user = $request->user();
@@ -117,10 +120,24 @@ class TwoFactorController extends Controller
         // Generate recovery codes
         $recoveryCodes = $user->generateTwoFactorRecoveryCodes();
 
+        // Trust the current device if requested. The user has just physically
+        // proven access to their authenticator on this browser, so this is
+        // the natural moment to register it as trusted.
+        $deviceTrusted = false;
+        if ($request->boolean('trust_device') && $request->device_id) {
+            $user->trustDevice(
+                $request->device_id,
+                $request->browser ?? __('twofactorcontrollerphp174'),
+                $request->ip()
+            );
+            $deviceTrusted = true;
+        }
+
         return response()->json([
             'message' => __('twofactorcontrollerphp121'),
             'recovery_codes' => $recoveryCodes,
             'two_factor' => $user->getTwoFactorStatus(),
+            'device_trusted' => $deviceTrusted,
         ]);
     }
 
@@ -257,12 +274,21 @@ class TwoFactorController extends Controller
             ], 422);
         }
 
-        // Disable 2FA
+        // Disable 2FA. We mirror removeAllTrustedDevices() and revoke every
+        // device-bound access token: disabling 2FA implicitly clears the
+        // trusted-device list, and the tokens were issued under that trust
+        // context. Web/legacy tokens (no device_id) are unaffected.
+        $revokedTokens = $user->tokens()
+            ->whereNotNull('device_id')
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
+
         $user->disableTwoFactor();
 
         return response()->json([
             'message' => __('twofactorcontrollerphp264'),
             'two_factor' => $user->getTwoFactorStatus(),
+            'revoked_tokens' => $revokedTokens,
         ]);
     }
 
@@ -311,7 +337,10 @@ class TwoFactorController extends Controller
     }
 
     /**
-     * Remove a trusted device
+     * Remove a trusted device. In addition to dropping the trust marker we
+     * revoke every access token that was issued for this device, so a
+     * lost/stolen CLI or service installation immediately stops working
+     * on the next API call.
      */
     public function removeTrustedDevice(Request $request, string $deviceId)
     {
@@ -319,14 +348,23 @@ class TwoFactorController extends Controller
 
         $user->removeTrustedDevice($deviceId);
 
+        $revokedTokens = $user->tokens()
+            ->where('device_id', $deviceId)
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
+
         return response()->json([
             'message' => __('twofactorcontrollerphp323'),
             'trusted_devices' => $user->getTrustedDevices(),
+            'revoked_tokens' => $revokedTokens,
         ]);
     }
 
     /**
-     * Remove all trusted devices
+     * Remove all trusted devices and revoke every device-bound access token
+     * the user has. CLI/service installations across all devices will need
+     * to log in again. Tokens with no device binding (legacy / web tokens)
+     * are unaffected.
      */
     public function removeAllTrustedDevices(Request $request)
     {
@@ -334,8 +372,14 @@ class TwoFactorController extends Controller
 
         $user->removeAllTrustedDevices();
 
+        $revokedTokens = $user->tokens()
+            ->whereNotNull('device_id')
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
+
         return response()->json([
             'message' => __('twofactorcontrollerphp338'),
+            'revoked_tokens' => $revokedTokens,
         ]);
     }
 

@@ -7,7 +7,8 @@ import { Tag } from 'primereact/tag';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { Dropdown } from 'primereact/dropdown';
 import { Message } from 'primereact/message';
 import { Toast } from 'primereact/toast';
@@ -23,6 +24,7 @@ import ProjectPrintModal from '@/Components/Panels/ProjectPrintModal';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { apiClient } from '@/lib/api';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -205,20 +207,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) return;
-
-        const response = await fetch('/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setCurrentUser(userData);
-        }
+        const userData = await apiClient.get('/user');
+        setCurrentUser(userData);
       } catch (error) {
         console.error(t.projectpanel216, error);
       }
@@ -325,18 +315,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadProjectMembers = async (projectId: number) => {
     setLoadingMembersData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/projects/${projectId}/members`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProjectMembers(data);
-      }
+      const data = await apiClient.get(`/projects/${projectId}/members`);
+      setProjectMembers(data);
     } catch {
       setProjectMembers([]);
     } finally {
@@ -347,18 +327,8 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadProjectAttachments = async (projectId: number) => {
     setLoadingAttachmentsData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      const response = await fetch(`/api/projects/${projectId}/attachments`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProjectAttachments(data.attachments || []);
-      }
+      const data = await apiClient.get(`/projects/${projectId}/attachments`);
+      setProjectAttachments(data.attachments || []);
     } catch {
       setProjectAttachments([]);
     } finally {
@@ -385,30 +355,15 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     // If user is Free, check subscription_info from backend
     if (isFreeUser) {
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) {
-          setError(t.projectpanel341);
-          return;
-        }
-
         // Fetch current subscription info from backend (slot-based system)
-        const response = await fetch('/api/projects', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
+        const data = await apiClient.get('/projects');
+        const subscriptionInfo = data.subscription_info;
 
-        if (response.ok) {
-          const data = await response.json();
-          const subscriptionInfo = data.subscription_info;
-
-          // Use backend's needs_unlock flag (accounts for subscription slots)
-          if (subscriptionInfo && subscriptionInfo.needs_unlock) {
-            // Show ProjectUnlockModal - user needs to pay 50 credits for a new slot
-            setShowProjectUnlockModal(true);
-            return;
-          }
+        // Use backend's needs_unlock flag (accounts for subscription slots)
+        if (subscriptionInfo && subscriptionInfo.needs_unlock) {
+          // Show ProjectUnlockModal - user needs to pay 50 credits for a new slot
+          setShowProjectUnlockModal(true);
+          return;
         }
       } catch (err) {
         console.error(t.projectpanel365, err);
@@ -447,45 +402,28 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.projectpanel403);
-      }
-
-      const response = await fetch(`/api/subscriptions/${project.subscription.id}/renew`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.post(`/subscriptions/${project.subscription.id}/renew`);
+      } catch (err: any) {
+        const errData = err?.response?.data || {};
         // If not enough credits, show the plan modal
-        if (data.required_credits) {
-          setError(`${t.projectpanel420} ${data.required_credits}, ${t.projectpanel420_2} ${data.current_credits}`);
+        if (errData.required_credits) {
+          setError(`${t.projectpanel420} ${errData.required_credits}, ${t.projectpanel420_2} ${errData.current_credits}`);
           setPlanModalInitialTab(1);
           setShowPlanModal(true);
-        } else {
-          throw new Error(data.error || data.message || t.projectpanel424 || t.projectpanel425);
+          return;
         }
-        return;
+        throw new Error(errData.error || errData.message || t.projectpanel424 || t.projectpanel425);
       }
 
       // Reload user data to get updated credits
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
         window.dispatchEvent(new CustomEvent('creditsChanged'));
+      } catch {
+        // Non-critical
       }
 
       // Reload projects to get updated status
@@ -514,23 +452,11 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     }
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(createForm),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
+      let newProject: any;
+      try {
+        newProject = await apiClient.post('/projects', createForm);
+      } catch (err: any) {
+        const errorData = err?.response?.data || {};
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -557,20 +483,14 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         throw new Error(errorData.message || t.projectpanel258);
       }
 
-      const newProject = await response.json();
-
       // Reload user data to get updated credits
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
         // Notify other components (like navigation) about credit change
         window.dispatchEvent(new CustomEvent('creditsChanged'));
+      } catch {
+        // Non-critical
       }
 
       // Store the newly created project and show selection dialog
@@ -685,22 +605,10 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/projects/${projectToDelete.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.projectpanel361);
+      try {
+        await apiClient.delete(`/projects/${projectToDelete.id}`);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.projectpanel361);
       }
 
       // Refresh the projects list
@@ -751,23 +659,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadTeamsForProject = async (projectId: number) => {
     setLoadingTeamsData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/teams?all=true`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get('/teams?all=true');
+      } catch {
         throw new Error(t.projectpanel416);
       }
-
-      const data = await response.json();
 
       // Filter teams for this project and build tree structure
       const allTeams = [...(data.owned_teams || []), ...(data.member_teams || [])];
@@ -799,23 +696,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadSchemasForProject = async (projectId: number) => {
     setLoadingSchemasData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/projects/${projectId}/schemas`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let projectSchemas: any;
+      try {
+        projectSchemas = await apiClient.get(`/projects/${projectId}/schemas`);
+      } catch {
         throw new Error(t.databaseexportmodal71);
       }
-
-      const projectSchemas = await response.json();
 
       // Build tree structure for schemas (ClassicTreeView format)
       const treeData = projectSchemas.map((schema: any) => ({
@@ -840,23 +726,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
   const loadTemplatesForProject = async (projectId: number) => {
     setLoadingTemplatesData(true);
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
+      let projectTemplates: any;
+      try {
+        projectTemplates = await apiClient.get(`/projects/${projectId}/template-usages`);
+      } catch (err: any) {
+        throw new Error(`${t.projectpanel804} ${err?.response?.status || ''}`);
       }
-
-      const response = await fetch(`/api/projects/${projectId}/template-usages`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`${t.projectpanel804} ${response.status}`);
-      }
-
-      const projectTemplates = await response.json();
 
       // Extract templates from usages array (API returns {usages: [], linked_count: 0, cloned_count: 0})
       const templatesArray = projectTemplates.usages || [];
@@ -897,23 +772,12 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
     setExportPreview(null);
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.projectpanel851);
-      }
-
-      const response = await fetch(`/api/projects/${currentProject.id}/export/preview`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let preview: any;
+      try {
+        preview = await apiClient.get(`/projects/${currentProject.id}/export/preview`);
+      } catch {
         throw new Error(t.projectpanel861);
       }
-
-      const preview = await response.json();
       setExportPreview(preview);
     } catch (err) {
       console.error(t.projectpanel868, err);
@@ -1493,21 +1357,36 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
         </div>
       </div>
 
-      {/* Create Project Modal with Tabs */}
+      {/* Create Project Modal — uses the same TabViewSideMenu / fixed-height
+       * pattern as ProfileModal & SqlImportModal so the look stays consistent
+       * across every settings-style dialog in the app.
+       *
+       * Layout strategy below:
+       *   <Dialog fixed height>
+       *     <div h-full flex-col>
+       *       <div flex-1 min-h-0>      ← TabViewSideMenu fills this
+       *       <div flex-shrink-0>       ← error message (when present)
+       *       <div flex-shrink-0>       ← footer buttons
+       *     </div>
+       *   </Dialog>
+       */}
       <Dialog
         header={t.projectpanel892}
         visible={showCreateModal}
         onHide={handleCreateModalHide}
-        style={{ width: '800px' }}
+        style={{ width: '900px', height: '85vh' }}
         modal
         closable
         draggable={true}
         resizable={true}
         className="p-dialog-custom"
+        contentStyle={{ padding: '0' }}
       >
-        <TabView>
+        <div className="h-full flex flex-col">
+          <div className="flex-1 min-h-0">
+        <TabViewSideMenu storageKey="createProjectModal" defaultWidth={220}>
           {/* Tab 1: Project Settings */}
-          <TabPanel header={t.editprojectmodal227} leftIcon="pi pi-cog">
+          <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.editprojectmodal227}</span>}>
             <div className="space-y-4">
               <div className="field">
                 <label htmlFor="create-name" className="block text-sm font-medium text-white mb-2">
@@ -1586,7 +1465,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </TabPanel>
 
           {/* Tab 2: Database Connection */}
-          <TabPanel header={t.editprojectmodal332} leftIcon="pi pi-database">
+          <TabPanel header={<span><i className="pi pi-database mr-2" />{t.editprojectmodal332}</span>}>
             <div className="space-y-4">
               <div className="field">
                 <label htmlFor="create-db-name" className="block text-sm font-medium text-white mb-2">
@@ -1687,7 +1566,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </TabPanel>
 
           {/* Tab 3: Project Properties */}
-          <TabPanel header={t.editprojectmodal426} leftIcon="pi pi-file">
+          <TabPanel header={<span><i className="pi pi-file mr-2" />{t.editprojectmodal426}</span>}>
             <div className="space-y-4">
               <div className="field">
                 <label htmlFor="create-project-directory" className="block text-sm font-medium text-white mb-2">
@@ -1788,7 +1667,7 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
           </TabPanel>
 
           {/* Tab 4: Localization Settings */}
-          <TabPanel header={t.editprojectmodal522} leftIcon="pi pi-globe">
+          <TabPanel header={<span><i className="pi pi-globe mr-2" />{t.editprojectmodal522}</span>}>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="field">
@@ -1913,33 +1792,39 @@ export default function ProjectPanel({ isActive, onOpenPanel, projectId }: TabPa
               </div>
             </div>
           </TabPanel>
-        </TabView>
+        </TabViewSideMenu>
+          </div>
 
-        {/* Error message in modal */}
-        {error && (
-          <div className="mt-4">
-            <Message
-              severity="error"
-              text={error}
-              className="w-full"
+          {/* Error message — flex-shrink-0 so it keeps its natural height
+           * and doesn't get squeezed when the TabView region above wants
+           * to grow into the remaining space. */}
+          {error && (
+            <div className="px-6 pt-2 flex-shrink-0">
+              <Message
+                severity="error"
+                text={error}
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {/* Footer — flex-shrink-0 to keep buttons reliably visible at the
+           * bottom edge of the fixed-height dialog. */}
+          <div className="flex justify-end space-x-2 p-6 pt-4 gap-2 flex-shrink-0">
+            <Button
+              label={t.applicationsmodal432}
+              icon="pi pi-times"
+              onClick={handleCreateModalHide}
+              className="p-button-text"
+              disabled={creating}
+            />
+            <Button
+              label={creating ? t.createtablemodal614 : t.projectpanel776}
+              icon={creating ? "pi pi-spinner pi-spin" : "pi pi-plus"}
+              onClick={handleCreateProject}
+              disabled={creating || !createForm.name.trim()}
             />
           </div>
-        )}
-
-        <div className="flex justify-end space-x-2 pt-4 gap-2">
-          <Button
-            label={t.applicationsmodal432}
-            icon="pi pi-times"
-            onClick={handleCreateModalHide}
-            className="p-button-text"
-            disabled={creating}
-          />
-          <Button
-            label={creating ? t.createtablemodal614 : t.projectpanel776}
-            icon={creating ? "pi pi-spinner pi-spin" : "pi pi-plus"}
-            onClick={handleCreateProject}
-            disabled={creating || !createForm.name.trim()}
-          />
         </div>
       </Dialog>
 

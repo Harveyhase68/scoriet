@@ -17,6 +17,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import SchemaPrintModal from '@/Components/Panels/SchemaPrintModal';
+import { apiClient } from '@/lib/api';
 
 interface TabPanelProps {
   isActive: boolean;
@@ -113,6 +114,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [importing, setImporting] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+
+  // Import dialog state - separate from export so we can keep the chosen
+  // file in memory between "pick file" and "click Import" without re-uploading
+  // it during the preview step.
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreviewLoading, setImportPreviewLoading] = useState(false);
+  const [importDetectedLanguages, setImportDetectedLanguages] = useState<string[]>([]);
+  const [importSelectedLanguages, setImportSelectedLanguages] = useState<string[]>([]);
+  const [importDataRows, setImportDataRows] = useState<number>(0);
+  const [importPreviewError, setImportPreviewError] = useState<string>('');
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printSchemaId, setPrintSchemaId] = useState<number | null>(null);
 
@@ -187,24 +198,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setMySchemasLoading(true);
       setError('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setError(t.applicationsmodal66);
-        return;
-      }
-
-      const response = await fetch('/api/schemas', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get('/schemas');
+      } catch {
         throw new Error(t.databaseexportmodal71);
       }
-
-      const data = await response.json();
       const allSchemas = data.schemas || [];
 
       // Filter: User's own schemas (owner) OR schemas linked to user's projects
@@ -266,24 +265,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       setCommunityLoading(true);
       setError('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        setError(t.applicationsmodal66);
-        return;
-      }
-
-      const response = await fetch('/api/schemas', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get('/schemas');
+      } catch {
         throw new Error(t.databaseexportmodal71);
       }
-
-      const data = await response.json();
       const allSchemas = data.schemas || [];
 
       // Filter: System schemas OR public schemas (from anyone)
@@ -330,20 +317,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) return;
-
-        const response = await fetch('/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const userData = await response.json();
-          setCurrentUser(userData);
-        }
+        const userData = await apiClient.get('/user');
+        setCurrentUser(userData);
       } catch (error) {
         console.error('Failed to load user data:', error);
       }
@@ -387,19 +362,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const loadProjects = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) return;
-
-      const data = await response.json();
+      const data = await apiClient.get('/projects');
       setProjects(data.projects || []);
     } catch {
       // Error loading projects
@@ -408,23 +371,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
   const loadLanguages = async () => {
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/active-languages', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      setLanguages(data.languages || []);
+      // /api/active-languages returns the array directly, not wrapped in
+      // { languages: [...] }. Treat the response as an array - using
+      // data.languages here previously yielded undefined → [] and the
+      // export-translations dialog showed "No available options".
+      const data = await apiClient.get('/active-languages');
+      const langs = Array.isArray(data) ? data : [];
+      setLanguages(langs);
 
       // Pre-select all languages by default
-      setSelectedLanguages((data.languages || []).map((lang: any) => lang.code));
+      setSelectedLanguages(langs.map((lang: any) => lang.code));
     } catch {
       // Error loading languages
     }
@@ -478,38 +434,85 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     }
   };
 
-  const handleImportTranslations = async (event: any) => {
-    const file = event.files[0];
-    if (!file || !contextSelectedProject) return;
+  // Reset all import-dialog state - used when opening dialog fresh AND
+  // when the user re-picks a different file partway through.
+  const resetImportState = () => {
+    setImportFile(null);
+    setImportDetectedLanguages([]);
+    setImportSelectedLanguages([]);
+    setImportDataRows(0);
+    setImportPreviewError('');
+  };
+
+  // User picked a file in the FileUpload widget. Run a server-side preview
+  // (no DB writes) so we can populate the language checkboxes BEFORE the
+  // import actually happens. This makes the dialog two-phase: pick file →
+  // see what's inside → tick languages → click Import.
+  const handleImportFileSelected = async (event: any) => {
+    const file = event.files?.[0];
+    if (!file) return;
+
+    setImportFile(file);
+    setImportDetectedLanguages([]);
+    setImportSelectedLanguages([]);
+    setImportDataRows(0);
+    setImportPreviewError('');
+    setImportPreviewLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const result = await apiClient.uploadFile('/translations/import-preview', formData);
+
+      const detected: string[] = Array.isArray(result.languages) ? result.languages : [];
+      setImportDetectedLanguages(detected);
+
+      // Default selection: the intersection of (a) what's in the Excel and
+      // (b) what's enabled for this project. If that intersection is empty
+      // (e.g. file has unrelated languages), pre-tick everything found in
+      // the file so the user starts from "import all".
+      const projectLangs = contextSelectedProject?.enabled_languages;
+      if (Array.isArray(projectLangs) && projectLangs.length > 0) {
+        const intersection = detected.filter(lang => projectLangs.includes(lang));
+        setImportSelectedLanguages(intersection.length > 0 ? intersection : detected);
+      } else {
+        setImportSelectedLanguages(detected);
+      }
+
+      setImportDataRows(typeof result.data_rows === 'number' ? result.data_rows : 0);
+    } catch (err: any) {
+      setImportPreviewError(err?.response?.data?.error || err?.message || t.databasemanagementpanel294);
+    } finally {
+      setImportPreviewLoading(false);
+    }
+  };
+
+  const handleImportConfirm = async () => {
+    if (!importFile || !contextSelectedProject) return;
+    if (importSelectedLanguages.length === 0) {
+      setImportPreviewError(t.databasemanagementpanel221);
+      return;
+    }
 
     setImporting(true);
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', importFile);
       formData.append('project_id', contextSelectedProject.id.toString());
+      // Backend filters to only these language columns (column-letter mapping
+      // happens server-side); other columns in the sheet are ignored.
+      importSelectedLanguages.forEach(code => formData.append('languages[]', code));
 
-      const response = await fetch('/api/translations/import', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.databasemanagementpanel294);
+      let result: any;
+      try {
+        result = await apiClient.uploadFile('/translations/import', formData);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.databasemanagementpanel294);
       }
-
-      const result = await response.json();
       setShowImportDialog(false);
+      resetImportState();
       setSuccess(`${t.databasemanagementpanel510}${result.imported_count}${t.databasemanagementpanel510_2}(${result.updated_count}${t.databasemanagementpanel510_3}${result.created_count}${t.databasemanagementpanel510_4})`);
     } catch (error) {
       setError(error instanceof Error ? error.message : t.databasemanagementpanel301);
@@ -530,30 +533,15 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     // If user is Free, check subscription_info from backend (slot-based system)
     if (isFreeUser) {
       try {
-        const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-        if (!token) {
-          setError(t.databasemanagementpanel532);
-          return;
-        }
-
         // Fetch current subscription info from backend
-        const response = await fetch('/api/schemas', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-        });
+        const data = await apiClient.get('/schemas');
+        const subscriptionInfo = data.subscription_info;
 
-        if (response.ok) {
-          const data = await response.json();
-          const subscriptionInfo = data.subscription_info;
-
-          // Use backend's needs_unlock flag (accounts for subscription slots)
-          if (subscriptionInfo && subscriptionInfo.needs_unlock) {
-            // Show SchemaUnlockModal - user needs to pay 50 credits for a new slot
-            setShowSchemaUnlockModal(true);
-            return;
-          }
+        // Use backend's needs_unlock flag (accounts for subscription slots)
+        if (subscriptionInfo && subscriptionInfo.needs_unlock) {
+          // Show SchemaUnlockModal - user needs to pay 50 credits for a new slot
+          setShowSchemaUnlockModal(true);
+          return;
         }
       } catch (err) {
         console.error('Error checking subscription info:', err);
@@ -591,45 +579,28 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.databasemanagementpanel593);
-      }
-
-      const response = await fetch(`/api/subscriptions/${schema.subscription.id}/renew`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.post(`/subscriptions/${schema.subscription.id}/renew`);
+      } catch (err: any) {
+        const errData = err?.response?.data || {};
         // If not enough credits, show the plan modal
-        if (data.required_credits) {
-          setError(`${t.databasemanagementpanel610}${data.required_credits}${t.databasemanagementpanel610_2}${data.current_credits}`);
+        if (errData.required_credits) {
+          setError(`${t.databasemanagementpanel610}${errData.required_credits}${t.databasemanagementpanel610_2}${errData.current_credits}`);
           setPlanModalInitialTab(1);
           setShowPlanModal(true);
-        } else {
-          throw new Error(data.error || data.message || t.databasemanagementpanel614);
+          return;
         }
-        return;
+        throw new Error(errData.error || errData.message || t.databasemanagementpanel614);
       }
 
       // Reload user data to get updated credits
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
         window.dispatchEvent(new CustomEvent('creditsChanged'));
+      } catch {
+        // Non-critical
       }
 
       // Reload schemas to get updated status
@@ -651,23 +622,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch('/api/schemas', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(createForm),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
+      try {
+        await apiClient.post('/schemas', createForm);
+      } catch (err: any) {
+        const errorData = err?.response?.data || {};
 
         // Handle insufficient credits error
         if (errorData.error_code === 'INSUFFICIENT_CREDITS') {
@@ -685,17 +643,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       }
 
       // Reload user data to get updated credits
-      const userResponse = await fetch('/api/user', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      });
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
+      try {
+        const userData = await apiClient.get('/user');
         setCurrentUser(userData);
         // Notify other components (like navigation) about credit change
         window.dispatchEvent(new CustomEvent('creditsChanged'));
+      } catch {
+        // Non-critical
       }
 
       await loadMySchemas();
@@ -732,24 +686,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/schemas/${editingSchema.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(editForm),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.databasemanagementpanel382);
+      try {
+        await apiClient.put(`/schemas/${editingSchema.id}`, editForm);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.databasemanagementpanel382);
       }
 
       await loadMySchemas();
@@ -785,28 +725,14 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/projects/${selectedProjectForAssociation}/schemas`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await apiClient.post(`/projects/${selectedProjectForAssociation}/schemas`, {
           schema_id: associatingSchema.id,
           association_type: associationType,
           alias: alias || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.databasemanagementpanel438);
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.databasemanagementpanel438);
       }
 
       setShowAssociateModal(false);
@@ -833,6 +759,67 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Strip every character that is not a lowercase letter, digit or underscore.
+  // Used both when accepting input in the copy dialog and when deriving the
+  // suggested copy name from an existing schema, so we never end up with a
+  // name that downstream code (export filenames, generated namespaces, FK
+  // references, …) cannot safely use.
+  const sanitizeSchemaName = (input: string): string => {
+    let result = '';
+    for (const ch of input.toLowerCase()) {
+      if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch === '_') {
+        result += ch;
+      }
+    }
+    return result;
+  };
+
+  // Build a sensible copy-name suggestion. If the source already ends in a
+  // numeric suffix (e.g. "users_2"), increment it to "users_3". Otherwise
+  // append "_1". Walking trailing digits manually instead of using a regex
+  // keeps the logic readable and matches the project's no-regex preference
+  // for non-trivial parsing.
+  //
+  // existingNames is the set of schema names the user already owns; when
+  // provided we keep incrementing until we find one that's free, so the
+  // user does not have to fix the suggestion themselves the moment two
+  // copies of the same schema would otherwise collide.
+  const suggestCopyName = (original: string, existingNames: Set<string> = new Set()): string => {
+    const base = sanitizeSchemaName(original);
+    if (base === '') return '_1';
+
+    // Split base into "<prefix>_" + numeric tail (or whole base + no tail).
+    let i = base.length;
+    while (i > 0 && base[i - 1] >= '0' && base[i - 1] <= '9') {
+      i--;
+    }
+    const hasTrailingDigits = i < base.length;
+    const hasUnderscoreBefore = i > 0 && base[i - 1] === '_';
+
+    let prefix: string;
+    let nextNum: number;
+    if (hasTrailingDigits && hasUnderscoreBefore) {
+      // "<stem>_<digits>" → increment from <digits>+1.
+      prefix = base.slice(0, i); // includes the trailing underscore
+      nextNum = parseInt(base.slice(i), 10) + 1;
+    } else {
+      // No "_<digits>" pattern → start at "_1".
+      prefix = base + '_';
+      nextNum = 1;
+    }
+
+    // Walk forward until we hit a name that isn't taken. Capped just in
+    // case existingNames somehow becomes pathological; 9999 is far beyond
+    // any realistic copy chain and prevents an infinite loop.
+    for (let n = nextNum; n < nextNum + 9999; n++) {
+      const candidate = prefix + n;
+      if (!existingNames.has(candidate)) {
+        return candidate;
+      }
+    }
+    return prefix + nextNum; // fallback - caller will see backend rejection
   };
 
   // Schema name template with lock icon for locked schemas
@@ -925,22 +912,10 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     try {
       setError('');
 
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/projects/${projectId}/schemas/${schema.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.databasemanagementpanel529);
+      try {
+        await apiClient.delete(`/projects/${projectId}/schemas/${schema.id}`);
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.databasemanagementpanel529);
       }
 
       await loadMySchemas();
@@ -961,9 +936,32 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
   };
 
-  const handleCopySchema = (schema: FloatingSchema) => {
+  const handleCopySchema = async (schema: FloatingSchema) => {
     setCopyingSchema(schema);
-    setCopyName(schema.name + t.dbschemacontroller288);
+    // Suggest "<name>_<n+1>" if the source already ends in _<digits>,
+    // otherwise "<name>_1". Replaces the previous "<name> (Copy)" suffix
+    // which produced names with spaces and parentheses that broke
+    // exports / generated identifiers.
+    //
+    // We re-fetch /schemas here instead of reusing mySchemas so that the
+    // existence check is correct even when the My-Schemas tab has been
+    // narrowed by filters (private/public/system/search) and therefore
+    // doesn't list every schema the user actually owns. Falls back to the
+    // already-loaded list if the request fails.
+    let existingNames: Set<string>;
+    try {
+      const data = await apiClient.get('/schemas');
+      const allSchemas = Array.isArray(data) ? data : (data.schemas || []);
+      existingNames = new Set(
+        allSchemas
+          .filter((s: FloatingSchema) => String(s.owner_id) === String(currentUserId))
+          .map((s: FloatingSchema) => s.name)
+      );
+    } catch {
+      existingNames = new Set(mySchemas.map(s => s.name));
+    }
+
+    setCopyName(suggestCopyName(schema.name, existingNames));
     setShowCopyModal(true);
     setError('');
     setSuccess('');
@@ -977,27 +975,13 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setSuccess('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      const response = await fetch(`/api/template-db-schema/schemas/${copyingSchema.id}/copy`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
+      try {
+        await apiClient.post(`/template-db-schema/schemas/${copyingSchema.id}/copy`, {
           name: copyName,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || result.message || t.databasemanagementpanel585);
+        });
+      } catch (err: any) {
+        const data = err?.response?.data || {};
+        throw new Error(data.error || data.message || t.databasemanagementpanel585);
       }
 
       setShowCopyModal(false);
@@ -1027,30 +1011,23 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setError('');
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) {
-        throw new Error(t.applicationsmodal66);
-      }
-
-      // First attempt without force - to get deletion info
-      let response = await fetch(`/api/schemas/${deletingSchema.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          force_delete: false
-        }),
-      });
-
-      let result;
+      // First attempt without force - to get deletion info.
+      // We use apiClient.request directly because DELETE-with-body is unusual
+      // (apiClient.delete doesn't accept a body); the backend route expects
+      // the force_delete flag in the JSON body, so this matches the existing
+      // contract.
+      let result: any;
       try {
-        result = await response.json();
-      } catch {
-        const textResult = await response.text();
-        throw new Error(`${t.databasemanagementpanel1047}${response.status},${t.databasemanagementpanel1047_2}${textResult.substring(0, 200)}`);
+        result = await apiClient.request(`/schemas/${deletingSchema.id}`, {
+          method: 'DELETE',
+          body: JSON.stringify({ force_delete: false }),
+        });
+      } catch (err: any) {
+        const data = err?.response?.data;
+        if (data) {
+          throw new Error(data.message || `HTTP ${err.response.status}`);
+        }
+        throw new Error(`${t.databasemanagementpanel1047}${err?.message || ''}`);
       }
 
       // If requires force confirmation, show the details and ask for force delete
@@ -1064,29 +1041,18 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         });
 
         // Now do the force delete
-        response = await fetch(`/api/schemas/${deletingSchema.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify({
-            force_delete: true
-          }),
-        });
-
         try {
-          result = await response.json();
-        } catch {
-          const textResult = await response.text();
-          throw new Error(`${t.databasemanagementpanel1077}${response.status},${t.databasemanagementpanel1077_2}${textResult.substring(0, 200)}`);
+          result = await apiClient.request(`/schemas/${deletingSchema.id}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ force_delete: true }),
+          });
+        } catch (err: any) {
+          const data = err?.response?.data;
+          if (data) {
+            throw new Error(data.message || `HTTP ${err.response.status}`);
+          }
+          throw new Error(`${t.databasemanagementpanel1077}${err?.message || ''}`);
         }
-      }
-
-      if (!response.ok) {
-        const errorMessage = result.message || `HTTP ${response.status}: ${response.statusText}`;
-        throw new Error(errorMessage);
       }
 
       // Success!
@@ -1113,21 +1079,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
 
     try {
       // Load all user's projects
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch('/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      let data: any;
+      try {
+        data = await apiClient.get('/projects');
+      } catch {
         throw new Error(t.databasemanagementpanel1121);
       }
-
-      const data = await response.json();
       setAllProjects(data.projects || []);
 
       // Get currently linked project IDs from schema
@@ -1156,22 +1113,12 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     if (!schemaToLink) return;
 
     try {
-      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-      if (!token) return;
-
-      const response = await fetch(`/api/schemas/${schemaToLink.id}/linked-projects`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ project_ids: linkedProjectIds }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || t.databasemanagementpanel1168);
+      try {
+        await apiClient.put(`/schemas/${schemaToLink.id}/linked-projects`, {
+          project_ids: linkedProjectIds,
+        });
+      } catch (err: any) {
+        throw new Error(err?.response?.data?.message || t.databasemanagementpanel1168);
       }
 
       setSuccess(t.databasemanagementpanel1171);
@@ -1335,7 +1282,18 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             label={t.databasemanagementpanel886}
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={() => setShowExportDialog(true)}
+            onClick={() => {
+              // Pre-select only the languages enabled for THIS project
+              // (from project settings) instead of all globally active ones.
+              // If the project hasn't pinned a list, fall back to all langs.
+              const projectLangs = contextSelectedProject?.enabled_languages;
+              if (Array.isArray(projectLangs) && projectLangs.length > 0) {
+                setSelectedLanguages(projectLangs);
+              } else {
+                setSelectedLanguages(languages.map(l => l.code));
+              }
+              setShowExportDialog(true);
+            }}
             disabled={exporting || !contextSelectedProject}
             tooltip={contextSelectedProject ? `${t.databasemanagementpanel876} — ${contextSelectedProject.name}` : t.databasemanagementpanel876}
             tooltipOptions={{ position: 'bottom' }}
@@ -1345,7 +1303,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             label={t.databasemanagementpanel893}
             className="p-button-text"
             style={{ borderRadius: '8px', paddingTop: '6px', paddingBottom: '6px' }}
-            onClick={() => setShowImportDialog(true)}
+            onClick={() => { resetImportState(); setShowImportDialog(true); }}
             disabled={importing || !contextSelectedProject}
             tooltip={contextSelectedProject ? `${t.databasemanagementpanel876} — ${contextSelectedProject.name}` : t.databasemanagementpanel876}
             tooltipOptions={{ position: 'bottom' }}
@@ -2012,8 +1970,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       <Dialog
         header={t.databasemanagementpanel1292}
         visible={showImportDialog}
-        onHide={() => setShowImportDialog(false)}
-        style={{ width: '500px' }}
+        onHide={() => { setShowImportDialog(false); resetImportState(); }}
+        style={{ width: '560px' }}
         modal
         closable
         draggable={true}
@@ -2042,15 +2000,67 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               accept=".xlsx,.xls"
               maxFileSize={10000000}
               customUpload
-              uploadHandler={handleImportTranslations}
-              auto={false}
-              chooseLabel={t.databasemanagementpanel1324}
-              disabled={importing}
+              uploadHandler={handleImportFileSelected}
+              auto={true}
+              chooseLabel={importFile ? importFile.name : t.databasemanagementpanel1324}
+              disabled={importing || importPreviewLoading}
             />
             <small style={{ color: colors.textMuted }}>
               {t.databasemanagementpanel2047}
             </small>
           </div>
+
+          {importPreviewLoading && (
+            <div className="flex items-center gap-2 text-sm" style={{ color: colors.textMuted }}>
+              <i className="pi pi-spin pi-spinner"></i>
+              <span>Reading languages from file...</span>
+            </div>
+          )}
+
+          {importPreviewError && (
+            <Message severity="error" text={importPreviewError} />
+          )}
+
+          {importFile && !importPreviewLoading && !importPreviewError && importDetectedLanguages.length > 0 && (
+            <div className="field">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                Languages found in file ({importDataRows} rows):
+              </label>
+              <div className="space-y-2 p-3 rounded" style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}>
+                {importDetectedLanguages.map(code => {
+                  const lang = languages.find(l => l.code === code);
+                  const checked = importSelectedLanguages.includes(code);
+                  return (
+                    <label key={code} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setImportSelectedLanguages([...importSelectedLanguages, code]);
+                          } else {
+                            setImportSelectedLanguages(importSelectedLanguages.filter(c => c !== code));
+                          }
+                        }}
+                        className="w-4 h-4 cursor-pointer"
+                        disabled={importing}
+                      />
+                      <span style={{ color: colors.textPrimary }}>
+                        {lang ? `${lang.name} (${code.toUpperCase()})` : code.toUpperCase()}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <small style={{ color: colors.textMuted }}>
+                Only ticked languages will be imported. Untick languages you don't want to overwrite.
+              </small>
+            </div>
+          )}
+
+          {importFile && !importPreviewLoading && !importPreviewError && importDetectedLanguages.length === 0 && (
+            <Message severity="warn" text="No language columns detected in this file (expected language codes from column E onwards)." />
+          )}
 
           {error && (
             <Message severity="error" text={error} />
@@ -2060,9 +2070,16 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             <Button
               label={t.applicationsmodal432}
               icon="pi pi-times"
-              onClick={() => setShowImportDialog(false)}
+              onClick={() => { setShowImportDialog(false); resetImportState(); }}
               className="p-button-text"
               disabled={importing}
+            />
+            <Button
+              label={importing ? t.databasemanagementpanel1997 : t.databasemanagementpanel1280}
+              icon={importing ? 'pi pi-spinner pi-spin' : 'pi pi-upload'}
+              onClick={handleImportConfirm}
+              disabled={importing || importPreviewLoading || !importFile || importSelectedLanguages.length === 0}
+              className="p-button-success"
             />
           </div>
         </div>
@@ -2098,14 +2115,17 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
             </label>
             <InputText
               value={copyName}
-              onChange={(e) => setCopyName(e.target.value)}
+              onChange={(e) => setCopyName(sanitizeSchemaName(e.target.value))}
               placeholder={t.databasemanagementpanel1377}
               className="w-full"
               disabled={copying}
               required
             />
-            <small style={{ color: colors.textMuted }}>
+            <small className="block" style={{ color: colors.textMuted }}>
               {t.databasemanagementpanel2104}
+            </small>
+            <small className="block" style={{ color: colors.textMuted }}>
+              Allowed characters: a–z, 0–9, _ (no spaces, dashes or special characters)
             </small>
           </div>
 

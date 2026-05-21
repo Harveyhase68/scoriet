@@ -3,7 +3,8 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Badge } from 'primereact/badge';
-import { TabView, TabPanel } from 'primereact/tabview';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { Message } from 'primereact/message';
 import { CheckIcon, HeartIcon, CurrencyEuroIcon } from '@heroicons/react/24/outline';
 import { pricingUtils } from '@/lib/api';
@@ -403,47 +404,57 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       onHide={onHide}
       modal
       header={t.planmodal116}
-      style={{ width: '95vw', maxWidth: '1400px' }}
-      contentStyle={{ padding: '20px', backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
-      headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary, border: 'none' }}
-      className="plan-modal"
+      /* Fixed height (85vh) so the inner flex column has a real container
+       * to distribute — Error + Current Plan banner take their natural
+       * height, TabViewSideMenu absorbs the remainder. */
+      style={{ width: '95vw', maxWidth: '1400px', height: '85vh' }}
+      contentStyle={{ padding: '0' }}
+      className="p-dialog-custom plan-modal"
     >
-      {/* Error Message */}
-      {error && (
-        <Message severity="error" text={error} className="w-full mb-4" />
-      )}
-
-      {/* Current Plan Status */}
-      <div
-        className="p-4 rounded-lg border-l-4 mb-4"
-        style={{
-          backgroundColor: colors.bgSecondary,
-          borderLeftColor: userStatus.user_type === 'patron' ? colors.successText : colors.accent
-        }}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.currentPlan}</h3>
-          <Badge
-            value={getCurrentPlanName()}
-            severity={userStatus.user_type === 'patron' ? 'success' : 'info'}
-          />
-        </div>
-        <p style={{ color: colors.textSecondary }}>
-          {userStatus.user_type === 'patron' ? (
-            <>{t.planmodal433} <strong style={{ color: colors.successText }}>{getCurrentPlanName()}</strong> {t.planmodal433_2}</>
-          ) : (
-            <>{t.planmodal435} <strong style={{ color: colors.accent }}>{t.freeLabel}</strong> {t.planmodal435_2}</>
+      <div className="h-full flex flex-col">
+        {/* Error Message + Current Plan banner sit in a shared "top" band
+         * with flex-shrink-0, so the TabView below gets the remaining
+         * vertical space cleanly. */}
+        <div className="p-5 pb-2 flex-shrink-0">
+          {error && (
+            <Message severity="error" text={error} className="w-full mb-4" />
           )}
-        </p>
-      </div>
 
-      {/* Tab View */}
-      <TabView
+          {/* Current Plan Status */}
+          <div
+            className="p-4 rounded-lg border-l-4"
+            style={{
+              backgroundColor: colors.bgSecondary,
+              borderLeftColor: userStatus.user_type === 'patron' ? colors.successText : colors.accent
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.currentPlan}</h3>
+              <Badge
+                value={getCurrentPlanName()}
+                severity={userStatus.user_type === 'patron' ? 'success' : 'info'}
+              />
+            </div>
+            <p style={{ color: colors.textSecondary }}>
+              {userStatus.user_type === 'patron' ? (
+                <>{t.planmodal433} <strong style={{ color: colors.successText }}>{getCurrentPlanName()}</strong> {t.planmodal433_2}</>
+              ) : (
+                <>{t.planmodal435} <strong style={{ color: colors.accent }}>{t.freeLabel}</strong> {t.planmodal435_2}</>
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* TabViewSideMenu region */}
+        <div className="flex-1 min-h-0">
+      <TabViewSideMenu
+        storageKey="planModal"
+        defaultWidth={200}
         activeIndex={activeTabIndex}
         onTabChange={(e) => setActiveTabIndex(e.index)}
       >
         {/* Subscriptions Tab */}
-        <TabPanel header={t.planmodal446} leftIcon="pi pi-star">
+        <TabPanel header={<span><i className="pi pi-star mr-2" />{t.planmodal446}</span>}>
           <div className="space-y-4">
             <div className="text-center mb-4">
               <p className="text-sm" style={{ color: colors.textSecondary }}>
@@ -571,7 +582,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
         </TabPanel>
 
         {/* Buy Credits Tab */}
-        <TabPanel header={t.planmodal574} leftIcon="pi pi-wallet">
+        <TabPanel header={<span><i className="pi pi-wallet mr-2" />{t.planmodal574}</span>}>
           <div className="space-y-4">
             <div className="p-4 rounded-lg mb-6" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderSecondary}` }}>
               <p className="text-sm mb-2" style={{ color: colors.textSecondary }}>
@@ -653,7 +664,9 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
             </div>
           </div>
         </TabPanel>
-      </TabView>
+      </TabViewSideMenu>
+        </div>
+      </div>
     </Dialog>
   );
 }

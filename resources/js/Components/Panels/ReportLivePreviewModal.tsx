@@ -7,6 +7,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { apiClient } from '@/lib/api';
 
 // ========== INTERFACES ==========
 
@@ -140,11 +141,8 @@ const PAPER_SIZES: Record<string, { width: number; height: number }> = {
 const MM_TO_PX = 96 / 25.4;
 
 // ========== LIVE DATA HELPERS (same as FormLivePreviewModal) ==========
-
-function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
-  return { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) };
-}
+// Auth headers + 401-refresh handled inside apiClient.cliRequest; the
+// local getAuthHeaders() helper this file used to ship is no longer needed.
 
 const CONN_STORAGE_KEY = 'scoriet_live_preview_connection';
 
@@ -161,18 +159,21 @@ async function createDataQueryTask(
   conn: DbConnectionSettings, tableName: string, columns: string[], queryType: 'single_record' | 'list',
   limit: number, offset: number, orderBy?: string, targetDeviceId?: string | null, projectId?: number | null,
 ): Promise<{ taskId: number } | { error: string }> {
-  const res = await fetch('/cli/svc/tasks/data-query', {
-    method: 'POST', headers: getAuthHeaders(),
-    body: JSON.stringify({
-      target_device_id: targetDeviceId || null, project_id: projectId || null,
-      payload: { connection_type: conn.connection_type, host: conn.host, port: conn.port, database: conn.database,
-        username: conn.username, password: conn.password, table_name: tableName, columns, query_type: queryType,
-        limit, offset, order_by: orderBy || null },
-    }),
-  });
-  const data = await res.json();
-  if (data.success) return { taskId: data.task_id };
-  return { error: data.message || 'Failed to create data query task' };
+  try {
+    const data = await apiClient.cliRequest('/svc/tasks/data-query', {
+      method: 'POST',
+      body: JSON.stringify({
+        target_device_id: targetDeviceId || null, project_id: projectId || null,
+        payload: { connection_type: conn.connection_type, host: conn.host, port: conn.port, database: conn.database,
+          username: conn.username, password: conn.password, table_name: tableName, columns, query_type: queryType,
+          limit, offset, order_by: orderBy || null },
+      }),
+    });
+    if (data.success) return { taskId: data.task_id };
+    return { error: data.message || 'Failed to create data query task' };
+  } catch (err: any) {
+    return { error: err?.response?.data?.message || err?.message || 'Failed to create data query task' };
+  }
 }
 
 async function pollTaskResult(taskId: number, maxAttempts = 30, intervalMs = 1000): Promise<{
@@ -180,8 +181,12 @@ async function pollTaskResult(taskId: number, maxAttempts = 30, intervalMs = 100
 }> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, intervalMs));
-    const res = await fetch(`/cli/svc/tasks/${taskId}`, { headers: getAuthHeaders() });
-    const data = await res.json();
+    let data: any;
+    try {
+      data = await apiClient.cliRequest(`/svc/tasks/${taskId}`);
+    } catch {
+      return { success: false, error: 'Failed to check task status' };
+    }
     if (!data.success) return { success: false, error: 'Failed to check task status' };
     const task = data.task;
     if (task.status === 'completed') {
@@ -295,19 +300,32 @@ const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
   const [devices, setDevices] = useState<Array<{ device_id: string; device_name: string; platform: string; is_online: boolean }>>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
+  // Keep device list fresh while the modal is open — 10s poll catches
+  // scoriet-svc going online/offline within the 30s heartbeat window
+  // without re-running auto-select on every tick (the ref guards against
+  // overriding the user's manual choice).
+  const hasAutoSelectedRef = useRef(false);
   useEffect(() => {
-    if (!visible) return;
-    (async () => {
+    if (!visible) {
+      hasAutoSelectedRef.current = false;
+      return;
+    }
+    const loadDevices = async () => {
       try {
-        const res = await fetch('/cli/svc/devices', { headers: getAuthHeaders() });
-        const data = await res.json();
+        const data = await apiClient.cliRequest('/svc/devices');
         if (data.success && data.devices) {
           setDevices(data.devices);
-          const online = data.devices.find((d: { is_online: boolean }) => d.is_online);
-          if (online && !selectedDeviceId) setSelectedDeviceId(online.device_id);
+          if (!hasAutoSelectedRef.current) {
+            const online = data.devices.find((d: { is_online: boolean }) => d.is_online);
+            if (online && !selectedDeviceId) setSelectedDeviceId(online.device_id);
+            hasAutoSelectedRef.current = true;
+          }
         }
       } catch { /* */ }
-    })();
+    };
+    loadDevices();
+    const intervalId = window.setInterval(loadDevices, 10_000);
+    return () => window.clearInterval(intervalId);
   }, [visible]);
 
   // Project date/time formats + table caption translations — load once synchronously
@@ -1051,14 +1069,19 @@ const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
             <Dropdown value={connSettings.connection_type} options={[{ label: 'MySQL / MariaDB', value: 'mysql' }, { label: 'PostgreSQL', value: 'postgresql' }]}
               onChange={e => setConnSettings(p => ({ ...p, connection_type: e.value, port: e.value === 'postgresql' ? 5432 : 3306 }))} style={{ width: '100%', fontSize: 12 }} />
           </div>
+          {/* Host + Port row — same flex-overflow fix as FormLivePreviewModal:
+            * minWidth: 0 on flex children breaks PrimeReact's default input
+            * min-width inheritance so the 80px Port slot can actually be 80px,
+            * and useGrouping={false} drops the "3,306" thousands separator
+            * (a TCP port is not a currency amount). */}
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Host</label>
-              <InputText value={connSettings.host} onChange={e => setConnSettings(p => ({ ...p, host: e.target.value }))} style={{ width: '100%', fontSize: 12 }} />
+              <InputText value={connSettings.host} onChange={e => setConnSettings(p => ({ ...p, host: e.target.value }))} style={{ width: '100%', fontSize: 12, minWidth: 0 }} />
             </div>
-            <div style={{ width: 80 }}>
+            <div style={{ width: 80, minWidth: 0 }}>
               <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Port</label>
-              <InputNumber value={connSettings.port} onValueChange={e => setConnSettings(p => ({ ...p, port: e.value || 3306 }))} style={{ width: '100%' }} inputStyle={{ fontSize: 12 }} />
+              <InputNumber value={connSettings.port} onValueChange={e => setConnSettings(p => ({ ...p, port: e.value || 3306 }))} useGrouping={false} style={{ width: '100%' }} inputStyle={{ fontSize: 12, width: '100%', minWidth: 0 }} />
             </div>
           </div>
           <div>

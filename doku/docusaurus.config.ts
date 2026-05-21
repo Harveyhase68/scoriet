@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Scoriet Documentation',
-  tagline: 'Enterprise Code Generator — Create, Generate, Deploy',
+  tagline: 'Schema-to-Stack Studio — Create, Generate, Deploy',
   favicon: 'img/scoriet-icon.svg',
 
   future: {

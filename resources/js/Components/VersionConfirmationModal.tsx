@@ -1,4 +1,6 @@
 import React from 'react';
+import { Dialog } from 'primereact/dialog';
+import { Button } from 'primereact/button';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -26,33 +28,21 @@ export default function VersionConfirmationModal({
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
 
-  if (!isOpen) return null;
-
   const displayVersion = currentVersion || t.profilemodal640;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 999999, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div
-        className="rounded-lg w-full max-w-md mx-4"
-        style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}
-      >
-        {/* Header */}
-        <div
-          className="flex justify-between items-center p-4"
-          style={{ borderBottom: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.dialogHeader }}
-        >
-          <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-            {t.versionconfirmationmodal29}
-          </h3>
-          <button
-            onClick={onClose}
-            className="transition-colors hover:opacity-80"
-            style={{ color: colors.textMuted }}
-          >
-            ✕
-          </button>
-        </div>
-
+    <Dialog
+      visible={isOpen}
+      onHide={onClose}
+      header={t.versionconfirmationmodal29}
+      style={{ width: '500px' }}
+      modal
+      draggable
+      resizable
+      className="p-fluid p-dialog-custom"
+      contentStyle={{ padding: '0' }}
+    >
+      <div className="flex flex-col">
         {/* Body */}
         <div className="p-6">
           <div className="mb-6">
@@ -118,20 +108,16 @@ export default function VersionConfirmationModal({
           </div>
         </div>
 
-        {/* Footer - nur Abbrechen Button */}
-        <div
-          className="flex justify-end gap-3 p-4"
-          style={{ borderTop: `1px solid ${colors.borderPrimary}` }}
-        >
-          <button
+        {/* Footer — Cancel button, anchored at bottom via flex-shrink-0. */}
+        <div className="flex justify-end gap-2 px-6 pb-4 pt-3 flex-shrink-0" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+          <Button
+            label={t.versionconfirmationmodal102}
+            icon="pi pi-times"
+            className="p-button-text"
             onClick={onClose}
-            className="px-4 py-2 rounded transition-colors hover:opacity-90"
-            style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}
-          >
-            {t.versionconfirmationmodal102}
-          </button>
+          />
         </div>
       </div>
-    </div>
+    </Dialog>
   );
 }

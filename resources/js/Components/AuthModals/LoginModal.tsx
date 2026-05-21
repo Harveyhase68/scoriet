@@ -178,14 +178,27 @@ export default function LoginModal({
       if (formData.rememberMe) {
         // Long-term storage - token available even after browser closing
         localStorage.setItem('access_token', tokenData.access_token);
-        localStorage.setItem('refresh_token', tokenData.refresh_token);
+        if (tokenData.refresh_token) {
+          localStorage.setItem('refresh_token', tokenData.refresh_token);
+        } else {
+          localStorage.removeItem('refresh_token');
+        }
         localStorage.setItem('remember_me', 'true');
       } else {
         // Only for session - deleted when browser closes
         sessionStorage.setItem('access_token', tokenData.access_token);
-        sessionStorage.setItem('refresh_token', tokenData.refresh_token);
+        if (tokenData.refresh_token) {
+          sessionStorage.setItem('refresh_token', tokenData.refresh_token);
+        } else {
+          sessionStorage.removeItem('refresh_token');
+        }
         localStorage.setItem('remember_me', 'false');
       }
+
+      // Login succeeded - clear stale logout/notify markers from any previous
+      // session so the API client's refresh flow isn't blocked by them later.
+      localStorage.removeItem('logout_in_progress');
+      sessionStorage.removeItem('session_revoke_notified');
 
       // Call user update with token from correct storage
       const accessToken = formData.rememberMe ?
@@ -327,6 +340,11 @@ export default function LoginModal({
       }
       localStorage.setItem('remember_me', 'false');
     }
+
+    // Login succeeded - clear stale logout/notify markers from any previous
+    // session so the API client's refresh flow isn't blocked by them later.
+    localStorage.removeItem('logout_in_progress');
+    sessionStorage.removeItem('session_revoke_notified');
 
     // Fetch and store user data
     const accessToken = formData.rememberMe
