@@ -4,7 +4,7 @@
 
 ### Schema-to-Stack Studio with Intelligent Templating
 
-![Scoriet - Schema-to-Stack Studio](github-social-preview-new.png)
+![Scoriet - Schema-to-Stack Studio](github-social-preview_new.png)
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-red.svg?style=flat-square&logo=laravel)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?style=flat-square&logo=react)](https://reactjs.org)
