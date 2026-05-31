@@ -220,6 +220,23 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         loadPurchasedTemplates();
     }, [projectId]);
 
+    // Pre-load the user's projects so the TemplateModal's project assignment
+    // multiselect always has the full list available — without this, creating
+    // a brand-new template would show an empty dropdown until the user clicks
+    // the link action. Cheap call (small list), runs once on mount.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const projects = await api.getUserProjects();
+                if (!cancelled) setAllProjects(projects || []);
+            } catch {
+                if (!cancelled) setAllProjects([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
     // Load project languages for FileModal language_override dropdown
     useEffect(() => {
         const loadProjectLanguages = async () => {
@@ -1000,6 +1017,23 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     }, 800); // 800ms delay so it shows AFTER success toast
                 }
 
+                // Persist project assignment via the dedicated linked-projects
+                // endpoint. We call this on EVERY submit (even with an empty
+                // array) so the user can clear all links by removing chips.
+                // Errors here only surface as a toast — the template itself
+                // already saved successfully and the user shouldn't lose work.
+                const savedTemplateId = editingTemplate?.id ?? response.template?.id;
+                if (savedTemplateId) {
+                    try {
+                        await api.updateTemplateProjectLinks(
+                            savedTemplateId,
+                            Array.isArray(values.linked_project_ids) ? values.linked_project_ids : []
+                        );
+                    } catch (e: any) {
+                        toast.showWarn(e?.response?.data?.message || t.templatemanagementpanel724);
+                    }
+                }
+
                 setModalVisible(false);
                 setTemplateFiles([]);
 
@@ -1011,6 +1045,10 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             // Template submission error
             const errorMessage = error.response?.data?.error || error.response?.data?.message || `${t.templatemanagementpanel988}${editingTemplate ? t.applicationsmodal313 : t.teammodal240}${t.templatemanagementpanel988_2}`;
             toast.showError(errorMessage);
+            // Re-throw so the modal's handleSubmit knows the save failed and
+            // can keep the form intact (no reset, no close). The toast above
+            // is the user-facing message; this throw is internal control flow.
+            throw error;
         }
     };
 
@@ -1049,6 +1087,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         }
                         toast.showWarn(warningMessage);
                     }, 800); // 800ms delay
+                }
+
+                // Persist project assignment for the newly-created template.
+                // Done before refreshing the tables so the new template
+                // already appears with its correct project links.
+                if (response.template?.id) {
+                    try {
+                        await api.updateTemplateProjectLinks(
+                            response.template.id,
+                            Array.isArray(values.linked_project_ids) ? values.linked_project_ids : []
+                        );
+                    } catch (e: any) {
+                        toast.showWarn(e?.response?.data?.message || t.templatemanagementpanel724);
+                    }
                 }
 
                 // Close the create modal
@@ -2297,6 +2349,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 onCreateVariable={handleCreateVariable}
                 onEditVariable={handleEditVariable}
                 onDeleteVariable={handleDeleteVariable}
+                availableProjects={allProjects.map(p => ({ id: Number(p.id), name: p.name }))}
             />
 
             {/* File Create/Edit Modal */}

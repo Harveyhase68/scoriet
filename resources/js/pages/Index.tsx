@@ -538,7 +538,7 @@ const loadTab = (
         title: data.title || t?.index413,
         content: (
           <Suspense fallback={<PanelLoader />}>
-            <PanelT2 preSelectedSchemaId={data.preSelectedSchemaId} />
+            <PanelT2 preSelectedSchemaId={data.preSelectedSchemaId} updateTabTitle={updateTitleCallback} />
           </Suspense>
         ),
         closable: true,
@@ -919,7 +919,7 @@ const loadTab = (
     case 'report-field-assignments':
       return {
         id,
-        title: data.title || (t as unknown as Record<string, string>).reportfieldassignmentpanel_title || 'Report Field Assignments',
+        title: data.title || t.reportfieldassignmentpanel_title,
         content: (
           <Suspense fallback={<PanelLoader />}>
             <ReportFieldAssignmentPanel />
@@ -1256,31 +1256,34 @@ const loadTab = (
       // Handle schema-specific designer tabs (e.g., designer_schema_1, designer_schema_2)
       if (id.startsWith('designer_schema_')) {
         const schemaId = parseInt(id.split('_')[2]);
-        const displayTitle = data.schemaName ? 
-          `${t.index1163}(${data.schemaName})` : 
-          `${t.index1164}(Schema ${schemaId})`;
+        // Initial title: prefer the name from the opener; fall back to the
+        // generic label (no "Schema 12") since PanelT2 will overwrite the
+        // tab title with the real schema name as soon as it loads.
+        const displayTitle = data.schemaName
+          ? `${t.index1163}(${data.schemaName})`
+          : `${t.index1164.trim()}`;
         return {
           id,
           title: data.title || displayTitle,
           content: (
             <Suspense fallback={<PanelLoader />}>
-              <PanelT2 preSelectedSchemaId={schemaId} />
+              <PanelT2 preSelectedSchemaId={schemaId} updateTabTitle={updateTitleCallback} />
             </Suspense>
           ),
           closable: true,
           group: 'card custom'
         };
       }
-      
+
       // Handle legacy t2_schema_ tabs (for backward compatibility)
       if (id.startsWith('t2_schema_')) {
         const schemaId = parseInt(id.split('_')[2]);
         return {
           id,
-          title: data.title || `${t.index1183}${schemaId})`,
+          title: data.title || `${t.index1163.trim()}`,
           content: (
             <Suspense fallback={<PanelLoader />}>
-              <PanelT2 preSelectedSchemaId={schemaId} />
+              <PanelT2 preSelectedSchemaId={schemaId} updateTabTitle={updateTitleCallback} />
             </Suspense>
           ),
           closable: true,

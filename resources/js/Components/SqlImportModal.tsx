@@ -13,17 +13,12 @@ import { apiClient } from '@/lib/api';
 // stay readable. Index in <TabViewSideMenu> corresponds to <TabPanel> child
 // position.
 //
-// Order is Paste / Service / Upload (NOT Paste / Upload / Service) because
-// the Service panel's content is ~300 lines and was authored as the middle
-// branch of the original ternary; reordering it to the end purely for visual
-// alignment would mean moving a large block of stateful JSX with no behavioural
-// payoff. The user-visible labels still read in plain order.
+// Order is Paste / Upload / Service to mirror the Database Export modal's
+// Paste-style → File → Service layout. TAB_UPLOAD is not referenced by name
+// (reset targets TAB_PASTE and the footer keys off TAB_SERVICE); the index
+// lives implicitly in the <TabPanel> ordering inside the JSX.
 const TAB_PASTE = 0;
-const TAB_SERVICE = 1;
-// TAB_UPLOAD intentionally not exported as a constant — Upload is the third
-// tab (index 2) but is never referenced by name in this file (the reset
-// targets TAB_PASTE and the conditional footer keys off TAB_SERVICE). The
-// number lives implicitly in the <TabPanel> ordering inside the JSX.
+const TAB_SERVICE = 2;
 
 interface SqlImportModalProps {
   isOpen: boolean;
@@ -1067,6 +1062,74 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                   {t.sqlimportmodal1123}
                 </div>
               </TabPanel>
+              <TabPanel header={<span><i className="pi pi-upload mr-2" />{t.sqlimportmodal922}</span>}>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                  {t.sqlimportmodal1451}
+                </label>
+                <div
+                  className="border-2 border-dashed rounded-lg p-8 text-center"
+                  style={{ borderColor: colors.borderPrimary }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".sql,.txt"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+
+                  {sqlScript ? (
+                    <div style={{ color: colors.successText }}>
+                      <div className="text-2xl mb-2">✅</div>
+                      <p className="font-medium">{t.sqlimportmodal1468}</p>
+                      <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
+                        {sqlScript.length}{t.sqlimportmodal1470}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-3 px-4 py-2 text-white rounded text-sm transition-colors hover:opacity-90"
+                        style={{ backgroundColor: colors.accent }}
+                      >
+                        {t.sqlimportmodal1478}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ color: colors.textMuted }}>
+                      <div className="text-4xl mb-3">📁</div>
+                      <p className="font-medium mb-2">{t.sqlimportmodal1484}</p>
+                      <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
+                        {t.sqlimportmodal1486}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-6 py-2 text-white rounded transition-colors hover:opacity-90"
+                        style={{ backgroundColor: colors.accent }}
+                      >
+                        {t.sqlimportmodal1494}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {sqlScript && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                      {t.sqlimportmodal1503}
+                    </label>
+                    <div
+                      className="rounded p-3 text-xs font-mono max-h-32 overflow-y-auto"
+                      style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderPrimary}`, color: colors.textSecondary }}
+                    >
+                      {sqlScript.substring(0, 500)}
+                      {sqlScript.length > 500 && '...'}
+                    </div>
+                  </div>
+                )}
+              </div>
+              </TabPanel>
               <TabPanel header={<span><i className="pi pi-server mr-2" />{t.sqlimportmodal934}</span>}>
               <div className="space-y-4">
                 {/* Database Connection Form */}
@@ -1377,74 +1440,6 @@ export default function SqlImportModal({ isOpen, onClose, onSuccess, preselected
                         </div>
                       ))}
                       <div ref={logEndRef} />
-                    </div>
-                  </div>
-                )}
-              </div>
-              </TabPanel>
-              <TabPanel header={<span><i className="pi pi-upload mr-2" />{t.sqlimportmodal922}</span>}>
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                  {t.sqlimportmodal1451}
-                </label>
-                <div
-                  className="border-2 border-dashed rounded-lg p-8 text-center"
-                  style={{ borderColor: colors.borderPrimary }}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".sql,.txt"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-
-                  {sqlScript ? (
-                    <div style={{ color: colors.successText }}>
-                      <div className="text-2xl mb-2">✅</div>
-                      <p className="font-medium">{t.sqlimportmodal1468}</p>
-                      <p className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                        {sqlScript.length}{t.sqlimportmodal1470}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-3 px-4 py-2 text-white rounded text-sm transition-colors hover:opacity-90"
-                        style={{ backgroundColor: colors.accent }}
-                      >
-                        {t.sqlimportmodal1478}
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ color: colors.textMuted }}>
-                      <div className="text-4xl mb-3">📁</div>
-                      <p className="font-medium mb-2">{t.sqlimportmodal1484}</p>
-                      <p className="text-sm mb-4" style={{ color: colors.textMuted }}>
-                        {t.sqlimportmodal1486}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-6 py-2 text-white rounded transition-colors hover:opacity-90"
-                        style={{ backgroundColor: colors.accent }}
-                      >
-                        {t.sqlimportmodal1494}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {sqlScript && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                      {t.sqlimportmodal1503}
-                    </label>
-                    <div
-                      className="rounded p-3 text-xs font-mono max-h-32 overflow-y-auto"
-                      style={{ backgroundColor: colors.bgPrimary, border: `1px solid ${colors.borderPrimary}`, color: colors.textSecondary }}
-                    >
-                      {sqlScript.substring(0, 500)}
-                      {sqlScript.length > 500 && '...'}
                     </div>
                   </div>
                 )}

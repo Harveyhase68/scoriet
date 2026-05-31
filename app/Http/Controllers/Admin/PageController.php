@@ -33,8 +33,25 @@ class PageController extends Controller
      */
     public function store(Request $request)
     {
+        // Uniqueness check uses Laravel's standard validator so the response
+        // shape matches every other 422 in the app: errors.slug[0] carries
+        // the specific message, which the frontend can show verbatim.
+        // The combined locale check goes via a closure-based unique() that
+        // factors locale into the WHERE — we can't use a column-level
+        // unique() rule here because the constraint is composite.
         $validated = $request->validate([
-            'slug' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/'],
+            'slug' => [
+                'required', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/',
+                function ($attribute, $value, $fail) use ($request) {
+                    $locale = $request->input('locale');
+                    if ($locale && Page::where('slug', $value)->where('locale', $locale)->exists()) {
+                        // Specific, human-readable error — replaces the
+                        // generic "API Error: 422 Unprocessable Content"
+                        // that used to surface in the modal.
+                        $fail("A page with slug '{$value}' already exists for locale '{$locale}'. Please choose a different slug or edit the existing page.");
+                    }
+                },
+            ],
             'locale' => 'required|string|size:2|in:en,de,fr,es,it',
             'title' => 'required|string|max:255',
             'content' => 'required|string',
@@ -44,15 +61,6 @@ class PageController extends Controller
             'popup_priority' => 'integer|min:1|max:999',
             'popup_version' => 'integer|min:1',
         ]);
-
-        // Check if slug + locale combination already exists
-        $exists = Page::where('slug', $validated['slug'])
-                     ->where('locale', $validated['locale'])
-                     ->exists();
-
-        if ($exists) {
-            return response()->json(['error' => __('pagecontrollerphp54')], 422);
-        }
 
         $page = Page::create($validated);
 

@@ -484,10 +484,14 @@ const CodeAdjustmentsPanel: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Save adjustment error:', error);
+      const data = error?.response?.data || {};
+      // Pull the field-level name error first (covers duplicate-name 422
+      // from the unique rule). Falls back to the generic message.
+      const fieldError = data?.errors?.name?.[0];
       toast.current?.show({
         severity: 'error',
         summary: t.codeadjustmentspanel536,
-        detail: error?.response?.data?.message || t.codeadjustmentspanel537,
+        detail: fieldError || data.message || t.codeadjustmentspanel537,
       });
     }
   };

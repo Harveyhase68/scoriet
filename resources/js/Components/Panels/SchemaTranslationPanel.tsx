@@ -515,7 +515,7 @@ export default function SchemaTranslationPanel() {
 
       if (translateAllItems) {
         // Translate ALL items that have source language
-        await translateAllSchemaItems(token);
+        await translateAllSchemaItems();
       } else {
         // Translate single selected item
         if (!selectedItem) return;
@@ -562,7 +562,11 @@ export default function SchemaTranslationPanel() {
     toast.showSuccess(`${t.schematranslationpanel523}${sourceLanguageForTranslate.toUpperCase()} to ${targetLanguagesForTranslate.length}${t.schematranslationpanel523_2}`);
   };
 
-  const translateAllSchemaItems = async (token: string) => {
+  const translateAllSchemaItems = async () => {
+    // Auth is handled inside apiClient/fetchTranslationsForItemDirect — the
+    // caller used to thread an explicit `token` arg here, but nothing in
+    // the body ever read it, so it was dropped to satisfy the no-unused-vars
+    // rule.
     // Get all items (tables + fields) that have source language translation
     const itemsToTranslate: Array<{ itemName: string; sourceText: string }> = [];
 

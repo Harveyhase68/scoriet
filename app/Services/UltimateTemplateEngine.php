@@ -273,15 +273,22 @@ class UltimateTemplateEngine
 
         // Check against legacy mappings (known template variables)
         // MUST stay in sync with processVariable() legacyMappings!
+        // ⚠️ MUST stay in sync with the actual project-data keys produced by
+        // UltimateTemplateController::buildUltimateProjectData(). Whenever a
+        // new top-level project variable is added there, mirror it here or
+        // the syntax checker reports a false-positive "unknown variable"
+        // even though the resolver knows it.
         $legacyMappings = [
             // PROJECT BASICS
             'projectname', 'projectcaption', 'projectdescription', 'projectid', 'projectdatabase',
             'projecturl', 'projectdirectory', 'startpage',
+            'projectowner', 'projectowneremail', 'projectcreated', 'projectupdated',
             'defaultlanguage', 'defaultlanguagename', 'defaultlanguageindex',
             'filenameshortlength',
 
             // DATABASE CONNECTION VARIABLES
             'projectdbid', 'projectdbtype', 'projectdbserver', 'projectdbname',
+            'projectdbdesc', 'projectdbversion',
             'projectdbusername', 'projectdbpassword', 'projectdbport',
 
             // LOCALIZATION SETTINGS
@@ -294,12 +301,13 @@ class UltimateTemplateEngine
 
             // TEMPLATE INFO
             'templateid', 'projecttemplateid', 'templatename',
-            'templatecategory', 'templatedescription',
+            'templatecategory', 'templatedescription', 'templatetags',
             'templatefolder', 'templatepage', 'templatepagename',
             'templatefilepath', 'templateoutputpath',
 
-            // SYSTEM INFO
-            'laravelversion',
+            // SYSTEM / GENERATION INFO
+            'laravelversion', 'scorietversion',
+            'generationdatetime', 'generationuser',
 
             // FILE/TABLE INFO
             'tablename', 'tableindex', 'filename', 'filenameshort', 'fileid',
@@ -320,13 +328,32 @@ class UltimateTemplateEngine
             'nmaxitemsmasterdetail', 'nmaxitemsmasterdetailnokeys',
             'nmaxfiles', 'nmaxtables', 'nmaxlanguages', 'nmaxsearchkeys',
             'nmaxconstraints', 'tablesgen', 'fieldsgen',
+            // FormSet/Report counters (project-global, exposed in buildUltimateProjectData)
+            'nmaxformsets', 'nmaxwindows',
+            // Per-item enum value counter (resolves to fields[i].enum_values.length inside nmaxitems loops)
+            'nmaxenum',
+            // Loop-local: current value inside `{:for item.enum_values:}`. Resolver
+            // in processVariable() returns 'value' only when currentLoopContext is
+            // 'item_enum_values'; validator stays loop-context-agnostic.
+            'value',
             // Form layout counters
             'nmaxlayoutsingles', 'layoutsinglecount', 'nmaxlayoutcolumns',
             'nmaxlayoutbuttons', 'nmaxlayoutmenus',
             // Report layout counters + per-table report meta
             'nmaxreportsingleelements', 'nmaxreportlistelements',
             'nmaxlayoutreportsingle', 'nmaxlayoutreportlist',
-            'report_pattern_id', 'report_pattern_name',
+            'report_pattern_id', 'report_pattern_name', 'report_pattern_inherited',
+            // Per-table FormSet provenance. `id` is always the real effective
+            // DB id; `-1` only when nothing exists anywhere. Branch on
+            // `*_inherited` to distinguish own-assignment vs. project-default.
+            'form_set_id', 'form_set_name', 'form_set_inherited',
+            // Migration counters & static fields (in addition to the migration.X
+            // family already covered by $migrationStaticMappings in processVariable).
+            // These are used BARE (e.g. `{:nmaxmigration_tables:}` outside loops) —
+            // not as loop counters, which are handled separately in processLoopStart.
+            'nmaxmigration_tables', 'nmaxmigration_fields',
+            'nmaxmigration_indexes', 'nmaxmigration_foreignkeys',
+            'nmaxmigration_total',
         ];
 
         if (in_array($variable, $legacyMappings)) {
@@ -783,8 +810,20 @@ class UltimateTemplateEngine
             return "  for (let {$variable} of {$this->processVariable($collection, $tableIndex)}) {\n";
         }
 
-        // Helper: resolve table reference - uses fixed index for db_table_file, or tableIdx for nmaxtables loops
-        $tableRef = $tableIndex !== null ? "tables[{$tableIndex}]" : "tables[tableIdx]";
+        // Helper: resolve table reference - uses fixed index for db_table_file, or tableIdx for nmaxtables loops.
+        //
+        // NESTED-IN-TABLES override: when this loop sits inside an outer
+        // {:for nmaxtables:}, the JS `tableIdx` reassigned per outer iteration
+        // MUST win over the static engine-context `$tableIndex`. Without this,
+        // every inner nmaxitems/nmaxkeys/nmaxforeignkeys loop would lock to
+        // the engine's PHP table context (e.g. 1 in db_table_file mode) and
+        // emit identical content for every outer iteration. We detect nesting
+        // via currentLoopContext === 'tables' (the outer loop pushed this
+        // before our processLoopStart call).
+        $nestedInTables = ($this->currentLoopContext === 'tables');
+        $tableRef = ($tableIndex !== null && !$nestedInTables)
+            ? "tables[{$tableIndex}]"
+            : "tables[tableIdx]";
 
         // 🎯 KEYS LOOP - Loop through keys array
         if (strpos($line, '{:for nmaxkeys:}') !== false) {
@@ -835,15 +874,22 @@ class UltimateTemplateEngine
         }
 
         // 🎯 FOREIGN KEYS LOOP - Loop through foreignkeys array
+        //
+        // Counter variable is `_fkI` (not `i`) so nested fields-loops
+        // (`{:for nmaxitems:}` declares `const i`) cannot shadow the outer FK
+        // index. Without this, `{:foreign.X:}` inside the inner loop would
+        // resolve to `foreignkeys[_fkI]` with `i` = field-index, blowing up when
+        // field-index exceeds FK-count. Same fix pattern as nmaxtables which
+        // uses `_tgenI`/`tableIdx` to survive nested shadowing.
         if (strpos($line, '{:for nmaxforeignkeys:}') !== false) {
             $this->pushLoopContext('foreignkeys');
-            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxforeignkeys; i++) {\n";
+            return "  for (let _fkI = 0; _fkI < gtree[0].project[0].{$tableRef}.nmaxforeignkeys; _fkI++) {\n";
         }
 
         // 🎯 FOREIGN KEYS UNIQUE LOOP - Deduplicated: one entry per referenced table
         if (strpos($line, '{:for nmaxforeignkeysunique:}') !== false) {
             $this->pushLoopContext('foreignkeysunique');
-            return "  for (let i = 0; i < gtree[0].project[0].{$tableRef}.nmaxforeignkeysunique; i++) {\n";
+            return "  for (let _fkuI = 0; _fkuI < gtree[0].project[0].{$tableRef}.nmaxforeignkeysunique; _fkuI++) {\n";
         }
 
         // 🎯 SEARCH KEYS LOOP - Loop through fieldssearchkeys array (index-based into fields[])
@@ -929,6 +975,25 @@ class UltimateTemplateEngine
             return "  for (let loopIndex_reportlistelements = 0; loopIndex_reportlistelements < (gtree[0].project[0].{$tableRef}.nmaxreportlistelements || 0); loopIndex_reportlistelements++) {\n";
         }
 
+        // 🎯 ITEM ARRAY-PROPERTY LOOP — {:for item.enum_values:} iterates over a
+        // scalar-array property of the current item inside a {:for nmaxitems:} block.
+        // Only `enum_values` is supported today (ENUM/SET values); any other array
+        // properties on fields[i] would need their own special-cases.
+        //
+        // The loop counter `_valIdx` deliberately avoids `i` so the outer field-loop's
+        // `i` (real field index, set from fieldsgen[]) stays accessible — that's what
+        // makes `{:item.name:}` inside the inner block still resolve to the current
+        // field. `{:value:}` (resolved separately in processVariable) gives the
+        // current array entry.
+        if (strpos($line, '{:for item.enum_values:}') !== false) {
+            $this->pushLoopContext('item_enum_values');
+            $itemRef = $tableIndex !== null
+                ? "gtree[0].project[0].tables[{$tableIndex}].fields[i]"
+                : "gtree[0].project[0].tables[tableIdx].fields[i]";
+            return "  for (let _valIdx = 0; _valIdx < (({$itemRef}.enum_values) || []).length; _valIdx++) {\n"
+                 . "    const value = {$itemRef}.enum_values[_valIdx];\n";
+        }
+
         // Custom count loops - matches {:for countvar:}
         if (preg_match('/\{:for\s+(\w+):\}/', $line, $matches)) {
             $countVar = $matches[1];
@@ -994,6 +1059,13 @@ class UltimateTemplateEngine
                 return 'fieldsnoblob';
             case 'fieldsnobloball':
                 return 'fieldsnobloball';
+            // These two were missing — fell through to 'fields' default and
+            // produced `fields[fields[i]]` (double-indirection bug) inside
+            // {:for nmaxitemsnobinaryblob:} loops.
+            case 'fieldsnobinaryblob':
+                return 'fieldsnobinaryblob';
+            case 'fieldsnobinarybloball':
+                return 'fieldsnobinarybloball';
             case 'fieldssearchkeys':
                 return 'fieldssearchkeys';
             case 'constraints':
@@ -1015,7 +1087,15 @@ class UltimateTemplateEngine
     // Index-based contexts (fieldsnokey, fieldsnokeyall): table.fields[table.fieldsnokey[i]]
     private function getItemExpression(?int $tableIndex): string
     {
-        $tablePrefix = $tableIndex !== null
+        // NESTED-IN-TABLES override (same rationale as nmaxitems loop): when we
+        // are resolving item.* inside a fields-loop that itself sits inside an
+        // outer {:for nmaxtables:} loop, the JS `tableIdx` reassigned per outer
+        // iteration MUST win over the static engine-context `$tableIndex`.
+        // Without this, every outer iteration would emit identical inner field
+        // references locked to the engine's PHP table context.
+        $nestedInTables = in_array('tables', $this->loopContextStack, true);
+
+        $tablePrefix = ($tableIndex !== null && !$nestedInTables)
             ? "gtree[0].project[0].tables[{$tableIndex}]"
             : "gtree[0].project[0].tables[tableIdx]";
 
@@ -1568,20 +1648,21 @@ class UltimateTemplateEngine
                     return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxkeys; i++) {\n";
                 }
             } elseif ($loopVar === 'nmaxforeignkeys') {
-                // 🎯 FOREIGN KEYS loop - through foreignkeys array
+                // 🎯 FOREIGN KEYS loop - uses `_fkI` to survive nested shadowing
+                // (see comment at the other nmaxforeignkeys emit block).
                 $this->pushLoopContext('foreignkeys');
                 if ($tableIndex !== null) {
-                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeys; i++) {\n";
+                    return "  for (let _fkI = 0; _fkI < gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeys; _fkI++) {\n";
                 } else {
-                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxforeignkeys; i++) {\n";
+                    return "  for (let _fkI = 0; _fkI < gtree[0].project[0].tables[tableIdx].nmaxforeignkeys; _fkI++) {\n";
                 }
             } elseif ($loopVar === 'nmaxforeignkeysunique') {
-                // 🎯 FOREIGN KEYS UNIQUE loop - deduplicated by referenced table
+                // 🎯 FOREIGN KEYS UNIQUE loop - same `_fkuI` pattern
                 $this->pushLoopContext('foreignkeysunique');
                 if ($tableIndex !== null) {
-                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeysunique; i++) {\n";
+                    return "  for (let _fkuI = 0; _fkuI < gtree[0].project[0].tables[{$tableIndex}].nmaxforeignkeysunique; _fkuI++) {\n";
                 } else {
-                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxforeignkeysunique; i++) {\n";
+                    return "  for (let _fkuI = 0; _fkuI < gtree[0].project[0].tables[tableIdx].nmaxforeignkeysunique; _fkuI++) {\n";
                 }
             } elseif ($loopVar === 'nmaxitemsnokey') {
                 // 🎯 FIELDS WITHOUT KEY loop - through fieldsnokey array
@@ -1612,8 +1693,18 @@ class UltimateTemplateEngine
                 // nmaxitems === fieldsgen.length, body's `i` = fieldsgen[_fgenI]
                 // so templates referencing {item.xxx:} keep working unchanged
                 // against the full fields[] array.
+                //
+                // NESTED-IN-TABLES override: when this nmaxitems sits INSIDE an
+                // outer {:for nmaxtables:} loop, the outer loop redefines the JS
+                // `tableIdx` per iteration. Using the static `$tableIndex` here
+                // would lock the inner loop to the engine's PHP context table
+                // (e.g. 1 when generating from a db_table_file context) and emit
+                // the same fields for every outer iteration — that was the
+                // Test 10 bug. We detect the nesting via the current loop
+                // context being 'tables' before pushLoopContext flips it.
+                $nestedInTables = ($this->currentLoopContext === 'tables');
                 $this->pushLoopContext('fields');
-                if ($tableIndex !== null) {
+                if ($tableIndex !== null && !$nestedInTables) {
                     return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; _fgenI++) {\n"
                          . "    const i = gtree[0].project[0].tables[{$tableIndex}].fieldsgen[_fgenI];\n";
                 } else {
@@ -1801,7 +1892,14 @@ class UltimateTemplateEngine
                 $variableResult = $this->processVariable($match, $tableIndex);
                 $cleanVariable = str_replace(["' + ", " + '"], '', $variableResult);
                 $cleanVariable = trim($cleanVariable, "'");
-                $cleanVariable = preg_replace('/\s*\|\|\s*[\'"].*?[\'"]/', '', $cleanVariable);
+                // NOTE: An earlier `preg_replace('/\s*\|\|\s*[\'"].*?[\'"]/', ...)` stripped
+                // the trailing `|| ''` fallback that several resolvers emit (layoutsingle.*,
+                // layoutcolumn.*, form.*, formset.*, reportsingleelement.* etc.). Stripping
+                // it caused missing/null properties to render literally as "undefined" or
+                // "null" in the output (test FORM-01 surfaced this on `layoutsingle.row`,
+                // `layoutsingle.col`, `layoutcolumn.header`, etc.). The fallback is the
+                // resolver's promise to the template — preserving it costs a few bytes of
+                // extra JS but makes the output behave as documented.
                 $parts[] = $cleanVariable;
             }
 
@@ -1908,20 +2006,24 @@ class UltimateTemplateEngine
             return "{$itemExpr}.{$fieldVar}";
         }
 
-        // Foreign key variables (inside nmaxforeignkeys loops)
-        // Must resolve to tables[…].foreignkeys[i].X — must match the path used by
-        // the foreignKeysMappings block in processVariable(). Without this branch,
-        // {:pascalcase(foreign.referencedtable):} falls through to the final
-        // gtree[0].project[0].{$variable} fallback and produces a broken path.
+        // Foreign key variables — context-aware:
+        //   • Inside nmaxforeignkeys       → foreignkeys[_fkI]
+        //   • Inside nmaxforeignkeysunique → foreignkeysunique[_fkuI]
+        // Same pattern as keys.* which auto-switches between keys[i] and
+        // constraints[i] based on currentLoopContext. Templates can use
+        // {:foreign.X:} in either loop type without thinking about the array.
         if (strpos($variable, 'foreign.') === 0) {
             $fkVar = substr($variable, 8);
-            return "{$tableRef}.foreignkeys[i].{$fkVar}";
+            if ($this->currentLoopContext === 'foreignkeysunique') {
+                return "{$tableRef}.foreignkeysunique[_fkuI].{$fkVar}";
+            }
+            return "{$tableRef}.foreignkeys[_fkI].{$fkVar}";
         }
 
         // Foreign key unique variables (inside nmaxforeignkeysunique loops)
         if (strpos($variable, 'foreignunique.') === 0) {
             $fkuVar = substr($variable, 14);
-            return "{$tableRef}.foreignkeysunique[i].{$fkuVar}";
+            return "{$tableRef}.foreignkeysunique[_fkuI].{$fkuVar}";
         }
 
         // Keys variables (inside nmaxkeys loops) — keys[i] is a constraint entry
@@ -1950,6 +2052,80 @@ class UltimateTemplateEngine
     {
         $variable = trim($variable);
 
+        // 🎯 LOOP COUNTER VARIABLES
+        // These reference identifiers declared by the for-loop preamble:
+        //   - `i`        : real field index (set by nmaxitems-loop from fieldsgen[_fgenI])
+        //                   or plain counter for other loops
+        //   - `tableIdx` : real table index (set by nmaxtables-loop from tablesgen[_tgenI])
+        //                   or fixed table index for db_table_file generations
+        //   - `nCount`   : 1-based legacy alias (WinDev-style) — see condition rewriter
+        //   - `migIdx`   : migration loop counter
+        // Without these handlers, `{:i:}` would fall through to the generic project-level
+        // fallback and resolve to `gtree[0].project[0].i` (undefined) — that's the bug
+        // that surfaced as "FELD #undefined" in the field loop output.
+        // 🎯 LOOP COUNTER `{:i:}` — CONTEXT-AWARE
+        // The template-engine convention: `{:i:}` is the current loop's array-
+        // resolved index. Different loops declare different counter variables
+        // (PHP-emit time), so we map context → JS identifier here. Without this
+        // mapping `{:i:}` in a tables-loop would emit `' + i + '` but the loop
+        // only declares `tableIdx` — JS runtime crashes with "i is undefined".
+        if ($variable === 'i') {
+            $counterMap = [
+                'item_enum_values' => '_valIdx',        // innermost wins (outer `i` still reachable via closure)
+                'tables' => 'tableIdx',                  // nmaxtables emits `const tableIdx = tablesgen[_tgenI]`
+                'foreignkeys' => '_fkI',                 // FK loop counter — `_fkI` survives nested items-loop shadowing
+                'foreignkeysunique' => '_fkuI',          // FK-unique loop counter — same rationale
+                'migration_tables' => 'migIdx',
+                'migration_fields' => 'migIdx',
+                'migration_indexes' => 'migIdx',
+                'migration_foreignkeys' => 'migIdx',
+                'layoutsingles' => 'loopIndex_layoutsingles',
+                'layoutcolumns' => 'loopIndex_layoutcolumns',
+                'layoutbuttons' => 'loopIndex_layoutbuttons',
+                'layoutmenus' => 'loopIndex_layoutmenus',
+                'layoutreportsingles' => 'loopIndex_layoutreportsingles',
+                'layoutreportlists' => 'loopIndex_layoutreportlists',
+                'reportsingleelements' => 'loopIndex_reportsingleelements',
+                'reportlistelements' => 'loopIndex_reportlistelements',
+            ];
+            // languages, fields, keys, constraints, foreignkeys*, fieldsnokey*,
+            // fieldsnoblob*, fieldsnobinaryblob*, fieldssearchkeys all use `i` directly.
+            $jsCounter = $counterMap[$this->currentLoopContext] ?? 'i';
+            return "' + {$jsCounter} + '";
+        }
+        if ($variable === 'tableIdx' || $variable === 'migIdx') {
+            return "' + {$variable} + '";
+        }
+        if ($variable === 'nCount') {
+            // WinDev-style 1-based counter
+            return "' + (i + 1) + '";
+        }
+
+        // 🎯 ITEM ARRAY-PROPERTY LOOP VALUE
+        // Inside `{:for item.enum_values:}` the loop preamble (see processLoopStart)
+        // declares `const value = gtree[...].fields[i].enum_values[_valIdx];`. So
+        // `{:value:}` must resolve to that local — NOT fall through to the project
+        // fallback which would give `gtree[0].project[0].value` (undefined).
+        if ($variable === 'value' && $this->currentLoopContext === 'item_enum_values') {
+            return "' + value + '";
+        }
+
+        // 🎯 PER-ITEM ENUM VALUE COUNT
+        // `{:nmaxenum:}` resolves to the length of the current item's enum_values
+        // array. Only meaningful inside a `{:for nmaxitems:}` loop (where `i` is
+        // the field index) and inside the `{:for item.enum_values:}` inner loop
+        // (where `i` is still the OUTER field index thanks to JS closure — the
+        // inner counter is `_valIdx`). Outside any field context it resolves to 0.
+        if ($variable === 'nmaxenum') {
+            if ($this->currentLoopContext === 'fields' || $this->currentLoopContext === 'item_enum_values') {
+                $tableRef = $tableIndex !== null
+                    ? "gtree[0].project[0].tables[{$tableIndex}]"
+                    : "gtree[0].project[0].tables[tableIdx]";
+                return "' + (({$tableRef}.fields[i].enum_values) || []).length + '";
+            }
+            return "' + 0 + '";
+        }
+
         // 🎯 PROJECT-LEVEL VARIABLES
         if (strpos($variable, 'project.') === 0) {
             $projectVar = substr($variable, 8); // Remove 'project.'
@@ -1966,7 +2142,7 @@ class UltimateTemplateEngine
             // form.button_save.label → formset.windows[INDEX].button_save?.label
             // Use the literal index value for reliable access (not dependent on gtree variable)
             $windowIdx = $this->currentFormWindowIdx;
-            return "' + (gtree[0].project[0].formset?.windows[{$windowIdx}]?.{$safeFormPath} || '') + '";
+            return "' + (gtree[0].project[0].formset?.windows[{$windowIdx}]?.{$safeFormPath} ?? '') + '";
         }
 
         // 🎯 FORMSET VARIABLES (direkter Zugriff auf FormSet und Fenster)
@@ -1975,7 +2151,7 @@ class UltimateTemplateEngine
             $formsetPath = substr($variable, 8); // Remove 'formset.'
             // Convert all dots to optional chaining for safe access
             $safeFormsetPath = str_replace('.', '?.', $formsetPath);
-            return "' + (gtree[0].project[0].formset?.{$safeFormsetPath} || '') + '";
+            return "' + (gtree[0].project[0].formset?.{$safeFormsetPath} ?? '') + '";
         }
 
         // 🎯 LAYOUT VARIABLES — resolve table reference (fixed index or tableIdx loop var)
@@ -1984,25 +2160,25 @@ class UltimateTemplateEngine
         // LAYOUT SINGLE VARIABLES (innerhalb {:for nmaxlayoutsingles:} Loop)
         if (strpos($variable, 'layoutsingle.') === 0) {
             $layoutVar = substr($variable, 13);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutsingles[loopIndex_layoutsingles].{$layoutVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutsingles[loopIndex_layoutsingles].{$layoutVar} ?? '') + '";
         }
 
         // LAYOUT COLUMN VARIABLES (innerhalb {:for nmaxlayoutcolumns:} Loop)
         if (strpos($variable, 'layoutcolumn.') === 0) {
             $layoutVar = substr($variable, 13);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutcolumns[loopIndex_layoutcolumns].{$layoutVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutcolumns[loopIndex_layoutcolumns].{$layoutVar} ?? '') + '";
         }
 
         // LAYOUT BUTTON VARIABLES (innerhalb {:for nmaxlayoutbuttons:} Loop)
         if (strpos($variable, 'layoutbutton.') === 0) {
             $layoutVar = substr($variable, 13);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutbuttons[loopIndex_layoutbuttons].{$layoutVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutbuttons[loopIndex_layoutbuttons].{$layoutVar} ?? '') + '";
         }
 
         // LAYOUT MENU VARIABLES (innerhalb {:for nmaxlayoutmenus:} Loop)
         if (strpos($variable, 'layoutmenu.') === 0) {
             $layoutVar = substr($variable, 11);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutmenus[loopIndex_layoutmenus].{$layoutVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutmenus[loopIndex_layoutmenus].{$layoutVar} ?? '') + '";
         }
 
         // 🎯 REPORT VARIABLES — IMPORTANT: longer prefixes must be checked BEFORE
@@ -2012,39 +2188,39 @@ class UltimateTemplateEngine
         // LAYOUT REPORT SINGLE VARIABLES (innerhalb {:for nmaxlayoutreportsingle:} Loop)
         if (strpos($variable, 'layoutreportsingle.') === 0) {
             $layoutVar = substr($variable, strlen('layoutreportsingle.'));
-            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutreportsingles[loopIndex_layoutreportsingles].{$layoutVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutreportsingles[loopIndex_layoutreportsingles].{$layoutVar} ?? '') + '";
         }
         // LAYOUT REPORT LIST VARIABLES (innerhalb {:for nmaxlayoutreportlist:} Loop)
         if (strpos($variable, 'layoutreportlist.') === 0) {
             $layoutVar = substr($variable, strlen('layoutreportlist.'));
-            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutreportlists[loopIndex_layoutreportlists].{$layoutVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.layoutreportlists[loopIndex_layoutreportlists].{$layoutVar} ?? '') + '";
         }
         // REPORT-SINGLE ELEMENT VARIABLES (innerhalb {:for nmaxreportsingleelements:} Loop)
         if (strpos($variable, 'reportsingleelement.') === 0) {
             $elementVar = substr($variable, strlen('reportsingleelement.'));
-            return "' + (gtree[0].project[0].{$layoutTableRef}.reportsingle?.elements[loopIndex_reportsingleelements]?.{$elementVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportsingle?.elements[loopIndex_reportsingleelements]?.{$elementVar} ?? '') + '";
         }
         // REPORT-LIST ELEMENT VARIABLES (innerhalb {:for nmaxreportlistelements:} Loop)
         if (strpos($variable, 'reportlistelement.') === 0) {
             $elementVar = substr($variable, strlen('reportlistelement.'));
-            return "' + (gtree[0].project[0].{$layoutTableRef}.reportlist?.elements[loopIndex_reportlistelements]?.{$elementVar} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportlist?.elements[loopIndex_reportlistelements]?.{$elementVar} ?? '') + '";
         }
         // REPORT-PATTERN scalar (design template — single, no loop)
         if (strpos($variable, 'reportsingle.') === 0) {
             $patternVar = substr($variable, strlen('reportsingle.'));
             $safePath = str_replace('.', '?.', $patternVar);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.reportsingle?.{$safePath} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportsingle?.{$safePath} ?? '') + '";
         }
         if (strpos($variable, 'reportlist.') === 0) {
             $patternVar = substr($variable, strlen('reportlist.'));
             $safePath = str_replace('.', '?.', $patternVar);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.reportlist?.{$safePath} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.reportlist?.{$safePath} ?? '') + '";
         }
         // REPORT PATTERN identity meta
         if (strpos($variable, 'reportpattern.') === 0) {
             $patternVar = substr($variable, strlen('reportpattern.'));
             $safePath = str_replace('.', '?.', $patternVar);
-            return "' + (gtree[0].project[0].{$layoutTableRef}.{$safePath} || '') + '";
+            return "' + (gtree[0].project[0].{$layoutTableRef}.{$safePath} ?? '') + '";
         }
 
         // 🎯 FILE-LEVEL VARIABLES (innerhalb {for {nmaxfiles}} / {for nmaxtables} Loop)
@@ -2098,8 +2274,17 @@ class UltimateTemplateEngine
                 return "' + {$itemExpr}.lang[gtree[0].project[0].selectedlanguageindex].caption + '";
             }
 
-            // Regular field variables
-            return "' + {$itemExpr}.{$fieldVar} + '";
+            // Reject sub-paths (item.lang[0].caption) and array-access; bare scalars only.
+            // Anything else needs its own dedicated resolver — falls through to the
+            // generic block below or stays unmodified.
+            if (!ctype_alpha($fieldVar[0] ?? '_') || strpbrk($fieldVar, '.[]') !== false) {
+                // fall through
+            } else {
+                // Regular field variables — `?? ''` keeps optional properties from
+                // rendering as literal "undefined" (e.g. linktable on non-FK fields,
+                // enum_values on non-enum fields, generation_expression on plain cols).
+                return "' + ({$itemExpr}.{$fieldVar} ?? '') + '";
+            }
         }
 
         // 🎯 DIRECT VARIABLES - Clean and essential only (no excessive variants!)
@@ -2233,42 +2418,81 @@ class UltimateTemplateEngine
             'nmaxreportlistelements' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxreportlistelements || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxreportlistelements || 0)",
             'nmaxlayoutreportsingle' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutreportsingle || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxlayoutreportsingle || 0)",
             'nmaxlayoutreportlist' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].nmaxlayoutreportlist || 0)" : "(gtree[0].project[0].tables[tableIdx].nmaxlayoutreportlist || 0)",
-            'report_pattern_id' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].report_pattern_id || '')" : "(gtree[0].project[0].tables[tableIdx].report_pattern_id || '')",
+            // FormSet / ReportPattern provenance — the id is now ALWAYS the
+            // real effective DB id (no sentinel for "inherited"). `-1` is
+            // only emitted when nothing exists at all. To detect provenance
+            // (own assignment vs. project-default inheritance) branch on
+            // the `*_inherited` flag instead:
+            //   {:if form_set_id gt 0:}
+            //     {:if form_set_inherited:} ... inherited from project default ...
+            //     {:else:}                 ... explicit table assignment ...
+            //     {:endif:}
+            //   {:else:}                   ... no FormSet anywhere ...
+            //   {:endif:}
+            'report_pattern_id' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].report_pattern_id || -1)" : "(gtree[0].project[0].tables[tableIdx].report_pattern_id || -1)",
             'report_pattern_name' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].report_pattern_name || '')" : "(gtree[0].project[0].tables[tableIdx].report_pattern_name || '')",
+            'report_pattern_inherited' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].report_pattern_inherited ?? null)" : "(gtree[0].project[0].tables[tableIdx].report_pattern_inherited ?? null)",
+            'form_set_id' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].form_set_id || -1)" : "(gtree[0].project[0].tables[tableIdx].form_set_id || -1)",
+            'form_set_name' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].form_set_name || '')" : "(gtree[0].project[0].tables[tableIdx].form_set_name || '')",
+            'form_set_inherited' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].form_set_inherited ?? null)" : "(gtree[0].project[0].tables[tableIdx].form_set_inherited ?? null)",
         ];
 
         if (isset($legacyMappings[$variable])) {
             return "' + " . $legacyMappings[$variable] . " + '";
         }
 
-        // 🎯 ENHANCED ITEM VARIABLES
+        // 🎯 ITEM VARIABLES — only entries with NON-trivial resolution (translation lookup,
+        // explicit '' fallback) need to live in the whitelist. Everything else (name,
+        // pascalcase, type, linktable, linkfield, ..., is_generated, enum_values, ...)
+        // is handled by the generic `item.*` fallback below, which adds `?? ''` so
+        // missing properties render as empty string instead of literal "undefined".
         $itemMappings = [
-            'item.name' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].name" : "gtree[0].project[0].tables[tableIdx].fields[i].name",
-            'item.pascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].pascalcase" : "gtree[0].project[0].tables[tableIdx].fields[i].pascalcase",
-            'item.camelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].camelcase" : "gtree[0].project[0].tables[tableIdx].fields[i].camelcase",
-            'item.type' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].type" : "gtree[0].project[0].tables[tableIdx].fields[i].type",
-            'item.controltype' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].controltype" : "gtree[0].project[0].tables[tableIdx].fields[i].controltype",
-            'item.typecast' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].typecast" : "gtree[0].project[0].tables[tableIdx].fields[i].typecast",
-            'item.caption' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].lang[gtree[0].project[0].selectedlanguageindex].caption" : "gtree[0].project[0].tables[tableIdx].fields[i].lang[gtree[0].project[0].selectedlanguageindex].caption",
-            // Link fields for ComboBox, ListBox, etc.
-            'item.linktable' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].linktable" : "gtree[0].project[0].tables[tableIdx].fields[i].linktable",
-            'item.linkfield' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].linkfield" : "gtree[0].project[0].tables[tableIdx].fields[i].linkfield",
-            'item.linkdisplayfield' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].linkdisplayfield" : "gtree[0].project[0].tables[tableIdx].fields[i].linkdisplayfield",
-            'item.linkorderfield' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].linkorderfield" : "gtree[0].project[0].tables[tableIdx].fields[i].linkorderfield",
-            'item.linkorder' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].linkorder" : "gtree[0].project[0].tables[tableIdx].fields[i].linkorder",
-            // 🎯 NEW: Additional ITEMS variables for templates
-            'item.unsigned' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].unsigned" : "gtree[0].project[0].tables[tableIdx].fields[i].unsigned",
-            'item.editmask' => $tableIndex !== null ? "(gtree[0].project[0].tables[{$tableIndex}].fields[i].editmask || '')" : "(gtree[0].project[0].tables[tableIdx].fields[i].editmask || '')",
-            'item.sort' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].sort" : "gtree[0].project[0].tables[tableIdx].fields[i].sort",
-            'item.sortindex' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].sortindex" : "gtree[0].project[0].tables[tableIdx].fields[i].sortindex",
+            // Caption goes through the per-language translation array, not the bare field.
+            'item.caption' => $tableIndex !== null
+                ? "gtree[0].project[0].tables[{$tableIndex}].fields[i].lang[gtree[0].project[0].selectedlanguageindex].caption"
+                : "gtree[0].project[0].tables[tableIdx].fields[i].lang[gtree[0].project[0].selectedlanguageindex].caption",
+            // editmask used to render literal "undefined" in templates that string-concat
+            // it; the explicit `|| ''` predates the generic resolver and stays for safety.
+            'item.editmask' => $tableIndex !== null
+                ? "(gtree[0].project[0].tables[{$tableIndex}].fields[i].editmask || '')"
+                : "(gtree[0].project[0].tables[tableIdx].fields[i].editmask || '')",
         ];
 
         if (isset($itemMappings[$variable])) {
             return "' + " . $itemMappings[$variable] . " + '";
         }
 
+        // Generic fallback for item.* — covers everything else the whitelist misses:
+        // size, precision, scale, enum_values, is_generated, generation_expression,
+        // generation_storage, isprimary, isunique, isindex, isforeign, istimestamp,
+        // autoincrement, isblob, isbinaryblob, visible, notnull, order, id, default,
+        // phptype, jstype, laraveltype, state, generation_mode, ... — anything the
+        // gtree adds in the future works without an engine edit.
+        //
+        // Note: `i` is already the real field index (set by the nmaxitems-loop preamble
+        // from fieldsgen[_fgenI]), so fields[i].<x> resolves to the iterated row.
+        if (strpos($variable, 'item.') === 0) {
+            $itemField = substr($variable, 5);
+            // Reject sub-paths/array-access (item.lang[0].caption etc.) — they need
+            // their own dedicated resolvers; here we only handle one-level scalar fields.
+            if ($itemField !== '' && ctype_alpha($itemField[0]) && strpbrk($itemField, '.[]') === false) {
+                $fieldsRef = $tableIndex !== null
+                    ? "gtree[0].project[0].tables[{$tableIndex}].fields[i]"
+                    : "gtree[0].project[0].tables[tableIdx].fields[i]";
+                return "' + ({$fieldsRef}.{$itemField} ?? '') + '";
+            }
+        }
+
         // 🎯 KEYS VARIABLES (for {for {nmaxkeys}} loops)
-        $keysRef = $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].keys[i]" : "gtree[0].project[0].tables[tableIdx].keys[i]";
+        // `keys.*` placeholders read from whichever array the current loop is iterating.
+        // {:for nmaxkeys:}        → keys[]        (PRIMARY KEY + UNIQUE only, 2 entries for users)
+        // {:for nmaxconstraints:} → constraints[] (ALL constraints incl. INDEX/KEY + FOREIGN, 5 entries)
+        // Without this, `{:keys.constraintname:}` inside an nmaxconstraints loop would index
+        // into keys[i] past its length and throw "Cannot read properties of undefined".
+        $keysArrayName = $this->currentLoopContext === 'constraints' ? 'constraints' : 'keys';
+        $keysRef = $tableIndex !== null
+            ? "gtree[0].project[0].tables[{$tableIndex}].{$keysArrayName}[i]"
+            : "gtree[0].project[0].tables[tableIdx].{$keysArrayName}[i]";
         $keysMappings = [
             'keys.name' => "{$keysRef}.name",
             'keys.id' => "{$keysRef}.id",
@@ -2286,29 +2510,58 @@ class UltimateTemplateEngine
             return "' + " . $keysMappings[$variable] . " + '";
         }
 
-        // 🎯 FOREIGN KEYS VARIABLES (for {for {nmaxforeignkeys}} loops)
+        // Generic fallback for keys.* — same rationale as language.* / table.*:
+        // covers any constraint metadata the whitelist hasn't been updated for.
+        if (strpos($variable, 'keys.') === 0) {
+            $keysField = substr($variable, 5);
+            if ($keysField !== '' && ctype_alpha($keysField[0]) && strpbrk($keysField, '.[]') === false) {
+                return "' + ({$keysRef}.{$keysField} ?? '') + '";
+            }
+        }
+
+        // 🎯 FOREIGN KEYS VARIABLES — context-aware between regular and unique
+        //   • foreignkeys loop      → foreignkeys[_fkI]
+        //   • foreignkeysunique loop → foreignkeysunique[_fkuI]
+        // Templates can use {:foreign.X:} in either loop type. The compile-time
+        // currentLoopContext flips the path so the right array index is used.
+        $fkArrayRef = ($this->currentLoopContext === 'foreignkeysunique')
+            ? ($tableIndex !== null
+                ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeysunique[_fkuI]"
+                : "gtree[0].project[0].tables[tableIdx].foreignkeysunique[_fkuI]")
+            : ($tableIndex !== null
+                ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[_fkI]"
+                : "gtree[0].project[0].tables[tableIdx].foreignkeys[_fkI]");
+
         $foreignKeysMappings = [
-            'foreign.name' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].name" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].name",
-            'foreign.id' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].id" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].id",
-            'foreign.type' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].type" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].type",
-            'foreign.typecast' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].typecast" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].typecast",
-            'foreign.constraintname' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].constraintname" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].constraintname",
-            'foreign.referencedtable' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedtable" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedtable",
-            'foreign.referencedtablepascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedtablepascalcase" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedtablepascalcase",
-            'foreign.referencedtablecamelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedtablecamelcase" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedtablecamelcase",
-            'foreign.referencedcolumn' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].referencedcolumn" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].referencedcolumn",
-            'foreign.ondelete' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].ondelete" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].ondelete",
-            'foreign.onupdate' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[i].onupdate" : "gtree[0].project[0].tables[tableIdx].foreignkeys[i].onupdate",
+            'foreign.name' => "{$fkArrayRef}.name",
+            'foreign.id' => "{$fkArrayRef}.id",
+            'foreign.type' => "{$fkArrayRef}.type",
+            'foreign.typecast' => "{$fkArrayRef}.typecast",
+            'foreign.constraintname' => "{$fkArrayRef}.constraintname",
+            'foreign.referencedtable' => "{$fkArrayRef}.referencedtable",
+            'foreign.referencedtablepascalcase' => "{$fkArrayRef}.referencedtablepascalcase",
+            'foreign.referencedtablecamelcase' => "{$fkArrayRef}.referencedtablecamelcase",
+            'foreign.referencedcolumn' => "{$fkArrayRef}.referencedcolumn",
+            'foreign.ondelete' => "{$fkArrayRef}.ondelete",
+            'foreign.onupdate' => "{$fkArrayRef}.onupdate",
         ];
 
         if (isset($foreignKeysMappings[$variable])) {
             return "' + " . $foreignKeysMappings[$variable] . " + '";
         }
 
+        // Generic fallback for foreign.* — covers fields the whitelist may miss.
+        if (strpos($variable, 'foreign.') === 0) {
+            $fkField = substr($variable, 8);
+            if ($fkField !== '' && ctype_alpha($fkField[0]) && strpbrk($fkField, '.[]') === false) {
+                return "' + ({$fkArrayRef}.{$fkField} ?? '') + '";
+            }
+        }
+
         // 🎯 FOREIGN KEYS UNIQUE VARIABLES (for {:for nmaxforeignkeysunique:} loops)
         $fkuRef = $tableIndex !== null
-            ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeysunique[i]"
-            : "gtree[0].project[0].tables[tableIdx].foreignkeysunique[i]";
+            ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeysunique[_fkuI]"
+            : "gtree[0].project[0].tables[tableIdx].foreignkeysunique[_fkuI]";
         $foreignKeysUniqueMappings = [
             'foreignunique.name' => "{$fkuRef}.name",
             'foreignunique.id' => "{$fkuRef}.id",
@@ -2327,19 +2580,29 @@ class UltimateTemplateEngine
             return "' + " . $foreignKeysUniqueMappings[$variable] . " + '";
         }
 
-        // 🎯 LANGUAGE VARIABLES (for {for {nmaxlanguages}} loops)
-        $languageMappings = [
-            'language.id' => "gtree[0].project[0].lang[i].id",
-            'language.code' => "gtree[0].project[0].lang[i].code",
-            'language.name' => "gtree[0].project[0].lang[i].name",
-            'language.nativename' => "gtree[0].project[0].lang[i].native_name",
-            'language.flag' => "gtree[0].project[0].lang[i].flag",
-            'language.index' => "gtree[0].project[0].lang[i].index",
-            'language.caption' => "gtree[0].project[0].lang[i].caption", // Project name in this language
-        ];
-
-        if (isset($languageMappings[$variable])) {
-            return "' + " . $languageMappings[$variable] . " + '";
+        // 🎯 LANGUAGE VARIABLES (for {:for nmaxlanguages:} loops)
+        //
+        // Generic resolver: any `language.<field>` maps to `gtree[0].project[0].lang[i].<field>`
+        // where `i` is the loop counter pushed by {:for nmaxlanguages:}. This used to be a
+        // hand-maintained whitelist of 7 keys (id/code/name/nativename/flag/index/caption)
+        // which silently broke on every additional gtree language field — most recently
+        // native_name, filedescription, decimalsep, thousandsep, dateformat, timeformat,
+        // currencysym, timezone. A naïve `{:language.native_name:}` then compiled to
+        // `gtree[0].project[0].language.native_name` (no `lang[i]`) and threw "Cannot
+        // read properties of undefined" at runtime.
+        //
+        // `nativename` was a legacy alias that intentionally rewrote to `native_name`;
+        // we keep it as the single hardcoded exception.
+        if ($variable === 'language.nativename') {
+            return "' + (gtree[0].project[0].lang[i].native_name ?? '') + '";
+        }
+        if (strpos($variable, 'language.') === 0) {
+            $langField = substr($variable, 9); // strip "language."
+            // Reject anything with dots or brackets — those would let templates reach
+            // outside the current lang[i] entry. language.<single-word> only.
+            if ($langField !== '' && ctype_alpha($langField[0]) && strpbrk($langField, '.[]') === false) {
+                return "' + (gtree[0].project[0].lang[i].{$langField} ?? '') + '";
+            }
         }
 
         // 🎯 TABLE VARIABLES (for {:for nmaxtables:} loops)
@@ -2356,8 +2619,17 @@ class UltimateTemplateEngine
             'table.filenamerenamed' => "gtree[0].project[0].tables[tableIdx].filenamerenamed",
             'table.fileid' => "gtree[0].project[0].tables[tableIdx].fileid",
             'table.caption' => "gtree[0].project[0].tables[tableIdx].lang[gtree[0].project[0].selectedlanguageindex].caption",
+            // Alias: templates that mirror item.*/file.* naming use `filecaption` —
+            // resolve to the same localized caption (lang-array) rather than the
+            // non-existent top-level `tables[tableIdx].filecaption`. The generic
+            // table.* fallback would otherwise return '' for this common name.
+            'table.filecaption' => "gtree[0].project[0].tables[tableIdx].lang[gtree[0].project[0].selectedlanguageindex].caption",
             'table.primarykey' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
             'table.primarykeyfield' => "gtree[0].project[0].tables[tableIdx].primarykeyfield",
+            // Alias: gtree exposes the primary-key column name as `fileprimarykey`.
+            // Templates intuitively reach for `filekeyname` — same field, gentler name.
+            'table.fileprimarykey' => "gtree[0].project[0].tables[tableIdx].fileprimarykey",
+            'table.filekeyname' => "gtree[0].project[0].tables[tableIdx].fileprimarykey",
             'table.hasforeignkeys' => "gtree[0].project[0].tables[tableIdx].hasforeignkeys",
             'table.nmaxitems' => "gtree[0].project[0].tables[tableIdx].nmaxitems",
             'table.nmaxitemsnokey' => "gtree[0].project[0].tables[tableIdx].nmaxitemsnokey",
@@ -2375,6 +2647,17 @@ class UltimateTemplateEngine
 
         if (isset($tableMappings[$variable])) {
             return "' + " . $tableMappings[$variable] . " + '";
+        }
+
+        // Generic fallback for table.* — covers fields not in the explicit map
+        // (hastimestamps, hasblob, hasbinaryblob, hasprimarykey, filecaption, ...).
+        // Same rationale as language.* above: the whitelist drifted out of sync
+        // with the gtree shape and silently dropped legitimate fields.
+        if (strpos($variable, 'table.') === 0) {
+            $tableField = substr($variable, 6);
+            if ($tableField !== '' && ctype_alpha($tableField[0]) && strpbrk($tableField, '.[]') === false) {
+                return "' + (gtree[0].project[0].tables[tableIdx].{$tableField} ?? '') + '";
+            }
         }
 
         // 🎯 MIGRATION TABLE VARIABLES (for {for {nmaxmigration_tables}} loops)
@@ -2439,6 +2722,13 @@ class UltimateTemplateEngine
             'migration.to_version' => "gtree[0].project[0].migration.to_version",
             'migration.dialect' => "gtree[0].project[0].migration.dialect",
             'migration.sql_complete' => "gtree[0].project[0].migration.sql_complete",
+            // Bare migration counters (used outside of {:for nmaxmigration_X:} loops).
+            // The loop-counter usage is handled separately in processLoopStart.
+            'nmaxmigration_tables' => "(gtree[0].project[0].nmaxmigration_tables || 0)",
+            'nmaxmigration_fields' => "(gtree[0].project[0].nmaxmigration_fields || 0)",
+            'nmaxmigration_indexes' => "(gtree[0].project[0].nmaxmigration_indexes || 0)",
+            'nmaxmigration_foreignkeys' => "(gtree[0].project[0].nmaxmigration_foreignkeys || 0)",
+            'nmaxmigration_total' => "(gtree[0].project[0].nmaxmigration_total || 0)",
         ];
 
         if (isset($migrationStaticMappings[$variable])) {

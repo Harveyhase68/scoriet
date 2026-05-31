@@ -2985,6 +2985,8 @@ const ReportLayoutDesignerInner: React.FC<ReportLayoutDesignerPanelProps> = ({ r
           layoutElements={layoutElements}
           schemaFields={currentFields}
           tableName={tables.find(t => Number(t.id) === Number(selectedTableId))?.table_name}
+          fileKeyName={(tables.find(t => Number(t.id) === Number(selectedTableId)) as { filekeyname?: string | null } | undefined)?.filekeyname}
+          primaryKeyField={(tables.find(t => Number(t.id) === Number(selectedTableId)) as { primarykeyfield?: string | null } | undefined)?.primarykeyfield}
           projectId={selectedProject?.id}
           projectDbSettings={selectedProject ? {
             database_type: selectedProject.database_type,

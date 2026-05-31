@@ -34,7 +34,7 @@ class TemplateFileFieldAssignmentController extends Controller
 
         // Verify project access
         $project = Project::find($projectId);
-        if (!$project || !$project->visibleTo($user)->exists()) {
+        if (!$project || !$project->isVisibleTo($user)) {
             return response()->json(['error' => 'Project not found or access denied'], 404);
         }
 
@@ -142,34 +142,86 @@ class TemplateFileFieldAssignmentController extends Controller
             'assignments.*.sort_order' => 'nullable|integer',
         ]);
 
-        $userId = auth()->id();
+        // BOLA guard: the validator only checks that the template_file_id
+        // EXISTS, not that it belongs to a template the user may edit.
+        // Without this loop, any authenticated user could mass-overwrite
+        // the field-assignment matrix of every other user's templates.
+        // We resolve each template_file once (small lookup), then check
+        // canBeEditedBy on the parent template.
+        $user = auth()->user();
+        $fileIds = collect($validated['assignments'])->pluck('template_file_id')->unique();
+        $files = TemplateFile::with('template')->whereIn('id', $fileIds)->get()->keyBy('id');
+        foreach ($fileIds as $fid) {
+            $tpl = $files[$fid]?->template ?? null;
+            if (!$tpl || !$tpl->canBeEditedBy($user)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "You do not have permission to edit template_file_id={$fid}.",
+                ], 403);
+            }
+        }
 
-        // Prepare rows for upsert
-        $rows = array_map(function ($assignment) use ($userId) {
-            return [
-                'template_file_id' => $assignment['template_file_id'],
-                'schema_field_id' => $assignment['schema_field_id'],
-                'visibility_state' => $assignment['visibility_state'],
-                'sort_order' => $assignment['sort_order'] ?? null,
-                'created_by' => $userId,
-                'updated_at' => now(),
-                'created_at' => now(),
-            ];
-        }, $validated['assignments']);
+        $userId = $user->id;
 
-        // Upsert (Eloquent events don't fire with upsert, so we invalidate cache manually)
-        TemplateFileFieldAssignment::upsert(
-            $rows,
-            ['template_file_id', 'schema_field_id'],
-            ['visibility_state', 'sort_order', 'created_by', 'updated_at']
-        );
+        // Split: anything that's back to the default state ("visible" without
+        // a sort_order override) becomes a DELETE — that's how the matrix
+        // model represents "no override". Earlier, the frontend silently
+        // dropped these from the payload, so toggling back to Visible never
+        // reached the DB. Now we let the toggle through and undo it server-side.
+        $toDelete = [];
+        $rows = [];
+        foreach ($validated['assignments'] as $assignment) {
+            $isDefault = $assignment['visibility_state'] === 'visible'
+                && empty($assignment['sort_order']);
 
-        // Manual cache invalidation since upsert doesn't trigger Eloquent events
+            if ($isDefault) {
+                $toDelete[] = [
+                    'template_file_id' => $assignment['template_file_id'],
+                    'schema_field_id'  => $assignment['schema_field_id'],
+                ];
+            } else {
+                $rows[] = [
+                    'template_file_id' => $assignment['template_file_id'],
+                    'schema_field_id'  => $assignment['schema_field_id'],
+                    'visibility_state' => $assignment['visibility_state'],
+                    'sort_order'       => $assignment['sort_order'] ?? null,
+                    'created_by'       => $userId,
+                    'updated_at'       => now(),
+                    'created_at'       => now(),
+                ];
+            }
+        }
+
+        // Delete the "back to default" entries in one query per pair.
+        // (No composite ::whereIn for tuples in MySQL, so we group by file
+        // and do one IN per template_file_id.)
+        $byFile = [];
+        foreach ($toDelete as $d) {
+            $byFile[$d['template_file_id']][] = $d['schema_field_id'];
+        }
+        foreach ($byFile as $fileId => $fieldIds) {
+            TemplateFileFieldAssignment::where('template_file_id', $fileId)
+                ->whereIn('schema_field_id', $fieldIds)
+                ->delete();
+        }
+
+        // Upsert the rest (Eloquent events don't fire with upsert, so we
+        // invalidate cache manually below).
+        if (!empty($rows)) {
+            TemplateFileFieldAssignment::upsert(
+                $rows,
+                ['template_file_id', 'schema_field_id'],
+                ['visibility_state', 'sort_order', 'created_by', 'updated_at']
+            );
+        }
+
+        // Manual cache invalidation since upsert/delete bypass Eloquent events.
         $this->invalidateCacheForAssignments($validated['assignments']);
 
         return response()->json([
-            'message' => 'Assignments updated successfully.',
-            'count' => count($rows),
+            'message'      => 'Assignments updated successfully.',
+            'count'        => count($rows),
+            'reset_count'  => count($toDelete),
         ]);
     }
 
@@ -180,7 +232,17 @@ class TemplateFileFieldAssignmentController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
-        $assignment = TemplateFileFieldAssignment::findOrFail($id);
+        $assignment = TemplateFileFieldAssignment::with('templateFile.template')->find($id);
+        if (!$assignment) {
+            return response()->json(['message' => 'Assignment not found'], 404);
+        }
+
+        // BOLA guard: the assignment id alone tells nothing about ownership.
+        // We resolve to the parent template and check edit permission.
+        $tpl = $assignment->templateFile?->template;
+        if (!$tpl || !$tpl->canBeEditedBy(auth()->user())) {
+            return response()->json(['message' => 'You do not have permission to delete this assignment.'], 403);
+        }
 
         // Cache invalidation will be handled by the observer
         $assignment->delete();
@@ -199,6 +261,13 @@ class TemplateFileFieldAssignmentController extends Controller
             'template_file_id' => 'required|integer|exists:template_files,id',
             'table_id' => 'required|integer|exists:schema_tables,id',
         ]);
+
+        // BOLA guard: mass-deleting assignments for a template_file requires
+        // edit permission on its parent template.
+        $file = TemplateFile::with('template')->find($validated['template_file_id']);
+        if (!$file || !$file->template || !$file->template->canBeEditedBy(auth()->user())) {
+            return response()->json(['error' => 'You do not have permission to reset assignments for this template file.'], 403);
+        }
 
         $table = SchemaTable::with('fields')->find($validated['table_id']);
         if (!$table) {

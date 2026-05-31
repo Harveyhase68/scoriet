@@ -4,12 +4,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksAuditAndVersion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SchemaTable extends Model
 {
+    use TracksAuditAndVersion;
+
+
     // Display state — visual hint, passed to gtree as metadata. Does NOT filter generation.
     public const DISPLAY_ENABLED   = 'enabled';
     public const DISPLAY_DISABLED  = 'disabled';
@@ -35,11 +39,16 @@ class SchemaTable extends Model
         'file_name_short', // Short file name for template {file_name_short} variable
         'form_set_id', // Per-table FormSet override (null = project default)
         'report_pattern_id', // Per-table ReportPattern (null = no report)
+        'comment', // MySQL CREATE TABLE ... COMMENT='...' — preserved verbatim
         'display_state',
         'generation_mode',
+        'version', // Per-table monotonic version, bumped by SchemaTableObserver on meaningful changes
+        'created_by_username', // Username (text) of the user who created the table; never NULL
+        'updated_by_username', // Username (text) of the user who last touched the table; never NULL
     ];
 
     protected $casts = [
+        'version' => 'integer',
         // All FK columns cast to int — MariaDB/PDO may return BIGINT columns as
         // strings depending on the driver config. Without these casts, strict
         // (===, !==) comparisons between a $table->xxx_id and a route-bound

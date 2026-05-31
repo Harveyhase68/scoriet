@@ -1,0 +1,55 @@
+================================================================================
+TEST 06: ENUM / SET WERTE ITERIEREN (Strukturierte Args)
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+================================================================================
+
+Tabelle: {:tablename:}
+
+Dieser Test verifiziert das NEUE strukturierte Storage:
+  - field_enum_values als JSON-Array (statt String im field_type)
+  - Templates können über die Werte iterieren mit for-item.enum_values `value` endfor
+
+================================================================================
+
+{:for nmaxitems:}
+{:if item.type eq "ENUM":}
+--- ENUM-FELD: {:item.name:} ---
+  Anzahl Werte: {:nmaxenum:}    (falls von Engine exposed)
+
+  Generiere PHP-Konstanten:
+{:for item.enum_values:}
+  const {:item.upperPascalCaseName:}_{:value:} = '{:value:}';
+{:endfor:}
+
+  Oder als Validation-Liste:
+  $valid_{:item.name:} = ['{:item.enum_values_joined:}'];
+
+{:elseif item.type eq "SET":}
+--- SET-FELD: {:item.name:} ---
+
+  Bit-Konstanten:
+{:for item.enum_values:}
+  const {:item.upperPascalCaseName:}_BIT_{:i:} = 1 << {:i:};  // {:value:}
+{:endfor:}
+{:endif:}
+{:endfor:}
+
+================================================================================
+EXPECTED bei 'users':
+  - user_type (ENUM):
+      const USERTYPE_Privatkunde   = 'Privatkunde';
+      const USERTYPE_Firmenkunde   = 'Firmenkunde';
+      const USERTYPE_Behörde       = 'Behörde';
+      const USERTYPE_NGO           = 'NGO';
+  - user_complaints (SET):
+      const USERCOMPLAINTS_BIT_0 = 1 << 0;   // too laud
+      const USERCOMPLAINTS_BIT_1 = 1 << 1;   // too fast
+      ...
+
+NOTE: Konstrukte wie `value` (loop-aktueller Wert) und `item.enum_values_joined`
+sind vorgeschlagene Konventionen. Falls die Engine sie noch nicht kennt,
+bleibt der Platzhalter im Output stehen — das ist EXAKT der Bug-Indikator,
+den wir wollen.
+================================================================================

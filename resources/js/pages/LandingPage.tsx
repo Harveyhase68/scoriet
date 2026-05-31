@@ -501,7 +501,6 @@ export default function LandingPage() {
                     className="h-8 w-auto hover:opacity-80 transition-opacity"
                   />
                 </a>
-                <Badge value={t.landingpage502} severity="info" className="ml-2" />
               </div>
 
               <div className="flex items-center gap-2">

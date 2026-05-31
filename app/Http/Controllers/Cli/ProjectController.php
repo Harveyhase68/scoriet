@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cli;
 
+use App\Http\Controllers\Concerns\ValidatesPartialUpdate;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\User;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Validator;
 
 class ProjectController extends Controller
 {
+    use ValidatesPartialUpdate;
+
     /**
      * Check if user has access to project (owner or team member)
      */
@@ -263,10 +266,18 @@ class ProjectController extends Controller
             ], 403);
         }
 
+        $expectedFields = ['name', 'description', 'is_public', 'allow_join_requests'];
+
+        // Short-circuit: body present but nothing matches the schema?
+        $fieldCheck = $this->checkBodyFields($request, $expectedFields);
+        if ($fieldCheck['all_unknown']) {
+            return $this->unknownFieldsResponse($expectedFields, $fieldCheck['received']);
+        }
+
         $validator = Validator::make($request->all(), [
-            'name' => 'string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'is_public' => 'boolean',
+            'name'                => 'string|max:255',
+            'description'         => 'nullable|string|max:1000',
+            'is_public'           => 'boolean',
             'allow_join_requests' => 'boolean',
         ]);
 
@@ -274,29 +285,30 @@ class ProjectController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
         try {
-            $project->update($request->only([
-                'name',
-                'description',
-                'is_public',
-                'allow_join_requests',
-            ]));
+            $updatable = $request->only($expectedFields);
+            $project->update($updatable);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Project updated successfully',
+            $response = [
+                'success'        => true,
+                'message'        => 'Project updated successfully',
+                'updated_fields' => array_keys($updatable),
                 'project' => [
-                    'id' => $project->id,
-                    'name' => $project->name,
+                    'id'          => $project->id,
+                    'name'        => $project->name,
                     'description' => $project->description,
-                    'is_public' => $project->is_public,
-                    'updated_at' => $project->updated_at->toIso8601String(),
+                    'is_public'   => $project->is_public,
+                    'updated_at'  => $project->updated_at->toIso8601String(),
                 ],
-            ], 200);
+            ];
+            if ($warning = $this->unknownFieldsWarning($fieldCheck['unknown'])) {
+                $response['warnings'] = $warning;
+            }
+            return response()->json($response, 200);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -382,13 +394,78 @@ class ProjectController extends Controller
             ], 403);
         }
 
+        // Grouped by concern so callers (and humans) can find what they need.
+        // Sensitive values (database_password, ftp_password, google_translate_api_key)
+        // are deliberately NOT exposed here — they require a separate scoped call.
         return response()->json([
             'success' => true,
             'settings' => [
-                'base_namespace' => $project->base_namespace,
-                'archive_format' => $project->archive_format,
-                'is_public' => $project->is_public,
-                'allow_join_requests' => $project->allow_join_requests,
+                'identity' => [
+                    'id'          => $project->id,
+                    'name'        => $project->name,
+                    'description' => $project->description,
+                    'is_active'   => (bool) $project->is_active,
+                ],
+                'visibility' => [
+                    'is_public'           => (bool) $project->is_public,
+                    'allow_join_requests' => (bool) $project->allow_join_requests,
+                    'join_code'           => $project->join_code,
+                ],
+                'languages' => [
+                    'default_language'  => $project->default_language,
+                    'target_language'   => $project->target_language,
+                    'enabled_languages' => $project->enabled_languages,
+                ],
+                'output' => [
+                    'archive_format'        => $project->archive_format,
+                    'project_directory'     => $project->project_directory,
+                    'project_url'           => $project->project_url,
+                    'start_page'            => $project->start_page,
+                    'filename_short_length' => $project->filename_short_length,
+                ],
+                'database' => [
+                    'database_name'     => $project->database_name,
+                    'database_type'     => $project->database_type,
+                    'database_server'   => $project->database_server,
+                    'database_port'     => $project->database_port,
+                    'database_username' => $project->database_username,
+                    // database_password is intentionally omitted
+                ],
+                'deployment' => [
+                    'deployment_type' => $project->deployment_type,
+                    'ftp_host'        => $project->ftp_host,
+                    'ftp_port'        => $project->ftp_port,
+                    'ftp_username'    => $project->ftp_username,
+                    'ftp_directory'   => $project->ftp_directory,
+                    'ftp_passive'     => $project->ftp_passive !== null ? (bool) $project->ftp_passive : null,
+                    'ftp_ssl'         => $project->ftp_ssl !== null ? (bool) $project->ftp_ssl : null,
+                    // ftp_password is intentionally omitted — fetch via /ftp-settings
+                ],
+                'git' => [
+                    'git_provider_id'       => $project->git_provider_id,
+                    'git_repository'        => $project->git_repository,
+                    'git_default_branch'    => $project->git_default_branch,
+                    'git_main_branch'       => $project->git_main_branch,
+                    'git_target_directory'  => $project->git_target_directory,
+                    'git_workflow'          => $project->git_workflow,
+                    'git_auto_delete_branch' => $project->git_auto_delete_branch !== null ? (bool) $project->git_auto_delete_branch : null,
+                ],
+                'designer' => [
+                    'diagram_max_tables_per_row' => $project->diagram_max_tables_per_row,
+                    'diagram_table_width'        => $project->diagram_table_width,
+                    'diagram_table_height'       => $project->diagram_table_height,
+                    'diagram_horizontal_spacing' => $project->diagram_horizontal_spacing,
+                    'diagram_vertical_spacing'   => $project->diagram_vertical_spacing,
+                    'form_designer_snap_to_grid'   => $project->form_designer_snap_to_grid !== null ? (bool) $project->form_designer_snap_to_grid : null,
+                    'form_designer_grid_size'      => $project->form_designer_grid_size,
+                    'report_designer_snap_to_grid' => $project->report_designer_snap_to_grid !== null ? (bool) $project->report_designer_snap_to_grid : null,
+                    'report_designer_grid_unit'    => $project->report_designer_grid_unit,
+                    'report_designer_grid_size'    => $project->report_designer_grid_size,
+                ],
+                'timestamps' => [
+                    'created_at' => $project->created_at?->toIso8601String(),
+                    'updated_at' => $project->updated_at?->toIso8601String(),
+                ],
             ],
         ], 200);
     }

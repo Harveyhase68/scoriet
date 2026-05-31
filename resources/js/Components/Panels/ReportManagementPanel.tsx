@@ -134,7 +134,11 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
                     visibility: newVisibility,
                 });
             } catch (err: any) {
-                toast.showError(err?.response?.data?.error || 'Error creating pattern');
+                const data = err?.response?.data || {};
+                // Field-level validation error first (esp. duplicate name);
+                // falls back to generic error message.
+                const fieldError = data?.errors?.name?.[0];
+                toast.showError(fieldError || data.error || data.message || 'Error creating pattern');
                 return;
             }
 
@@ -155,12 +159,11 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
                     if (!checkData?.data?.id) {
                         confirmDialog({
                             group: 'report-management',
-                            header: (t as unknown as Record<string, string>).reportpatterndefault_prompt_title || 'Set as project default?',
-                            message: (t as unknown as Record<string, string>).reportpatterndefault_prompt_message
-                                || 'This is the first Report Pattern in this project. Use it as the default? You can change this anytime in the project settings.',
+                            header: t.reportpatterndefault_prompt_title,
+                            message: t.reportpatterndefault_prompt_message,
                             icon: 'pi pi-question-circle',
-                            acceptLabel: (t as unknown as Record<string, string>).reportmanagementpanel_yes || 'Yes',
-                            rejectLabel: (t as unknown as Record<string, string>).reportmanagementpanel_no || 'No',
+                            acceptLabel: t.reportmanagementpanel_yes,
+                            rejectLabel: t.reportmanagementpanel_no,
                             accept: async () => {
                                 try {
                                     await apiClient.post(`/projects/${projectId}/report-pattern`, { report_pattern_id: newId });
@@ -217,7 +220,9 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
                 loadMyPatterns();
                 loadPublicPatterns();
             } catch (err: any) {
-                toast.showError(err?.response?.data?.error || 'Error updating pattern');
+                const data = err?.response?.data || {};
+                const fieldError = data?.errors?.name?.[0];
+                toast.showError(fieldError || data.error || data.message || 'Error updating pattern');
             }
         } catch (error) {
             console.error('Edit error:', error);
@@ -507,7 +512,7 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
             <Dialog
                 visible={inUseModalVisible}
                 onHide={() => { setInUseModalVisible(false); setInUseInfo(null); }}
-                header={(t as unknown as Record<string, string>).reportmanagementpanel_in_use_title || 'Cannot delete Report Pattern'}
+                header={t.reportmanagementpanel_in_use_title}
                 style={{ width: '520px' }}
                 modal
                 closable
@@ -520,13 +525,12 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
                             <i className="pi pi-exclamation-triangle text-2xl" style={{ color: colors.warningText }}></i>
                             <div>
                                 <h4 className="font-semibold" style={{ color: colors.warningText }}>
-                                    {(t as unknown as Record<string, string>).reportmanagementpanel_in_use_heading || 'Report Pattern is still in use'}
+                                    {t.reportmanagementpanel_in_use_heading}
                                 </h4>
                                 <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                                     <strong style={{ color: colors.textPrimary }}>"{inUseInfo?.patternName}"</strong>
                                     {' '}
-                                    {(t as unknown as Record<string, string>).reportmanagementpanel_in_use_explain
-                                      || 'is referenced and cannot be deleted yet. Remove the references below first, then try again.'}
+                                    {t.reportmanagementpanel_in_use_explain}
                                 </p>
                             </div>
                         </div>
@@ -536,7 +540,7 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
                         <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                             <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-table mr-2"></i>
-                                {(t as unknown as Record<string, string>).reportmanagementpanel_in_use_tables || 'Used by schema tables:'}
+                                {t.reportmanagementpanel_in_use_tables}
                             </p>
                             <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
                                 {inUseInfo.tables.map(tbl => (
@@ -550,7 +554,7 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
                         <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                             <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-folder mr-2"></i>
-                                {(t as unknown as Record<string, string>).reportmanagementpanel_in_use_projects || 'Set as default in projects:'}
+                                {t.reportmanagementpanel_in_use_projects}
                             </p>
                             <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
                                 {inUseInfo.projects.map(p => (
@@ -562,13 +566,12 @@ const ReportManagementPanel: React.FC<ReportManagementPanelProps> = ({ onOpenPan
 
                     <div className="rounded p-3 text-xs" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                         <i className="pi pi-info-circle mr-2"></i>
-                        {(t as unknown as Record<string, string>).reportmanagementpanel_in_use_hint
-                          || 'Open the schema designer to remove the report pattern from those tables, or change the project default in the project settings.'}
+                        {t.reportmanagementpanel_in_use_hint}
                     </div>
 
                     <div className="flex justify-end pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <Button
-                            label={(t as unknown as Record<string, string>).reportmanagementpanel_close || 'Close'}
+                            label={t.reportmanagementpanel_close}
                             icon="pi pi-times"
                             className="p-button-secondary"
                             onClick={() => { setInUseModalVisible(false); setInUseInfo(null); }}

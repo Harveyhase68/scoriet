@@ -1,5 +1,6 @@
 // resources/js/lib/api.ts
 import { getRefreshToken, setTokens } from '@/utils/auth';
+import { ApiEnvelopeError } from '@/types/api';
 
 type DisplayState = 'enabled' | 'disabled' | 'grayed' | 'invisible' | 'excluded';
 type GenerationMode = 'full' | 'code_only' | 'template_only' | 'reference_only' | 'excluded';
@@ -16,6 +17,11 @@ interface SchemaTable {
   schema_version_id?: number;
   display_state?: DisplayState;
   generation_mode?: GenerationMode;
+  version?: number;
+  created_by_username?: string;
+  updated_by_username?: string;
+  created_at?: string;
+  updated_at?: string;
   fields: SchemaField[];
   constraints: SchemaConstraint[];
 }
@@ -25,6 +31,11 @@ interface SchemaField {
   field_name: string;
   field_type: string;
   field_length?: number | null;
+  // Structured type args (post-May-2026 migration). Templates and the table
+  // editor read these directly instead of re-parsing field_type.
+  field_precision?: number | null;
+  field_scale?: number | null;
+  field_enum_values?: string[] | null;
   is_nullable: boolean;
   is_auto_increment: boolean;
   is_unsigned?: boolean;
@@ -41,8 +52,16 @@ interface SchemaField {
   link_order_field?: string;
   link_order_direction?: string;
   editmask?: string;
+  is_generated?: boolean;
+  generation_expression?: string;
+  generation_storage?: 'stored' | 'virtual' | null;
   display_state?: DisplayState;
   generation_mode?: GenerationMode;
+  version?: number;
+  created_by_username?: string;
+  updated_by_username?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface SchemaConstraint {
@@ -260,31 +279,39 @@ class ApiClient {
   }
 
   /**
-   * Sibling of request() for the /cli/* route group (routes/cli.php).
+   * Sibling of request() for the /cli/v1/* route group (routes/cli.php).
    *
-   * The CLI route group is mounted at the application root (/cli/...) instead
-   * of under /api/, so request()'s hardcoded /api prefix can't reach it.
-   * Everything else — auth header, 401-refresh-retry, JSON decoding, error
-   * shape — matches request() exactly so callers get one consistent contract.
+   * Speaks the standard envelope contract — see
+   * resources/js/types/api.ts + app/Http/Middleware/WrapApiEnvelope.php.
    *
-   * Endpoint is everything AFTER /cli — e.g. cliRequest('/svc/tasks/active')
-   * fetches /cli/svc/tasks/active. Always start the endpoint with a slash so
-   * the resulting URL is well-formed regardless of how the consumer composes
-   * the path.
+   * Behaviour:
+   *  - On success (2xx envelope): returns `data` directly. The legacy shape
+   *    `{template: ...}` ends up wrapped to `{success, data: {template: ...}}`
+   *    by the middleware, and unwrapped back to `{template: ...}` here, so
+   *    existing call sites that read `result.template` continue to work
+   *    without changes.
+   *  - On error (4xx/5xx envelope): throws an ApiEnvelopeError carrying the
+   *    structured `code`, `message`, `details`, and HTTP `status`. Catch
+   *    handlers can branch on `err.code` (e.g. ApiErrorCode.CONFLICT) or
+   *    fall back to `err.message`.
+   *  - On 401: tries a token refresh once before giving up.
+   *
+   * Endpoint is everything AFTER /cli/v1 — e.g. cliRequest('/svc/tasks/active')
+   * fetches /cli/v1/svc/tasks/active.
    *
    * Why a separate method rather than a baseURL parameter on request():
    * request() already has hundreds of call sites; adding a third arg would
    * either change every signature or sit in an awkward middle position.
    * A sibling method keeps both call surfaces self-documenting.
    */
-  async cliRequest(endpoint: string, options: RequestInit = {}, _isRetry: boolean = false): Promise<any> {
+  async cliRequest<T = any>(endpoint: string, options: RequestInit = {}, _isRetry: boolean = false): Promise<T> {
     const token = await this.getAuthToken();
 
     if (!token) {
       throw new Error('Authentication required - please login');
     }
 
-    const response = await fetch(`/cli${endpoint}`, {
+    const response = await fetch(`/cli/v1${endpoint}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -298,19 +325,59 @@ class ApiClient {
       if (!_isRetry) {
         const newToken = await this.refreshAccessToken();
         if (newToken) {
-          return this.cliRequest(endpoint, options, true);
+          return this.cliRequest<T>(endpoint, options, true);
         }
       }
       await this.handleAuthError();
       throw new Error('Authentication expired - please log in again');
     }
 
+    // Parse the envelope. We always try to read JSON even on non-2xx so
+    // catch-handlers get the structured `error` block, not just an HTTP
+    // status message.
+    const body = await response.json().catch(() => null);
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw { response: { status: response.status, data: errorData }, message: `CLI API Error: ${response.status} ${response.statusText}` };
+      // Prefer the envelope's structured error; fall back to a synthetic
+      // one if the response wasn't envelope-shaped for some reason.
+      const apiError = (body && typeof body === 'object' && (body as any).error)
+        ? (body as any).error
+        : { code: 'HTTP_ERROR', message: `CLI API Error: ${response.status} ${response.statusText}` };
+
+      // We keep the legacy `{ response: { status, data } }` shape for
+      // backwards compatibility with existing catch-handlers that read
+      // `err.response.data.message`. New code should read `err.code` /
+      // `err.message` / `err.details` from the ApiEnvelopeError directly.
+      const error: any = new ApiEnvelopeError(apiError, response.status);
+      error.response = { status: response.status, data: body ?? {} };
+      throw error;
     }
 
-    return response.json();
+    // Success envelope — unwrap and FLATTEN. We copy the envelope-level
+    // `success: true` flag and every `meta.*` key back into the data
+    // object so callers that still check `result.success`, `result.total`,
+    // `result.message`, etc. continue working. Data keys win on collision.
+    // Plain-data callers (e.g. `result.template`) are unaffected since
+    // `data` is returned as-is plus the flatten extras.
+    if (body && typeof body === 'object' && 'success' in body && (body as any).success === true && 'data' in body) {
+      const envelope = body as any;
+      const data = envelope.data;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const merged = { ...data, success: true };
+        if (envelope.meta && typeof envelope.meta === 'object') {
+          for (const k of Object.keys(envelope.meta)) {
+            if (!(k in merged)) {
+              merged[k] = envelope.meta[k];
+            }
+          }
+        }
+        return merged as T;
+      }
+      return data as T;
+    }
+    // Backwards path: if a response slipped past the middleware (shouldn't
+    // happen on /cli/v1/*), return the body as-is rather than crash.
+    return body as T;
   }
 
   // Generic HTTP methods for convenience
@@ -535,9 +602,18 @@ class ApiClient {
     }
   }
 
-  async checkTemplateName(name: string): Promise<any> {
+  /**
+   * Check if the current user already owns a template with this `name`.
+   * Pass excludeId when editing an existing template so it doesn't false-
+   * positive on itself.
+   */
+  async checkTemplateName(name: string, excludeId?: number): Promise<any> {
     try {
-      const response = await this.request(`/templates/check-name?name=${encodeURIComponent(name)}`);
+      const params = new URLSearchParams({ name });
+      if (excludeId !== undefined && excludeId !== null) {
+        params.set('exclude_id', String(excludeId));
+      }
+      const response = await this.request(`/templates/check-name?${params.toString()}`);
       return {
         exists: response.exists
       };

@@ -10,6 +10,7 @@ import { FileUpload } from 'primereact/fileupload';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { ProgressBar } from 'primereact/progressbar';
+import { TabView, TabPanel } from 'primereact/tabview';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
 import { apiClient } from '@/lib/api';
@@ -389,6 +390,18 @@ const FileModal: React.FC<FileModalProps> = ({
 
     // 🆕 Upload mode for static_directory: 'archive' (ZIP/TAR.GZ/TAR.XZ) or 'file_manager' (individual files)
     const [uploadMode, setUploadMode] = useState<'archive' | 'file_manager'>('archive');
+
+    // Two-tab layout: 0 = Properties (file name, type, language, smart
+    // injection, output path, upload mode), 1 = Code (CodeMirror or archive
+    // file list). Split was added to kill the double-scrollbar nightmare —
+    // when both the outer form AND the inner CodeMirror are scrollable, you
+    // end up scrolling the form chrome past 50 % before the editor's own
+    // scrollbar takes over. Two tabs = one scrollable region at a time.
+    const [activeTabIndex, setActiveTabIndex] = useState(0);
+    // Help dialog (file-type legend used to sit permanently at the bottom of
+    // the form, eating screen real estate). Now opens on demand via the "?"
+    // icon in the Code tab toolbar.
+    const [showHelpDialog, setShowHelpDialog] = useState(false);
 
     // External editing states
     const [isMaximized, setIsMaximized] = useState(false);
@@ -1002,7 +1015,18 @@ const FileModal: React.FC<FileModalProps> = ({
                 </div>
             )}
 
-            <form className="space-y-4" style={{ maxHeight: isMaximized ? 'calc(95vh - 200px)' : 'auto', overflowY: isMaximized ? 'auto' : 'visible' }}>
+            <form className="space-y-4">
+                {/* Two-tab layout to fix the double-scrollbar problem.
+                    Outer form no longer scrolls — PrimeReact's TabView
+                    confines scrolling to whichever panel is active, and
+                    the CodeMirror inside the Code tab handles its own
+                    scrollbar without competing with a parent scroller. */}
+                <TabView
+                    activeIndex={activeTabIndex}
+                    onTabChange={(e) => setActiveTabIndex(e.index)}
+                    className="filemodal-tabs"
+                >
+                    <TabPanel header={t.filemodal_tab_properties || 'Properties'} leftIcon="pi pi-cog mr-2">
                 <div className="flex gap-4">
                     {/* File Name */}
                     <div className="flex-1">
@@ -1280,6 +1304,27 @@ const FileModal: React.FC<FileModalProps> = ({
                     </div>
                 )}
 
+                    </TabPanel>
+
+                    <TabPanel header={t.filemodal_tab_code || 'Code'} leftIcon="pi pi-code mr-2">
+                        {/* Toolbar with "?" help button — pops the file-type
+                            legend that used to sit permanently at the bottom
+                            of the form. On-demand keeps the editor area as
+                            big as possible. */}
+                        <div className="flex justify-end mb-2">
+                            <Button
+                                type="button"
+                                icon="pi pi-question-circle"
+                                rounded
+                                text
+                                aria-label={t.filemodal_help || 'File type help'}
+                                tooltip={t.filemodal_help || 'File type help'}
+                                tooltipOptions={{ position: 'left' }}
+                                onClick={() => setShowHelpDialog(true)}
+                                style={{ width: 32, height: 32 }}
+                            />
+                        </div>
+
                 {/* 🎯 Conditional: Show Code Editor OR Archive Upload based on file_type */}
                 {contentMode === 'text' && (
                     <>
@@ -1541,16 +1586,8 @@ const FileModal: React.FC<FileModalProps> = ({
                     </div>
                 )}
 
-                <div className="p-3 rounded mb-4" style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}>
-                    <strong style={{ color: colors.textPrimary }}>{t.filemodal1371}</strong>
-                    <ul className="mt-2 text-sm" style={{ color: colors.textSecondary }}>
-                        {fileTypes.map(type => (
-                            <li key={type.value} className="mb-1">
-                                <strong style={{ color: colors.textPrimary }}>{type.label}:</strong> {type.description}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                    </TabPanel>
+                </TabView>
 
                 <div className="flex gap-2 justify-end mt-4">
                     <Button
@@ -1567,6 +1604,30 @@ const FileModal: React.FC<FileModalProps> = ({
                     />
                 </div>
             </form>
+
+            {/* File-type legend dialog — opened by the "?" button in the
+                Code tab. Previously this lived inline at the bottom of the
+                form and ate ~150 px of vertical space the user mostly didn't
+                need (it's a reference, not a per-edit decision). */}
+            <Dialog
+                visible={showHelpDialog}
+                onHide={() => setShowHelpDialog(false)}
+                header={t.filemodal_help_title || t.filemodal1371 || 'File Type Reference'}
+                style={{ width: '600px' }}
+                modal
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary, padding: 16 }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+            >
+                <div className="p-3 rounded" style={{ backgroundColor: colors.bgTertiary, color: colors.textPrimary }}>
+                    <ul className="text-sm space-y-2" style={{ color: colors.textSecondary }}>
+                        {fileTypes.map(type => (
+                            <li key={type.value}>
+                                <strong style={{ color: colors.textPrimary }}>{type.label}:</strong> {type.description}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </Dialog>
 
             {/* Theme-aware styles for PrimeReact components */}
             <style>{`

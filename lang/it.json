@@ -685,6 +685,7 @@
     "templatecontrollerphp421": "Esiste già un modello con questo nome",
     "templatecontrollerphp422": "Il nome del modello deve essere univoco",
     "templatecontrollerphp442": "Modello creato con successo",
+    "templatecontrollerphp_updated": "Modello aggiornato con successo",
     "templatecontrollerphp457": "Creazione del modello non riuscita",
     "templatecontrollerphp479": "Modello non trovato",
     "templatecontrollerphp489": "Accesso negato: solo il creatore del modello può eliminare",

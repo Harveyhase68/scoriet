@@ -941,7 +941,7 @@ class ProjectController extends Controller
         $user = Auth::user();
 
         // Check if user has access to the project
-        if (!$project->visibleTo($user)->exists()) {
+        if (!$project->isVisibleTo($user)) {
             return response()->json(['message' => __('projectcontrollerphp948')], 404);
         }
 
@@ -1066,7 +1066,7 @@ class ProjectController extends Controller
         $user = Auth::user();
 
         // Check if user has access to the project
-        if (!$project->visibleTo($user)->exists()) {
+        if (!$project->isVisibleTo($user)) {
             return response()->json(['message' => __('projectcontrollerphp1071')], 404);
         }
 
@@ -1115,7 +1115,7 @@ class ProjectController extends Controller
         $user = Auth::user();
 
         // Check if user has access to the project
-        if (!$project->visibleTo($user)->exists()) {
+        if (!$project->isVisibleTo($user)) {
             return response()->json(['message' => __('projectcontrollerphp1120')], 404);
         }
 

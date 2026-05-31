@@ -14,6 +14,8 @@ class FloatingSchema extends Model
     protected $fillable = [
         'name',
         'description',
+        'default_charset',
+        'default_collation',
         'owner_id',
         'visibility',
         'last_version',

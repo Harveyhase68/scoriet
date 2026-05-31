@@ -146,10 +146,46 @@ class UltimateTemplateController extends Controller
             // 🎯 Initialize cache service (only if enabled in config)
             // skip_cache=1 bypasses Redis cache for debugging/testing
             $skipCache = $request->query('skip_cache', false);
+
+            // 🎯 In-memory file overrides — used by the Debug Generator's
+            // "Code vorbereiten" so the user can compile their unsaved
+            // editor edits without writing them to the database first.
+            // Shape: [{ id: 123, file_content: "..." }, ...]. The compile
+            // step replaces matching files' content; everything else
+            // (file_name, file_type, output_path, ...) stays as-is.
+            //
+            // IMPORTANT: when overrides are present we MUST bypass the
+            // template cache. The cache key is (templateId, fileId, table,
+            // language) and doesn't fingerprint content, so a cached result
+            // would shadow the user's edits silently.
+            $overrideFiles = $request->input('override_files', []);
+            $hasOverrides = is_array($overrideFiles) && !empty($overrideFiles);
+            if ($hasOverrides) {
+                $skipCache = true;
+            }
             $cacheService = (!$skipCache && config('scoriet.template_cache.enabled', false)) ? app(TemplateCacheService::class) : null;
 
+            // Build a working copy of $template->files with the overrides
+            // merged in. We don't touch the original Eloquent collection —
+            // the change has to be transient (no persistence, no cache).
+            $workingFiles = $template->files->toArray();
+            if ($hasOverrides) {
+                $overrideById = [];
+                foreach ($overrideFiles as $ov) {
+                    if (!is_array($ov) || !isset($ov['id'])) continue;
+                    $overrideById[(int) $ov['id']] = $ov['file_content'] ?? '';
+                }
+                $workingFiles = array_map(static function ($f) use ($overrideById) {
+                    $fid = (int) ($f['id'] ?? 0);
+                    if (isset($overrideById[$fid])) {
+                        $f['file_content'] = $overrideById[$fid];
+                    }
+                    return $f;
+                }, $workingFiles);
+            }
+
             // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
-            $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+            $includeResolution = TemplateIncludeResolver::resolveAllFiles($workingFiles);
             $resolvedFiles = $includeResolution['files'];
             $includeErrors = $includeResolution['errors'];
 
@@ -565,6 +601,17 @@ class UltimateTemplateController extends Controller
             $projectData['timezone'] = $selectedTrans->timezone ?? $projectData['timezone'];
         }
 
+        // Re-stamp generationdatetime in the resolved project timezone.
+        // buildUltimateProjectData() initially formats it with the default Laravel
+        // timezone (often UTC), which makes the stamp drift by 1-2h from the user's
+        // expected wall-clock time. Now that we know the project's effective TZ
+        // (from the selected language), redo the format with that.
+        try {
+            $projectData['generationdatetime'] = now()->setTimezone($projectData['timezone'])->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            // Bad timezone string in language settings — keep the UTC stamp rather than crash.
+        }
+
         // {:projectcaption:} = translated project name (fallback: formatted project name)
         // {:projectdescription:} = translated description (fallback: project description)
         // {:projectname:} stays as the raw project name (e.g. "system_project")
@@ -618,11 +665,49 @@ class UltimateTemplateController extends Controller
             $schemaTable = $schemaTables->firstWhere('table_name', $tblName);
             if (!$schemaTable) continue;
 
+            // Track whether the table has its OWN assignment vs. inheriting from
+            // the project default. The resolver returns the effective FormSet/
+            // ReportPattern regardless (so layouts work), but templates often
+            // need to know "is this a per-table customization, or did we just
+            // fall through to the project default?" — exposed via the sentinel
+            // `-1` for the *_id field in the fallback case (see below).
+            $hasOwnFormSetId       = ($schemaTable->form_set_id !== null);
+            $hasOwnReportPatternId = ($schemaTable->report_pattern_id !== null);
+
             $tableFormSet = $resolveFormSet($schemaTable->form_set_id);
             $tableReportPattern = $resolveReportPattern($schemaTable->report_pattern_id);
 
             $createEditWindow = $tableFormSet?->windows->firstWhere('window_type', 'create_edit');
             $dataTableWindow = $tableFormSet?->windows->firstWhere('window_type', 'data_table');
+
+            // Expose FormSet provenance in a way the template can branch on,
+            // WITHOUT lying about the id when the value is inherited.
+            //
+            //   - form_set_id        : EFFECTIVE id (real db id of whichever
+            //                          FormSet is in play, table-owned OR
+            //                          project-default-inherited). `-1` ONLY
+            //                          when nothing exists anywhere.
+            //   - form_set_name      : EFFECTIVE name; '' when nothing exists.
+            //   - form_set_inherited : true when the table had no own
+            //                          assignment and we fell back to the
+            //                          project default. false when the table
+            //                          owns it directly. null when no
+            //                          FormSet at all (id will be -1).
+            //
+            // Templates that previously branched on `form_set_id eq -1` to
+            // detect "inherited" need to switch to `form_set_inherited` —
+            // the old sentinel hid the real id and made the name field
+            // contradict it ("id=-1 but name='system_formset'"). The new
+            // shape is self-consistent.
+            if ($tableFormSet) {
+                $tableData['form_set_id']        = $tableFormSet->id;
+                $tableData['form_set_name']      = $tableFormSet->name;
+                $tableData['form_set_inherited'] = !$hasOwnFormSetId;
+            } else {
+                $tableData['form_set_id']        = -1;
+                $tableData['form_set_name']      = '';
+                $tableData['form_set_inherited'] = null;
+            }
 
             // Build field_name → index lookup from GTree fields array
             $fieldIndexMap = [];
@@ -676,8 +761,12 @@ class UltimateTemplateController extends Controller
             // the placements are auto-generated transiently via
             // ReportLayoutElement::computeAutoPlacements() — no DB writes.
             if ($tableReportPattern) {
-                $tableData['report_pattern_id']   = $tableReportPattern->id;
-                $tableData['report_pattern_name'] = $tableReportPattern->name;
+                // Same shape as form_set_id above — id is always the real
+                // effective id, never a sentinel for "inherited". Use the
+                // report_pattern_inherited flag to detect provenance.
+                $tableData['report_pattern_id']        = $tableReportPattern->id;
+                $tableData['report_pattern_name']      = $tableReportPattern->name;
+                $tableData['report_pattern_inherited'] = !$hasOwnReportPatternId;
 
                 $singleForm = $tableReportPattern->forms->firstWhere('form_type', 'report_single');
                 $listForm   = $tableReportPattern->forms->firstWhere('form_type', 'report_list');
@@ -707,6 +796,14 @@ class UltimateTemplateController extends Controller
                     $tableData['layoutreportlists']    = $layout;
                     $tableData['nmaxlayoutreportlist'] = count($layout);
                 }
+            } else {
+                // No ReportPattern at all (neither own nor project-default).
+                // Surface the explicit "nothing" shape so templates don't see
+                // a stale FormSet-style fallback name (e.g. "system_report_2"
+                // from some other project's default).
+                $tableData['report_pattern_id']        = -1;
+                $tableData['report_pattern_name']      = '';
+                $tableData['report_pattern_inherited'] = null;
             }
         }
         unset($tableData);
@@ -921,11 +1018,21 @@ class UltimateTemplateController extends Controller
             'templatecategory' => $template->category ?? 'General',
             'templatedescription' => $template->description ?? '',
             'templatetags' => $template->tags ?? [],
+            // Per-file template metadata. These get overwritten with real
+            // values during processTemplateFile() (see ~line 2043), but we
+            // initialize them here so templates referenced outside that
+            // per-file context (preview, project-level generation) get an
+            // empty string instead of an `undefined` placeholder.
+            'templatefolder' => '',
+            'templatepage' => '',
+            'templatepagename' => '',
+            'templatefilepath' => '',
+            'templateoutputpath' => '',
 
             // === GENERATION CONTEXT ===
             'generationdatetime' => now()->format('Y-m-d H:i:s'),
             'generationuser' => auth()->user() ? auth()->user()->name : 'System',
-            'scorietversion' => '2.0.0',
+            'scorietversion' => '1.0.0.3',
             'laravelversion' => app()->version(),
 
             // === LOCALIZATION SETTINGS (overridden later from project_translations) ===
@@ -1074,8 +1181,12 @@ class UltimateTemplateController extends Controller
                     'type' => strtoupper($field->field_type),
                     'schema_field_id' => $field->id, // For per-file assignment lookup
 
-                    // Enhanced metadata
-                    'controltype' => 24,
+                    // Enhanced metadata — controltype was previously hardcoded to
+                    // the magic number 24 (legacy WinDev mapping). Now the actual
+                    // SchemaField.control_type string ('TEXT', 'COMBOBOX', 'SLIDER',
+                    // ...) is exposed so templates can branch on it directly:
+                    //   {:if item.controltype eq "COMBOBOX":}...{:endif:}
+                    'controltype' => $field->control_type ?? 'TEXT',
                     'typecast' => $this->getPhpTypecast($field->field_type),
                     'phptype' => $this->getPhpType($field->field_type),
                     'jstype' => $this->getJsType($field->field_type),
@@ -1083,7 +1194,17 @@ class UltimateTemplateController extends Controller
                     'notnull' => !$field->is_nullable,
                     'order' => $field->field_order,
                     'id' => $index + 1,
-                    'size' => $this->extractFieldSize($field->field_type),
+                    // Structured type metadata — preferred for templates.
+                    // size = field_length when set; falls back to legacy string parsing.
+                    'size' => $field->field_length ?? $this->extractFieldSize($field->field_type),
+                    'precision' => $field->field_precision,
+                    'scale' => $field->field_scale,
+                    'enum_values' => $field->field_enum_values, // array (Eloquent cast) or null
+                    // MySQL GENERATED ALWAYS AS (expression) STORED|VIRTUAL — templates use these
+                    // to skip setters / mark columns read-only / reproduce the expression.
+                    'is_generated' => (bool) ($field->is_generated ?? false),
+                    'generation_expression' => $field->generation_expression,
+                    'generation_storage' => $field->generation_storage,
                     'caption' => ucwords(str_replace('_', ' ', $fieldName)),
                     'default' => $field->default_value ?? '',
 
@@ -1127,6 +1248,17 @@ class UltimateTemplateController extends Controller
                         ['invisible', 'not_available']
                     ),
                     'report_sort_order' => $reportAssignments[$field->id]['sort_order'] ?? null,
+
+                    // Audit + version metadata — exposed so templates can stamp
+                    // generated files with the per-field history, e.g.:
+                    //   // {:item.name:} v{:item.version:} updated {:item.updated_at:} by {:item.updated_by_username:}
+                    // Dates are formatted Y-m-d (same convention as the SQL-COMMENT
+                    // JSON codec — single source of truth for human-readable audit).
+                    'version' => (int) ($field->version ?? 1),
+                    'created_at' => $field->created_at?->format('Y-m-d'),
+                    'updated_at' => $field->updated_at?->format('Y-m-d'),
+                    'created_by_username' => $field->created_by_username ?? 'system',
+                    'updated_by_username' => $field->updated_by_username ?? 'system',
                 ];
             })->toArray();
 
@@ -1250,10 +1382,25 @@ class UltimateTemplateController extends Controller
                     'referencedtablepascalcase' => str_replace('_', '', ucwords($referencedTableName, '_')), // PascalCase (e.g., 'ProdGroup')
                     'referencedtablecamelcase' => lcfirst(str_replace('_', '', ucwords($referencedTableName, '_'))), // camelCase (e.g., 'prodGroup')
                     'referencedcolumn' => $referencedColumn, // Referenced column (e.g., 'id')
+                    'referencedfield' => $referencedColumn,  // Alias — naming parity with `linkfield` on lookup-style fields. Templates may use either.
                     'ondelete' => $reference->on_delete ?? 'NO ACTION', // ON DELETE action
                     'onupdate' => $reference->on_update ?? 'NO ACTION', // ON UPDATE action
                 ];
             })->values()->toArray();
+
+            // 🎯 Deduplicated Foreign Keys — unique by referencedtable (first FK
+            // per referenced table wins). Mirrors the WithTranslations variant —
+            // was previously missing here, which left $mappedForeignKeysUnique
+            // undefined and crashed any call into this method.
+            $seenReferencedTables = [];
+            $mappedForeignKeysUnique = [];
+            foreach ($mappedForeignKeys as $fk) {
+                $refTable = $fk['referencedtable'];
+                if (!isset($seenReferencedTables[$refTable])) {
+                    $seenReferencedTables[$refTable] = true;
+                    $mappedForeignKeysUnique[] = $fk;
+                }
+            }
 
             $tables[] = [
                 // Basic table info
@@ -1281,6 +1428,7 @@ class UltimateTemplateController extends Controller
                 'nmaxitemsnobinaryblob' => count($fieldsNoBinaryBlobIndices), // 🎯 Fields without binary BLOB types
                 'nmaxitemsnobinarybloball' => count($fieldsNoBinaryBlobAllIndices), // 🎯 All fields without binary BLOB (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
+                'nmaxconstraints' => count($mappedConstraints), // ALL constraints (PRIMARY + UNIQUE + INDEX/KEY + FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
                 'nmaxforeignkeysunique' => count($mappedForeignKeysUnique),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields, $primaryKeyFieldName),
@@ -1311,7 +1459,10 @@ class UltimateTemplateController extends Controller
                 // Metadata
                 'tableindex' => $tableIndex,
                 'hastimestamps' => $fields->whereIn('field_name', ['created_at', 'updated_at'])->count() >= 2,
-                'hasprimarykey' => $fields->where('field_name', 'id')->count() > 0,
+                // Use the actual is_primary_key flag instead of guessing from the
+                // field name "id" — schemas with `user_id`, `ug_id` etc. were
+                // silently reporting hasprimarykey=false.
+                'hasprimarykey' => $fields->where('is_primary_key', true)->count() > 0,
 
                 // Generation state metadata — user JS in {:code:} blocks can read these
                 'state' => $table->display_state ?? 'enabled',
@@ -1323,6 +1474,15 @@ class UltimateTemplateController extends Controller
                 'hasforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count() > 0,
                 'primarykeyfield' => $this->getPrimaryKeyField($fields),
                 'fileprimarykey' => $fileKeyName, // User-selected key (filekeyname from schema_tables)
+
+                // Audit + version metadata at table level — usable as
+                // {:table.version:}, {:table.created_at:}, {:table.updated_by_username:},
+                // etc. Same Y-m-d formatting as field-level above.
+                'version' => (int) ($table->version ?? 1),
+                'created_at' => $table->created_at?->format('Y-m-d'),
+                'updated_at' => $table->updated_at?->format('Y-m-d'),
+                'created_by_username' => $table->created_by_username ?? 'system',
+                'updated_by_username' => $table->updated_by_username ?? 'system',
             ];
         }
 
@@ -1416,7 +1576,7 @@ class UltimateTemplateController extends Controller
             }
 
             // Enhanced field mapping with translations
-            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields, $contentTranslationsLookup) {
+            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields, $contentTranslationsLookup, $reportAssignments) {
                 $fieldName = $field->field_name;
                 $fullFieldName = $tableName . '.' . $fieldName;
 
@@ -1441,7 +1601,16 @@ class UltimateTemplateController extends Controller
                     'notnull' => !$field->is_nullable,
                     'order' => $field->field_order,
                     'id' => $index + 1,
-                    'size' => $this->extractFieldSize($field->field_type),
+                    // Structured type metadata — same shape as buildUltimateTableData().
+                    // Both methods need to expose the new columns or template behaviour
+                    // diverges between single-language and translated generations.
+                    'size' => $field->field_length ?? $this->extractFieldSize($field->field_type),
+                    'precision' => $field->field_precision,
+                    'scale' => $field->field_scale,
+                    'enum_values' => $field->field_enum_values,
+                    'is_generated' => (bool) ($field->is_generated ?? false),
+                    'generation_expression' => $field->generation_expression,
+                    'generation_storage' => $field->generation_storage,
                     'caption' => ucwords(str_replace('_', ' ', $fieldName)),
                     'default' => $field->default_value ?? '',
 
@@ -1486,6 +1655,15 @@ class UltimateTemplateController extends Controller
                         ['invisible', 'not_available']
                     ),
                     'report_sort_order' => $reportAssignments[$field->id]['sort_order'] ?? null,
+
+                    // Audit + version metadata — mirrored from buildUltimateTableData
+                    // so single-language and translated generations produce the same
+                    // item.* surface. Y-m-d formatting matches the SQL-COMMENT JSON.
+                    'version' => (int) ($field->version ?? 1),
+                    'created_at' => $field->created_at?->format('Y-m-d'),
+                    'updated_at' => $field->updated_at?->format('Y-m-d'),
+                    'created_by_username' => $field->created_by_username ?? 'system',
+                    'updated_by_username' => $field->updated_by_username ?? 'system',
                 ];
 
                 // 🎯 LINK FIELDS - Only add for ComboBox when link fields are populated
@@ -1636,6 +1814,7 @@ class UltimateTemplateController extends Controller
                     'referencedtablepascalcase' => str_replace('_', '', ucwords($referencedTableName, '_')), // PascalCase (e.g., 'ProdGroup')
                     'referencedtablecamelcase' => lcfirst(str_replace('_', '', ucwords($referencedTableName, '_'))), // camelCase (e.g., 'prodGroup')
                     'referencedcolumn' => $referencedColumn, // Referenced column (e.g., 'id')
+                    'referencedfield' => $referencedColumn,  // Alias — naming parity with `linkfield` on lookup-style fields. Templates may use either.
                     'ondelete' => $reference->on_delete ?? 'NO ACTION', // ON DELETE action
                     'onupdate' => $reference->on_update ?? 'NO ACTION', // ON UPDATE action
                 ];
@@ -1680,6 +1859,7 @@ class UltimateTemplateController extends Controller
                 'nmaxitemsnobinaryblob' => count($fieldsNoBinaryBlobIndices), // 🎯 Fields without binary BLOB types
                 'nmaxitemsnobinarybloball' => count($fieldsNoBinaryBlobAllIndices), // 🎯 All fields without binary BLOB (ignores assignments)
                 'nmaxkeys' => count($mappedKeys), // PRIMARY + UNIQUE only (not FOREIGN)
+                'nmaxconstraints' => count($mappedConstraints), // ALL constraints (PRIMARY + UNIQUE + INDEX/KEY + FOREIGN)
                 'nmaxforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count(),
                 'nmaxforeignkeysunique' => count($mappedForeignKeysUnique),
                 'nmaxsearchkeys' => $this->calculateSearchKeysCount($table, $fields, $primaryKeyFieldName),
@@ -1710,7 +1890,10 @@ class UltimateTemplateController extends Controller
                 // Metadata
                 'tableindex' => $tableIndex,
                 'hastimestamps' => $fields->whereIn('field_name', ['created_at', 'updated_at'])->count() >= 2,
-                'hasprimarykey' => $fields->where('field_name', 'id')->count() > 0,
+                // Use the actual is_primary_key flag instead of guessing from the
+                // field name "id" — schemas with `user_id`, `ug_id` etc. were
+                // silently reporting hasprimarykey=false.
+                'hasprimarykey' => $fields->where('is_primary_key', true)->count() > 0,
 
                 // Generation state metadata — user JS in {:code:} blocks can read these
                 'state' => $table->display_state ?? 'enabled',
@@ -1722,6 +1905,15 @@ class UltimateTemplateController extends Controller
                 'hasforeignkeys' => $constraints->where('constraint_type', 'FOREIGN KEY')->count() > 0,
                 'primarykeyfield' => $this->getPrimaryKeyField($fields),
                 'fileprimarykey' => $fileKeyName, // User-selected key (filekeyname from schema_tables)
+
+                // Audit + version metadata at table level — mirrors the single-
+                // language buildUltimateTableData() so both generation paths
+                // expose the same {:table.version:}, {:table.created_at:}, ...
+                'version' => (int) ($table->version ?? 1),
+                'created_at' => $table->created_at?->format('Y-m-d'),
+                'updated_at' => $table->updated_at?->format('Y-m-d'),
+                'created_by_username' => $table->created_by_username ?? 'system',
+                'updated_by_username' => $table->updated_by_username ?? 'system',
 
                 // 🌍 NEW: Language translations array
                 'lang' => $tableTranslations,

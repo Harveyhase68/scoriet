@@ -12,6 +12,59 @@ use Illuminate\Support\Facades\Cache;
 class SchemaTableObserver
 {
     /**
+     * Columns whose mutation counts as a "table change" — bumping the
+     * table's version + audit. Pure field-content edits do NOT bump the
+     * table version (decision per user); add/remove of fields DOES, and
+     * that path runs through SchemaFieldObserver::created/deleted.
+     */
+    private const TABLE_VERSION_COLUMNS = [
+        'table_name',
+        'comment',
+        'primarykeyfield',
+        'filekeyname',
+        'singular_name',
+        'file_name_renamed',
+        'file_name_short',
+        'display_state',
+        'generation_mode',
+    ];
+
+    /**
+     * Set audit + version on a brand-new row BEFORE the INSERT hits the DB.
+     * Honours the suppress flag so SchemaStorageService can set everything
+     * explicitly during SQL import without our defaults clobbering it.
+     */
+    public function creating(SchemaTable $schemaTable): void
+    {
+        if (SchemaTable::$suppressAudit) {
+            return;
+        }
+        if (empty($schemaTable->version)) {
+            $schemaTable->version = 1;
+        }
+        $schemaTable->applyAuditOnCreate();
+    }
+
+    /**
+     * Bump version + refresh audit on meaningful changes only. "Meaningful"
+     * is the whitelist above — purely audit/version self-updates are
+     * ignored so we don't recurse forever.
+     */
+    public function updating(SchemaTable $schemaTable): void
+    {
+        if (SchemaTable::$suppressAudit) {
+            return;
+        }
+        $dirtyKeys = array_keys($schemaTable->getDirty());
+        $relevant = array_intersect($dirtyKeys, self::TABLE_VERSION_COLUMNS);
+        if (empty($relevant)) {
+            return;
+        }
+        $schemaTable->bumpVersion();
+        $schemaTable->applyAuditOnUpdate();
+    }
+
+    /**
      * Handle the SchemaTable "created" event.
      */
     public function created(SchemaTable $schemaTable): void

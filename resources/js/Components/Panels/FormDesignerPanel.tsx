@@ -25,6 +25,7 @@ import {
   Edge,
   BackgroundVariant,
   NodeResizer,
+  SelectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { TabContentProps } from '@/types';
@@ -135,6 +136,18 @@ const DEFAULT_ICONS: Record<string, string> = {
 // Stable reference for ReactFlow's multiSelectionKeyCode prop — must NOT be
 // recreated each render, otherwise the internal store loops on updates.
 const MULTI_SELECTION_KEYS = ['Control', 'Shift', 'Meta'];
+
+// Marquee-selection mouse routing:
+//   - LEFT button (0) → lasso (selectionOnDrag)
+//   - MIDDLE (1) / RIGHT (2) → pan the canvas
+// This mirrors what design tools like Figma do: drag empty space with left
+// mouse = select multiple controls; use middle-mouse or right-mouse to pan.
+// Dragging a node still moves it (ReactFlow auto-distinguishes node vs pane).
+// Without this swap, left-drag would pan AND lasso at the same time — the
+// "pan wins" default makes the lasso unreachable.
+// Plain (non-readonly) array because ReactFlow's panOnDrag prop is typed
+// as `number[]`. Module-level const = stable reference, no re-renders.
+const PAN_ON_DRAG_BUTTONS: number[] = [1, 2];
 
 // ========== HELPER FUNCTIONS ==========
 
@@ -536,6 +549,53 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const snapToGrid = selectedProject?.form_designer_snap_to_grid ?? true;
   const gridSize = selectedProject?.form_designer_grid_size ?? 20;
 
+  // ── Multi-select edit support ──
+  // Every property handler used to compare `n.id === selectedNodeId`, which
+  // meant only ONE node ever got the new value even when the user had multiple
+  // controls marquee- or shift-selected. selectedNodeIds is the set of ALL
+  // ReactFlow node ids whose underlying element.id is in orderedSelection
+  // (the click-ordered list). In single-select this collapses to the one
+  // selectedNodeId, so existing call sites keep working.
+  const selectedNodeIds = useMemo<Set<string>>(() => {
+    if (orderedSelection.length <= 1) {
+      return new Set(selectedNodeId ? [selectedNodeId] : []);
+    }
+    const ids = new Set<string>();
+    for (const n of nodes) {
+      const elId = (n.data?.element as FormElement | undefined)?.id;
+      if (typeof elId === 'number' && orderedSelection.includes(elId)) {
+        ids.add(n.id);
+      }
+    }
+    return ids;
+  }, [orderedSelection, selectedNodeId, nodes]);
+
+  // Apply a property patch to every node in selectedNodeIds (or just the
+  // single selected node, depending on the selection). The element patch is
+  // merged into each node's OWN data.element — we don't broadcast the full
+  // selectedElement object, otherwise every selected control would inherit
+  // unrelated fields (label, color, ...) from the representative one. The
+  // optional nodePatch lets handlers also tweak the ReactFlow node's width/
+  // height/position/style at the same time so the canvas reflects geometry
+  // changes immediately.
+  const applyToSelected = useCallback((
+    elementPatch: Partial<FormElement>,
+    nodePatch?: (n: any) => Partial<any>,
+  ) => {
+    if (selectedNodeIds.size === 0) return;
+    setNodes((prev: any[]) => prev.map((n) => {
+      if (!selectedNodeIds.has(n.id)) return n;
+      const currentEl = (n.data?.element ?? {}) as FormElement;
+      return {
+        ...n,
+        ...(nodePatch?.(n) ?? {}),
+        data: { ...n.data, element: { ...currentEl, ...elementPatch } },
+      };
+    }));
+    setSelectedElement((prev) => (prev ? { ...prev, ...elementPatch } : prev));
+    setHasUnsavedChanges(true);
+  }, [selectedNodeIds, setNodes]);
+
   const WINDOW_TYPE_LABELS: Record<string, string> = {
     main_menu: t.formdesignerpanel520,
     create_edit: t.formdesignerpanel521,
@@ -547,7 +607,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     containers: [
       { value: 'container', label: t.formdesignerpanel116, icon: 'pi-table' },
       { value: 'tab_container', label: t.formdesignerpanel531, icon: 'pi-folder' },
-      { value: 'tab_panel', label: t.formdesignerpanel532, icon: 'pi-file' },
+      // tab_panel is intentionally NOT droppable here. Tabs (tab_panel rows) are
+      // generated dynamically at the Layout level (per FormSet × Schema-Table)
+      // based on the tab_container's max_fields / container_columns and the
+      // actual field count. Hard-coding a tab count in the template would defeat
+      // that. The DB schema still keeps tab_panel as a valid element_type so the
+      // Layout editor can create instances on the fly.
       { value: 'menu_container', label: t.formdesignerpanel533, icon: 'pi-bars' },
     ],
     navigation: [
@@ -717,12 +782,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
             if (!checkData?.data?.id) {
               confirmDialog({
                 group: 'form-designer',
-                header: (t as unknown as Record<string, string>).formsetdefault_prompt_title || 'Set as project default?',
-                message: (t as unknown as Record<string, string>).formsetdefault_prompt_message
-                  || 'This is the first Form Set in this project. Use it as the default? You can change this anytime in the project settings.',
+                header: t.formsetdefault_prompt_title,
+                message: t.formsetdefault_prompt_message,
                 icon: 'pi pi-question-circle',
-                acceptLabel: (t as unknown as Record<string, string>).formdesignerpanel_yes || 'Yes',
-                rejectLabel: (t as unknown as Record<string, string>).formdesignerpanel_no || 'No',
+                acceptLabel: t.formdesignerpanel_yes,
+                rejectLabel: t.formdesignerpanel_no,
                 accept: async () => {
                   try {
                     await apiClient.post(`/projects/${projectId}/form-set`, { form_set_id: newId });
@@ -1716,6 +1780,16 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                 onEdgesChange={onEdgesChange}
                 nodeTypes={nodeTypes}
                 multiSelectionKeyCode={MULTI_SELECTION_KEYS}
+                // Marquee/lasso: left-drag on empty pane selects everything
+                // it touches. Pan moves to middle/right mouse to free the
+                // left button for selection. SelectionMode.Partial counts
+                // a node as selected the moment the rectangle touches its
+                // bounding box (vs Full = must be entirely inside) — much
+                // less frustrating when picking a row of fields where the
+                // last column extends past where you stopped dragging.
+                selectionOnDrag
+                selectionMode={SelectionMode.Partial}
+                panOnDrag={PAN_ON_DRAG_BUTTONS}
                 onPaneClick={() => {
                   setOrderedSelection([]);
                 }}
@@ -1729,25 +1803,36 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   const currentlySelectedIds = elementNodes
                     .map(n => (n.data?.element as FormElement | undefined)?.id)
                     .filter((id): id is number => typeof id === 'number');
+                  // Compute the new order OUTSIDE the setter so the rest of this
+                  // handler can use it to find the LAST-clicked element — that's
+                  // the one that should drive the properties panel (matches user
+                  // intuition: "the one I just clicked is the one I'm editing").
+                  const prevOrdered = orderedSelection;
+                  const stillSelected = prevOrdered.filter(id => currentlySelectedIds.includes(id));
+                  const newlyAdded = currentlySelectedIds.filter(id => !prevOrdered.includes(id));
+                  const nextOrdered = [...stillSelected, ...newlyAdded];
                   setOrderedSelection(prev => {
-                    const stillSelected = prev.filter(id => currentlySelectedIds.includes(id));
-                    const newlyAdded = currentlySelectedIds.filter(id => !prev.includes(id));
-                    const next = [...stillSelected, ...newlyAdded];
                     // Bail out if nothing actually changed — returning a new
                     // array reference here would re-render and feed ReactFlow
                     // a new onSelectionChange ref, triggering an update loop.
-                    if (next.length === prev.length && next.every((id, i) => id === prev[i])) {
+                    if (nextOrdered.length === prev.length && nextOrdered.every((id, i) => id === prev[i])) {
                       return prev;
                     }
-                    return next;
+                    return nextOrdered;
                   });
 
                   if (elementNodes.length > 0) {
-                    // Only update selectedElement if the selection actually changed (different node)
-                    // This prevents overwriting property changes made via the Properties Panel
-                    if (elementNodes[0].id !== selectedNodeId) {
-                      setSelectedElement(elementNodes[0].data.element);
-                      setSelectedNodeId(elementNodes[0].id);
+                    // Track the LAST element in click order — not elementNodes[0].
+                    // ReactFlow's selectedNodes array is in internal node order
+                    // (not click order), so [0] would be unpredictable: usually
+                    // the second-to-last clicked, occasionally the first dropped.
+                    // That's why the user saw "manchmal vorletzte". orderedSelection
+                    // has authoritative click order; the tail is the most recent.
+                    const lastId = nextOrdered[nextOrdered.length - 1];
+                    const lastNode = elementNodes.find(n => (n.data?.element as FormElement | undefined)?.id === lastId) ?? elementNodes[0];
+                    if (lastNode.id !== selectedNodeId) {
+                      setSelectedElement(lastNode.data.element);
+                      setSelectedNodeId(lastNode.id);
                     }
                   } else {
                     setSelectedElement(null);
@@ -2025,12 +2110,14 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         </>
                       )}
 
-                      {selectedElement.element_type === 'container' && (
+                      {(selectedElement.element_type === 'container' || selectedElement.element_type === 'tab_container') && (
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                            {selectedWindow?.window_type === 'data_table'
-                              ? (t.formdesignerpanel_max_columns || 'Max. Anzahl Spalten')
-                              : t.formdesignerpanel1776}
+                            {selectedElement.element_type === 'tab_container'
+                              ? (t.formdesignerpanel_max_controls_per_tab || 'Max. Controls pro Tab')
+                              : selectedWindow?.window_type === 'data_table'
+                                ? (t.formdesignerpanel_max_columns || 'Max. Anzahl Spalten')
+                                : t.formdesignerpanel1776}
                           </label>
                           <InputNumber
                             value={selectedElement.max_fields || null}
@@ -2048,9 +2135,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                             }}
                             className="w-full"
                             min={0}
-                            placeholder={selectedWindow?.window_type === 'data_table'
-                              ? (t.formdesignerpanel_all_columns || 'Alle Spalten')
-                              : t.formdesignerpanel1793}
+                            placeholder={selectedElement.element_type === 'tab_container'
+                              ? (t.formdesignerpanel_max_controls_per_tab_placeholder || 'z.B. 8 (wechselt zum nächsten Tab)')
+                              : selectedWindow?.window_type === 'data_table'
+                                ? (t.formdesignerpanel_all_columns || 'Alle Spalten')
+                                : t.formdesignerpanel1793}
                           />
                         </div>
                       )}
@@ -2086,7 +2175,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           {/* Columns - hidden for data_table */}
                           {selectedWindow?.window_type !== 'data_table' && (
                             <div>
-                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>{t.formdesignerpanel1823}</label>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                                {selectedElement.element_type === 'tab_container'
+                                  ? (t.formdesignerpanel_max_columns || 'Max. Anzahl Spalten')
+                                  : t.formdesignerpanel1823}
+                              </label>
                               <select
                                 value={selectedElement.container_columns ?? 1}
                                 onChange={(e) => {
@@ -2165,27 +2258,11 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         </div>
                       )}
 
-                      {selectedElement.element_type === 'tab_panel' && (
-                        <div>
-                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Tab-Titel</label>
-                          <InputText
-                            value={selectedElement.tab_label || ''}
-                            onChange={(e) => {
-                              const newElement = { ...selectedElement, tab_label: e.target.value };
-                              setSelectedElement(newElement);
-                              if (selectedNodeId) {
-                                setNodes(prev => prev.map(n =>
-                                  n.id === selectedNodeId
-                                    ? { ...n, data: { ...n.data, element: newElement } }
-                                    : n
-                                ));
-                              }
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="w-full p-inputtext-sm"
-                          />
-                        </div>
-                      )}
+                      {/* tab_panel.tab_label editor lives in the Layout editor now,
+                          not here. Template-level tab_container has no per-tab
+                          metadata — tabs are generated dynamically by auto-place
+                          on the Layout side, and labels are then set there
+                          (per language) once the tabs actually exist. */}
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -2193,19 +2270,18 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <InputNumber
                             value={selectedNodeData?.x ?? selectedElement.x_position}
                             onValueChange={(e) => {
+                              // X/Y keep snap-to-grid for typed values: position
+                              // alignment is the usual intent, and absolute pixel
+                              // precision here matters less than for W/H. Users who
+                              // need exact pixel positions can disable snap in
+                              // project settings.
                               const newX = snapToGrid
                                 ? Math.round((e.value ?? 0) / gridSize) * gridSize
                                 : e.value ?? 0;
-                              const newElement = { ...selectedElement, x_position: newX };
-                              setSelectedElement(newElement);
-                              if (selectedNodeId) {
-                                setNodes(prev => prev.map(n =>
-                                  n.id === selectedNodeId
-                                    ? { ...n, position: { ...n.position, x: newX }, data: { ...n.data, element: newElement } }
-                                    : n
-                                ));
-                              }
-                              setHasUnsavedChanges(true);
+                              applyToSelected(
+                                { x_position: newX },
+                                (n) => ({ position: { ...n.position, x: newX } }),
+                              );
                             }}
                             useGrouping={false}
                             inputStyle={{ width: '110px' }}
@@ -2221,16 +2297,12 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               const newY = snapToGrid
                                 ? Math.round((e.value ?? 0) / gridSize) * gridSize
                                 : e.value ?? 0;
-                              const newElement = { ...selectedElement, y_position: newY };
-                              setSelectedElement(newElement);
-                              if (selectedNodeId) {
-                                setNodes(prev => prev.map(n =>
-                                  n.id === selectedNodeId
-                                    ? { ...n, position: { ...n.position, y: newY + 32 }, data: { ...n.data, element: newElement } }
-                                    : n
-                                ));
-                              }
-                              setHasUnsavedChanges(true);
+                              // ReactFlow's node y is offset by +32 (window header
+                              // height) — preserve that offset in the nodePatch.
+                              applyToSelected(
+                                { y_position: newY },
+                                (n) => ({ position: { ...n.position, y: newY + 32 } }),
+                              );
                             }}
                             useGrouping={false}
                             inputStyle={{ width: '110px' }}
@@ -2246,29 +2318,21 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <InputNumber
                             value={selectedNodeData?.width ?? selectedElement.width}
                             onValueChange={(e) => {
-                              const newWidth = snapToGrid
-                                ? Math.round((e.value ?? 40) / gridSize) * gridSize
-                                : e.value ?? 40;
-                              const newElement = { ...selectedElement, width: newWidth };
-                              setSelectedElement(newElement);
-                              if (selectedNodeId) {
-                                setNodes(prev => prev.map(n =>
-                                  n.id === selectedNodeId
-                                    ? {
-                                        ...n,
-                                        width: newWidth,
-                                        style: { ...n.style, width: newWidth },
-                                        data: { ...n.data, element: newElement }
-                                      }
-                                    : n
-                                ));
-                              }
-                              setHasUnsavedChanges(true);
+                              // Pixel-precise: a typed value bypasses snap-to-grid.
+                              // Snap is for canvas drag/resize; when the user
+                              // explicitly types "40" in the property panel they
+                              // mean 40, not the nearest grid multiple. Previously
+                              // grid=21 (or any non-divisor of 40) would round 40 → 42.
+                              const newWidth = e.value ?? 40;
+                              applyToSelected(
+                                { width: newWidth },
+                                (n) => ({ width: newWidth, style: { ...n.style, width: newWidth } }),
+                              );
                             }}
                             useGrouping={false}
                             inputStyle={{ width: '110px' }}
                             min={20}
-                            step={snapToGrid ? gridSize : 1}
+                            step={1}
                           />
                         </div>
                         <div>
@@ -2276,29 +2340,16 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           <InputNumber
                             value={selectedNodeData?.height ?? selectedElement.height}
                             onValueChange={(e) => {
-                              const newHeight = snapToGrid
-                                ? Math.round((e.value ?? 20) / gridSize) * gridSize
-                                : e.value ?? 20;
-                              const newElement = { ...selectedElement, height: newHeight };
-                              setSelectedElement(newElement);
-                              if (selectedNodeId) {
-                                setNodes(prev => prev.map(n =>
-                                  n.id === selectedNodeId
-                                    ? {
-                                        ...n,
-                                        height: newHeight,
-                                        style: { ...n.style, height: newHeight },
-                                        data: { ...n.data, element: newElement }
-                                      }
-                                    : n
-                                ));
-                              }
-                              setHasUnsavedChanges(true);
+                              const newHeight = e.value ?? 20;
+                              applyToSelected(
+                                { height: newHeight },
+                                (n) => ({ height: newHeight, style: { ...n.style, height: newHeight } }),
+                              );
                             }}
                             useGrouping={false}
                             inputStyle={{ width: '110px' }}
                             min={10}
-                            step={snapToGrid ? gridSize : 1}
+                            step={1}
                           />
                         </div>
                       </div>
@@ -2328,7 +2379,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         />
                       </div>
 
-                      {/* Anchor */}
+                      {/* Anchor — multi-select aware (applies to all in orderedSelection) */}
                       <AnchorSection
                         values={{
                           anchor_right: selectedElement.anchor_right ?? null,
@@ -2337,14 +2388,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                           anchor_height: selectedElement.anchor_height ?? null,
                         }}
                         onChange={(updates) => {
-                          const newElement = { ...selectedElement, ...updates };
-                          setSelectedElement(newElement);
-                          if (selectedNodeId) {
-                            setNodes(prev => prev.map(n =>
-                              n.id === selectedNodeId ? { ...n, data: { ...n.data, element: newElement } } : n
-                            ));
-                          }
-                          setHasUnsavedChanges(true);
+                          applyToSelected(updates as Partial<FormElement>);
                         }}
                         colors={colors}
                       />

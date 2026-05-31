@@ -4,7 +4,7 @@ import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Card } from 'primereact/card';
 import { Message } from 'primereact/message';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage, syncLanguageFromUser, triggerLanguageReloadIfPending } from '@/i18n';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 
 interface LoginPanelProps {
@@ -86,9 +86,27 @@ export default function LoginPanel({ onSwitchPanel, onLoginSuccess }: LoginPanel
         if (userData.theme) {
           syncThemeFromUser(userData.theme as ThemeMode);
         }
+
+        // Stash whether the language changed — we don't reload yet, because
+        // the success callback might run a redirect_after_login navigation,
+        // which would reload the app with the new language naturally and
+        // make our own reload a wasted round-trip (and worse — kill the
+        // redirect). Snapshot the redirect key BEFORE the callback because
+        // handleLoginSuccess() removes it as part of processing.
+        const langChanged = syncLanguageFromUser(userData.language);
+        const redirectWasPending = !!localStorage.getItem('redirect_after_login');
+
+        // Success - close panel or redirect
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        }
+
+        // Only reload if the language changed AND no redirect was queued.
+        triggerLanguageReloadIfPending(langChanged, redirectWasPending);
+        return;
       }
 
-      // Success - close panel or redirect
+      // Success - close panel or redirect (fallback when /api/user failed)
       if (onLoginSuccess) {
         onLoginSuccess();
       }

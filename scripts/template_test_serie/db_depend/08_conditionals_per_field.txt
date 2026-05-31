@@ -1,0 +1,66 @@
+================================================================================
+TEST 08: BEDINGUNGEN BASIEREND AUF FELD-EIGENSCHAFTEN
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+================================================================================
+
+Tabelle: {:tablename:}
+
+================================================================================
+PHP-Migration Beispiel — Type-Mapping über switch/case auf `item.type`
+================================================================================
+
+class Create{:filepascalcase:}Table extends Migration {
+    public function up() {
+        Schema::create('{:tablename:}', function (Blueprint $table) {
+{:for nmaxitems:}
+{:if item.autoincrement:}
+            $table->id('{:item.name:}'); // AUTO_INCREMENT primary key
+{:elseif item.type eq "VARCHAR":}
+            $table->string('{:item.name:}', {:item.size:}){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "BIGINT":}
+            $table->bigInteger('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "TINYINT":}
+{:if item.size eq 1:}
+            $table->boolean('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:else:}
+            $table->tinyInteger('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:endif:}
+{:elseif item.type eq "DECIMAL":}
+            $table->decimal('{:item.name:}', {:item.precision:}, {:item.scale:}){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "DATE":}
+            $table->date('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "DATETIME":}
+            $table->dateTime('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "TIMESTAMP":}
+            $table->timestamp('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "TIME":}
+            $table->time('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "LONGTEXT":}
+            $table->longText('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "LONGBLOB":}
+            $table->longText('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "JSON":}
+            $table->json('{:item.name:}'){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "ENUM":}
+            $table->enum('{:item.name:}', [/* values: see enum_values */]){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:elseif item.type eq "SET":}
+            $table->set('{:item.name:}', [/* values: see enum_values */]){:if item.notnull:}{:else:}->nullable(){:endif:};
+{:else:}
+            // UNHANDLED TYPE: {:item.type:} for field {:item.name:}
+{:endif:}
+{:endfor:}
+        });
+    }
+}
+
+================================================================================
+EXPECTED:
+  - Jedes Feld matched genau EINEN if/elseif-Block
+  - Keine "UNHANDLED TYPE"-Kommentare im Output (bedeutet alle Typen abgedeckt)
+  - Nullable-Detection korrekt
+  - TINYINT(1) → boolean, TINYINT(>1) → tinyInteger
+  - GENERATED columns würden hier ein zusätzliches `// no migration: GENERATED column`
+    benötigen — siehe Test 07
+================================================================================

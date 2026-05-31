@@ -1,0 +1,39 @@
+================================================================================
+TEST 11: DATEINAME PRO TABELLE (%1 / %10 / %11 Platzhalter)
+================================================================================
+File-Type: db_table_file
+Filename-Pattern: 11_filename_per_table_%1.txt
+Expected Output: N× generiert (1× pro aktiver Tabelle), Filename pro Tabelle aufgelöst.
+
+WICHTIG: Im Template-Editor diesen GENAUEN Dateinamen eintragen:
+    11_filename_per_table_%1.txt
+
+Bei 2 Tabellen entstehen z.B.:
+    11_filename_per_table_users.txt
+    11_filename_per_table_user_groups.txt
+================================================================================
+
+Diese Datei wurde generiert für Tabelle: {:tablename:}
+
+Filename-Platzhalter-Test:
+  %1   sollte den Tabellennamen ergeben (lowercase original)
+  %10  sollte PascalCase-Tabelle ergeben
+  %11  sollte UPPERCASE-Tabelle ergeben
+
+Falls du verschiedene Dateinamen-Patterns testen willst, lege weitere
+Template-File-Einträge mit unterschiedlichen Patterns an, z.B.:
+  - "Model_%10.php"           → Model_Users.php, Model_UserGroups.php
+  - "%11_CONSTANTS.txt"       → USERS_CONSTANTS.txt, USER_GROUPS_CONSTANTS.txt
+  - "%6[-]_%1_dump.sql"       → 2026-05-23_users_dump.sql
+
+Counter-Platzhalter:
+  %12  per-file-counter (1, 2, 3, ...)
+  %13  globaler counter über ALLE db_table_files mit %13 im Filename
+
+================================================================================
+EXPECTED bei Tabellen users + user_groups:
+  Beim Filename "11_filename_per_table_%1.txt" entstehen 2 Files:
+    11_filename_per_table_user_groups.txt
+    11_filename_per_table_users.txt
+  Der Inhalt jeder Datei zeigt {:tablename:} = jeweilige Tabelle.
+================================================================================

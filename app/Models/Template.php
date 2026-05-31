@@ -4,10 +4,54 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Template extends Model
 {
     use HasFactory;
+
+    /**
+     * Build a unique full_name in the canonical "username/template_slug"
+     * format. This is the single source of truth — every code path that
+     * creates or renames a template MUST go through here so we never end
+     * up with the old "projectname/templatename" inconsistency again.
+     *
+     * Uniqueness is global (full_name has to be one-of-a-kind across the
+     * platform). Pass $excludeId on UPDATE so a template doesn't trip on
+     * its own existing full_name and bump to "_2".
+     *
+     * @param  string|null $username      Defaults to "anonymous" when the
+     *                                    user has neither username nor name.
+     * @param  string      $templateName  Raw template name; will be slugged.
+     * @param  int|null    $excludeId     Template id to skip during the
+     *                                    uniqueness scan (the row that is
+     *                                    BEING renamed).
+     */
+    public static function buildFullName(?string $username, string $templateName, ?int $excludeId = null): string
+    {
+        $u = strtolower(trim((string) $username));
+        if ($u === '') {
+            $u = 'anonymous';
+        }
+        $base = $u . '/' . Str::slug($templateName, '_');
+        $fullName = $base;
+        $counter  = 2;
+
+        $query = function (string $candidate) use ($excludeId) {
+            $q = self::where('full_name', $candidate);
+            if ($excludeId !== null) {
+                $q->where('id', '!=', $excludeId);
+            }
+            return $q->exists();
+        };
+
+        while ($query($fullName)) {
+            $fullName = $base . '_' . $counter;
+            $counter++;
+        }
+
+        return $fullName;
+    }
 
     protected $fillable = [
         'name',
@@ -600,7 +644,21 @@ class Template extends Model
     /**
      * Clone this template for a project with new name
      */
-    public function cloneForProject($project, $newName = null, $visibility = 'public'): Template
+    /**
+     * Clone this template for a user. The clone's full_name is built from
+     * the cloning user's username — never from a project name — so the
+     * identity stays stable even if the clone later gets linked to multiple
+     * projects (or none).
+     *
+     * @param  \App\Models\User      $user        The user performing the clone (becomes the creator)
+     * @param  string|null           $newName     Optional new template name (defaults to original)
+     * @param  string                $visibility  'public' or 'private' (private requires patron/system tier)
+     * @param  \App\Models\Project|null $project  Optional origin/home project — only used to populate
+     *                                            the legacy project_id column for backwards-compatible
+     *                                            multi-project listings. Pass null to clone without
+     *                                            any project association.
+     */
+    public function cloneForUser($user, ?string $newName = null, string $visibility = 'public', $project = null): Template
     {
         $newTemplateName = $newName ?: $this->name;
 
@@ -609,29 +667,31 @@ class Template extends Model
             $newTemplateName = self::sanitizeTemplateName($newTemplateName);
         }
 
-        $fullName = $project->name . '/' . $newTemplateName;
+        $fullName = self::buildFullName($user->username ?? $user->name, $newTemplateName);
 
-        // Check if user can create private templates
-        $canCreatePrivate = $project->owner && in_array($project->owner->user_type, ['patron', 'system']);
-        $finalVisibility = ($visibility === 'private' && $canCreatePrivate) ? 'private' : 'public';
+        // Private visibility requires patron/system tier — checked against the
+        // CLONING user (not a project owner), so the permission follows the
+        // person doing the action.
+        $canCreatePrivate = in_array($user->user_type, ['patron', 'system']);
+        $finalVisibility  = ($visibility === 'private' && $canCreatePrivate) ? 'private' : 'public';
 
         $clonedTemplate = Template::create([
-            'name' => $newTemplateName,
-            'full_name' => $fullName,
-            'description' => $this->description,
-            'project_id' => $project->id,
-            'creator_user_id' => $project->owner_id, // Current project owner becomes creator
-            'visibility' => $finalVisibility,
-            'is_system_template' => false,
+            'name'                 => $newTemplateName,
+            'full_name'            => $fullName,
+            'description'          => $this->description,
+            'project_id'           => $project?->id, // optional origin marker
+            'creator_user_id'      => $user->id,     // cloner owns the clone
+            'visibility'           => $finalVisibility,
+            'is_system_template'   => false,
             'original_template_id' => $this->id,
-            'category' => $this->category,
-            'language' => $this->language,
-            'is_active' => true,
-            'tags' => $this->tags,
-            'file_count' => $this->file_count,
-            'protected_files' => $this->protected_files,
-            'install_script' => $this->install_script,
-            'update_script' => $this->update_script,
+            'category'             => $this->category,
+            'language'             => $this->language,
+            'is_active'            => true,
+            'tags'                 => $this->tags,
+            'file_count'           => $this->file_count,
+            'protected_files'      => $this->protected_files,
+            'install_script'       => $this->install_script,
+            'update_script'        => $this->update_script,
         ]);
 
         // Clone template files

@@ -214,6 +214,16 @@ class ProjectExportService
                 'association_type' => $schema->pivot->association_type,
                 'alias' => $schema->pivot->alias,
                 'last_version' => $schema->last_version,
+                // Schema-level metadata that the importer needs to recreate
+                // the schema with the same defaults. Without these the
+                // re-imported schema would silently fall back to MySQL's
+                // server defaults (often utf8mb4_0900_ai_ci instead of the
+                // user's chosen collation), which would surface as subtle
+                // diff noise on the next export.
+                'default_charset' => $schema->default_charset,
+                'default_collation' => $schema->default_collation,
+                'is_system_schema' => (bool) $schema->is_system_schema,
+                'visibility' => $schema->visibility,
                 'versions' => [],
             ];
 
@@ -234,18 +244,36 @@ class ProjectExportService
                 // Export tables
                 $tables = $version->tables()->get();
                 foreach ($tables as $table) {
+                    // engine / charset / collation were never tracked at the
+                    // per-table level in Scoriet (they live on the schema
+                    // itself) — dropped from the export to avoid round-trip
+                    // noise. singular_name was missing too.
+                    //
+                    // form_set + report_pattern are stored as names rather
+                    // than ids: the foreign-key ids are local to the source
+                    // DB and become meaningless after a backup/restore. The
+                    // importer resolves the names back to ids after FormSets
+                    // and ReportPatterns have been imported.
                     $tableData = [
                         'table_name' => $table->table_name,
-                        'table_comment' => $table->table_comment,
+                        'table_comment' => $table->comment,
+                        'singular_name' => $table->singular_name,
                         'primarykeyfield' => $table->primarykeyfield,
                         'filekeyname' => $table->filekeyname,
                         'file_name_renamed' => $table->file_name_renamed,
                         'file_name_short' => $table->file_name_short,
-                        'engine' => $table->engine,
-                        'charset' => $table->charset,
-                        'collation' => $table->collation,
                         'display_state' => $table->display_state ?? 'enabled',
                         'generation_mode' => $table->generation_mode ?? 'full',
+                        'form_set_name' => $table->formSet?->name,
+                        'report_pattern_name' => $table->reportPattern?->name,
+                        // Per-row audit + version. Carried verbatim through
+                        // export/import so a backup→restore preserves
+                        // history the same way an SQL round-trip does.
+                        'version' => $table->version ?? 1,
+                        'created_by_username' => $table->created_by_username ?? 'system',
+                        'updated_by_username' => $table->updated_by_username ?? 'system',
+                        'created_at' => $table->created_at?->toIso8601String(),
+                        'updated_at' => $table->updated_at?->toIso8601String(),
                         'fields' => [],
                         'constraints' => [],
                         'designer_layout' => null,
@@ -278,6 +306,13 @@ class ProjectExportService
                             'editmask' => $field->editmask,
                             'display_state' => $field->display_state ?? 'enabled',
                             'generation_mode' => $field->generation_mode ?? 'full',
+                            // Per-field audit + version, same rationale as the
+                            // table block above.
+                            'version' => $field->version ?? 1,
+                            'created_by_username' => $field->created_by_username ?? 'system',
+                            'updated_by_username' => $field->updated_by_username ?? 'system',
+                            'created_at' => $field->created_at?->toIso8601String(),
+                            'updated_at' => $field->updated_at?->toIso8601String(),
                         ];
                     }
 

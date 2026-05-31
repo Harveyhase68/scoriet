@@ -54,6 +54,8 @@ class SQLTokenizer
             'CHARACTER', 'INT',
             // Inline constraint keyword
             'CONSTRAINT',
+            // MySQL generated columns (GENERATED ALWAYS AS (...) STORED|VIRTUAL)
+            'GENERATED', 'ALWAYS', 'AS', 'STORED', 'VIRTUAL', 'INVISIBLE',
         ];
     }
 

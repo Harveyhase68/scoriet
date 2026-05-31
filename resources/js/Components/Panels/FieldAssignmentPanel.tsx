@@ -234,26 +234,23 @@ export default function FieldAssignmentPanel() {
     const newId = setTimeout(async () => {
       setSaving(true);
       try {
-        // Collect all non-default assignments
-        const allAssignments = { ...assignments, [key]: updated };
-        const toSave = Object.entries(allAssignments)
-          .filter(([, a]) => a.visibility_state !== 'visible' || a.sort_order !== null)
-          .map(([k, a]) => {
-            const [fid, sid] = k.split('_').map(Number);
-            return {
-              template_file_id: fid,
-              schema_field_id: sid,
-              visibility_state: a.visibility_state,
-              sort_order: a.sort_order,
-            };
-          });
+        // Send the ONE assignment that actually just changed. The backend
+        // treats "visible + no sort_order" as a reset → delete, so a toggle
+        // back to Visible reaches the DB even though it looks like the
+        // default state. Sending only the changed entry keeps the request
+        // small and avoids re-writing the whole matrix on every keystroke.
+        const [fid, sid] = key.split('_').map(Number);
+        const toSave = [{
+          template_file_id: fid,
+          schema_field_id:  sid,
+          visibility_state: updated.visibility_state,
+          sort_order:       updated.sort_order,
+        }];
 
-        if (toSave.length > 0) {
-          await api.request('/template-file-field-assignments/bulk-update', {
-            method: 'POST',
-            body: JSON.stringify({ assignments: toSave }),
-          });
-        }
+        await api.request('/template-file-field-assignments/bulk-update', {
+          method: 'POST',
+          body: JSON.stringify({ assignments: toSave }),
+        });
       } catch (error: any) {
         toast.showError(t.fieldassignmentpanel_error_save + (error.response?.data?.message || error.message));
       } finally {
@@ -293,9 +290,11 @@ export default function FieldAssignmentPanel() {
     const source = getAssignment(firstTfId, fieldId);
 
     const newAssignments = { ...assignments };
+    const changedKeys: string[] = [];
     for (let i = 1; i < templateFiles.length; i++) {
       const key = `${templateFiles[i].id}_${fieldId}`;
       newAssignments[key] = { ...source };
+      changedKeys.push(key);
     }
     setAssignments(newAssignments);
 
@@ -304,17 +303,20 @@ export default function FieldAssignmentPanel() {
     const newId = setTimeout(async () => {
       setSaving(true);
       try {
-        const toSave = Object.entries(newAssignments)
-          .filter(([, a]) => a.visibility_state !== 'visible' || a.sort_order !== null)
-          .map(([k, a]) => {
-            const [fid, sid] = k.split('_').map(Number);
-            return {
-              template_file_id: fid,
-              schema_field_id: sid,
-              visibility_state: a.visibility_state,
-              sort_order: a.sort_order,
-            };
-          });
+        // Send only the keys we just touched. No "visible default" filter:
+        // the backend reads visibility_state="visible" + sort_order=null as
+        // "reset to default" and DELETEs the row, so copy-to-all can
+        // propagate a reset just as well as an override.
+        const toSave = changedKeys.map(k => {
+          const a = newAssignments[k];
+          const [fid, sid] = k.split('_').map(Number);
+          return {
+            template_file_id: fid,
+            schema_field_id:  sid,
+            visibility_state: a.visibility_state,
+            sort_order:       a.sort_order,
+          };
+        });
         if (toSave.length > 0) {
           await api.request('/template-file-field-assignments/bulk-update', {
             method: 'POST',
@@ -521,14 +523,14 @@ export default function FieldAssignmentPanel() {
                             <Tag
                               value={`display: ${field.schema_display_state}`}
                               severity="info"
-                              title={(t as unknown as Record<string, string>).fieldassignmentpanel_schema_display_hint || 'Global schema display_state — per-file assignment overrides this'}
+                              title={t.fieldassignmentpanel_schema_display_hint}
                             />
                           )}
                           {field.schema_generation_mode && field.schema_generation_mode !== 'full' && (
                             <Tag
                               value={`gen: ${field.schema_generation_mode}`}
                               severity="danger"
-                              title={(t as unknown as Record<string, string>).fieldassignmentpanel_schema_gen_hint || 'Global schema generation_mode — affects whether this field generates'}
+                              title={t.fieldassignmentpanel_schema_gen_hint}
                             />
                           )}
                           {templateFiles.length >= 2 && (

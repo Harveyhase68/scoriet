@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ReportPattern;
 use App\Models\ReportPatternForm;
 use App\Models\ReportPatternElement;
+use App\Models\Project;
 use App\Models\ProjectReportPattern;
 use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,19 @@ use Illuminate\Support\Facades\DB;
 
 class ReportPatternController extends Controller
 {
+    /**
+     * Mirror of ReportPattern::scopeAccessibleBy as a boolean. Used by the
+     * read-only endpoints (forms / usage / images) to gate access without
+     * re-querying.
+     */
+    private function canReadPattern(ReportPattern $pattern, $user): bool
+    {
+        if (in_array($pattern->visibility, ['public', 'system'], true)) {
+            return true;
+        }
+        return $user && (int) $pattern->creator_user_id === (int) $user->id;
+    }
+
     // ========== ACCESS CONTROL ==========
 
     /**
@@ -97,7 +111,12 @@ class ReportPatternController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            // Per-creator uniqueness, same contract as templates and FormSets.
+            'name' => [
+                'required', 'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('report_patterns', 'name')
+                    ->where(fn ($q) => $q->where('creator_user_id', $user->id)),
+            ],
             'description' => 'nullable|string',
             'visibility' => 'in:private,team,public',
         ]);
@@ -136,7 +155,12 @@ class ReportPatternController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'string|max:100',
+            'name' => [
+                'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('report_patterns', 'name')
+                    ->ignore($pattern->id)
+                    ->where(fn ($q) => $q->where('creator_user_id', $user->id)),
+            ],
             'description' => 'nullable|string',
             'visibility' => 'in:private,team,public',
             'is_active' => 'boolean',
@@ -236,6 +260,13 @@ class ReportPatternController extends Controller
 
         if (!$pattern) {
             return response()->json(['success' => false, 'error' => 'Report Pattern not found'], 404);
+        }
+
+        // BOLA guard: forms + their elements describe the full report layout
+        // — readable only by the pattern's creator. Public patterns are an
+        // explicit allow (community/store templates).
+        if (!$this->canReadPattern($pattern, Auth::user())) {
+            return response()->json(['success' => false, 'error' => 'You do not have permission to view this report pattern.'], 403);
         }
 
         return response()->json([
@@ -499,6 +530,13 @@ class ReportPatternController extends Controller
             return response()->json(['success' => false, 'error' => 'Report Pattern not found'], 404);
         }
 
+        // BOLA guard: usage info reveals which tables and projects reference
+        // a pattern — that's metadata about other users' projects if the
+        // pattern is shared/public. Restrict to creator + public/system.
+        if (!$this->canReadPattern($pattern, Auth::user())) {
+            return response()->json(['success' => false, 'error' => 'You do not have permission to view this report pattern.'], 403);
+        }
+
         $tables = \App\Models\SchemaTable::where('report_pattern_id', $id)
             ->get(['id', 'table_name', 'schema_id'])
             ->map(fn($t) => [
@@ -534,6 +572,17 @@ class ReportPatternController extends Controller
      */
     public function activateForProject(Request $request, int $projectId): JsonResponse
     {
+        // BOLA guard: require edit permission on the target project. Without
+        // this, any authenticated user could activate any report pattern on
+        // any project by passing its projectId.
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->userCanEditProject(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to edit this project.'], 403);
+        }
+
         $validated = $request->validate([
             'report_pattern_id' => 'required|integer|exists:report_patterns,id',
         ]);
@@ -551,6 +600,17 @@ class ReportPatternController extends Controller
      */
     public function getProjectReportPattern(int $projectId): JsonResponse
     {
+        // BOLA guard: leaks which pattern a foreign project uses. Require
+        // visibility on the project itself — public projects are still
+        // readable by everyone, same as the rest of the project read-API.
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->isVisibleTo(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to view this project.'], 403);
+        }
+
         $pattern = ProjectReportPattern::getActiveForProject($projectId);
         return response()->json([
             'success' => true,
@@ -564,6 +624,15 @@ class ReportPatternController extends Controller
      */
     public function deactivateForProject(int $projectId): JsonResponse
     {
+        // BOLA guard — same reason as activateForProject above.
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->userCanEditProject(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to edit this project.'], 403);
+        }
+
         ProjectReportPattern::deactivateForProject($projectId);
         return response()->json([
             'success' => true,

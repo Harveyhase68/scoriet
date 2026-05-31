@@ -13,6 +13,17 @@ use Illuminate\Support\Facades\Auth;
 class ReportImageController extends Controller
 {
     /**
+     * Mirror of ReportPattern::scopeAccessibleBy as a boolean.
+     */
+    private function canReadPattern(ReportPattern $pattern, $user): bool
+    {
+        if (in_array($pattern->visibility, ['public', 'system'], true)) {
+            return true;
+        }
+        return $user && (int) $pattern->creator_user_id === (int) $user->id;
+    }
+
+    /**
      * List images for a report pattern
      * GET /api/report-patterns/{patternId}/images
      */
@@ -21,6 +32,12 @@ class ReportImageController extends Controller
         $pattern = ReportPattern::find($patternId);
         if (!$pattern) {
             return response()->json(['success' => false, 'error' => 'Pattern not found'], 404);
+        }
+
+        // BOLA guard: image listing exposes filenames + dimensions of a
+        // pattern's image library. Restrict to creator + public/system.
+        if (!$this->canReadPattern($pattern, Auth::user())) {
+            return response()->json(['success' => false, 'error' => 'You do not have permission to view this pattern.'], 403);
         }
 
         $query = ReportImage::where('report_pattern_id', $patternId)
@@ -108,9 +125,14 @@ class ReportImageController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $image = ReportImage::find($id);
+        $image = ReportImage::with('pattern')->find($id);
         if (!$image) {
             return response()->json(['success' => false, 'error' => 'Image not found'], 404);
+        }
+
+        // BOLA guard: metadata leak (filename, dimensions, parent pattern).
+        if (!$image->pattern || !$this->canReadPattern($image->pattern, Auth::user())) {
+            return response()->json(['success' => false, 'error' => 'You do not have permission to view this image.'], 403);
         }
 
         return response()->json([
@@ -132,6 +154,15 @@ class ReportImageController extends Controller
     /**
      * Serve the actual image binary data (for <img src="...">)
      * GET /api/report-images/{id}/data
+     *
+     * KNOWN trade-off (intentional): this endpoint is public because
+     * `<img src="...">` cannot send Authorization headers, and the form/
+     * report designers need to render images live. IDs are sequential
+     * BIGINTs, so an attacker can enumerate. The exposure is limited to
+     * the raw pixel data — no metadata, no pattern context. If this ever
+     * needs to host sensitive customer assets, switch to signed URLs
+     * (a short-lived `?token=...` minted at auth time) so we can keep
+     * working with bare `<img>` tags without exposing the whole table.
      */
     public function serveImage(int $id): Response
     {

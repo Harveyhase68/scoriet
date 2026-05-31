@@ -9,6 +9,7 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetLocale;
 use App\Http\Middleware\TrackVisitor;
+use App\Http\Middleware\WrapApiEnvelope;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,9 +26,21 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
         then: function () {
-            // CLI Routes (separate from web/api for better security)
-            Route::prefix('cli')
-                ->middleware('api')
+            // CLI Routes (separate from web/api for better security).
+            // Versioned via /cli/v1/* so we can introduce /cli/v2/* later
+            // without breaking existing CLI/svc installations.
+            // Middleware stack:
+            //   - api: Laravel's API stack (SetLocale, DemoProtection).
+            //   - WrapApiEnvelope: wraps every response into the standard
+            //     { success, data | error, meta?, warnings? } envelope
+            //     (see app/Http/Middleware/WrapApiEnvelope.php).
+            //   - throttle:cli-default: 1000 requests/hour per Passport
+            //     token, defined in AppServiceProvider::registerApiRateLimiters.
+            //     Acts as a hard ceiling against leaked-token abuse and
+            //     runaway clients. Specific endpoints (e.g. /generate)
+            //     stack a tighter limiter on top, see routes/cli.php.
+            Route::prefix('cli/v1')
+                ->middleware(['api', WrapApiEnvelope::class, 'throttle:cli-default'])
                 ->group(base_path('routes/cli.php'));
 
             // Payment & Monetization Routes
@@ -114,9 +127,27 @@ return Application::configure(basePath: dirname(__DIR__))
         // and on any other route that explicitly expects JSON.
         $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, \Illuminate\Http\Request $request) {
             if ($request->is('cli/*') || $request->is('api/*') || $request->expectsJson()) {
+                // Exception responses are rendered AFTER the middleware pipeline
+                // has unwound, so the /cli/v1/* WrapApiEnvelope middleware
+                // never gets a chance to wrap this body. We pre-build the
+                // canonical envelope shape for /cli/* ourselves; /api/* keeps
+                // the legacy {success, message} form so internal web callers
+                // that aren't enveloped don't break.
+                $message = $e->getMessage() ?: 'Unauthenticated.';
+
+                if ($request->is('cli/*')) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => [
+                            'code'    => 'UNAUTHORIZED',
+                            'message' => $message,
+                        ],
+                    ], 401);
+                }
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage() ?: 'Unauthenticated.',
+                    'message' => $message,
                 ], 401);
             }
             // Fall through to default redirect behaviour for browser / web routes

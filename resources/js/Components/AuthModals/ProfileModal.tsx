@@ -990,21 +990,6 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
             )}
 
             <div className="field">
-              <label htmlFor="profile-userid" className="block text-sm font-medium mb-2">
-                {t.profilemodal1252}
-              </label>
-              <InputText
-                id="profile-userid"
-                type="text"
-                value={userData.id?.toString() || ''}
-                className="w-full"
-                disabled={true}
-                readOnly={true}
-                style={{ backgroundColor: '#f8f9fa', color: '#6c757d' }}
-              />
-            </div>
-
-            <div className="field">
               <label htmlFor="profile-username" className="block text-sm font-medium mb-2">
                 {t.profilemodal1267}
               </label>

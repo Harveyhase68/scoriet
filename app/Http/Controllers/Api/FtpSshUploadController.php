@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\ValidatesPartialUpdate;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Services\FtpSshUploadService;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 
 class FtpSshUploadController extends Controller
 {
+    use ValidatesPartialUpdate;
+
     private FtpSshUploadService $uploadService;
 
     public function __construct(FtpSshUploadService $uploadService)
@@ -130,15 +133,26 @@ class FtpSshUploadController extends Controller
             return response()->json(['message' => 'Unauthorized - project.edit permission required'], 403);
         }
 
+        $expectedFields = [
+            'deployment_type', 'ftp_host', 'ftp_port', 'ftp_username',
+            'ftp_password', 'ftp_directory', 'ftp_passive', 'ftp_ssl',
+        ];
+
+        // Short-circuit if the body has content but nothing matches our schema
+        $fieldCheck = $this->checkBodyFields($request, $expectedFields);
+        if ($fieldCheck['all_unknown']) {
+            return $this->unknownFieldsResponse($expectedFields, $fieldCheck['received']);
+        }
+
         $validated = $request->validate([
             'deployment_type' => 'nullable|string|in:ftp,sftp',
-            'ftp_host' => 'nullable|string|max:255',
-            'ftp_port' => 'nullable|integer|min:1|max:65535',
-            'ftp_username' => 'nullable|string|max:255',
-            'ftp_password' => 'nullable|string|max:500',
-            'ftp_directory' => 'nullable|string|max:500',
-            'ftp_passive' => 'nullable|boolean',
-            'ftp_ssl' => 'nullable|boolean',
+            'ftp_host'        => 'nullable|string|max:255',
+            'ftp_port'        => 'nullable|integer|min:1|max:65535',
+            'ftp_username'    => 'nullable|string|max:255',
+            'ftp_password'    => 'nullable|string|max:500',
+            'ftp_directory'   => 'nullable|string|max:500',
+            'ftp_passive'     => 'nullable|boolean',
+            'ftp_ssl'         => 'nullable|boolean',
         ]);
 
         // If password is masked placeholder, don't update it
@@ -153,10 +167,15 @@ class FtpSshUploadController extends Controller
 
         $project->update($validated);
 
-        return response()->json([
-            'success' => true,
-            'message' => __('ftpsshuploadcontrollerphp158'),
-        ]);
+        $response = [
+            'success'        => true,
+            'message'        => __('ftpsshuploadcontrollerphp158'),
+            'updated_fields' => array_keys($validated),
+        ];
+        if ($warning = $this->unknownFieldsWarning($fieldCheck['unknown'])) {
+            $response['warnings'] = $warning;
+        }
+        return response()->json($response);
     }
 
     /**

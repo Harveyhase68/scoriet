@@ -1,0 +1,48 @@
+================================================================================
+TEST 10: VERSCHACHTELTE LOOPS (Tabellen × Felder)
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert. INHALT ist nmaxtables-blöcke mit jeweils nmaxitems-Loops innen.
+================================================================================
+
+Vollständiges Schema-Diagramm: {:projectname:}
+
+Schema enthält {:nmaxtables:} Tabellen mit insgesamt allen Feldern.
+
+================================================================================
+
+{:for nmaxtables:}
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TABLE: {:table.filename:} ({:table.filecaption:})
+└──────────────────────────────────────────────────────────────────────────────┘
+  Singular form:    {:table.filesingular:}
+  Primary key:      {:table.filekeyname:}
+  Has FKs:          {:table.hasforeignkeys:}
+
+  Fields:
+{:for nmaxitems:}
+    {:item.id:}. {:item.name:}
+       Type:        {:item.type:}{:if item.size:}({:item.size:}){:endif:}
+       Flags:       {:if item.isprimary:}PK {:endif:}{:if item.autoincrement:}AI {:endif:}{:if item.notnull:}NOT NULL {:endif:}{:if item.isunique:}UNIQUE {:endif:}{:if item.isindex:}INDEX {:endif:}{:if item.is_generated:}GENERATED {:endif:}
+       Caption:     {:item.caption:}
+{:if item.linktable:}
+       Lookup:      → {:item.linktable:}.{:item.linkfield:} (display: {:item.linkdisplayfield:})
+{:endif:}
+{:endfor:}
+
+{:endfor:}
+
+================================================================================
+EXPECTED:
+  - Outer loop läuft 2× (Tabellen)
+  - Innen jeweils alle Felder der Tabelle
+  - In 'users' sollten Flag-Markierungen erscheinen:
+      user_id           → "PK AI NOT NULL UNIQUE"
+      user_no           → "UNIQUE"
+      user_first_name   → "INDEX"
+      user_last_edited  → "NOT NULL"
+      ug_no             → "INDEX" + Lookup-Zeile: → user_groups.ug_no
+  - In 'user_groups':
+      ug_id             → "PK AI NOT NULL UNIQUE"
+      ug_display        → "GENERATED" Marker
+================================================================================

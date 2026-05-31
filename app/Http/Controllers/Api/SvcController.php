@@ -1377,6 +1377,13 @@ class SvcController extends Controller
      */
     public function createDataQueryTask(Request $request): JsonResponse
     {
+        // Two accepted payload shapes:
+        //   1. Legacy single-query — top-level table_name / columns / query_type
+        //   2. Batch — `queries` array (one entry per sub-query, same fields).
+        // The frontend live-preview modals now always send the batch shape so
+        // they can bundle main data + lookup tables into one task; older
+        // callers that still send the legacy shape keep working. The Rust
+        // service handles both formats too.
         $request->validate([
             'payload.connection_type' => 'required|in:mysql,postgresql,sqlite,mssql',
             'payload.host' => 'required_unless:payload.connection_type,sqlite|string',
@@ -1384,42 +1391,86 @@ class SvcController extends Controller
             'payload.database' => 'required|string',
             'payload.username' => 'required_unless:payload.connection_type,sqlite|string',
             'payload.password' => 'nullable|string',
-            'payload.table_name' => 'required|string|max:255',
-            'payload.columns' => 'required|array|min:1',
-            'payload.columns.*' => 'required|string|max:255',
-            'payload.query_type' => 'required|in:single_record,list',
+
+            // Legacy single-query fields — required only when `queries` is absent.
+            // limit max:1_000_001 lets the "−1 = no limit" sentinel from the
+            // frontend through (it normalises to 1_000_000 client-side); the
+            // old cap of 500 was rejecting any Live Preview that asked for
+            // more than 500 rows in one shot.
+            'payload.table_name' => 'required_without:payload.queries|string|max:255',
+            'payload.columns' => 'required_without:payload.queries|array|min:1',
+            'payload.columns.*' => 'nullable|string|max:255',
+            'payload.query_type' => 'required_without:payload.queries|in:single_record,list',
             'payload.where_clause' => 'nullable|string|max:1000',
             'payload.order_by' => 'nullable|string|max:500',
-            'payload.limit' => 'nullable|integer|min:1|max:500',
+            'payload.limit' => 'nullable|integer|min:1|max:1000001',
             'payload.offset' => 'nullable|integer|min:0',
+
+            // Batch fields — required only when `queries` IS present. Each
+            // sub-query mirrors the legacy single-query field set.
+            'payload.queries' => 'required_without:payload.table_name|array|min:1',
+            'payload.queries.*.table_name' => 'required|string|max:255',
+            'payload.queries.*.columns' => 'required|array|min:1',
+            'payload.queries.*.columns.*' => 'required|string|max:255',
+            'payload.queries.*.query_type' => 'required|in:single_record,list',
+            'payload.queries.*.where_clause' => 'nullable|string|max:1000',
+            'payload.queries.*.order_by' => 'nullable|string|max:500',
+            'payload.queries.*.limit' => 'nullable|integer|min:1|max:1000001',
+            'payload.queries.*.offset' => 'nullable|integer|min:0',
         ]);
 
         $user = $request->user();
         $payload = $request->input('payload');
+        $isBatch = isset($payload['queries']);
 
-        // Determine default limit based on query type
-        $defaultLimit = $payload['query_type'] === 'single_record' ? 1 : 50;
+        $port = $payload['port'] ?? ($payload['connection_type'] === 'postgresql'
+            ? 5432
+            : ($payload['connection_type'] === 'mssql' ? 1433 : 3306));
+
+        // Connection params are shared across the whole task in either shape.
+        $taskPayload = [
+            'connection_type' => $payload['connection_type'],
+            'host' => $payload['host'] ?? 'localhost',
+            'port' => $port,
+            'database' => $payload['database'],
+            'username' => $payload['username'] ?? '',
+            'password' => $payload['password'] ?? '',
+        ];
+
+        if ($isBatch) {
+            // Pass the queries array straight through to the service. Each
+            // entry already validated as a complete sub-query above; we just
+            // normalise the optional fields to their server-side defaults so
+            // the Rust handler sees consistent input shapes.
+            $taskPayload['queries'] = array_map(static function (array $q): array {
+                $defaultLimit = ($q['query_type'] ?? 'list') === 'single_record' ? 1 : 50;
+                return [
+                    'table_name' => $q['table_name'],
+                    'columns' => $q['columns'],
+                    'query_type' => $q['query_type'],
+                    'where_clause' => $q['where_clause'] ?? null,
+                    'order_by' => $q['order_by'] ?? null,
+                    'limit' => $q['limit'] ?? $defaultLimit,
+                    'offset' => $q['offset'] ?? 0,
+                ];
+            }, $payload['queries']);
+        } else {
+            $defaultLimit = $payload['query_type'] === 'single_record' ? 1 : 50;
+            $taskPayload['table_name'] = $payload['table_name'];
+            $taskPayload['columns'] = $payload['columns'];
+            $taskPayload['query_type'] = $payload['query_type'];
+            $taskPayload['where_clause'] = $payload['where_clause'] ?? null;
+            $taskPayload['order_by'] = $payload['order_by'] ?? null;
+            $taskPayload['limit'] = $payload['limit'] ?? $defaultLimit;
+            $taskPayload['offset'] = $payload['offset'] ?? 0;
+        }
 
         $task = CliTask::create([
             'task_type' => CliTask::TYPE_DATA_QUERY,
             'user_id' => $user->id,
             'target_device_id' => $this->resolveTargetDevice($request),
             'project_id' => $request->input('project_id'),
-            'payload' => [
-                'connection_type' => $payload['connection_type'],
-                'host' => $payload['host'] ?? 'localhost',
-                'port' => $payload['port'] ?? ($payload['connection_type'] === 'postgresql' ? 5432 : ($payload['connection_type'] === 'mssql' ? 1433 : 3306)),
-                'database' => $payload['database'],
-                'username' => $payload['username'] ?? '',
-                'password' => $payload['password'] ?? '',
-                'table_name' => $payload['table_name'],
-                'columns' => $payload['columns'],
-                'query_type' => $payload['query_type'],
-                'where_clause' => $payload['where_clause'] ?? null,
-                'order_by' => $payload['order_by'] ?? null,
-                'limit' => $payload['limit'] ?? $defaultLimit,
-                'offset' => $payload['offset'] ?? 0,
-            ],
+            'payload' => $taskPayload,
             'priority' => 25, // Highest priority - interactive live preview
             'max_retries' => 0, // No retry for data queries
         ]);

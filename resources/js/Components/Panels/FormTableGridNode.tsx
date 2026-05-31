@@ -46,16 +46,20 @@ const FormTableGridNode = ({ data }: { data: FormTableGridNodeData }) => {
   const {
     columns: propColumns, rowHeight, windowWidth,
     textColor, headerBgColor,
-    onSelectColumn, onColumnResized, onColumnsReordered,
+    onSelectColumn, onColumnResized,
   } = data;
 
-  // Local resize state
+  // Local resize state (drag-to-resize on the column edge — different from
+  // and unaffected by the column-reorder change below).
   const [resizeDelta, setResizeDelta] = useState<{ colKey: string; deltaPx: number } | null>(null);
   const resizeRef = useRef<{ colKey: string; startX: number } | null>(null);
 
-  // Local drag reorder state
-  const [dragState, setDragState] = useState<{ colKey: string; startX: number; currentX: number; colIdx: number } | null>(null);
-  const dragRef = useRef<{ colKey: string; startX: number; colIdx: number } | null>(null);
+  // Column re-order is now handled via Move-Left/Move-Right buttons in the
+  // properties panel (parent calls data.onColumnsReordered). The previous
+  // header-drag-to-swap was removed because the same mousedown that started
+  // the drag also stole focus from the row, blocking the amber-selection
+  // indicator from rendering cleanly. Less-clever click handling = less
+  // surprising selection behaviour.
 
   // Apply live resize
   const columns = propColumns.map(col => {
@@ -85,41 +89,6 @@ const FormTableGridNode = ({ data }: { data: FormTableGridNodeData }) => {
     return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
   }, [resizeDelta, propColumns, onColumnResized]);
 
-  // Drag reorder handlers
-  useEffect(() => {
-    if (!dragRef.current) return;
-    const onMove = (e: MouseEvent) => { if (dragRef.current) setDragState(prev => prev ? { ...prev, currentX: e.clientX } : null); };
-    const onUp = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const totalDelta = e.clientX - dragRef.current.startX;
-      if (Math.abs(totalDelta) > 20) {
-        let cumX = 0, targetIdx = dragRef.current.colIdx;
-        const fromIdx = dragRef.current.colIdx;
-        for (let i = 0; i < columns.length; i++) {
-          const colCenter = cumX + columns[i].width / 2;
-          const mousePos = columns.slice(0, fromIdx).reduce((s, c) => s + c.width, 0) + columns[fromIdx].width / 2 + totalDelta;
-          if (mousePos < colCenter) { targetIdx = i; break; }
-          cumX += columns[i].width;
-          targetIdx = i + 1;
-        }
-        if (targetIdx > fromIdx) targetIdx--;
-        if (targetIdx !== fromIdx) {
-          const keys = columns.map(c => c.key);
-          const [moved] = keys.splice(fromIdx, 1);
-          keys.splice(targetIdx, 0, moved);
-          onColumnsReordered(keys);
-        }
-      }
-      dragRef.current = null;
-      setDragState(null);
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
-  }, [dragState, columns, onColumnsReordered]);
-
-  const isDragging = dragState != null;
-  const dragDelta = dragState ? dragState.currentX - dragState.startX : 0;
   const totalWidth = columns.reduce((s, c) => s + c.width, 0);
   const rh = rowHeight || 32;
 
@@ -146,41 +115,40 @@ const FormTableGridNode = ({ data }: { data: FormTableGridNodeData }) => {
       <div style={{ border: '1px solid rgba(107,114,128,0.3)', borderRadius: 4, width: totalWidth, minWidth: totalWidth }}>
         {/* Header row */}
         <div style={{ display: 'flex', backgroundColor: headerBgColor || 'rgba(107,114,128,0.2)', borderBottom: '1px solid rgba(107,114,128,0.3)', height: rh }}>
-          {columns.map((col, idx) => {
-            const isBeingDragged = isDragging && dragState?.colKey === col.key;
-            return (
-              <div key={`h-${col.key}`} style={{
-                width: col.width, height: '100%', position: 'relative',
-                display: 'flex', alignItems: 'center', padding: '0 8px',
-                fontSize: 12, fontWeight: 600, color: textColor,
-                borderRight: idx < columns.length - 1 ? '1px solid rgba(107,114,128,0.2)' : 'none',
-                cursor: isDragging ? 'grabbing' : 'grab', flexShrink: 0, userSelect: 'none',
-                boxShadow: col.isSelected ? 'inset 0 0 0 2px #f59e0b' : 'none',
-                opacity: isBeingDragged ? 0.6 : 1,
-                transform: isBeingDragged ? `translateX(${dragDelta}px)` : 'none',
-                zIndex: isBeingDragged ? 50 : 1,
-                backgroundColor: isBeingDragged ? 'rgba(59,130,246,0.1)' : 'transparent',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          {columns.map((col, idx) => (
+            <div key={`h-${col.key}`} style={{
+              width: col.width, height: '100%', position: 'relative',
+              display: 'flex', alignItems: 'center', padding: '0 8px',
+              fontSize: 12, fontWeight: 600, color: textColor,
+              borderRight: idx < columns.length - 1 ? '1px solid rgba(107,114,128,0.2)' : 'none',
+              cursor: 'pointer', flexShrink: 0, userSelect: 'none',
+              // Amber inset border = selected column. Drives all the visual
+              // feedback for the column-select interaction (clicking a cell
+              // OR a header) — parent updates selectedPlacementId, the
+              // selection-patch useEffect re-flows isSelected here, and we
+              // render the border. Pre-Dec-2024 there was an opacity/
+              // backgroundColor override here for drag-to-swap; that's gone
+              // now (see comment in component preamble).
+              boxShadow: col.isSelected ? 'inset 0 0 0 2px #f59e0b' : 'none',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                // Right 6px = resize handle. Anywhere else = select column.
+                if (e.clientX - rect.left > rect.width - 6) {
+                  e.stopPropagation(); e.preventDefault();
+                  resizeRef.current = { colKey: col.key, startX: e.clientX };
+                  setResizeDelta({ colKey: col.key, deltaPx: 0 });
+                } else {
+                  e.stopPropagation();
+                  onSelectColumn(col.key);
+                }
               }}
-                onMouseDown={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  if (e.clientX - rect.left > rect.width - 6) {
-                    e.stopPropagation(); e.preventDefault();
-                    resizeRef.current = { colKey: col.key, startX: e.clientX };
-                    setResizeDelta({ colKey: col.key, deltaPx: 0 });
-                  } else {
-                    e.stopPropagation();
-                    onSelectColumn(col.key);
-                    dragRef.current = { colKey: col.key, startX: e.clientX, colIdx: idx };
-                    setDragState({ colKey: col.key, startX: e.clientX, currentX: e.clientX, colIdx: idx });
-                  }
-                }}
-              >
-                {col.headerText}
-                <div style={{ position: 'absolute', right: 0, top: 0, width: 6, height: '100%', cursor: 'col-resize' }} />
-              </div>
-            );
-          })}
+            >
+              {col.headerText}
+              <div style={{ position: 'absolute', right: 0, top: 0, width: 6, height: '100%', cursor: 'col-resize' }} />
+            </div>
+          ))}
         </div>
 
         {/* Data rows */}

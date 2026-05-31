@@ -89,6 +89,8 @@ interface SchemaField {
   link_table?: string;
   link_field?: string;
   link_display_field?: string;
+  link_order_field?: string | null;
+  link_order_direction?: string | null;
   control_type?: string;
 }
 
@@ -99,7 +101,14 @@ interface DbConnectionSettings {
   database: string;
   username: string;
   password: string;
+  // Row caps — see FormLivePreviewModal for the long-form explanation.
+  // -1 = unlimited (user accepts the wait).
+  data_limit?: number;
+  lookup_limit?: number;
 }
+
+const DEFAULT_DATA_LIMIT = 100;
+const DEFAULT_LOOKUP_LIMIT = 100;
 
 interface ProjectDbSettings {
   database_type?: string;
@@ -120,6 +129,10 @@ interface ReportLivePreviewModalProps {
   layoutElements: ReportLayoutElement[];
   schemaFields: SchemaField[];
   tableName?: string;
+  // Default sort field for the main list query — see FormLivePreviewModal
+  // for the rationale (schema_tables.filekeyname / primarykeyfield).
+  fileKeyName?: string | null;
+  primaryKeyField?: string | null;
   projectId?: number;
   projectDbSettings?: ProjectDbSettings;
   selectedLanguage: string | null;
@@ -155,29 +168,71 @@ function saveConnection(conn: DbConnectionSettings): void {
   localStorage.setItem(CONN_STORAGE_KEY, JSON.stringify(conn));
 }
 
-async function createDataQueryTask(
-  conn: DbConnectionSettings, tableName: string, columns: string[], queryType: 'single_record' | 'list',
-  limit: number, offset: number, orderBy?: string, targetDeviceId?: string | null, projectId?: number | null,
+// Note: the legacy single-query helper (createDataQueryTask) was removed
+// once fetchLiveData was consolidated to bundle main data + lookup tables
+// into one batched task via createBatchDataQueryTask. The Rust service
+// still accepts the single-query payload format for backward compat with
+// other callers; this modal just never produces it anymore.
+
+/**
+ * One sub-query in a batch — shared connection params, per-query target. See
+ * FormLivePreviewModal for the long-form explanation; this is the same shape.
+ */
+interface BatchQuerySpec {
+  tableName: string;
+  columns: string[];
+  queryType: 'single_record' | 'list';
+  limit: number;
+  offset?: number;
+  orderBy?: string | null;
+  whereClause?: string | null;
+}
+
+/**
+ * Bundle N queries into ONE scoriet-svc task. Service shares one DB pool
+ * across them — saves N-1 service-pickup windows and N-1 connection setups.
+ */
+async function createBatchDataQueryTask(
+  conn: DbConnectionSettings, queries: BatchQuerySpec[],
+  targetDeviceId?: string | null, projectId?: number | null,
 ): Promise<{ taskId: number } | { error: string }> {
   try {
     const data = await apiClient.cliRequest('/svc/tasks/data-query', {
       method: 'POST',
       body: JSON.stringify({
         target_device_id: targetDeviceId || null, project_id: projectId || null,
-        payload: { connection_type: conn.connection_type, host: conn.host, port: conn.port, database: conn.database,
-          username: conn.username, password: conn.password, table_name: tableName, columns, query_type: queryType,
-          limit, offset, order_by: orderBy || null },
+        payload: {
+          connection_type: conn.connection_type, host: conn.host, port: conn.port, database: conn.database,
+          username: conn.username, password: conn.password,
+          queries: queries.map((q) => ({
+            table_name: q.tableName, columns: q.columns, query_type: q.queryType,
+            limit: q.limit, offset: q.offset ?? 0,
+            order_by: q.orderBy ?? null, where_clause: q.whereClause ?? null,
+          })),
+        },
       }),
     });
     if (data.success) return { taskId: data.task_id };
-    return { error: data.message || 'Failed to create data query task' };
+    return { error: data.message || 'Failed to create batch query task' };
   } catch (err: any) {
-    return { error: err?.response?.data?.message || err?.message || 'Failed to create data query task' };
+    return { error: err?.response?.data?.message || err?.message || 'Failed to create batch query task' };
   }
 }
 
-async function pollTaskResult(taskId: number, maxAttempts = 30, intervalMs = 1000): Promise<{
-  success: boolean; columns?: string[]; rows?: LiveDataRow[]; totalCount?: number; error?: string;
+// Poll cadence: 500ms × 60 = 30s total budget. Service-side queue-poll
+// dropped from 5s → 2s in the same change, so any service-pickup miss now
+// costs ~0.5s instead of ~1s of wasted wait.
+// (The single-query pollTaskResult companion was removed along with
+//  createDataQueryTask — see note above. Only the batch poller remains.)
+async function pollBatchTaskResult(
+  taskId: number, maxAttempts = 60, intervalMs = 500,
+): Promise<{
+  success: boolean;
+  results?: Array<{
+    status: 'success' | 'error';
+    table_name?: string; columns?: string[]; rows?: LiveDataRow[]; total_count?: number; error?: string;
+  }>;
+  error?: string;
 }> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise(r => setTimeout(r, intervalMs));
@@ -191,12 +246,11 @@ async function pollTaskResult(taskId: number, maxAttempts = 30, intervalMs = 100
     const task = data.task;
     if (task.status === 'completed') {
       const result = task.result || {};
-      if (result.status === 'error') return { success: false, error: result.error || 'Query failed' };
-      return { success: true, columns: result.columns || [], rows: result.rows || [], totalCount: result.total_count || 0 };
+      return { success: true, results: result.results || [] };
     }
     if (task.status === 'failed') return { success: false, error: task.error_message || 'Task failed' };
   }
-  return { success: false, error: 'Timeout waiting for data query result' };
+  return { success: false, error: 'Timeout waiting for batch query result' };
 }
 
 // ========== TEST DATA ==========
@@ -289,7 +343,7 @@ const ReportImageRenderer: React.FC<{ imageId: number; width: number; height: nu
 
 const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
   visible, onHide, form, elements, layoutElements, schemaFields,
-  tableName, projectId, projectDbSettings, selectedLanguage: initialLang,
+  tableName, fileKeyName, primaryKeyField, projectId, projectDbSettings, selectedLanguage: initialLang,
   enabledLanguages, patternName, dateFormats: dateFormatsProp,
 }) => {
   const toastRef = useRef<Toast>(null);
@@ -312,8 +366,11 @@ const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
     }
     const loadDevices = async () => {
       try {
+        // cliRequest unwraps the envelope and flattens `success:true` plus
+        // any meta keys back into the result, so existing data.success /
+        // data.devices reads keep working. Errors throw, not success:false.
         const data = await apiClient.cliRequest('/svc/devices');
-        if (data.success && data.devices) {
+        if (data && data.devices) {
           setDevices(data.devices);
           if (!hasAutoSelectedRef.current) {
             const online = data.devices.find((d: { is_online: boolean }) => d.is_online);
@@ -474,68 +531,125 @@ const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
   const [currentRecord, setCurrentRecord] = useState(0);
 
   // ========== FETCH LIVE DATA ==========
-  // Load lookup data for combobox fields via Service
-  const loadLookupData = async (conn: DbConnectionSettings) => {
-    // Find all combobox fields that need lookup
-    const comboFields = layoutElements.filter(el =>
-      el.is_visible && el.element_type === 'field' && el.control_type === 'combobox'
-    );
-    if (comboFields.length === 0) return;
-
-    for (const el of comboFields) {
-      // Number() cast — see note on getCaption() re: Laravel string IDs.
-      const field = schemaFields.find(f => Number(f.id) === Number(el.schema_field_id));
-      if (!field || !field.link_table || !field.link_field || !field.link_display_field) continue;
-
-      const cacheKey = `${field.link_table}.${field.link_field}.${field.link_display_field}`;
-      if (lookupCache.current[cacheKey]) continue; // Already cached
-
-      // Query the lookup table for key→display mapping
-      const columns = [field.link_field, field.link_display_field];
-      const taskResult = await createDataQueryTask(
-        conn, field.link_table, columns, 'list', 500, 0,
-        undefined, selectedDeviceId, projectId
-      );
-      if ('error' in taskResult) continue;
-
-      const pollResult = await pollTaskResult(taskResult.taskId, 15, 500);
-      if (pollResult.success && pollResult.rows) {
-        const mapping: Record<string, string> = {};
-        for (const row of pollResult.rows) {
-          const key = String(row[field.link_field] ?? '');
-          const display = String(row[field.link_display_field] ?? '');
-          if (key) mapping[key] = display;
-        }
-        lookupCache.current[cacheKey] = mapping;
-      }
-    }
-  };
-
+  // ONE batched task fetches the main report data PLUS every combobox-lookup
+  // table at once. Service shares a single connection pool; user goes from
+  // "main loads, ~2s pickup-pause, lookups load" to "everything together" in
+  // roughly half the total wall time. See FormLivePreviewModal for the long-
+  // form rationale; same pattern here.
   const fetchLiveData = useCallback(async (conn: DbConnectionSettings) => {
     if (!tableName) return;
     const columns = schemaFields.map(f => f.field_name);
     if (columns.length === 0) return;
     setLiveLoading(true);
+
     const queryType = form.form_type === 'report_list' ? 'list' : 'single_record';
-    const limit = queryType === 'list' ? 200 : 50;
-    const taskResult = await createDataQueryTask(conn, tableName, columns, queryType, limit, 0, undefined, selectedDeviceId, projectId);
+    const configuredLimit = conn.data_limit ?? DEFAULT_DATA_LIMIT;
+    const limit = queryType === 'list'
+      ? (configuredLimit === -1 ? 1_000_000 : configuredLimit)
+      : 50;
+
+    // Collect unique combobox-lookup targets. De-dupe by cacheKey so two
+    // fields pointing at the same lookup table share one query, and skip
+    // anything already cached from a previous Load click.
+    const comboFields = layoutElements.filter(el =>
+      el.is_visible && el.element_type === 'field' && el.control_type === 'combobox'
+    );
+    const lookupSpecs: Array<{ cacheKey: string; tableName: string; valueField: string; displayField: string; sortField: string; sortDir: 'ASC' | 'DESC' }> = [];
+    const seenKeys = new Set<string>();
+    for (const el of comboFields) {
+      const field = schemaFields.find(f => Number(f.id) === Number(el.schema_field_id));
+      if (!field || !field.link_table || !field.link_field || !field.link_display_field) continue;
+      const cacheKey = `${field.link_table}.${field.link_field}.${field.link_display_field}`;
+      if (lookupCache.current[cacheKey]) continue;
+      if (seenKeys.has(cacheKey)) continue;
+      seenKeys.add(cacheKey);
+      // Sort: use the schema-level link_order_field if set, otherwise default
+      // to sorting by the display column (predictable order for the combobox).
+      const sortField = field.link_order_field || field.link_display_field;
+      const sortDir = ((field.link_order_direction || 'asc').toLowerCase() === 'desc') ? 'DESC' as const : 'ASC' as const;
+      lookupSpecs.push({
+        cacheKey,
+        tableName: field.link_table,
+        valueField: field.link_field,
+        displayField: field.link_display_field,
+        sortField,
+        sortDir,
+      });
+    }
+
+    const lookupCap = conn.lookup_limit ?? DEFAULT_LOOKUP_LIMIT;
+    const effectiveLookupLimit = lookupCap === -1 ? 1_000_000 : lookupCap;
+
+    // Default sort for the main query: schema_tables.filekeyname (user-
+    // meaningful business id) → primary key as fallback → no sort. ASC only.
+    // Applied to both list AND single_record — single_record still loads
+    // multiple rows for the record-navigation buttons, and a stable order
+    // matters there too.
+    const mainSortField = fileKeyName || primaryKeyField || null;
+    const mainOrderBy = mainSortField ? `${mainSortField} ASC` : null;
+
+    // results[0] is main, results[1..] are lookup tables in lookupSpecs order.
+    const batch: BatchQuerySpec[] = [
+      {
+        tableName,
+        columns,
+        queryType,
+        limit,
+        offset: 0,
+        orderBy: mainOrderBy,
+      },
+      ...lookupSpecs.map(s => ({
+        tableName: s.tableName,
+        columns: s.valueField === s.displayField ? [s.valueField] : [s.valueField, s.displayField],
+        queryType: 'list' as const,
+        limit: effectiveLookupLimit,
+        offset: 0,
+        // Always emit ORDER BY for stable combobox ordering — falls back to
+        // display column if no explicit sort field was configured.
+        orderBy: `${s.sortField} ${s.sortDir}`,
+      })),
+    ];
+
+    const taskResult = await createBatchDataQueryTask(conn, batch, selectedDeviceId, projectId);
     if ('error' in taskResult) { setLiveLoading(false); return; }
-    const pollResult = await pollTaskResult(taskResult.taskId);
-    if (pollResult.success && pollResult.rows) {
-      setLiveData(pollResult.rows);
-      setLiveTotalCount(pollResult.totalCount || pollResult.rows.length);
-      setDataSource('live');
-      saveConnection(conn);
+    const pollResult = await pollBatchTaskResult(taskResult.taskId);
 
-      // Load lookup data for combobox fields
-      await loadLookupData(conn);
+    if (pollResult.success && pollResult.results && pollResult.results.length > 0) {
+      const mainRes = pollResult.results[0];
+      if (mainRes.status === 'success' && mainRes.rows) {
+        setLiveData(mainRes.rows);
+        setLiveTotalCount(mainRes.total_count || mainRes.rows.length);
+        setDataSource('live');
+        saveConnection(conn);
+        toastRef.current?.show({ severity: 'success', summary: 'Live Data', detail: `${mainRes.rows.length} records loaded`, life: 3000 });
+      } else {
+        toastRef.current?.show({ severity: 'error', summary: 'Error', detail: mainRes.error || 'Failed', life: 5000 });
+      }
 
-      toastRef.current?.show({ severity: 'success', summary: 'Live Data', detail: `${pollResult.rows.length} records loaded`, life: 3000 });
+      // Distribute lookup results into the cache. Indexing matches lookupSpecs
+      // 1:1 since the service preserves batch order.
+      // Explicit element type below — narrowing through Array<{...}> generic
+      // tripped tsc 5.x's inference once `r` was used inside a nested loop
+      // that re-read pollResult.results, hence the explicit annotation.
+      const allResults: Array<{ status: string; table_name?: string; rows?: LiveDataRow[]; error?: string }>
+        = pollResult.results;
+      for (let i = 0; i < lookupSpecs.length; i++) {
+        const spec = lookupSpecs[i];
+        const r = allResults[i + 1];
+        if (!r || r.status !== 'success' || !r.rows) continue;
+        const mapping: Record<string, string> = {};
+        for (const row of r.rows) {
+          const key = String(row[spec.valueField] ?? '');
+          const display = String(row[spec.displayField] ?? '');
+          if (key) mapping[key] = display;
+        }
+        lookupCache.current[spec.cacheKey] = mapping;
+      }
     } else {
       toastRef.current?.show({ severity: 'error', summary: 'Error', detail: pollResult.error || 'Failed', life: 5000 });
     }
     setLiveLoading(false);
-  }, [tableName, schemaFields, form.form_type, selectedDeviceId, projectId]);
+  }, [tableName, fileKeyName, primaryKeyField, schemaFields, layoutElements, form.form_type, selectedDeviceId, projectId]);
 
   const handleToggleDataSource = useCallback(() => {
     if (dataSource === 'live') { setDataSource('test'); return; }
@@ -911,8 +1025,17 @@ const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
                 const w = el.width * MM_TO_PX;
                 const fieldName = getFieldName(el, schemaFields);
                 const rawVal = fieldName ? row[fieldName] : '';
-                const val = el.control_type === 'combobox' ? resolveLookup(el, rawVal) : formatCellValue(rawVal);
-                const isImage = typeof val === 'string' && val.startsWith('data:image/');
+                // Mirror the single-render's checkbox detection (line ~630):
+                // explicit control_type='checkbox' OR an inferred boolean/tinyint
+                // schema field. Renders ☐ / ☑ instead of 'Yes' / 'No' for
+                // consistency with the form-style preview.
+                const field = schemaFields.find(f => Number(f.id) === Number(el.schema_field_id));
+                const isCheckbox = el.control_type === 'checkbox' || (!el.control_type && field && (field.field_type.toLowerCase() === 'tinyint' || field.field_type.toLowerCase().includes('bool')));
+                const checked = isCheckbox ? (rawVal === true || rawVal === 1 || rawVal === '1' || rawVal === 'Yes') : false;
+                const val = isCheckbox
+                  ? (checked ? '☑' : '☐')
+                  : el.control_type === 'combobox' ? resolveLookup(el, rawVal) : formatCellValue(rawVal);
+                const isImage = !isCheckbox && typeof val === 'string' && val.startsWith('data:image/');
                 return (
                   <div key={`dcell-${ci}`} style={{
                     width: w, flexShrink: 0, padding: '0 3px', display: 'flex', alignItems: 'center',
@@ -1096,6 +1219,31 @@ const ReportLivePreviewModal: React.FC<ReportLivePreviewModalProps> = ({
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Password</label>
               <InputText type="password" value={connSettings.password} onChange={e => setConnSettings(p => ({ ...p, password: e.target.value }))} style={{ width: '100%', fontSize: 12 }} />
+            </div>
+          </div>
+          {/* Row caps — same UX as FormLivePreviewModal. -1 = unlimited. */}
+          <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Data limit (rows)</label>
+              <InputNumber
+                value={connSettings.data_limit ?? DEFAULT_DATA_LIMIT}
+                onValueChange={e => setConnSettings(p => ({ ...p, data_limit: e.value ?? DEFAULT_DATA_LIMIT }))}
+                useGrouping={false} min={-1}
+                style={{ width: '100%' }}
+                inputStyle={{ fontSize: 12, width: '100%', minWidth: 0 }}
+              />
+              <span style={{ fontSize: 9, color: '#6b7280' }}>−1 = no limit</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <label style={{ fontSize: 11, color: '#9ca3af', display: 'block', marginBottom: 2 }}>Lookup limit (rows)</label>
+              <InputNumber
+                value={connSettings.lookup_limit ?? DEFAULT_LOOKUP_LIMIT}
+                onValueChange={e => setConnSettings(p => ({ ...p, lookup_limit: e.value ?? DEFAULT_LOOKUP_LIMIT }))}
+                useGrouping={false} min={-1}
+                style={{ width: '100%' }}
+                inputStyle={{ fontSize: 12, width: '100%', minWidth: 0 }}
+              />
+              <span style={{ fontSize: 9, color: '#6b7280' }}>per combobox table</span>
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>

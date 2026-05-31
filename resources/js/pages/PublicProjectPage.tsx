@@ -107,14 +107,14 @@ export default function PublicProjectPage({ project, username: _username, projec
         <header className="backdrop-blur-sm sticky top-0 z-50" style={{ backgroundColor: `${colors.bgSecondary}cc`, borderBottom: `1px solid ${colors.borderPrimary}` }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              {/* Logo */}
+              {/* Logo — same asset as the TopBar/LandingPage to keep the
+                * Scoriet brand consistent across all entry points. */}
               <div className="flex items-center cursor-pointer" onClick={handleGoToLanding}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">S</span>
-                  </div>
-                  <span className="text-xl font-bold" style={{ color: colors.textPrimary }}>Scoriet</span>
-                </div>
+                <img
+                  src="/images/logos/scoriet-logo.png"
+                  alt="Scoriet Logo"
+                  className="h-8 w-auto hover:opacity-80 transition-opacity"
+                />
               </div>
 
               {/* Right side */}

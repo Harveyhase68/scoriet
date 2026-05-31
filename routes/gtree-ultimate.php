@@ -170,7 +170,7 @@ Route::get('/template-process-ultimate/{templateId}', function (Request $request
             'generationiso' => now()->toISOString(),
             'generationuser' => auth()->user() ? auth()->user()->name : 'System',
             'generationuserid' => auth()->user() ? auth()->user()->id : 0,
-            'scorietversion' => '2.0.0', // Scoriet version
+            'scorietversion' => '1.0.0.3', // Scoriet version
             'laravelversion' => app()->version(),
             'phpversion' => PHP_VERSION,
             'phpversionfull' => phpversion(),

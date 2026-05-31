@@ -4,12 +4,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksAuditAndVersion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SchemaField extends Model
 {
+    use TracksAuditAndVersion;
+
+
     // Display state — visual hint, passed to gtree as metadata. Does NOT filter generation.
     public const DISPLAY_ENABLED   = 'enabled';
     public const DISPLAY_DISABLED  = 'disabled';
@@ -28,10 +32,17 @@ class SchemaField extends Model
         'table_id',
         'field_name',
         'field_type',
+        'field_length',
+        'field_precision',
+        'field_scale',
+        'field_enum_values',
         'is_unsigned',
         'is_nullable',
         'default_value',
         'is_auto_increment',
+        'is_generated',
+        'generation_expression',
+        'generation_storage',
         'is_primary_key',
         'is_index',
         'is_unique',
@@ -47,6 +58,9 @@ class SchemaField extends Model
         'editmask', // Edit mask for input validation (framework-agnostic)
         'display_state',
         'generation_mode',
+        'version', // Per-field monotonic version, bumped by SchemaFieldObserver on any dirty change
+        'created_by_username', // Username (text) of the user who created the field; never NULL
+        'updated_by_username', // Username (text) of the user who last touched the field; never NULL
     ];
 
     protected $casts = [
@@ -58,9 +72,12 @@ class SchemaField extends Model
         'is_unsigned' => 'boolean',
         'is_nullable' => 'boolean',
         'is_auto_increment' => 'boolean',
+        'is_generated' => 'boolean',
+        'field_enum_values' => 'array',
         'is_primary_key' => 'boolean',
         'is_index' => 'boolean',
         'is_unique' => 'boolean',
+        'version' => 'integer',
     ];
 
     public function table(): BelongsTo

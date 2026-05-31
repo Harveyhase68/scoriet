@@ -15,6 +15,7 @@ use App\Models\SchemaForeignKeyReference;
 use App\Models\SchemaForeignKeyReferenceColumn;
 use App\Models\Project;
 use App\Models\ProjectSchema;
+use App\Services\Concerns\NormalizesSQLTypeName;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,11 @@ use Illuminate\Validation\Rule;
 
 class SchemaController extends Controller
 {
+    // NormalizesSQLTypeName provides lowerTypeName() so that strtolower()
+    // on ENUM('Privatkunde',...) doesn't silently change the allowed value
+    // set to ('privatkunde',...). See the trait for the full rationale.
+    use NormalizesSQLTypeName;
+
     /**
      * Display a listing of schemas visible to the user
      */
@@ -185,6 +191,9 @@ class SchemaController extends Controller
             'description' => 'nullable|string|max:1000',
             'visibility' => 'required|in:public,private',
             'is_system_schema' => 'sometimes|boolean',
+            // Same charset/collation policy as update() — see note there.
+            'default_charset' => 'sometimes|nullable|string|max:32',
+            'default_collation' => 'sometimes|nullable|string|max:64',
             'project_ids' => 'nullable|array',
             'project_ids.*' => 'integer|exists:projects,id',
         ]);
@@ -341,6 +350,12 @@ class SchemaController extends Controller
             'description' => 'nullable|string|max:1000',
             'visibility' => 'required|in:public,private',
             'is_system_schema' => 'sometimes|boolean',
+            // MySQL character set & collation — accepted as plain identifiers.
+            // We deliberately don't enum-validate against a fixed list:
+            // valid collations differ between MySQL 5.x, 8.x and 9.x, and the
+            // schema is just storing a value that the export will echo back.
+            'default_charset' => 'sometimes|nullable|string|max:32',
+            'default_collation' => 'sometimes|nullable|string|max:64',
         ]);
 
         // Only system/admin users can change system schema status
@@ -473,7 +488,7 @@ class SchemaController extends Controller
         $user = Auth::user();
         
         // Check if user has access to the project
-        if (!$project->visibleTo($user)->exists()) {
+        if (!$project->isVisibleTo($user)) {
             return response()->json(['message' => __('schemacontrollerphp475')], 404);
         }
 
@@ -652,6 +667,7 @@ class SchemaController extends Controller
             'filekeyname' => 'nullable|string|max:100',
             'file_name_renamed' => 'nullable|string|max:100',
             'file_name_short' => 'nullable|string|max:50',
+            'comment' => 'nullable|string',
             'form_set_id' => 'nullable|integer|exists:form_sets,id',
             'report_pattern_id' => 'nullable|integer|exists:report_patterns,id',
             'display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
@@ -675,6 +691,12 @@ class SchemaController extends Controller
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
             'columns.*.editmask' => 'nullable|string|max:500',
             'columns.*.default_value' => 'nullable|string',
+            'columns.*.is_generated' => 'nullable|boolean',
+            'columns.*.generation_expression' => 'nullable|string',
+            'columns.*.generation_storage' => 'nullable|in:stored,virtual',
+            'columns.*.field_precision' => 'nullable|integer|min:1',
+            'columns.*.field_scale' => 'nullable|integer|min:0',
+            'columns.*.field_enum_values' => 'nullable|array',
             'columns.*.display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
             'columns.*.generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
         ]);
@@ -689,6 +711,7 @@ class SchemaController extends Controller
                 'filekeyname' => $request->filekeyname,
                 'file_name_renamed' => $request->file_name_renamed,
                 'file_name_short' => $request->file_name_short,
+                'comment' => $request->comment,
                 'form_set_id' => $request->form_set_id,
                 'report_pattern_id' => $request->report_pattern_id,
                 'display_state' => $request->display_state ?? 'enabled',
@@ -703,26 +726,28 @@ class SchemaController extends Controller
 
                 foreach ($request->columns as $index => $columnData) {
 
-                    $fieldType = strtolower($columnData['data_type']);
-                    $fieldLength = $columnData['field_length'];
-
-                    if ($fieldLength > 0 && in_array($fieldType, ['varchar', 'char', 'binary', 'varbinary', 'datetime'])) {
-                       $combinedType = $fieldType . '(' . $fieldLength . ')';
-                    } else {
-                        $combinedType = $fieldType;
-                    }
+                    $typeParts = $this->splitFieldType($columnData);
 
                     $field = \App\Models\SchemaField::create([
                         'table_id' => $table->id,
                         'field_name' => $columnData['column_name'],
-                        'field_type' => $combinedType,
-                        'field_length' => $columnData['field_length'] ?? null,
+                        'field_type' => $typeParts['field_type'],
+                        'field_length' => $typeParts['field_length'],
+                        'field_precision' => $typeParts['field_precision'],
+                        'field_scale' => $typeParts['field_scale'],
+                        'field_enum_values' => $typeParts['field_enum_values'],
                         'is_unsigned' => $columnData['is_unsigned'] ?? false,
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
                         'is_primary_key' => $columnData['is_primary_key'] ?? false,
                         'is_index' => $columnData['is_index'] ?? false,
-                        'is_unique' => $columnData['is_unique'] ?? false,
+                        // PRIMARY KEY is implicitly UNIQUE — enforce it regardless of what the
+                        // frontend sends. The single-select constraintType picker in the
+                        // table modal (primary|index|unique|none) maps `primary` → only
+                        // is_primary_key=true and would otherwise silently clear is_unique
+                        // on a PK column. This also matches storeConstraints() which sets
+                        // both flags for PRIMARY KEY at SQL-import time.
+                        'is_unique' => ($columnData['is_unique'] ?? false) || ($columnData['is_primary_key'] ?? false),
                         'extra' => $columnData['is_auto_increment'] ? 'auto_increment' : null,
                         'field_order' => $index + 1, // Logische Reihenfolge: 1, 2, 3, 4... (starts at 1)
                         'comment' => $columnData['comment'] ?? null,
@@ -737,6 +762,9 @@ class SchemaController extends Controller
                         // array_key_exists vs ?? — preserve '' (empty-string
                         // default) distinctly from null ("no default at all").
                         'default_value' => array_key_exists('default_value', $columnData) ? $columnData['default_value'] : null,
+                        'is_generated' => $columnData['is_generated'] ?? false,
+                        'generation_expression' => $columnData['generation_expression'] ?? null,
+                        'generation_storage' => $columnData['generation_storage'] ?? null,
                         'display_state' => $columnData['display_state'] ?? 'enabled',
                         'generation_mode' => $columnData['generation_mode'] ?? 'full',
                     ]);
@@ -859,6 +887,7 @@ class SchemaController extends Controller
             'filekeyname' => 'nullable|string|max:100',
             'file_name_renamed' => 'nullable|string|max:100',
             'file_name_short' => 'nullable|string|max:50',
+            'comment' => 'nullable|string',
             'form_set_id' => 'nullable|integer|exists:form_sets,id',
             'report_pattern_id' => 'nullable|integer|exists:report_patterns,id',
             'display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
@@ -882,13 +911,19 @@ class SchemaController extends Controller
             'columns.*.link_order_direction' => 'nullable|in:ASC,DESC',
             'columns.*.editmask' => 'nullable|string|max:500',
             'columns.*.default_value' => 'nullable|string',
+            'columns.*.is_generated' => 'nullable|boolean',
+            'columns.*.generation_expression' => 'nullable|string',
+            'columns.*.generation_storage' => 'nullable|in:stored,virtual',
+            'columns.*.field_precision' => 'nullable|integer|min:1',
+            'columns.*.field_scale' => 'nullable|integer|min:0',
+            'columns.*.field_enum_values' => 'nullable|array',
             'columns.*.display_state' => 'nullable|in:enabled,disabled,grayed,invisible,excluded',
             'columns.*.generation_mode' => 'nullable|in:full,code_only,template_only,reference_only,excluded',
         ]);
 
         try {
             // Update the table
-            $table->update([
+            $updatePayload = [
                 'table_name' => $request->table_name,
                 'singular_name' => $request->singular_name,
                 'filekeyname' => $request->filekeyname,
@@ -898,7 +933,13 @@ class SchemaController extends Controller
                 'report_pattern_id' => $request->report_pattern_id,
                 'display_state' => $request->display_state ?? 'enabled',
                 'generation_mode' => $request->generation_mode ?? 'full',
-            ]);
+            ];
+            // Only touch `comment` if the client actually sent the key — `has()` distinguishes
+            // "field not in payload" (older clients) from "explicitly cleared" (sent as null).
+            if ($request->has('comment')) {
+                $updatePayload['comment'] = $request->input('comment');
+            }
+            $table->update($updatePayload);
 
             // 🔐 SAVE FOREIGN KEYS before deleting (to restore them after update)
             $existingForeignKeys = \App\Models\SchemaConstraint::where('table_id', $table->id)
@@ -948,27 +989,29 @@ class SchemaController extends Controller
                 foreach ($request->columns as $index => $columnData) {
                     $fieldName = $columnData['column_name'];
                     $incomingFieldNames[] = $fieldName;
-                    
-                    $fieldType = strtolower($columnData['data_type']);
-                    $fieldLength = $columnData['field_length'];
 
-                    if ($fieldLength > 0 && in_array($fieldType, ['varchar', 'char', 'binary', 'varbinary', 'datetime'])) {
-                       $combinedType = $fieldType . '(' . $fieldLength . ')';
-                    } else {
-                        $combinedType = $fieldType;
-                    }
+                    $typeParts = $this->splitFieldType($columnData);
 
                     $fieldData = [
                         'table_id' => $table->id,
                         'field_name' => $fieldName,
-                        'field_type' => $combinedType,
-                        'field_length' => $columnData['field_length'] ?? null,
+                        'field_type' => $typeParts['field_type'],
+                        'field_length' => $typeParts['field_length'],
+                        'field_precision' => $typeParts['field_precision'],
+                        'field_scale' => $typeParts['field_scale'],
+                        'field_enum_values' => $typeParts['field_enum_values'],
                         'is_unsigned' => $columnData['is_unsigned'] ?? false,
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
                         'is_primary_key' => $columnData['is_primary_key'] ?? false,
                         'is_index' => $columnData['is_index'] ?? false,
-                        'is_unique' => $columnData['is_unique'] ?? false,
+                        // PRIMARY KEY is implicitly UNIQUE — enforce it regardless of what the
+                        // frontend sends. The single-select constraintType picker in the
+                        // table modal (primary|index|unique|none) maps `primary` → only
+                        // is_primary_key=true and would otherwise silently clear is_unique
+                        // on a PK column. This also matches storeConstraints() which sets
+                        // both flags for PRIMARY KEY at SQL-import time.
+                        'is_unique' => ($columnData['is_unique'] ?? false) || ($columnData['is_primary_key'] ?? false),
                         'extra' => $columnData['is_auto_increment'] ? 'auto_increment' : null,
                         'field_order' => $index + 1, // Logical order: 1, 2, 3, 4... (starts at 1)
                         'comment' => $columnData['comment'] ?? null,
@@ -983,6 +1026,9 @@ class SchemaController extends Controller
                         // array_key_exists vs ?? — preserve '' (empty-string
                         // default) distinctly from null ("no default at all").
                         'default_value' => array_key_exists('default_value', $columnData) ? $columnData['default_value'] : null,
+                        'is_generated' => $columnData['is_generated'] ?? false,
+                        'generation_expression' => $columnData['generation_expression'] ?? null,
+                        'generation_storage' => $columnData['generation_storage'] ?? null,
                         'display_state' => $columnData['display_state'] ?? 'enabled',
                         'generation_mode' => $columnData['generation_mode'] ?? 'full',
                     ];
@@ -1559,15 +1605,26 @@ class SchemaController extends Controller
             // Create columns if provided
             if ($request->has('columns')) {
                 foreach ($request->columns as $index => $columnData) {
+                    $typeParts = $this->splitFieldType($columnData);
                     \App\Models\SchemaField::create([
                         'table_id' => $table->id,
                         'field_name' => $columnData['column_name'],
-                        'field_type' => strtolower($columnData['data_type']),
+                        'field_type' => $typeParts['field_type'],
+                        'field_length' => $typeParts['field_length'],
+                        'field_precision' => $typeParts['field_precision'],
+                        'field_scale' => $typeParts['field_scale'],
+                        'field_enum_values' => $typeParts['field_enum_values'],
                         'is_nullable' => $columnData['is_nullable'] ?? true,
                         'is_auto_increment' => $columnData['is_auto_increment'] ?? false,
                         'is_primary_key' => $columnData['is_primary_key'] ?? false,
                         'is_index' => $columnData['is_index'] ?? false,
-                        'is_unique' => $columnData['is_unique'] ?? false,
+                        // PRIMARY KEY is implicitly UNIQUE — enforce it regardless of what the
+                        // frontend sends. The single-select constraintType picker in the
+                        // table modal (primary|index|unique|none) maps `primary` → only
+                        // is_primary_key=true and would otherwise silently clear is_unique
+                        // on a PK column. This also matches storeConstraints() which sets
+                        // both flags for PRIMARY KEY at SQL-import time.
+                        'is_unique' => ($columnData['is_unique'] ?? false) || ($columnData['is_primary_key'] ?? false),
                         'field_order' => $index, // Logische Reihenfolge: 0, 1, 2, 3...
                     ]);
                 }
@@ -2283,6 +2340,7 @@ class SchemaController extends Controller
         $baseType = preg_replace('/\s+(UNSIGNED|ZEROFILL|SIGNED).*$/i', '', $baseType);
         return trim(strtoupper($baseType));
     }
+
 
     /**
      * Extract length from type (e.g., VARCHAR(255) -> 255)
