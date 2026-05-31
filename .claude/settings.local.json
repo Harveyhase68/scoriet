@@ -251,7 +251,8 @@
       "Bash(echo \"=== Multi-line fallback patterns ===\" && \\\\ *)",
       "Read(//c/wamp/www/scoriet/\\(/\\(t as unknown as Record<string, string>/\\)|i18nExtra\\)/**)",
       "Bash(ls \"C:/My Projects/Rust_Temp/scoriet-cli\" 2>&1 | head -20)",
-      "Read(//c/My Projects/Rust_Temp/scoriet-cli/**)"
+      "Read(//c/My Projects/Rust_Temp/scoriet-cli/**)",
+      "Bash(git log *)"
     ],
     "deny": [],
     "ask": [],
