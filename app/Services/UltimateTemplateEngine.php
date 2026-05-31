@@ -812,15 +812,23 @@ class UltimateTemplateEngine
 
         // Helper: resolve table reference - uses fixed index for db_table_file, or tableIdx for nmaxtables loops.
         //
-        // NESTED-IN-TABLES override: when this loop sits inside an outer
+        // NESTED-IN-TABLES override: when this loop sits ANYWHERE inside an outer
         // {:for nmaxtables:}, the JS `tableIdx` reassigned per outer iteration
         // MUST win over the static engine-context `$tableIndex`. Without this,
         // every inner nmaxitems/nmaxkeys/nmaxforeignkeys loop would lock to
-        // the engine's PHP table context (e.g. 1 in db_table_file mode) and
-        // emit identical content for every outer iteration. We detect nesting
-        // via currentLoopContext === 'tables' (the outer loop pushed this
-        // before our processLoopStart call).
-        $nestedInTables = ($this->currentLoopContext === 'tables');
+        // the engine's PHP table context (e.g. 18 in db_table_file mode) and
+        // emit identical content for every outer iteration.
+        //
+        // Stack-deep check (NOT just currentLoopContext === 'tables'): templates
+        // with three or more nesting levels — e.g.
+        //   {:for nmaxtables:}{:for nmaxforeignkeys:}{:for nmaxitems:}…{:endfor:}{:endfor:}{:endfor:}
+        // have currentLoopContext === 'foreignkeys' by the time the innermost
+        // nmaxitems loop is being emitted, so a shallow currentLoopContext check
+        // would miss it and hard-code tables[18] for the inner loop preamble.
+        // The stack-deep `in_array('tables', …)` catches 'tables' wherever it
+        // sits in the parent chain — same fix pattern as getItemExpression() at
+        // line ~1096 and the processVariable() central override at ~line 2086.
+        $nestedInTables = $this->isInsideLoopContext('tables');
         $tableRef = ($tableIndex !== null && !$nestedInTables)
             ? "tables[{$tableIndex}]"
             : "tables[tableIdx]";
@@ -993,7 +1001,7 @@ class UltimateTemplateEngine
             // locks to a single table (e.g. tables[1] from a db_table_file generation)
             // and crashes the moment the outer loop visits a different table whose
             // fields[i] has no enum_values (undefined.enum_values).
-            $nestedInTables = in_array('tables', $this->loopContextStack, true);
+            $nestedInTables = $this->isInsideLoopContext('tables');
             $this->pushLoopContext('item_enum_values');
             $itemRef = ($tableIndex !== null && !$nestedInTables)
                 ? "gtree[0].project[0].tables[{$tableIndex}].fields[i]"
@@ -1053,6 +1061,38 @@ class UltimateTemplateEngine
         return $this->currentLoopContext;
     }
 
+    /**
+     * Check if we are anywhere inside a loop of the given context type — including
+     * the immediate (current) loop AND any outer parent loop.
+     *
+     * WARUM diese Helper-Methode existiert (sonst gibt's wieder die "2-Level vs 3-Level"
+     * Bug-Klasse die uns am 2026-05-31 mehrfach beschäftigt hat):
+     *
+     * Der Loop-Context-Stack hat eine asymmetrische Semantik:
+     *   - `$currentLoopContext`     = der INNERSTE aktive Loop
+     *   - `$loopContextStack[]`     = die PARENTS davon (in Push-Reihenfolge)
+     * `pushLoopContext('X')` schiebt den ALTEN currentLoopContext auf den Stack
+     * und setzt currentLoopContext auf 'X'. Heißt: der aktuelle Loop ist NIE im
+     * Stack, sondern immer NUR in $currentLoopContext.
+     *
+     * Wer "sind wir inside a 'tables' Loop?" prüfen will, muss daher BEIDE
+     * checken — sonst:
+     *   - Nur `currentLoopContext === 'tables'` → übersieht 3+ Level Nesting
+     *     ({:for nmaxtables:}{:for nmaxforeignkeys:}{:for nmaxitems:}…)
+     *   - Nur `in_array('tables', loopContextStack)` → übersieht 2-Level Nesting
+     *     ({:for nmaxtables:}{:for nmaxitems:}…)
+     *
+     * Diese Helper macht beides in einem Aufruf und ist die einzige Stelle die
+     * Code aufrufen soll. Niemals wieder `in_array('tables', $this->loopContextStack)`
+     * irgendwo direkt schreiben — der Methodenname dokumentiert die Intention,
+     * die rohen Property-Zugriffe verstecken den Bug.
+     */
+    private function isInsideLoopContext(string $context): bool
+    {
+        return $this->currentLoopContext === $context
+            || in_array($context, $this->loopContextStack, true);
+    }
+
     // 🎯 Get array name based on current loop context
     private function getArrayNameForContext(): string
     {
@@ -1101,7 +1141,7 @@ class UltimateTemplateEngine
         // iteration MUST win over the static engine-context `$tableIndex`.
         // Without this, every outer iteration would emit identical inner field
         // references locked to the engine's PHP table context.
-        $nestedInTables = in_array('tables', $this->loopContextStack, true);
+        $nestedInTables = $this->isInsideLoopContext('tables');
 
         $tablePrefix = ($tableIndex !== null && !$nestedInTables)
             ? "gtree[0].project[0].tables[{$tableIndex}]"
@@ -1632,6 +1672,28 @@ class UltimateTemplateEngine
     {
         $this->loopDepth++;
 
+        // 🎯 NESTED-IN-TABLES OVERRIDE — same rationale as processVariable() at ~line 2086.
+        //
+        // This whole function is a parallel implementation of processLoopStart() for
+        // "inline" loop tags (multiple loops on one line, or other edge cases that
+        // bypass the line-based loop emitter). Every elseif-branch below historically
+        // wrote out a fresh `$tableIndex !== null ? tables[{$tableIndex}] : tables[tableIdx]`
+        // ternary without any nested-tables guard. That meant: in a template like
+        //   {:for nmaxtables:}{:for nmaxforeignkeysunique:}…{:endfor:}{:endfor:}
+        // generated from a db_table_file context (tableIndex = 1), the INNER loop
+        // header emitted `tables[1].nmaxforeignkeysunique` while the body (which goes
+        // through foreign.X resolver with its own nested check) emitted `tables[tableIdx]`.
+        // First outer iteration ran fine because _fkuI stays inside tables[1]'s range;
+        // second outer iteration broke because tables[tableIdx ≠ 1].foreignkeysunique[_fkuI]
+        // was outside its range and crashed at `.referencedtable`.
+        //
+        // Single override here makes every "$tableIndex !== null" branch below fall
+        // through to its tables[tableIdx] arm automatically. Specialized branches
+        // (nmaxitems at ~line 1707) keep their local nested guard as safety net.
+        if ($tableIndex !== null && $this->isInsideLoopContext('tables')) {
+            $tableIndex = null;
+        }
+
         // Extract loop variable - support BOTH formats:
         // New format: {:for nmaxitems:}
         // Old format: {:for {:nmaxitems:}:}
@@ -1703,14 +1765,17 @@ class UltimateTemplateEngine
                 // against the full fields[] array.
                 //
                 // NESTED-IN-TABLES override: when this nmaxitems sits INSIDE an
-                // outer {:for nmaxtables:} loop, the outer loop redefines the JS
+                // outer {:for nmaxtables:} loop (ANYWHERE in the parent chain,
+                // not necessarily directly), the outer loop redefines the JS
                 // `tableIdx` per iteration. Using the static `$tableIndex` here
                 // would lock the inner loop to the engine's PHP context table
-                // (e.g. 1 when generating from a db_table_file context) and emit
-                // the same fields for every outer iteration — that was the
-                // Test 10 bug. We detect the nesting via the current loop
-                // context being 'tables' before pushLoopContext flips it.
-                $nestedInTables = ($this->currentLoopContext === 'tables');
+                // (e.g. 18 when generating from a db_table_file context) and
+                // emit the same fields for every outer iteration. Stack-deep
+                // check catches 3+ level nesting like
+                // {:for nmaxtables:}{:for nmaxforeignkeys:}{:for nmaxitems:}…
+                // where currentLoopContext would be 'foreignkeys' at this point
+                // and a shallow check would miss it.
+                $nestedInTables = $this->isInsideLoopContext('tables');
                 $this->pushLoopContext('fields');
                 if ($tableIndex !== null && !$nestedInTables) {
                     return "  for (let _fgenI = 0; _fgenI < gtree[0].project[0].tables[{$tableIndex}].nmaxitems; _fgenI++) {\n"
@@ -1978,7 +2043,7 @@ class UltimateTemplateEngine
         // would print "Table 0: users / Table 1: users / Table 2: users / …"
         // instead of advancing the table per iteration. Same pattern as the
         // keys.X / foreign.X resolver fixes.
-        $nestedInTables = in_array('tables', $this->loopContextStack, true);
+        $nestedInTables = $this->isInsideLoopContext('tables');
 
         // Check legacyMappings first (most common variables)
         $tableRef = ($tableIndex !== null && !$nestedInTables)
@@ -2089,7 +2154,7 @@ class UltimateTemplateEngine
         // Specialized resolvers further down (keys.X, foreign.X, item.enum_values,
         // nmaxenum, …) had their own local nested checks before this central
         // override existed; those are now redundant-but-harmless safety nets.
-        if ($tableIndex !== null && in_array('tables', $this->loopContextStack, true)) {
+        if ($tableIndex !== null && $this->isInsideLoopContext('tables')) {
             $tableIndex = null;
         }
 
@@ -2164,7 +2229,7 @@ class UltimateTemplateEngine
                 // `tableIdx` MUST win over the static $tableIndex, otherwise enum
                 // counter locks to one table and reports the wrong length for every
                 // other table the outer loop visits.
-                $nestedInTables = in_array('tables', $this->loopContextStack, true);
+                $nestedInTables = $this->isInsideLoopContext('tables');
                 $tableRef = ($tableIndex !== null && !$nestedInTables)
                     ? "gtree[0].project[0].tables[{$tableIndex}]"
                     : "gtree[0].project[0].tables[tableIdx]";
@@ -2546,7 +2611,7 @@ class UltimateTemplateEngine
         // constraints than table 0. We detect nesting via the loopContextStack (NOT
         // currentLoopContext, which is already 'constraints' or 'keys' by the time
         // this resolver runs).
-        $nestedInTables = in_array('tables', $this->loopContextStack, true);
+        $nestedInTables = $this->isInsideLoopContext('tables');
         $keysArrayName = $this->currentLoopContext === 'constraints' ? 'constraints' : 'keys';
         $keysRef = ($tableIndex !== null && !$nestedInTables)
             ? "gtree[0].project[0].tables[{$tableIndex}].{$keysArrayName}[i]"
