@@ -1,0 +1,38 @@
+================================================================================
+TEST 03: LOOP ÜBER ALLE SPRACHEN (for-nmaxlanguages)
+================================================================================
+File-Type: project_file
+Expected Output: Diese Datei wird EINMAL generiert.
+                 Der INHALT enthält aber einen Block pro Sprache (Loop läuft innen).
+================================================================================
+
+Anzahl konfigurierter Sprachen: {:nmaxlanguages:}
+Default-Sprache:                {:defaultlanguage:} ({:defaultlanguagename:})
+
+================================================================================
+DETAIL-LISTE ALLER SPRACHEN (via for-nmaxlanguages):
+================================================================================
+
+{:for nmaxlanguages:}
+--- Sprache #{:i:} ---
+  language.id            = {:language.id:}
+  language.code          = {:language.code:}
+  language.name          = {:language.name:}
+  language.native_name   = {:language.native_name:}
+  language.flag          = {:language.flag:}
+  language.caption       = {:language.caption:}
+  language.filedescription = {:language.filedescription:}
+  language.decimalsep    = {:language.decimalsep:}
+  language.thousandsep   = {:language.thousandsep:}
+  language.dateformat    = {:language.dateformat:}
+  language.timeformat    = {:language.timeformat:}
+  language.currencysym   = {:language.currencysym:}
+  language.timezone      = {:language.timezone:}
+{:endfor:}
+
+================================================================================
+EXPECTED:
+  Bei 2 aktivierten Sprachen erscheinen 2 "--- Sprache #N ---" Blöcke.
+  i läuft 0..nmaxlanguages-1.
+  Alle language.* Felder sollten gefüllt sein.
+================================================================================

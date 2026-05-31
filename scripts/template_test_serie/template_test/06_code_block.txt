@@ -1,0 +1,74 @@
+================================================================================
+TEST 06: CODE-BLOCK (code-Block-Start ... code-Block-Ende)
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert.
+================================================================================
+
+ACHTUNG: Im Code-Block niemals code-Block-Start oder code-Block-Ende in JS-Kommentaren!
+         Die Engine erkennt das als neuen Block-Anfang/-Ende.
+         Variablen verwende ich hier mit Namen, die NICHT 'res' enthalten
+         (das triggert auto-res-Detection).
+
+[TEST 6.1] Einfacher Code-Block — String-Manipulation
+--------------------------------------------------------------------------------
+{:code:}
+var sProjectName = "{:projectname:}";
+var sUpper = sProjectName.toUpperCase();
+var sLower = sProjectName.toLowerCase();
+var sLen = sProjectName.length;
+sContentResult += "  Projektname original: " + sProjectName + "\n";
+sContentResult += "  UPPERCASE:            " + sUpper + "\n";
+sContentResult += "  lowercase:            " + sLower + "\n";
+sContentResult += "  Länge:                " + sLen + " Zeichen\n";
+return sContentResult;
+{:codeend:}
+
+[TEST 6.2] Code-Block mit numerischer Berechnung
+--------------------------------------------------------------------------------
+{:code:}
+var nLangs = {:nmaxlanguages:};
+var nTables = {:nmaxtables:};
+var nSum = nLangs + nTables;
+var nProduct = nLangs * (nTables > 0 ? nTables : 1);
+sContentResult += "  Anzahl Sprachen:  " + nLangs + "\n";
+sContentResult += "  Anzahl Tabellen:  " + nTables + "\n";
+sContentResult += "  Summe:            " + nSum + "\n";
+sContentResult += "  Produkt:          " + nProduct + "\n";
+return sContentResult;
+{:codeend:}
+
+[TEST 6.3] Code-Block mit JS-Logik (if/else)
+--------------------------------------------------------------------------------
+{:code:}
+var sLang = "{:defaultlanguage:}";
+var sStatus;
+if (sLang === "de") {
+  sStatus = "Deutschsprachig";
+} else if (sLang === "en") {
+  sStatus = "Englischsprachig";
+} else {
+  sStatus = "Andere Sprache: " + sLang;
+}
+sContentResult += "  Status: " + sStatus + "\n";
+return sContentResult;
+{:codeend:}
+
+[TEST 6.4] Code-Block, der auf gtree direkt zugreift
+--------------------------------------------------------------------------------
+{:code:}
+var aLangs = gtree[0].project[0].lang || [];
+sContentResult += "  Sprachen direkt aus gtree:\n";
+for (var idx = 0; idx < aLangs.length; idx++) {
+  sContentResult += "    [" + idx + "] " + aLangs[idx].code + " — " + aLangs[idx].name + "\n";
+}
+return sContentResult;
+{:codeend:}
+
+================================================================================
+EXPECTED:
+  - Jeder Code-Block wird ausgeführt und liefert seinen Output zurück
+  - sContentResult sammelt die Ausgabe-Strings
+  - return sContentResult; AM ENDE ist Pflicht
+  - {:projectname:}, {:nmaxlanguages:} etc. werden ZUERST ersetzt, DANN der JS-Code ausgeführt
+================================================================================

@@ -1,0 +1,57 @@
+================================================================================
+TEST 11: GEFILTERTE FELD-LOOPS
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+================================================================================
+
+Tabelle: {:tablename:}
+
+[A] ALLE FELDER (nmaxitems)
+--------------------------------------------------------------------------------
+{:for nmaxitems:}
+  • {:item.name:} ({:item.type:})
+{:endfor:}
+
+[B] FELDER OHNE PRIMARY/UNIQUE/INDEX KEYS (nmaxitemsnokey)
+--------------------------------------------------------------------------------
+Praktisch für: form-Inputs ohne PK/Auto-Generated.
+{:for nmaxitemsnokey:}
+  • {:item.name:} ({:item.type:})
+{:endfor:}
+
+[C] FELDER OHNE KEYS UND OHNE TIMESTAMPS (nmaxitemsnokeyall)
+--------------------------------------------------------------------------------
+Praktisch für: INSERT-Statements, wo created_at/updated_at vom DB-Default kommen.
+{:for nmaxitemsnokeyall:}
+  • {:item.name:} ({:item.type:})
+{:endfor:}
+
+[D] FELDER OHNE BLOB/TEXT (nmaxitemsnoblob)
+--------------------------------------------------------------------------------
+Praktisch für: Listen-/Such-Views, wo Large-Object-Felder unsichtbar bleiben.
+{:for nmaxitemsnoblob:}
+  • {:item.name:} ({:item.type:})
+{:endfor:}
+
+[E] FELDER OHNE KEYS UND OHNE BLOB (nmaxitemsnobloball)
+--------------------------------------------------------------------------------
+{:for nmaxitemsnobloball:}
+  • {:item.name:} ({:item.type:})
+{:endfor:}
+
+[F] FELDER OHNE BINARY BLOB (nmaxitemsnobinaryblob)
+--------------------------------------------------------------------------------
+Wie noblob, ABER TEXT-Spalten (longtext etc.) sind hier ENTHALTEN.
+{:for nmaxitemsnobinaryblob:}
+  • {:item.name:} ({:item.type:})
+{:endfor:}
+
+================================================================================
+EXPECTED bei 'users':
+  [A] alle 14 Felder
+  [B] ohne user_id (PK), ohne user_no (UNIQUE), ohne ug_no (Index)
+  [C] wie [B] ohne created_at, updated_at, last_edited
+  [D] ohne user_description (LONGTEXT) und user_image (LONGBLOB)
+  [F] ohne user_image (LONGBLOB), ABER user_description (LONGTEXT) ist drin
+================================================================================

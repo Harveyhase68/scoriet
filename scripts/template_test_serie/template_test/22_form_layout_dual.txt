@@ -1,0 +1,126 @@
+================================================================================
+TEST FORM-22: FORM-LAYOUT (dual: ohne UND mit FormSet)
+================================================================================
+File-Type: db_table_file (mit form_window_type = 2 / create_edit)
+Expected Output: 1× pro Tabelle.
+
+WICHTIG: Dieselbe Vorlage wird in zwei Projekt-Konfigurationen ausgeführt:
+
+  PROFIL A — Projekt OHNE FormSet:
+      `nmaxformsets` = 0, `formset` = null
+      → Alle for-nmaxlayoutsingles / for-nmaxlayoutbuttons-Schleifen
+        laufen 0× (graceful skip)
+      → `formset.name` u.ä. resolven zu '' (über optional chaining)
+
+  PROFIL B — Projekt MIT FormSet "Standard":
+      `nmaxformsets` = 1, `nmaxwindows` >= 1
+      → Echte Layout-Elemente werden iteriert
+      → `formset.default_button_color` etc. liefern Werte aus dem FormSet
+================================================================================
+
+Tabelle: {:tablename:}
+
+================================================================================
+[A] FORMSET-LEVEL VARIABLEN (project-global, NICHT in einer Schleife)
+================================================================================
+
+nmaxformsets        = {:nmaxformsets:}
+nmaxwindows         = {:nmaxwindows:}
+formset.name        = {:formset.name:}
+formset.description = {:formset.description:}
+
+EXPECTED Profil A:
+  nmaxformsets        = 0
+  nmaxwindows         = 0
+  formset.name        =        (leer — formset ist null)
+  formset.description =        (leer)
+
+EXPECTED Profil B:
+  nmaxformsets        = 1
+  nmaxwindows         = 3      (oder andere Anzahl je nach FormSet)
+  formset.name        = "Standard"  (oder dein FormSet-Name)
+  formset.description = "Default form set"
+
+
+================================================================================
+[B] SINGLE-FIELDS LAYOUT — for-nmaxlayoutsingles
+================================================================================
+{:for nmaxlayoutsingles:}
+  Single #{:i:}:
+    layoutsingle.field_name      = {:layoutsingle.field_name:}
+    layoutsingle.label           = {:layoutsingle.label:}
+    layoutsingle.control_type    = {:layoutsingle.control_type:}
+    layoutsingle.row             = {:layoutsingle.row:}
+    layoutsingle.col             = {:layoutsingle.col:}
+{:endfor:}
+
+================================================================================
+[C] COLUMNS LAYOUT (Datentabelle) — for-nmaxlayoutcolumns
+================================================================================
+{:for nmaxlayoutcolumns:}
+  Column #{:i:}:
+    layoutcolumn.field_name = {:layoutcolumn.field_name:}
+    layoutcolumn.header     = {:layoutcolumn.header:}
+    layoutcolumn.width      = {:layoutcolumn.width:}
+    layoutcolumn.align      = {:layoutcolumn.align:}
+{:endfor:}
+
+================================================================================
+[D] BUTTONS — for-nmaxlayoutbuttons
+================================================================================
+{:for nmaxlayoutbuttons:}
+  Button #{:i:}:
+    layoutbutton.name     = {:layoutbutton.name:}
+    layoutbutton.label    = {:layoutbutton.label:}
+    layoutbutton.action   = {:layoutbutton.action:}
+    layoutbutton.color    = {:layoutbutton.color:}
+{:endfor:}
+
+================================================================================
+[E] MENUS — for-nmaxlayoutmenus
+================================================================================
+{:for nmaxlayoutmenus:}
+  Menu #{:i:}:
+    layoutmenu.name       = {:layoutmenu.name:}
+    layoutmenu.label      = {:layoutmenu.label:}
+    layoutmenu.parent     = {:layoutmenu.parent:}
+{:endfor:}
+
+================================================================================
+[F] DIREKTER FORM-ZUGRIFF (über form.x.y syntax)
+================================================================================
+
+form.button_save.label    = {:form.button_save.label:}
+form.button_cancel.label  = {:form.button_cancel.label:}
+form.container.width      = {:form.container.width:}
+
+EXPECTED Profil A: alle leer (formset.windows ist null)
+EXPECTED Profil B: tatsächliche Werte aus dem Create-Edit-Fenster
+
+================================================================================
+[G] CONDITIONAL — Layout nur ausgeben wenn FormSet vorhanden
+================================================================================
+{:if nmaxformsets:}
+  ✓ FormSet "{:formset.name:}" ist konfiguriert.
+  Aktive Fenster: {:nmaxwindows:}
+{:else:}
+  ✗ Kein FormSet aktiv — Layout-Daten werden geskippt.
+    Tipp: Im Projekt-Settings einen FormSet auswählen, um den Form-Generator zu aktivieren.
+{:endif:}
+
+================================================================================
+EXPECTED:
+  Profil A (ohne FormSet):
+    - Sektionen [B]-[E] sind LEER (Loops laufen 0×)
+    - Sektion [F] zeigt leere Strings
+    - Sektion [G] zeigt den ELSE-Zweig ("Kein FormSet aktiv")
+
+  Profil B (mit FormSet):
+    - Sektionen [B]-[E] enthalten die konfigurierten Layout-Elemente
+    - Sektion [F] zeigt Button-Labels aus dem create_edit-Fenster
+    - Sektion [G] zeigt den IF-Zweig ("FormSet ist konfiguriert")
+
+  Bug-Indikator: bleibt `form.button_save.label` als Platzhalter im Output
+  stehen → Engine kennt das Konstrukt nicht. Aktuell wird optional-chaining
+  generiert (formset?.windows[INDEX]?.button_save?.label || '').
+================================================================================

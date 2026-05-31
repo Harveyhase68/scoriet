@@ -1,0 +1,73 @@
+================================================================================
+TEST 10: FELDER-LOOP MIT ALLEN {:item.*:} PROPERTIES
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle, INNERHALB der Datei ein Block pro Feld.
+================================================================================
+
+Tabelle: {:tablename:} ({:nmaxitems:} aktive Felder)
+
+================================================================================
+{:for nmaxitems:}
+--- FELD #{:i:} ({:item.id:}) ---
+
+[Naming]
+  item.name           = {:item.name:}
+  item.pascalcase     = {:item.pascalcase:}
+  item.camelcase      = {:item.camelcase:}
+
+[Type & Size]
+  item.type           = {:item.type:}
+  item.size           = {:item.size:}        (length for varchar/tinyint/...)
+  item.precision      = {:item.precision:}   (decimal precision)
+  item.scale          = {:item.scale:}       (decimal scale)
+  item.enum_values    = {:item.enum_values:} (array for enum/set, null otherwise)
+
+[Type-Casts]
+  item.typecast       = {:item.typecast:}
+  item.phptype        = {:item.phptype:}
+  item.jstype         = {:item.jstype:}
+  item.laraveltype    = {:item.laraveltype:}
+
+[Caption & Default]
+  item.caption        = {:item.caption:}
+  item.default        = {:item.default:}
+  item.order          = {:item.order:}
+
+[Flags]
+  item.isprimary      = {:item.isprimary:}
+  item.isunique       = {:item.isunique:}
+  item.isindex        = {:item.isindex:}
+  item.isforeign      = {:item.isforeign:}
+  item.istimestamp    = {:item.istimestamp:}
+  item.autoincrement  = {:item.autoincrement:}
+  item.isblob         = {:item.isblob:}
+  item.isbinaryblob   = {:item.isbinaryblob:}
+  item.notnull        = {:item.notnull:}
+  item.visible        = {:item.visible:}
+
+[Generated Column (NEW)]
+  item.is_generated         = {:item.is_generated:}
+  item.generation_expression= {:item.generation_expression:}
+  item.generation_storage   = {:item.generation_storage:}
+
+[Lookup / Link Fields]
+  item.linktable      = {:item.linktable:}
+  item.linkfield      = {:item.linkfield:}
+  item.linkdisplayfield= {:item.linkdisplayfield:}
+  item.linkorderfield = {:item.linkorderfield:}
+  item.linkorder      = {:item.linkorder:}
+
+{:endfor:}
+
+================================================================================
+EXPECTED bei Tabelle 'users':
+  - user_id: type=BIGINT, isprimary=true, autoincrement=true, notnull=true
+  - user_no: type=BIGINT, isunique=true (UNIQUE KEY)
+  - user_first_name: type=VARCHAR, size=50, caption='First Name'
+  - user_is_male: type=TINYINT, size=1 (potentially detected as boolean)
+  - user_type: type=ENUM, enum_values present
+  - user_complaints: type=SET, enum_values present
+  - user_balance (wenn vorhanden): type=DECIMAL, precision=10, scale=2
+  - ug_no: linktable='user_groups', linkfield='ug_no' (durch FK-Auto-Detection)
+================================================================================

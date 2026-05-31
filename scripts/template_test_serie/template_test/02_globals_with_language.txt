@@ -1,0 +1,51 @@
+================================================================================
+TEST 02: GLOBALE + SPRACH-VARIABLEN (kein DB-Kontext, MIT Sprache)
+================================================================================
+File-Type: project_file_languages
+Expected Output: Diese Datei wird N-MAL generiert (einmal pro aktivierter Sprache).
+                 Bei 2 Sprachen (de, en) → 2 Output-Dateien.
+================================================================================
+
+Wir prüfen hier: Sprach-Auswahl + Locale-Vars wechseln je nach Sprache.
+
+[A] PROJEKT-VARS (sollten in allen Sprachen GLEICH sein)
+--------------------------------------------------------------------------------
+projectname        = {:projectname:}
+projectid          = {:projectid:}
+
+[B] PROJEKT-VARS MIT ÜBERSETZUNG (wechseln je Sprache)
+--------------------------------------------------------------------------------
+projectcaption     = {:projectcaption:}
+projectdescription = {:projectdescription:}
+
+[C] AKTUELL AUSGEWÄHLTE SPRACHE
+--------------------------------------------------------------------------------
+selectedlanguage      = {:selectedlanguage:}
+selectedlanguageindex = {:selectedlanguageindex:}
+
+[D] DEFAULT-SPRACHE DES PROJEKTS (sollte konstant sein, egal welche Sprache läuft)
+--------------------------------------------------------------------------------
+defaultlanguage       = {:defaultlanguage:}
+defaultlanguagename   = {:defaultlanguagename:}
+defaultlanguageindex  = {:defaultlanguageindex:}
+
+[E] LOCALE-EINSTELLUNGEN (sollten sich mit der Sprache ändern)
+--------------------------------------------------------------------------------
+decimalsep         = {:decimalsep:}
+thousandsep        = {:thousandsep:}
+dateformat         = {:dateformat:}
+timeformat         = {:timeformat:}
+currencysym        = {:currencysym:}
+timezone           = {:timezone:}
+
+[F] EIN BEISPIEL ZUM LOKALISIERTEN FORMATIEREN
+--------------------------------------------------------------------------------
+Heute ist {:generationdatetime:} (UTC), Zeitzone für diese Sprache: {:timezone:}.
+Ein Geldbetrag wäre formatiert: 1{:thousandsep:}234{:decimalsep:}56 {:currencysym:}
+
+================================================================================
+EXPECTED bei Default=Deutsch + Englisch:
+  - Output-Datei für 'de': decimalsep=','  dateformat='d.m.Y'  currencysym='€'
+  - Output-Datei für 'en': decimalsep='.'  dateformat='Y-m-d'  currencysym='$'
+  (Werte hängen von eurer ProjectTranslation-Konfiguration ab.)
+================================================================================

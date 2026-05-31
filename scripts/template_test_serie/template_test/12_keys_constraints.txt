@@ -1,0 +1,42 @@
+================================================================================
+TEST 12: KEYS UND CONSTRAINTS
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+================================================================================
+
+Tabelle: {:tablename:}
+
+[A] KEYS (PRIMARY KEY + UNIQUE) — via nmaxkeys
+--------------------------------------------------------------------------------
+{:for nmaxkeys:}
+--- Key #{:i:} ({:keys.id:}) ---
+  keys.name           = {:keys.name:}
+  keys.type           = {:keys.type:}
+  keys.typecast       = {:keys.typecast:}
+  keys.constraintname = {:keys.constraintname:}
+  keys.constrainttype = {:keys.constrainttype:}
+  keys.isprimary      = {:keys.isprimary:}
+  keys.isunique       = {:keys.isunique:}
+{:endfor:}
+
+[B] ALLE CONSTRAINTS (PRIMARY + UNIQUE + INDEX/KEY) — via nmaxconstraints
+--------------------------------------------------------------------------------
+{:for nmaxconstraints:}
+--- Constraint #{:i:} ---
+  keys.constraintname = {:keys.constraintname:}
+  keys.constrainttype = {:keys.constrainttype:}
+  keys.name           = {:keys.name:}
+{:endfor:}
+
+================================================================================
+EXPECTED bei 'users' (laut SQL: PK user_id, UNIQUE user_no, KEY user_first_name, KEY ug_no):
+  [A] nmaxkeys = 2:
+        - user_id     (PRIMARY KEY, isprimary=true)
+        - user_no     (UNIQUE, isunique=true)
+  [B] nmaxconstraints = 4:
+        - PRIMARY KEY user_id
+        - UNIQUE user_no
+        - KEY user_first_name_index → user_first_name
+        - KEY ug_no_users_index → ug_no
+================================================================================
