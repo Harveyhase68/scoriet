@@ -1,0 +1,65 @@
+================================================================================
+TEST 05: SWITCH / CASE / DEFAULT
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert.
+================================================================================
+
+[TEST 5.1] Switch mit String (projectdbtype)
+--------------------------------------------------------------------------------
+{:switch projectdbtype:}
+  {:case "MySQL":}
+    → DB-Typ: MySQL ✓
+    {:break:}
+  {:case "PostgreSQL":}
+    → DB-Typ: PostgreSQL
+    {:break:}
+  {:case "SQLite":}
+    → DB-Typ: SQLite
+    {:break:}
+  {:default:}
+    → Unbekannter DB-Typ: {:projectdbtype:}
+{:endswitch:}
+
+[TEST 5.2] Switch mit mehreren Werten in einem case
+--------------------------------------------------------------------------------
+{:switch nmaxlanguages:}
+  {:case 0:}
+    → Keine Sprachen
+    {:break:}
+  {:case 1:}
+    → Einsprachig
+    {:break:}
+  {:case 2,3,4:}
+    → Mehrsprachig (2-4 Sprachen): {:nmaxlanguages:} ✓
+    {:break:}
+  {:default:}
+    → Viele Sprachen ({:nmaxlanguages:})
+{:endswitch:}
+
+[TEST 5.3] Switch mit defaultlanguage
+--------------------------------------------------------------------------------
+{:switch defaultlanguage:}
+  {:case "de":}
+    Default = Deutsch
+    {:break:}
+  {:case "en":}
+    Default = English
+    {:break:}
+  {:case "fr":}
+    Default = Français
+    {:break:}
+  {:case "es":}
+    Default = Español
+    {:break:}
+  {:case "it":}
+    Default = Italiano
+    {:break:}
+  {:default:}
+    Default = {:defaultlanguage:} (unspezifiziert in diesem Switch)
+{:endswitch:}
+
+================================================================================
+EXPECTED: Nur der zutreffende case-Block erscheint.
+          Keine switch / case / endswitch im Output.
+================================================================================

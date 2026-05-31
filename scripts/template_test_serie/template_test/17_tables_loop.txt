@@ -1,0 +1,45 @@
+================================================================================
+TEST 17: TABELLEN-LOOP (project_file, iteriert ALLE Tabellen)
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert (Project-Level).
+================================================================================
+
+Projekt: {:projectname:} ({:nmaxtables:} aktive Tabellen)
+
+================================================================================
+ALLE TABELLEN IM SCHEMA (nmaxtables / nmaxfiles)
+================================================================================
+
+{:for nmaxtables:}
+═══ Table #{:i:}: {:table.filename:} ═══
+  filename:        {:table.filename:}
+  filepascalcase:  {:table.filepascalcase:}
+  filecamelcase:   {:table.filecamelcase:}
+  filesingular:    {:table.filesingular:}
+  filekeyname:     {:table.filekeyname:}
+  filecaption:     {:table.filecaption:}
+  hasprimarykey:   {:table.hasprimarykey:}
+  hasforeignkeys:  {:table.hasforeignkeys:}
+  hasblob:         {:table.hasblob:}
+
+{:endfor:}
+
+================================================================================
+EXPECTED bei Schema mit 'users' + 'user_groups':
+  nmaxtables = 2
+
+  Table #0:
+    filename       = user_groups
+    filepascalcase = UserGroups
+    filecamelcase  = userGroups
+    filesingular   = user_group
+    hasforeignkeys = false (Lookup-Tabelle hat keine FKs auf andere)
+    hasblob        = false
+
+  Table #1:
+    filename       = users
+    filepascalcase = Users
+    hasforeignkeys = true (FK auf user_groups)
+    hasblob        = true (user_image ist longblob)
+================================================================================

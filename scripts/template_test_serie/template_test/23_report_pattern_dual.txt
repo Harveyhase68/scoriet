@@ -1,0 +1,152 @@
+================================================================================
+TEST REPORT-23: REPORT-PATTERN (dual: ohne UND mit ReportPattern)
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+
+WICHTIG: Dieselbe Vorlage wird in zwei Tabellen-Konfigurationen ausgeführt:
+
+  PROFIL A — Tabelle OHNE zugeordnetes ReportPattern:
+      `report_pattern_id` = null, `report_pattern_name` = ''
+      → for-nmaxreportsingleelements / for-nmaxreportlistelements
+        laufen 0× (graceful skip)
+      → Counter nmaxreportsingleelements / nmaxreportlistelements = 0
+
+  PROFIL B — Tabelle MIT zugeordnetem ReportPattern:
+      `report_pattern_id` = z.B. 5, `report_pattern_name` = "Standard-Liste"
+      → Echte Report-Elemente werden iteriert
+      → Counter > 0
+================================================================================
+
+Tabelle: {:tablename:}
+
+================================================================================
+[A] REPORT-PATTERN-LEVEL (table-scope, NICHT in einer Schleife)
+================================================================================
+
+report_pattern_id          = {:report_pattern_id:}
+report_pattern_name        = {:report_pattern_name:}
+nmaxreportsingleelements   = {:nmaxreportsingleelements:}
+nmaxreportlistelements     = {:nmaxreportlistelements:}
+nmaxlayoutreportsingle     = {:nmaxlayoutreportsingle:}
+nmaxlayoutreportlist       = {:nmaxlayoutreportlist:}
+
+EXPECTED Profil A:
+  report_pattern_id        =     (leer)
+  report_pattern_name      =     (leer)
+  nmaxreportsingleelements = 0
+  nmaxreportlistelements   = 0
+
+EXPECTED Profil B:
+  report_pattern_id        = 5      (oder andere ID)
+  report_pattern_name      = "Standard-Liste"
+  nmaxreportsingleelements = 4      (Anzahl Single-Felder im Pattern)
+  nmaxreportlistelements   = 6      (Anzahl List-Felder im Pattern)
+
+
+================================================================================
+[B] REPORT-SINGLE-ELEMENTE — for-nmaxreportsingleelements
+================================================================================
+Die Single-Variante zeigt EIN Datensatz im Detail (z.B. Druck-Detail-Seite).
+{:for nmaxreportsingleelements:}
+  Single-Element #{:i:}:
+    reportsingleelement.field_name       = {:reportsingleelement.field_name:}
+    reportsingleelement.label            = {:reportsingleelement.label:}
+    reportsingleelement.format           = {:reportsingleelement.format:}
+    reportsingleelement.sort_order       = {:reportsingleelement.sort_order:}
+    reportsingleelement.visible          = {:reportsingleelement.visible:}
+{:endfor:}
+
+================================================================================
+[C] REPORT-LIST-ELEMENTE — for-nmaxreportlistelements
+================================================================================
+Die List-Variante zeigt mehrere Datensätze tabellarisch.
+{:for nmaxreportlistelements:}
+  List-Element #{:i:}:
+    reportlistelement.field_name         = {:reportlistelement.field_name:}
+    reportlistelement.label              = {:reportlistelement.label:}
+    reportlistelement.width              = {:reportlistelement.width:}
+    reportlistelement.align              = {:reportlistelement.align:}
+    reportlistelement.sort_order         = {:reportlistelement.sort_order:}
+{:endfor:}
+
+================================================================================
+[D] LAYOUT-REPORT-SINGLE — Positionierungs-Layout für Single-Report
+================================================================================
+{:for nmaxlayoutreportsingle:}
+  Layout-Single #{:i:}:
+    field_name      = {:layoutreportsingle.field_name:}
+    label           = {:layoutreportsingle.label:}
+    caption         = {:layoutreportsingle.caption:}
+    control_type    = {:layoutreportsingle.control_type:}
+    x / y           = {:layoutreportsingle.x:} / {:layoutreportsingle.y:}
+    width / height  = {:layoutreportsingle.width:} / {:layoutreportsingle.height:}
+    label_position  = {:layoutreportsingle.label_position:}
+    label_width     = {:layoutreportsingle.label_width:}
+    font            = {:layoutreportsingle.font_family:} {:layoutreportsingle.font_size:}pt {:layoutreportsingle.font_weight:}
+    text_color      = {:layoutreportsingle.text_color:}
+    background      = {:layoutreportsingle.background_color:}
+    schema_field_id = {:layoutreportsingle.schema_field_id:}
+{:endfor:}
+
+================================================================================
+[E] LAYOUT-REPORT-LIST — Spalten-Layout für List-Report
+================================================================================
+{:for nmaxlayoutreportlist:}
+  Layout-List #{:i:}:
+    field_name      = {:layoutreportlist.field_name:}
+    label           = {:layoutreportlist.label:}
+    caption         = {:layoutreportlist.caption:}
+    control_type    = {:layoutreportlist.control_type:}
+    x / y           = {:layoutreportlist.x:} / {:layoutreportlist.y:}
+    width / height  = {:layoutreportlist.width:} / {:layoutreportlist.height:}
+    font            = {:layoutreportlist.font_family:} {:layoutreportlist.font_size:}pt {:layoutreportlist.font_weight:}
+    text_color      = {:layoutreportlist.text_color:}
+    background      = {:layoutreportlist.background_color:}
+    border_width    = {:layoutreportlist.border_width:}
+    text_align      = {:layoutreportlist.text_align:}
+    schema_field_id = {:layoutreportlist.schema_field_id:}
+{:endfor:}
+
+================================================================================
+[F] CONDITIONAL — drei Zustände: explicit / fallback / nothing
+================================================================================
+Die report_pattern_id im gtree nutzt eine Sentinel-Konvention:
+  • Feld fehlt   → gar nichts (weder Tabelle noch Projekt-Default)
+  • Wert = -1    → Projekt-Default-Fallback ist aktiv
+  • Wert > 0     → Tabelle hat ein eigenes Pattern explizit zugewiesen
+
+Raw-Werte aus dem gtree:
+  report_pattern_id   = {:report_pattern_id:}
+  report_pattern_name = {:report_pattern_name:}
+  form_set_id         = {:form_set_id:}
+  form_set_name       = {:form_set_name:}
+
+{:if report_pattern_id gt 0:}
+  ✓ TABLE-SPECIFIC: Tabelle hat ein eigenes ReportPattern "{:report_pattern_name:}" (id={:report_pattern_id:}).
+    Hier kannst du table-spezifische Anpassungen vom User erwarten (Farben, Fonts, Captions etc.).
+{:elseif report_pattern_id eq -1:}
+  ↳ PROJECT-DEFAULT FALLBACK: kein eigenes Pattern, aber Projekt-Default "{:report_pattern_name:}" greift.
+    Daten kommen aus dem generischen Project-Default — kein User-Customising.
+{:else:}
+  ✗ NOTHING: Tabelle hat KEIN ReportPattern und auch kein Projekt-Default.
+    Tipp: Im TableModal Tab "Reports" oder in Projekt-Settings einen ReportPattern wählen.
+{:endif:}
+
+================================================================================
+EXPECTED:
+  Profil A (Tabelle ohne ReportPattern):
+    - Sektionen [B]-[E] sind LEER (Loops laufen 0×)
+    - Sektion [F] zeigt den ELSE-Zweig
+    - Counter zeigen alle 0
+
+  Profil B (Tabelle mit ReportPattern):
+    - Sektionen [B]-[C] zeigen die konfigurierten Felder mit ihren Labels,
+      Sortierung und Sichtbarkeit
+    - Sektionen [D]-[E] zeigen die Positionierungs-Layouts
+    - Sektion [F] zeigt den IF-Zweig
+
+  Bug-Indikator: bleibt `report_pattern_id` als Platzhalter im Output stehen,
+  prüfe den gtree-Build im UltimateTemplateController. Bei `tableReportPattern`
+  null bleibt das Feld undefined und der Resolver liefert leer.
+================================================================================

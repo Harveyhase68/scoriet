@@ -1,0 +1,64 @@
+================================================================================
+TEST 01: GLOBALE PROJEKT-VARIABLEN (kein DB-Kontext, keine Sprache)
+================================================================================
+File-Type: project_file
+Expected Output: Diese Datei wird EINMAL generiert.
+================================================================================
+
+[A] PROJEKT-IDENTITÄT
+--------------------------------------------------------------------------------
+projectname        = {:projectname:}
+projectid          = {:projectid:}
+projectcaption     = {:projectcaption:}
+projectdescription = {:projectdescription:}
+projectowner       = {:projectowner:}
+projectowneremail  = {:projectowneremail:}
+projectcreated     = {:projectcreated:}
+projectupdated     = {:projectupdated:}
+projectdirectory   = {:projectdirectory:}
+projecturl         = {:projecturl:}
+startpage          = {:startpage:}
+
+[B] DB-CONNECTION-EINSTELLUNGEN (Projekt-Level)
+--------------------------------------------------------------------------------
+projectdatabase    = {:projectdatabase:}
+projectdbid        = {:projectdbid:}
+projectdbtype      = {:projectdbtype:}
+projectdbserver    = {:projectdbserver:}
+projectdbport      = {:projectdbport:}
+projectdbusername  = {:projectdbusername:}
+projectdbpassword  = {:projectdbpassword:}
+projectdbversion   = {:projectdbversion:}
+
+[C] ERSTES VERKNÜPFTES SCHEMA
+--------------------------------------------------------------------------------
+projectdbname      = {:projectdbname:}
+projectdbdesc      = {:projectdbdesc:}
+
+[D] SYSTEM / GENERATION
+--------------------------------------------------------------------------------
+laravelversion     = {:laravelversion:}
+scorietversion     = {:scorietversion:}
+generationdatetime = {:generationdatetime:}
+
+[E] TEMPLATE-METADATA
+--------------------------------------------------------------------------------
+templateid         = {:templateid:}
+templatename       = {:templatename:}
+templatecategory   = {:templatecategory:}
+templatedescription= {:templatedescription:}
+templatefolder     = {:templatefolder:}
+templatepage       = {:templatepage:}
+templatepagename   = {:templatepagename:}
+templatefilepath   = {:templatefilepath:}
+templateoutputpath = {:templateoutputpath:}
+
+[F] COUNTER (sollten als reine Zahlen erscheinen)
+--------------------------------------------------------------------------------
+nmaxlanguages      = {:nmaxlanguages:}
+nmaxtables         = {:nmaxtables:}
+nmaxfiles          = {:nmaxfiles:}
+
+================================================================================
+EXPECTED: Alle Werte sollten ersetzt sein. Keine {:...:} Platzhalter mehr sichtbar.
+================================================================================

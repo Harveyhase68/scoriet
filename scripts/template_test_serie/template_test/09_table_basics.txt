@@ -1,0 +1,53 @@
+================================================================================
+TEST 09: TABELLEN-LEVEL VARIABLEN (db_table_file, kein Field-Loop)
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle (Master + Lookup).
+================================================================================
+
+[A] NAMING VARIANTS
+--------------------------------------------------------------------------------
+tablename             = {:tablename:}
+tableindex            = {:tableindex:}
+filename              = {:filename:}
+filenameshort         = {:filenameshort:}
+filenamerenamed       = {:filenamerenamed:}
+filecamelcase         = {:filecamelcase:}
+filepascalcase        = {:filepascalcase:}
+filesingular          = {:filesingular:}
+filesingularcamelcase = {:filesingularcamelcase:}
+filesingularpascalcase= {:filesingularpascalcase:}
+
+[B] CAPTIONS / METADATA
+--------------------------------------------------------------------------------
+filecaption           = {:filecaption:}
+filedescription       = {:filedescription:}
+filekeyname           = {:filekeyname:}
+fileprimarykey        = {:fileprimarykey:}
+
+[C] HAS-FLAGS (booleans — als Strings im Output)
+--------------------------------------------------------------------------------
+hastimestamps         = {:hastimestamps:}
+hasprimarykey         = {:hasprimarykey:}
+hasblob               = {:hasblob:}
+hasbinaryblob         = {:hasbinaryblob:}
+hasforeignkeys        = {:hasforeignkeys:}
+
+[D] MASTER-DETAIL
+--------------------------------------------------------------------------------
+filegeneratemasterdetail = {:filegeneratemasterdetail:}
+filedetailfileid         = {:filedetailfileid:}
+filedetailfilename       = {:filedetailfilename:}
+filedetailkey            = {:filedetailkey:}
+
+================================================================================
+EXPECTED bei Tabelle 'users' mit FK auf user_groups:
+  tablename       = users
+  filepascalcase  = Users
+  filecamelcase   = users (lcfirst)
+  filesingular    = user
+  filekeyname     = user_id (oder ähnlich)
+  hasprimarykey   = true
+  hasblob         = true (user_image ist longblob)
+  hasforeignkeys  = true (FK auf user_groups)
+================================================================================

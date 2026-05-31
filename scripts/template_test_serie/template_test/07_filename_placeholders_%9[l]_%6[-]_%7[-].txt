@@ -1,0 +1,59 @@
+================================================================================
+TEST 07: %-PLATZHALTER IM DATEINAMEN
+================================================================================
+File-Type: project_file
+Filename-Pattern in Template: 07_filename_placeholders_%9[l]_%6[-]_%7[-].txt
+Expected Output: 1× generiert mit aufgelöstem Dateinamen.
+
+WICHTIG: Im Template-Editor diesen GENAUEN Dateinamen eintragen:
+    07_filename_placeholders_%9[l]_%6[-]_%7[-].txt
+
+Beispiel-Output-Dateiname bei projectname="TestProject", 22.5.2026 09:50:34:
+    07_filename_placeholders_testproject_2026-05-22_09-50-34.txt
+================================================================================
+
+Dateiname-Platzhalter-Übersicht (zur Kontrolle im Output):
+--------------------------------------------------------------------------------
+
+%9-Varianten (projectname mit Modifier):
+  %9      → projectname unverändert
+  %9[u]   → UPPERCASE
+  %9[l]   → lowercase                     ← in diesem Dateinamen verwendet
+  %9[c]   → Capitalize
+  %9[p]   → "Project Name" (Leerzeichen statt -)
+  %9[n]   → "project_name" (_ statt -)
+
+%6-Varianten (Datum):
+  %6      → 20260522 (kein Trenner)
+  %6[-]   → 2026-05-22                    ← in diesem Dateinamen verwendet
+  %6[_]   → 2026_05_22
+  %6[.]   → 2026.05.22
+  %6[_U]  → 05_22_2026 (US-Format)
+  %6[_E]  → 22_05_2026 (EU-Format)
+  %6[-E]  → 22-05-2026
+
+%7-Varianten (Uhrzeit):
+  %7      → 095034 (kein Trenner)
+  %7[:]   → 09:50:34
+  %7[-]   → 09-50-34                      ← in diesem Dateinamen verwendet
+  %7[_]   → 09_50_34
+
+%8-Varianten (DateTime kombiniert):
+  %8      → 20260522_095034
+  %8[-]   → 2026-05-22_09-50-34
+  %8[_]   → 2026_05_22_09_50_34
+
+Sonstige:
+  %14     → projectdbversion (in unserem Setup: "1")
+
+================================================================================
+CONTENT (zur Verifikation):
+--------------------------------------------------------------------------------
+projectname                  = {:projectname:}
+generationdatetime (Content) = {:generationdatetime:}
+
+Wenn der Dateiname korrekt aufgelöst wurde:
+  - "{:projectname:}" sollte (lowercased) im Dateinamen vorkommen
+  - generationdatetime im Content sollte zum Dateinamen-Datum passen
+
+================================================================================

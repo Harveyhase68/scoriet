@@ -1,0 +1,84 @@
+================================================================================
+TEST 04: CONDITIONS (if-XXX / elseif / else / endif)
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert.
+================================================================================
+
+[TEST 4.1] Simple IF mit Counter-Vergleich (eq)
+--------------------------------------------------------------------------------
+{:if nmaxlanguages eq 1:}
+  → 1 Sprache aktiv
+{:elseif nmaxlanguages eq 2:}
+  → 2 Sprachen aktiv (erwartet wenn Default+1 Zweitsprache)
+{:elseif nmaxlanguages gt 2:}
+  → mehr als 2 Sprachen aktiv ({:nmaxlanguages:})
+{:else:}
+  → keine Sprachen aktiv?!
+{:endif:}
+
+[TEST 4.2] IF mit String-Vergleich
+--------------------------------------------------------------------------------
+{:if projectdbtype eq "MySQL":}
+  → Datenbank ist MySQL ✓
+{:elseif projectdbtype eq "PostgreSQL":}
+  → Datenbank ist PostgreSQL
+{:elseif projectdbtype eq "SQLite":}
+  → Datenbank ist SQLite
+{:else:}
+  → Unbekannter DB-Typ: {:projectdbtype:}
+{:endif:}
+
+[TEST 4.3] IF mit ne (not equal)
+--------------------------------------------------------------------------------
+{:if defaultlanguage ne "en":}
+  → Default-Sprache ist NICHT Englisch (sondern {:defaultlanguage:}) ✓
+{:else:}
+  → Default-Sprache ist Englisch
+{:endif:}
+
+[TEST 4.4] IF mit Vergleichsoperatoren (gt, lt, gte, lte)
+--------------------------------------------------------------------------------
+{:if nmaxtables gt 0:}
+  → Schema mit {:nmaxtables:} Tabellen vorhanden
+{:else:}
+  → Kein Schema oder leeres Schema (nmaxtables = {:nmaxtables:})
+{:endif:}
+
+{:if nmaxlanguages gte 2:}
+  → Mehrsprachig (>= 2)
+{:else:}
+  → Einsprachig
+{:endif:}
+
+[TEST 4.5] IF mit logischen Operatoren (and, or, not)
+--------------------------------------------------------------------------------
+{:if nmaxlanguages gt 1 and defaultlanguage ne "en":}
+  → Mehrsprachig mit nicht-englischer Default-Sprache ✓
+{:else:}
+  → Andere Konstellation
+{:endif:}
+
+{:if projectdbtype eq "MySQL" or projectdbtype eq "MariaDB":}
+  → MySQL-kompatible DB
+{:else:}
+  → Andere DB
+{:endif:}
+
+[TEST 4.6] Verschachtelte IFs
+--------------------------------------------------------------------------------
+{:if nmaxlanguages gt 0:}
+  Sprachen-Konfiguration vorhanden:
+  {:if defaultlanguage eq "de":}
+    → Default = Deutsch
+  {:elseif defaultlanguage eq "en":}
+    → Default = Englisch
+  {:else:}
+    → Default = {:defaultlanguage:}
+  {:endif:}
+{:endif:}
+
+================================================================================
+EXPECTED: Nur die ZUTREFFENDEN Zweige erscheinen im Output.
+          Keine if / elseif / endif im Output.
+================================================================================

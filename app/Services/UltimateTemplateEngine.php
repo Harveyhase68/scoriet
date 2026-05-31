@@ -986,8 +986,16 @@ class UltimateTemplateEngine
         // field. `{:value:}` (resolved separately in processVariable) gives the
         // current array entry.
         if (strpos($line, '{:for item.enum_values:}') !== false) {
+            // NESTED-IN-TABLES override: same rationale as keys.X / foreign.X resolver.
+            // When this inner loop sits inside a {:for nmaxtables:} outer loop, the
+            // JS-runtime `tableIdx` reassigned per outer iteration MUST win over the
+            // static engine-context `$tableIndex` — otherwise the enum_values lookup
+            // locks to a single table (e.g. tables[1] from a db_table_file generation)
+            // and crashes the moment the outer loop visits a different table whose
+            // fields[i] has no enum_values (undefined.enum_values).
+            $nestedInTables = in_array('tables', $this->loopContextStack, true);
             $this->pushLoopContext('item_enum_values');
-            $itemRef = $tableIndex !== null
+            $itemRef = ($tableIndex !== null && !$nestedInTables)
                 ? "gtree[0].project[0].tables[{$tableIndex}].fields[i]"
                 : "gtree[0].project[0].tables[tableIdx].fields[i]";
             return "  for (let _valIdx = 0; _valIdx < (({$itemRef}.enum_values) || []).length; _valIdx++) {\n"
@@ -1961,8 +1969,21 @@ class UltimateTemplateEngine
     {
         $variable = trim($variable);
 
+        // NESTED-IN-TABLES override (single source of truth for the whole map):
+        // when this resolver runs inside a {:for nmaxtables:} loop, the JS-runtime
+        // `tableIdx` reassigned per outer iteration MUST win over the static
+        // engine-context `$tableIndex`. Without this, ALL the *_mappings below
+        // (filename, nmaxitems, nmaxkeys, hastimestamps, …) would lock to the
+        // db_table_file context table — so an outer-loop iteration over 19 tables
+        // would print "Table 0: users / Table 1: users / Table 2: users / …"
+        // instead of advancing the table per iteration. Same pattern as the
+        // keys.X / foreign.X resolver fixes.
+        $nestedInTables = in_array('tables', $this->loopContextStack, true);
+
         // Check legacyMappings first (most common variables)
-        $tableRef = $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}]" : "gtree[0].project[0].tables[tableIdx]";
+        $tableRef = ($tableIndex !== null && !$nestedInTables)
+            ? "gtree[0].project[0].tables[{$tableIndex}]"
+            : "gtree[0].project[0].tables[tableIdx]";
         $legacyMappings = [
             // Project-level
             'projectname' => "gtree[0].project[0].projectname",
@@ -2052,6 +2073,26 @@ class UltimateTemplateEngine
     {
         $variable = trim($variable);
 
+        // 🎯 NESTED-IN-TABLES OVERRIDE — single source of truth for the whole resolver.
+        //
+        // When this resolver runs inside a {:for nmaxtables:} loop, the JS-runtime
+        // `tableIdx` reassigned per outer iteration MUST win over the static
+        // engine-context `$tableIndex` (the db_table_file PHP context). Without
+        // this, every standalone {:filename:} / {:nmaxitems:} / {:hastimestamps:}
+        // / {:nmaxkeys:} / … would lock to the db_table_file table and emit the
+        // same value for every outer iteration — so "Table 0: users / Table 1:
+        // users / Table 2: users / ..." instead of advancing per iteration.
+        //
+        // We override `$tableIndex` to null here so every `$tableIndex !== null`
+        // branch in the resolver below automatically falls through to its
+        // `tables[tableIdx]` arm — one fix for ~50 hand-written mappings.
+        // Specialized resolvers further down (keys.X, foreign.X, item.enum_values,
+        // nmaxenum, …) had their own local nested checks before this central
+        // override existed; those are now redundant-but-harmless safety nets.
+        if ($tableIndex !== null && in_array('tables', $this->loopContextStack, true)) {
+            $tableIndex = null;
+        }
+
         // 🎯 LOOP COUNTER VARIABLES
         // These reference identifiers declared by the for-loop preamble:
         //   - `i`        : real field index (set by nmaxitems-loop from fieldsgen[_fgenI])
@@ -2118,7 +2159,13 @@ class UltimateTemplateEngine
         // inner counter is `_valIdx`). Outside any field context it resolves to 0.
         if ($variable === 'nmaxenum') {
             if ($this->currentLoopContext === 'fields' || $this->currentLoopContext === 'item_enum_values') {
-                $tableRef = $tableIndex !== null
+                // NESTED-IN-TABLES override (same as item.enum_values loop emitter):
+                // when this resolver runs inside an outer {:for nmaxtables:}, the JS
+                // `tableIdx` MUST win over the static $tableIndex, otherwise enum
+                // counter locks to one table and reports the wrong length for every
+                // other table the outer loop visits.
+                $nestedInTables = in_array('tables', $this->loopContextStack, true);
+                $tableRef = ($tableIndex !== null && !$nestedInTables)
                     ? "gtree[0].project[0].tables[{$tableIndex}]"
                     : "gtree[0].project[0].tables[tableIdx]";
                 return "' + (({$tableRef}.fields[i].enum_values) || []).length + '";
@@ -2489,8 +2536,19 @@ class UltimateTemplateEngine
         // {:for nmaxconstraints:} → constraints[] (ALL constraints incl. INDEX/KEY + FOREIGN, 5 entries)
         // Without this, `{:keys.constraintname:}` inside an nmaxconstraints loop would index
         // into keys[i] past its length and throw "Cannot read properties of undefined".
+        //
+        // NESTED-IN-TABLES override (same rationale as getItemExpression line ~1096):
+        // when this resolver runs inside a {:for nmaxtables:} loop, the JS `tableIdx`
+        // reassigned per outer iteration MUST win over the static engine-context
+        // `$tableIndex`. Without this, an outer nmaxtables loop emits the loop body
+        // 19 times but every body locks to tables[0] — runs fine for the first table
+        // and then crashes at constraints[k] when the actual iterated table has more
+        // constraints than table 0. We detect nesting via the loopContextStack (NOT
+        // currentLoopContext, which is already 'constraints' or 'keys' by the time
+        // this resolver runs).
+        $nestedInTables = in_array('tables', $this->loopContextStack, true);
         $keysArrayName = $this->currentLoopContext === 'constraints' ? 'constraints' : 'keys';
-        $keysRef = $tableIndex !== null
+        $keysRef = ($tableIndex !== null && !$nestedInTables)
             ? "gtree[0].project[0].tables[{$tableIndex}].{$keysArrayName}[i]"
             : "gtree[0].project[0].tables[tableIdx].{$keysArrayName}[i]";
         $keysMappings = [
@@ -2524,11 +2582,12 @@ class UltimateTemplateEngine
         //   • foreignkeysunique loop → foreignkeysunique[_fkuI]
         // Templates can use {:foreign.X:} in either loop type. The compile-time
         // currentLoopContext flips the path so the right array index is used.
+        // Same NESTED-IN-TABLES override rationale as keys.X above.
         $fkArrayRef = ($this->currentLoopContext === 'foreignkeysunique')
-            ? ($tableIndex !== null
+            ? (($tableIndex !== null && !$nestedInTables)
                 ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeysunique[_fkuI]"
                 : "gtree[0].project[0].tables[tableIdx].foreignkeysunique[_fkuI]")
-            : ($tableIndex !== null
+            : (($tableIndex !== null && !$nestedInTables)
                 ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeys[_fkI]"
                 : "gtree[0].project[0].tables[tableIdx].foreignkeys[_fkI]");
 
@@ -2559,7 +2618,8 @@ class UltimateTemplateEngine
         }
 
         // 🎯 FOREIGN KEYS UNIQUE VARIABLES (for {:for nmaxforeignkeysunique:} loops)
-        $fkuRef = $tableIndex !== null
+        // Same NESTED-IN-TABLES override as keys.X / foreign.X above.
+        $fkuRef = ($tableIndex !== null && !$nestedInTables)
             ? "gtree[0].project[0].tables[{$tableIndex}].foreignkeysunique[_fkuI]"
             : "gtree[0].project[0].tables[tableIdx].foreignkeysunique[_fkuI]";
         $foreignKeysUniqueMappings = [

@@ -1,0 +1,509 @@
+================================================================================
+ULTIMATE STRESS TEST 24 — Alle Loops × maximale Verschachtelung
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert (Project-Level mit allen Tabellen darin).
+
+Ziel: Engine systematisch durch ALLE Loop-Konstrukte UND deren Verschachtelung
+laufen lassen. Bugs in Loop-Context-Stack, Resolver-Drift, nested-tableRef-
+Override, Counter-Variablen und Conditionals offenlegen.
+
+Verschachtelungs-Übersicht (bis 3 Ebenen tief):
+  - tables                                        (outer)
+    └ items                                       (Level 2)
+       └ enum_values                              (Level 3) — bei ENUM/SET
+    └ foreignkeys                                 (Level 2)
+       └ items                                    (Level 3) — re-iteration
+    └ keys / constraints                          (Level 2)
+    └ layoutsingles / layoutcolumns               (Level 2)
+    └ layoutreportsingle / layoutreportlist       (Level 2)
+    └ reportsingleelements / reportlistelements   (Level 2)
+================================================================================
+
+
+
+################################################################################
+# [A] PROJEKT-EBENE — keine Schleife, alle Top-Level-Variablen
+################################################################################
+
+  projectname               = {:projectname:}
+  projectcaption            = {:projectcaption:}
+  projectid                 = {:projectid:}
+  projectdatabase           = {:projectdatabase:}
+  projectdbtype             = {:projectdbtype:}
+  projectdbname             = {:projectdbname:}
+  projectdbversion          = {:projectdbversion:}
+  projectowner              = {:projectowner:}
+  projectowneremail         = {:projectowneremail:}
+  projectcreated            = {:projectcreated:}
+  projectupdated            = {:projectupdated:}
+
+  generationdatetime        = {:generationdatetime:}
+  generationuser            = {:generationuser:}
+  scorietversion            = {:scorietversion:}
+  laravelversion            = {:laravelversion:}
+
+  decimalsep                = {:decimalsep:}
+  thousandsep               = {:thousandsep:}
+  dateformat                = {:dateformat:}
+  timeformat                = {:timeformat:}
+  currencysym               = {:currencysym:}
+  timezone                  = {:timezone:}
+
+  selectedlanguage          = {:selectedlanguage:}
+  selectedlanguageindex     = {:selectedlanguageindex:}
+
+  Counters (project-global):
+  nmaxtables                = {:nmaxtables:}
+  nmaxlanguages             = {:nmaxlanguages:}
+  nmaxformsets              = {:nmaxformsets:}
+  nmaxwindows               = {:nmaxwindows:}
+  nmaxmigration_total       = {:nmaxmigration_total:}
+  nmaxmigration_tables      = {:nmaxmigration_tables:}
+  nmaxmigration_fields      = {:nmaxmigration_fields:}
+  nmaxmigration_indexes     = {:nmaxmigration_indexes:}
+  nmaxmigration_foreignkeys = {:nmaxmigration_foreignkeys:}
+
+
+
+################################################################################
+# [B] LANGUAGES LOOP — for-nmaxlanguages
+################################################################################
+{:for nmaxlanguages:}
+  Language #{:i:}:
+    id            = {:language.id:}
+    code          = {:language.code:}
+    name          = {:language.name:}
+    native_name   = {:language.native_name:}
+    flag          = {:language.flag:}
+    caption       = {:language.caption:}
+    decimalsep    = {:language.decimalsep:}
+    thousandsep   = {:language.thousandsep:}
+    dateformat    = {:language.dateformat:}
+    timeformat    = {:language.timeformat:}
+    currencysym   = {:language.currencysym:}
+    timezone      = {:language.timezone:}
+{:endfor:}
+
+
+
+################################################################################
+# [C] TABLES LOOP — for-nmaxtables (alles per Tabelle)
+################################################################################
+{:for nmaxtables:}
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ TABLE #{:i:}: {:table.filename:}
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+[C.1] Table-Scoped Variables
+────────────────────────────────────────────────────────────────────────────────
+  table.filename               = {:table.filename:}
+  table.filecaption            = {:table.filecaption:}
+  table.filecamelcase          = {:table.filecamelcase:}
+  table.filepascalcase         = {:table.filepascalcase:}
+  table.filesingular           = {:table.filesingular:}
+  table.filesingularpascalcase = {:table.filesingularpascalcase:}
+  table.filesingularcamelcase  = {:table.filesingularcamelcase:}
+  table.filenameshort          = {:table.filenameshort:}
+  table.fileid                 = {:table.fileid:}
+  table.filekeyname            = {:table.filekeyname:}
+  table.fileprimarykey         = {:table.fileprimarykey:}
+  table.hasforeignkeys         = {:table.hasforeignkeys:}
+  table.nmaxitems              = {:table.nmaxitems:}
+  table.nmaxkeys               = {:table.nmaxkeys:}
+  table.nmaxforeignkeys        = {:table.nmaxforeignkeys:}
+  table.index                  = {:table.index:}
+
+  Per-Table Provenance (Sentinel-Konvention):
+  form_set_id                  = {:form_set_id:}
+  form_set_name                = {:form_set_name:}
+  report_pattern_id            = {:report_pattern_id:}
+  report_pattern_name          = {:report_pattern_name:}
+
+
+[C.2] CONDITIONALS — if / elseif / else (FormSet + ReportPattern Provenance)
+────────────────────────────────────────────────────────────────────────────────
+  FormSet:
+{:if form_set_id gt 0:}
+    ✓ TABLE-SPECIFIC (id={:form_set_id:}, name="{:form_set_name:}")
+{:elseif form_set_id eq -1:}
+    ↳ vom Projekt-Default geerbt (id=-1, name="{:form_set_name:}")
+{:else:}
+    ✗ Kein FormSet
+{:endif:}
+
+  ReportPattern:
+{:if report_pattern_id gt 0:}
+    ✓ TABLE-SPECIFIC (id={:report_pattern_id:}, name="{:report_pattern_name:}")
+{:elseif report_pattern_id eq -1:}
+    ↳ vom Projekt-Default geerbt (id=-1, name="{:report_pattern_name:}")
+{:else:}
+    ✗ Kein ReportPattern
+{:endif:}
+
+  Table-Flags:
+{:if hasblob:}
+    ! Tabelle hat mindestens ein BLOB-Feld
+{:endif:}
+{:if hasbinaryblob:}
+    ! Tabelle hat mindestens ein BINARY-BLOB-Feld
+{:endif:}
+{:if hasforeignkeys:}
+    ! Tabelle hat Foreign Keys
+{:endif:}
+{:if hasprimarykey:}
+    ! Tabelle hat Primary Key
+{:endif:}
+{:if hastimestamps:}
+    ! Tabelle hat Timestamp-Felder
+{:endif:}
+
+
+[C.3] ITEMS LOOP (Level 2) — for-nmaxitems
+       mit Level-3 enum_values und switch/case auf type
+────────────────────────────────────────────────────────────────────────────────
+{:for nmaxitems:}
+  Field #{:i:}: {:item.name:}
+    pascalcase            = {:item.pascalcase:}
+    camelcase             = {:item.camelcase:}
+    type                  = {:item.type:}
+    size                  = {:item.size:}
+    precision             = {:item.precision:}
+    scale                 = {:item.scale:}
+    phptype               = {:item.phptype:}
+    jstype                = {:item.jstype:}
+    laraveltype           = {:item.laraveltype:}
+    typecast              = {:item.typecast:}
+    controltype           = {:item.controltype:}
+    notnull               = {:item.notnull:}
+    unsigned              = {:item.unsigned:}
+    isprimary             = {:item.isprimary:}
+    isunique              = {:item.isunique:}
+    isindex               = {:item.isindex:}
+    isforeign             = {:item.isforeign:}
+    autoincrement         = {:item.autoincrement:}
+    isblob                = {:item.isblob:}
+    isbinaryblob          = {:item.isbinaryblob:}
+    visible               = {:item.visible:}
+    is_generated          = {:item.is_generated:}
+    generation_expression = {:item.generation_expression:}
+    generation_storage    = {:item.generation_storage:}
+    default               = {:item.default:}
+    caption               = {:item.caption:}
+    linktable             = {:item.linktable:}
+    linkfield             = {:item.linkfield:}
+    linkdisplayfield      = {:item.linkdisplayfield:}
+    schema_field_id       = {:item.schema_field_id:}
+
+    Type-Klassifikation (switch/case in Loop):
+{:switch item.type:}
+{:case "BIGINT":}
+        → 64-bit Integer
+{:case "INT":}
+        → 32-bit Integer
+{:case "TINYINT":}
+        → 8-bit Integer / Boolean
+{:case "VARCHAR":}
+        → String mit Längen-Limit ({:item.size:})
+{:case "LONGTEXT":}
+        → Großer Text
+{:case "LONGBLOB":}
+        → Binärdaten / Datei
+{:case "DECIMAL":}
+        → Festkomma ({:item.precision:},{:item.scale:})
+{:case "FLOAT":}
+        → Gleitkomma einfach
+{:case "DATE":}
+        → Datum
+{:case "DATETIME":}
+        → Datum + Zeit
+{:case "TIMESTAMP":}
+        → Zeitstempel mit DB-Default
+{:case "TIME":}
+        → Uhrzeit
+{:case "JSON":}
+        → JSON-Objekt
+{:case "ENUM":}
+        → ENUM-Set
+{:case "SET":}
+        → SET (Multi-Select Bits)
+{:default:}
+        → Anderer Typ: {:item.type:}
+{:endswitch:}
+
+    ENUM/SET Werte (Level 3 nested loop):
+{:if item.type eq "ENUM":}
+        nmaxenum = {:nmaxenum:}
+{:for item.enum_values:}
+          [{:i:}] {:value:}
+{:endfor:}
+{:elseif item.type eq "SET":}
+        nmaxenum = {:nmaxenum:}
+{:for item.enum_values:}
+          bit << {:i:} = {:value:}
+{:endfor:}
+{:endif:}
+
+{:endfor:}
+
+
+[C.4] FILTERED FIELD LOOPS — verschiedene Subsets der Items
+────────────────────────────────────────────────────────────────────────────────
+  fieldsnokey (ohne Primary Key):
+{:for nmaxitemsnokey:}
+    - {:item.name:} ({:item.type:})
+{:endfor:}
+
+  fieldsnokeyall (alle ohne Primary Key, ignoriert generation_mode):
+{:for nmaxitemsnokeyall:}
+    - {:item.name:} ({:item.type:})
+{:endfor:}
+
+  fieldsnoblob (ohne BLOB/TEXT):
+{:for nmaxitemsnoblob:}
+    - {:item.name:} ({:item.type:})
+{:endfor:}
+
+  fieldsnobloball (alle ohne BLOB/TEXT):
+{:for nmaxitemsnobloball:}
+    - {:item.name:} ({:item.type:})
+{:endfor:}
+
+  fieldsnobinaryblob (ohne Binary-BLOB):
+{:for nmaxitemsnobinaryblob:}
+    - {:item.name:} ({:item.type:})
+{:endfor:}
+
+  fieldsnobinarybloball (alle ohne Binary-BLOB):
+{:for nmaxitemsnobinarybloball:}
+    - {:item.name:} ({:item.type:})
+{:endfor:}
+
+  fieldssearchkeys (Suchfelder):
+{:for nmaxsearchkeys:}
+    - {:item.name:} (caption: {:item.caption:})
+{:endfor:}
+
+
+[C.5] KEYS LOOP — for-nmaxkeys (PRIMARY + UNIQUE)
+────────────────────────────────────────────────────────────────────────────────
+{:for nmaxkeys:}
+  Key #{:i:}: {:keys.name:}
+    constraintname  = {:keys.constraintname:}
+    column          = {:keys.column:}
+    type            = {:keys.type:}
+    constrainttype  = {:keys.constrainttype:}
+    typecast        = {:keys.typecast:}
+    isprimary       = {:keys.isprimary:}
+    isunique        = {:keys.isunique:}
+    isindex         = {:keys.isindex:}
+    isforeign       = {:keys.isforeign:}
+{:endfor:}
+
+
+[C.6] CONSTRAINTS LOOP — for-nmaxconstraints (alles: PK + UNIQUE + INDEX + FK)
+────────────────────────────────────────────────────────────────────────────────
+{:for nmaxconstraints:}
+  Constraint #{:i:}: {:keys.name:}
+    constraintname  = {:keys.constraintname:}
+    constrainttype  = {:keys.constrainttype:}
+    column          = {:keys.column:}
+    type            = {:keys.type:}
+    isprimary       = {:keys.isprimary:}
+    isforeign       = {:keys.isforeign:}
+    isunique        = {:keys.isunique:}
+    isindex         = {:keys.isindex:}
+{:endfor:}
+
+
+[C.7] FOREIGN KEYS LOOP — for-nmaxforeignkeys
+       mit Level-3 items-Re-Iteration (testet nested tableRef)
+────────────────────────────────────────────────────────────────────────────────
+{:for nmaxforeignkeys:}
+  FK #{:i:}: {:foreign.name:}
+    constraintname              = {:foreign.constraintname:}
+    referencedtable             = {:foreign.referencedtable:}
+    referencedtablepascalcase   = {:foreign.referencedtablepascalcase:}
+    referencedtablecamelcase    = {:foreign.referencedtablecamelcase:}
+    referencedcolumn            = {:foreign.referencedcolumn:}
+    referencedfield             = {:foreign.referencedfield:}
+    ondelete                    = {:foreign.ondelete:}
+    onupdate                    = {:foreign.onupdate:}
+
+    DEEP NESTING TEST — iteriere ALLE items derselben Tabelle innerhalb FK:
+    (foreign.name muss stabil bleiben, item.* muss auf lokale Felder zeigen)
+{:for nmaxitems:}
+      - field={:item.name:}, type={:item.type:}, FK-Source={:foreign.name:}
+{:endfor:}
+
+{:endfor:}
+
+
+[C.8] FOREIGN KEYS UNIQUE LOOP — for-nmaxforeignkeysunique (dedupliziert)
+────────────────────────────────────────────────────────────────────────────────
+{:for nmaxforeignkeysunique:}
+  Unique-FK auf {:foreign.referencedtable:}({:foreign.referencedcolumn:})
+    Quelle: {:foreign.name:}
+    constraint: {:foreign.constraintname:}
+{:endfor:}
+
+
+[C.9] FORM LAYOUT — Singles + Columns
+────────────────────────────────────────────────────────────────────────────────
+  Layout-Singles (nmaxlayoutsingles = {:nmaxlayoutsingles:}):
+{:for nmaxlayoutsingles:}
+    #{:i:}: type={:layoutsingle.type:}, control={:layoutsingle.control_type:}
+        field_name      = {:layoutsingle.field_name:}
+        label           = {:layoutsingle.label:}
+        field_type      = {:layoutsingle.field_type:}
+        x / y           = {:layoutsingle.x:} / {:layoutsingle.y:}
+        width / height  = {:layoutsingle.width:} / {:layoutsingle.height:}
+        tab_order       = {:layoutsingle.tab_order:}
+        button_type     = {:layoutsingle.button_type:}
+        icon            = {:layoutsingle.icon:}
+{:endfor:}
+
+  Layout-Columns (nmaxlayoutcolumns = {:nmaxlayoutcolumns:}):
+{:for nmaxlayoutcolumns:}
+    #{:i:}: field={:layoutcolumn.field_name:}, label={:layoutcolumn.label:}
+        width={:layoutcolumn.width:}, height={:layoutcolumn.height:}
+{:endfor:}
+
+
+[C.10] REPORT LAYOUT — Sections + Field Placements
+────────────────────────────────────────────────────────────────────────────────
+  Report-Single Sections (nmaxreportsingleelements = {:nmaxreportsingleelements:}):
+{:for nmaxreportsingleelements:}
+    #{:i:}: label={:reportsingleelement.label:}, type={:reportsingleelement.type:}
+{:endfor:}
+
+  Report-List Sections (nmaxreportlistelements = {:nmaxreportlistelements:}):
+{:for nmaxreportlistelements:}
+    #{:i:}: label={:reportlistelement.label:}, type={:reportlistelement.type:}
+{:endfor:}
+
+  Layout-Report-Single (nmaxlayoutreportsingle = {:nmaxlayoutreportsingle:}):
+{:for nmaxlayoutreportsingle:}
+    #{:i:}: field={:layoutreportsingle.field_name:}, caption={:layoutreportsingle.caption:}
+        font={:layoutreportsingle.font_family:} {:layoutreportsingle.font_size:}pt, color={:layoutreportsingle.text_color:}
+{:endfor:}
+
+  Layout-Report-List (nmaxlayoutreportlist = {:nmaxlayoutreportlist:}):
+{:for nmaxlayoutreportlist:}
+    #{:i:}: field={:layoutreportlist.field_name:}, caption={:layoutreportlist.caption:}
+        x={:layoutreportlist.x:}, width={:layoutreportlist.width:}
+{:endfor:}
+
+
+[C.11] CODE BLOCK — inline JavaScript (innerhalb tables-Loop)
+────────────────────────────────────────────────────────────────────────────────
+{:code:}
+const tbl = gtree[0].project[0].tables[tableIdx];
+const fieldCount = tbl.nmaxitems;
+const blobCount = fieldCount - tbl.nmaxitemsnoblob;
+const keyCount = tbl.nmaxkeys;
+const fkCount = tbl.nmaxforeignkeys;
+const generatedCount = (tbl.fields || []).filter(f => f.is_generated).length;
+const enumSetCount = (tbl.fields || []).filter(f => f.type === 'ENUM' || f.type === 'SET').length;
+
+sContentResult += '  Berechnete Werte (per Code-Block):\n';
+sContentResult += '    Felder gesamt:       ' + fieldCount + '\n';
+sContentResult += '    davon BLOB:          ' + blobCount + '\n';
+sContentResult += '    davon GENERATED:     ' + generatedCount + '\n';
+sContentResult += '    davon ENUM/SET:      ' + enumSetCount + '\n';
+sContentResult += '    Keys:                ' + keyCount + '\n';
+sContentResult += '    Foreign Keys:        ' + fkCount + '\n';
+sContentResult += '    Constraints gesamt:  ' + tbl.nmaxconstraints + '\n';
+
+return sContentResult;
+{:codeend:}
+
+
+{:endfor:}
+
+
+################################################################################
+# [D] MIGRATION SECTIONS — alle 4 Migration-Loops
+################################################################################
+{:if migration.enabled:}
+  Migration v{:migration.from_version:} → v{:migration.to_version:} ({:migration.dialect:})
+  nmaxmigration_total = {:nmaxmigration_total:}
+
+  [D.1] Migration Tables ({:nmaxmigration_tables:}):
+{:for nmaxmigration_tables:}
+    [{:i:}] {:migration.action:} on {:migration.name:} (type={:migration.type:}, prio={:migration.priority:})
+        sql: {:migration.sql:}
+{:endfor:}
+
+  [D.2] Migration Fields ({:nmaxmigration_fields:}):
+{:for nmaxmigration_fields:}
+    [{:i:}] {:migration.action:} {:migration.table:}.{:migration.name:}
+        sql: {:migration.sql:}
+{:endfor:}
+
+  [D.3] Migration Indexes ({:nmaxmigration_indexes:}):
+{:for nmaxmigration_indexes:}
+    [{:i:}] {:migration.action:} {:migration.name:} on {:migration.table:}
+        sql: {:migration.sql:}
+{:endfor:}
+
+  [D.4] Migration ForeignKeys ({:nmaxmigration_foreignkeys:}):
+{:for nmaxmigration_foreignkeys:}
+    [{:i:}] {:migration.action:} {:migration.name:}
+        sql: {:migration.sql:}
+{:endfor:}
+
+  [D.5] sql_complete (aggregiert):
+{:migration.sql_complete:}
+{:else:}
+  Keine Migration aktiviert — voll-Generierung statt Diff.
+{:endif:}
+
+
+
+################################################################################
+# [E] FUNCTION CALLS — String-Transformationen
+################################################################################
+  upper("hello world")        = {:upper("hello world"):}
+  lower("HELLO WORLD")        = {:lower("HELLO WORLD"):}
+  pascalcase("hello_world")   = {:pascalcase("hello_world"):}
+  camelcase("hello_world")    = {:camelcase("hello_world"):}
+  snakecase("HelloWorld")     = {:snakecase("HelloWorld"):}
+  kebabcase("HelloWorld")     = {:kebabcase("HelloWorld"):}
+
+  Mit echten Variablen:
+  upper(projectname)          = {:upper(projectname):}
+  pascalcase(projectname)     = {:pascalcase(projectname):}
+
+
+
+################################################################################
+# EXPECTED — was korrekt funktionieren MUSS:
+################################################################################
+  [A] Alle Top-Level-Variablen aufgelöst, keine `undefined` / Literal-Texte
+  [B] Languages-Loop iteriert nmaxlanguages-mal (typ. 2 — de + en)
+  [C] Tables-Loop iteriert nmaxtables-mal:
+      [C.1] table.* Variablen sind tabellen-spezifisch
+      [C.2] if/elseif/else greift; Sentinel `-1` für Fallback erkannt
+      [C.3] items-Loop läuft pro Tabelle; ENUM/SET hat inneren enum_values-Loop;
+            switch/case greift pro Feldtyp
+      [C.4] Filtered-Loops zeigen die richtigen Subsets (no BLOB / no key etc.)
+      [C.5-C.6] Keys / Constraints werden aufgelöst (keys.* Variable greift)
+      [C.7] FK-Loop läuft; INNER items-Loop iteriert über LOCAL items
+            (foreign.* bleibt stabil, item.* zeigt auf richtige Tabelle)
+      [C.8] Unique-FK dedupliziert
+      [C.9-C.10] Layouts iterieren wenn FormSet/ReportPattern vorhanden
+      [C.11] Code-Block läuft als JS aus, hat Zugriff auf tableIdx
+  [D] Migration-Sections rendern wenn Request Parameter migration_from_versions
+      gesetzt war; sonst zeigt der else-Zweig
+  [E] String-Transformationen werden ausgeführt
+
+  Bug-Indikatoren:
+  - Variable bleibt als Literal-Text im Output → Resolver/Validator-Drift
+  - "Variable X is undefined" → Counter-Auflösung fehlt im Loop-Context
+  - "Cannot read properties of undefined" → gtree-Pfad oder tableRef-Override
+  - Loops laufen 0× obwohl Daten da → Loop-Handler oder Counter-Variable falsch
+  - Inner-Loop iteriert über äußere Daten → nested-tableRef-Override-Bug
+================================================================================
