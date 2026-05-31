@@ -1,6 +1,6 @@
 <div align="center">
 
-# Scoriet V 1.0.0.3 Latest Changes from 21.5.2026
+# Scoriet V 1.0.0.4 Latest Changes from 31.5.2026
 
 ### Schema-to-Stack Studio with Intelligent Templating
 
@@ -57,6 +57,9 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Edit Masks**: Field-level input masks for data validation
 - ✅ **Per-Table/Field Generation State**: Two orthogonal ENUMs on every schema table and field — `display_state` (enabled, disabled, grayed, invisible, excluded) passes visual metadata into the gtree, and `generation_mode` (full, code_only, template_only, reference_only, excluded) controls which parts of the code-generator iterate a given table or field. Typical use: keep ASP.NET Identity `Users`/`Tenants` in the schema for FK resolution but exclude them from generated Controllers/Models/Forms.
 - ✅ **Resizable Table Modal**: The Database Designer's table editor (`TableModal`) now opens as a draggable, resizable, and maximizable dialog with two tabs — **Table Settings** (name, file key, generation state, FormSet/ReportPattern overrides) and **Fields** (per-field editor including the same state combos). No more cramped layouts when editing large tables.
+- ✅ **Per-Row Audit & Versioning**: Every `schema_tables` and `schema_fields` row now carries `version`, `created_at`, `created_by_username`, `updated_at`, `updated_by_username`. Field edits bump the field version; structural table edits (rename, settings) and field add/remove bump the table version. Pure field-content edits do **not** bump the table version — the two counters are independent so you can tell at a glance "what changed where". Surfaced in the Table Modal via the new `AuditInfoBlock` card in both Settings and Fields tabs.
+- ✅ **JSON Metadata in SQL COMMENT (Round-Trip Safe)**: The MySQL/PostgreSQL exporter now serialises Scoriet-only metadata (audit, version, lookup config, display/generation state, edit mask, FormSet/ReportPattern by **name**) as a compact JSON object **inside the SQL COMMENT clause** itself. On re-import the JSON is parsed back out, the keys are restored to their proper columns, and only the human-readable `comment` ends up in the comment column. Legacy SQL without the marker is recognised and falls through with sensible defaults — nothing breaks for foreign dumps. Field comments stay under MySQL's 1024-byte cap via graceful comment truncation; lookup/audit/version keys are sacred. **Effect: an SQL export is now a true backup vector — drop the schema, re-import the SQL, lookup combos / audit history / formset assignments all come back exactly as they were.**
+- ✅ **Control Types Expanded (11 → 42)**: The control-type catalogue went from 11 to 42 entries grouped into 9 categories — text & numeric (`TEXT`, `NUMBER`, `CURRENCY`, `PASSWORD`, `CAPTCHA`, `RATING`, `SLIDER`), multi-line & rich (`TEXTAREA`, `WYSIWYGEDIT`, `MARKDOWN`, `HTML`, `CODEEDITOR`, `JSONEDITOR`), boolean (`CHECKBOX`, `SWITCH`, `RADIOBUTTONS`), selection (`COMBOBOX`, `LISTBOX`, `MULTISELECT`, `TAGSELECT`, `PICKLIST`, `TREEVIEW`), date/time, color & icon pickers, file & media (`FILEUPLOAD`, `SIGNATURE`, `IMAGE`, `VIDEO`, `AUDIO`, `CAMERA`), geo (`LOCATION`, `MAP`), codes (`BARCODE`, `QRCODE`), plus `HIDDEN` and `LABEL`. Lookup-relevant link fields auto-show only for COMBOBOX / LISTBOX / MULTISELECT / TAGSELECT / PICKLIST / TREEVIEW — clean UI for the other 36.
 - ✅ **Schema Translation**: Multi-language support for table and field descriptions
 - ✅ **Excel Translation Import**: Bulk import translations from Excel files
 - ✅ **SQL Parser Engine**: Advanced MySQL and PostgreSQL schema parsing with relationship detection
@@ -80,6 +83,9 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Multi-Schema-Versioning (Migration) Generation**: Generate code in from multiple database schema versions simultaneously
 - ✅ **Indirection Arrays in gtree**: `gtree[0].project[0].tablesgen[]` and `tables[i].fieldsgen[]` — stable index arrays that drive `{:for nmaxtables:}` and `{:for nmaxitems:}` loops. All tables/fields stay in `tables[]` / `fields[]` for FK and by-name lookups; only iterable ones (mode `full` or `code_only`) are listed in the `*gen` arrays. This mirrors the proven `fieldsnokey` / `fieldsnoblob` pattern and fixes off-by-count iteration when some tables/fields have non-iterable generation modes — templates themselves need no changes, `tableIdx` / `i` still resolve to the actual record index inside the loop body.
 - ✅ **Schema State Metadata in gtree**: Every table and field entry in the generated gtree exposes `state`, `generation_mode`, `in_iteration`, and `generates_files` — user `{:code:}` blocks can branch on these (e.g. `{:if item.state == "grayed":}` or `{:if !table.generates_files:}`).
+- ✅ **Audit & Version in gtree**: Tables and fields now expose `version`, `created_at`, `created_by_username`, `updated_at`, `updated_by_username` to templates — generated files can stamp themselves with `Generated for {:table.name:} v{:table.version:} (last edit by {:table.updated_by_username:} on {:table.updated_at:})` headers, drive cache-keys off the version counter, or simply document provenance.
+- ✅ **Control Type as String in gtree**: `item.controltype` now resolves to the readable type name (`"COMBOBOX"`, `"DATEPICKER"`, `"SLIDER"`, …) instead of a hardcoded numeric id — `{:if item.controltype == "COMBOBOX":}` reads naturally and survives the 11 → 42 catalogue expansion without template changes.
+- ✅ **FormSet/ReportPattern Provenance Flag**: Tables in the gtree carry `form_set_id` / `form_set_name` / `form_set_inherited` (and the same trio for ReportPattern). The IDs are always the **effective** ones (real DB id, never a sentinel when something exists) and a new boolean `*_inherited` tells templates whether the value comes from an explicit per-table assignment or was fallback-resolved from the project default. `{:if form_set_id gt 0:}` matches both cases; `{:if form_set_inherited:}` separates them.
 - ✅ **Reverse Engineering (Code Adjustments)**: Compare previous generations with your actual code, create code adjustments as needed
 - ✅ **ZIP/tar Template Upload**: Upload complete template structures as ZIP or tar files
 - ✅ **File Path Organization**: Automatic directory structure for generated code
@@ -782,18 +788,20 @@ Scoriet includes a powerful visual database designer for creating and editing sc
 
 Automatic UI control type detection for intelligent form generation:
 
-**Supported Control Types:**
-- `TEXT` - Single-line text input
-- `TEXTAREA` - Multi-line text input
-- `CHECKBOX` - Boolean toggle
-- `COMBOBOX` - Dropdown select with foreign key support
-- `LISTBOX` - Multi-select list
-- `RADIOBUTTONS` - Radio button group
-- `DATEPICKER` - Date selection
-- `DATETIMEPICKER` - Date and time selection
-- `TIMEPICKER` - Time selection
-- `COLORPICKER` - Color selection
-- `FILEUPLOAD` - File upload control
+**Supported Control Types (42, grouped):**
+
+*Text & Numeric:* `TEXT`, `NUMBER`, `CURRENCY`, `PASSWORD`, `CAPTCHA`, `RATING`, `SLIDER`
+*Multi-line & Rich:* `TEXTAREA`, `WYSIWYGEDIT`, `MARKDOWN`, `HTML`, `CODEEDITOR`, `JSONEDITOR`
+*Boolean:* `CHECKBOX`, `SWITCH`, `RADIOBUTTONS`
+*Selection (lookup-aware):* `COMBOBOX`, `LISTBOX`, `MULTISELECT`, `TAGSELECT`, `PICKLIST`, `TREEVIEW`
+*Date & Time:* `DATEPICKER`, `DATETIMEPICKER`, `TIMEPICKER`, `MONTHPICKER`, `YEARPICKER`, `WEEKPICKER`
+*Color & Icon:* `COLORPICKER`, `ICONPICKER`
+*File & Media:* `FILEUPLOAD`, `SIGNATURE`, `IMAGE`, `VIDEO`, `AUDIO`, `CAMERA`
+*Geo:* `LOCATION`, `MAP`
+*Codes:* `BARCODE`, `QRCODE`
+*Misc:* `HIDDEN`, `LABEL`
+
+> The lookup-aware controls (COMBOBOX / LISTBOX / MULTISELECT / TAGSELECT / PICKLIST / TREEVIEW) automatically expose the `link_table` / `link_field` / `link_display_field` / `link_order_field` / `link_order_direction` editors. The remaining 36 hide them, so the field editor stays tidy.
 
 **Auto-Detection Rules:**
 - `LONGTEXT/TEXT` types → TEXTAREA
