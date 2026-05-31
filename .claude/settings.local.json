@@ -238,10 +238,26 @@
       "Bash(find \"C:/Users\" -name \"config.toml\" -path \"*scoriet*\" 2>&1 | head -5)",
       "Read(//c/Users/**)",
       "Bash(cd \"C:/My Projects/Rust_Temp/scoriet-svc\" && cargo check 2>&1 | tail -30)",
-      "Read(//c/My Projects/Rust_Temp/scoriet-svc/**)"
+      "Read(//c/My Projects/Rust_Temp/scoriet-svc/**)",
+      "Bash(cat > *)",
+      "Bash(awk 'NR<=1464 && /private function|public function/ {last=NR\": \"$0} END {print last}' /c/wamp/www/scoriet/app/Http/Controllers/Api/UltimateTemplateController.php)",
+      "Bash(awk 'NR<=1098 && /private function|public function/ {last=NR\": \"$0} END {print last}' /c/wamp/www/scoriet/app/Http/Controllers/Api/UltimateTemplateController.php)",
+      "Bash(awk 'NR>=6016 && /^              \\\\\\)\\\\}/{print NR\": \"$0; c++; if\\(c==1\\)exit}' resources/js/Components/Panels/FormLayoutDesignerPanel.tsx)",
+      "Bash(awk '/const translateAllSchemaItems/,/^  };/' resources/js/Components/Panels/SchemaTranslationPanel.tsx)",
+      "Bash(awk 'NR>=565 && NR<=640 && /token/' resources/js/Components/Panels/SchemaTranslationPanel.tsx)",
+      "Bash(sed -i -E \"s/i18nExtra\\\\.\\(tablemodal_[a-z_]+\\) \\\\|\\\\| '[^']*'/t.\\\\1/g\" resources/js/Components/Modals/TableModal.tsx)",
+      "Bash(sed -i -E 's/i18nExtra\\\\.\\(tablemodal_[a-z_]+\\) \\\\|\\\\| \"[^\"]*\"/t.\\\\1/g' resources/js/Components/Modals/TableModal.tsx)",
+      "Bash(xargs -I {} sh -c 'echo \"$\\(grep -cE \"[^a-zA-Z]t\\\\.[a-zA-Z_0-9]+ \\\\|\\\\| ['\\\\''\\\\\"]\" \"{}\"\\) {}\"')",
+      "Bash(echo \"=== Multi-line fallback patterns ===\" && \\\\ *)",
+      "Read(//c/wamp/www/scoriet/\\(/\\(t as unknown as Record<string, string>/\\)|i18nExtra\\)/**)",
+      "Bash(ls \"C:/My Projects/Rust_Temp/scoriet-cli\" 2>&1 | head -20)",
+      "Read(//c/My Projects/Rust_Temp/scoriet-cli/**)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
   },
   "outputStyle": "default"
 }

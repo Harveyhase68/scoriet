@@ -685,6 +685,7 @@
     "templatecontrollerphp421": "Eine Vorlage mit diesem Namen existiert bereits.",
     "templatecontrollerphp422": "Der Vorlagenname muss eindeutig sein.",
     "templatecontrollerphp442": "Vorlage erfolgreich erstellt",
+    "templatecontrollerphp_updated": "Vorlage erfolgreich aktualisiert",
     "templatecontrollerphp457": "Vorlageerstellung fehlgeschlagen",
     "templatecontrollerphp479": "Vorlage nicht gefunden",
     "templatecontrollerphp489": "Zugriff verweigert – nur der Vorlagenersteller kann löschen",

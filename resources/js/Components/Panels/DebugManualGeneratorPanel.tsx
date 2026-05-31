@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card } from 'primereact/card';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Panel } from 'primereact/panel';
 import { Dialog } from 'primereact/dialog';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { InputText } from 'primereact/inputtext';
+import { Menu } from 'primereact/menu';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useProject } from '@/contexts/ProjectContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -285,8 +286,146 @@ interface SchemaTable {
   }>;
 }
 
+// ─── Persistence types ────────────────────────────────────────────────────
+//
+// What we store in localStorage. Goals:
+//   1. Restore the user's last selections so they don't re-pick everything
+//      on every panel open (the main pain point that triggered this refactor).
+//   2. Power the "Profile" feature (named snapshots of all selections).
+//
+// We persist by ID where the ID is stable across reloads (templateId,
+// schemaId, projectId) and by NAME where the underlying record can be
+// re-imported with a new ID (fileName, tableName). Re-imports happen often
+// during template development — IDs would silently invalidate, names won't.
+//
+// The version field is a bump-on-breaking-change escape hatch: if the shape
+// changes incompatibly we'll just reset the store rather than try to migrate.
+interface PersistedSelection {
+  templateId: number | null;
+  fileName: string | null;          // looked up by name in templateFiles
+  tableName: string | null;         // looked up by name+databaseSchemaId
+  databaseSchemaId: number | null;
+  schemaVersion: number | null;
+  migrationFromVersion: number | null;
+  projectId: number | null;
+  languageCode: string | null;
+  includeTemplateSource: boolean;
+  skipCache: boolean;
+}
+
+interface DebugPanelProfile {
+  id: string;                       // local uuid, used as React key
+  name: string;
+  description?: string;
+  createdAt: string;                // ISO timestamp
+  lastUsed: string;                 // ISO timestamp, bumped on load
+  selection: PersistedSelection;
+}
+
+// Workflow modes — three high-level user intents the panel supports.
+// 'develop' = edit raw template + see if compile works
+// 'debug'   = inspect the compiled JS / static analysis
+// 'output'  = just generate and look at the final result
+// Each mode reveals only the buttons relevant to it and lands on the
+// corresponding tab. Persisted so returning users get their preferred mode.
+type WorkflowMode = 'develop' | 'debug' | 'output';
+
+interface DebugPanelStorage {
+  version: number;                  // bump if PersistedSelection shape changes
+  ui: {
+    activeTab: number;              // last-viewed tab, restored on open
+    workflowMode: WorkflowMode;     // last-used workflow mode
+    activeProfileId: string | null; // last-loaded profile (for the ▾ marker)
+  };
+  selection: PersistedSelection;    // last-used selection (auto-restored)
+  profiles: DebugPanelProfile[];
+}
+
+// Note: headerCollapsed is intentionally NOT persisted. By spec it's always
+// derived from "does the restored selection have meaningful data?" — first-time
+// users always see the form expanded, returning users see it collapsed.
+
+const DEBUG_PANEL_STORAGE_KEY = 'scoriet_debug_panel_v1';
+const DEBUG_PANEL_STORAGE_VERSION = 1;
+
+const emptySelection = (): PersistedSelection => ({
+  templateId: null,
+  fileName: null,
+  tableName: null,
+  databaseSchemaId: null,
+  schemaVersion: null,
+  migrationFromVersion: null,
+  projectId: null,
+  languageCode: null,
+  includeTemplateSource: false,
+  skipCache: false,
+});
+
+// loadStorage: defensively read + parse + version-check. Any failure (corrupt
+// JSON, missing fields, version mismatch) is treated as "no stored state" —
+// we never throw at the user, we just fall back to defaults. The panel
+// MUST keep working even if localStorage has been tampered with.
+const loadStorage = (): DebugPanelStorage => {
+  const empty: DebugPanelStorage = {
+    version: DEBUG_PANEL_STORAGE_VERSION,
+    ui: { activeTab: 0, workflowMode: 'develop', activeProfileId: null },
+    selection: emptySelection(),
+    profiles: [],
+  };
+  try {
+    const raw = localStorage.getItem(DEBUG_PANEL_STORAGE_KEY);
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<DebugPanelStorage>;
+    if (parsed.version !== DEBUG_PANEL_STORAGE_VERSION) return empty;
+    const restoredMode = parsed.ui?.workflowMode;
+    return {
+      version: DEBUG_PANEL_STORAGE_VERSION,
+      ui: {
+        activeTab: parsed.ui?.activeTab ?? 0,
+        workflowMode: (restoredMode === 'develop' || restoredMode === 'debug' || restoredMode === 'output')
+          ? restoredMode
+          : 'develop',
+        activeProfileId: typeof parsed.ui?.activeProfileId === 'string' ? parsed.ui.activeProfileId : null,
+      },
+      selection: { ...emptySelection(), ...(parsed.selection ?? {}) },
+      profiles: Array.isArray(parsed.profiles) ? parsed.profiles : [],
+    };
+  } catch {
+    return empty;
+  }
+};
+
+const saveStorage = (storage: DebugPanelStorage): void => {
+  try {
+    localStorage.setItem(DEBUG_PANEL_STORAGE_KEY, JSON.stringify(storage));
+  } catch {
+    // localStorage can throw on quota exceeded or in private-browsing mode.
+    // We silently swallow — losing the auto-save is annoying but not fatal,
+    // and the panel must keep working.
+  }
+};
+
+// Quick "does this look like a real saved state" check — used to decide
+// whether to auto-collapse the header on mount. Empty defaults should NOT
+// trigger auto-collapse (first-time users need to see the form).
+const hasMeaningfulSelection = (sel: PersistedSelection): boolean => {
+  return sel.templateId !== null && sel.fileName !== null;
+};
+
+// Crypto-quality UUIDs are overkill for a localStorage profile ID, but
+// crypto.randomUUID is available in all modern browsers and produces no
+// collisions in practice. Falls back to a Math.random hex string for ancient
+// runtimes (won't happen here, but cheap insurance).
+const newProfileId = (): string => {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return 'pr_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+};
+
 export default function DebugManualGeneratorPanel({
-  tableId: preSelectedTableId,
+  tableId: _preSelectedTableId,
   tableName: preSelectedTableName,
 //  schemaId: preSelectedSchemaId,
   projectId: preSelectedProjectId,
@@ -302,17 +441,109 @@ export default function DebugManualGeneratorPanel({
   const { selectedProject, projects } = useProject();
   const { colors } = useTheme();
 
-  // Selection States
-  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  // ─── Persistence: read localStorage once on mount ───────────────────────
+  // restoredRef holds the snapshot we read at component creation. We read it
+  // ONCE and reuse — re-reading on every render would race with our own save
+  // logic. All initial state values + auto-restore effects consult this.
+  const restoredRef = useRef<DebugPanelStorage | null>(null);
+  if (restoredRef.current === null) restoredRef.current = loadStorage();
+  const restored = restoredRef.current;
+
+  // "Effective preselect": explicit prop (from TreeView pre-selection) wins;
+  // otherwise fall back to the value stored in LS. This is how the restored
+  // selection gets picked up by the existing auto-select useEffects without
+  // having to rewire all of them.
+  const effPreTemplateId = preSelectedTemplateId ?? restored.selection.templateId ?? undefined;
+  const effPreFileName = preSelectedFileName ?? restored.selection.fileName ?? undefined;
+  const effPreTableName = preSelectedTableName ?? restored.selection.tableName ?? undefined;
+  const effPreProjectId = preSelectedProjectId ?? restored.selection.projectId ?? undefined;
+  const effPreLanguageCode = preSelectedLanguageCode ?? restored.selection.languageCode ?? undefined;
+
+  // Selection States — initialized lazily from LS where applicable. For IDs
+  // tied to async-loaded data (file, table) we leave the state null here and
+  // let downstream useEffects resolve fileName→fileId once the data lands.
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(effPreTemplateId ?? null);
   const [selectedFile, setSelectedFile] = useState<number | null>(null);
-  const [selectedProjectForGenerator, setSelectedProjectForGenerator] = useState<number | null>(selectedProject?.id || null);
+  const [selectedProjectForGenerator, setSelectedProjectForGenerator] = useState<number | null>(
+    effPreProjectId ?? selectedProject?.id ?? null
+  );
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-  const [migrationFromVersion, setMigrationFromVersion] = useState<number | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(effPreLanguageCode ?? null);
+  const [migrationFromVersion, setMigrationFromVersion] = useState<number | null>(
+    restored.selection.migrationFromVersion
+  );
   const [schemaVersions, setSchemaVersions] = useState<Array<{id: number, version_number: number}>>([]);
   // 🎯 NEU: Ausgewählte Schema-Version (für Project-Dateien)
   // Wenn null → automatisch die höchste Version verwenden
-  const [selectedSchemaVersion, setSelectedSchemaVersion] = useState<number | null>(null);
+  const [selectedSchemaVersion, setSelectedSchemaVersion] = useState<number | null>(
+    restored.selection.schemaVersion
+  );
+  // Multi-DB support: the project can carry several schemas (e.g. main + neues_schema).
+  // Before, the panel silently locked onto schemaTables[0].schema_id for project_file
+  // generation, which made any 2nd+ schema invisible here. selectedDatabaseSchemaId is
+  // the single source of truth for "which schema's versions / migrations are we looking
+  // at right now". For db_table_file mode it is auto-synced from the picked table.
+  const [selectedDatabaseSchemaId, setSelectedDatabaseSchemaId] = useState<number | null>(
+    restored.selection.databaseSchemaId
+  );
+
+  // ─── Collapsible-header + Profile state ─────────────────────────────────
+  // headerCollapsed defaults to TRUE when the restored selection has meaningful
+  // data (returning user) and FALSE on first visit (so newcomers see the form).
+  // It is intentionally NOT persisted — within a session the user can toggle
+  // freely, but on each fresh mount the rule above re-applies.
+  const [headerCollapsed, setHeaderCollapsed] = useState<boolean>(
+    hasMeaningfulSelection(restored.selection)
+  );
+  // Profiles are stored together with the rest of the LS blob. activeProfileId
+  // is restored from LS so the "currently loaded profile" marker survives a
+  // page reload — without this the dropdown would always show "Profil laden…"
+  // even though the user had just loaded one. We validate against the
+  // currently-known profile list so a deleted id is silently cleared.
+  const [profiles, setProfiles] = useState<DebugPanelProfile[]>(restored.profiles);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(() => {
+    const sid = restored.ui.activeProfileId;
+    if (sid && restored.profiles.some(p => p.id === sid)) return sid;
+    return null;
+  });
+  // Dialog visibility + form-input state for "save as" and "manage profiles".
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
+  const [showManageProfilesDialog, setShowManageProfilesDialog] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileDescription, setNewProfileDescription] = useState('');
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editingProfileName, setEditingProfileName] = useState('');
+
+  // Workflow mode — controls which buttons are visible + which tab is active.
+  // Initial value comes from LS (defaults to 'develop' for first-time users).
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>(restored.ui.workflowMode);
+
+  // ─── Smart "save before commit" prompt ───────────────────────────────────
+  // Shown when the user clicks one of the "commit" buttons ("Code Template
+  // holen" / "Code vorbereiten") and there's no active profile yet. The
+  // idea: those clicks are natural "I'm happy with this config" moments,
+  // so they're the right time to nudge the user to immortalize it as a
+  // profile. The session-only ref lets the user opt out for the rest of
+  // the session via the dialog's "nicht mehr fragen" button.
+  //
+  // pendingFetchAfterCommitFlow is the bridge: when we want to fire one of
+  // the fetch functions but they're declared LATER in the file (use-before-
+  // define), we set this state flag and a useEffect placed below the
+  // fetches consumes it. pendingCommitActionRef tells the useEffect which
+  // function to call ('raw' = fetchRawTemplate, 'compile' = fetchCode).
+  const [showSaveBeforeCommitPrompt, setShowSaveBeforeCommitPrompt] = useState(false);
+  const dontAskSaveBeforeCommitRef = useRef(false);
+  const proceedAfterSaveAsRef = useRef(false);
+  const [pendingFetchAfterCommitFlow, setPendingFetchAfterCommitFlow] = useState(false);
+  // 'raw' = fetchRawTemplate, 'compile' = fetchCode only,
+  // 'generate' = fetchCode + chained executeCode (mega-button workflow).
+  const pendingCommitActionRef = useRef<'raw' | 'compile' | 'generate'>('raw');
+
+  // Refs for the Tab 2 toolbar dropdown menus (Export ▾ / Import ▾).
+  // The Menu's popup positions itself relative to the click event we
+  // forward via .toggle(e) — these refs let the button trigger that.
+  const exportMenuRef = useRef<Menu>(null);
+  const importMenuRef = useRef<Menu>(null);
 
   // Data States
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -325,10 +556,21 @@ export default function DebugManualGeneratorPanel({
   const [error, setError] = useState<string>('');
   const [preparedCode, setPreparedCode] = useState<string>('');
   const [executedResult, setExecutedResult] = useState<string>('');
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [activeTabIndex, setActiveTabIndex] = useState<number>(restored.ui.activeTab);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  const [includeTemplateSource, setIncludeTemplateSource] = useState(false);
-  const [skipCache, setSkipCache] = useState(false);
+
+  // Raw template editing state (Tab 0). rawTemplate is the live editor
+  // content; rawTemplateOriginal is the snapshot from the last successful
+  // load/save so we can drive a "dirty" indicator + only enable the Save
+  // button when the user actually changed something. Backed by GET / PUT
+  // against /templates/{templateId}/files/{fileId} — see fetchRawTemplate
+  // and saveRawTemplate below.
+  const [rawTemplate, setRawTemplate] = useState<string>('');
+  const [rawTemplateOriginal, setRawTemplateOriginal] = useState<string>('');
+  const [rawTemplateLoading, setRawTemplateLoading] = useState(false);
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
+  const [includeTemplateSource, setIncludeTemplateSource] = useState<boolean>(restored.selection.includeTemplateSource);
+  const [skipCache, setSkipCache] = useState<boolean>(restored.selection.skipCache);
   const [downloadFilename, setDownloadFilename] = useState<string>('generated.php');
 
   // Validation States (3 categories)
@@ -496,19 +738,21 @@ export default function DebugManualGeneratorPanel({
 
       setTemplateFiles(validFiles);
 
-      // Auto-select first valid file - ONLY if NO preSelectedFileName exists!
-      // IMPORTANT: preSelectedFileName is read from the closure, NOT from dependencies!
+      // Auto-select first valid file. Only TreeView pre-selection blocks this;
+      // LS restore deliberately does NOT — we'd rather flash "first file → restored
+      // file" once on mount than have post-mount template changes silently fail to
+      // auto-pick because LS still holds the original filename forever. The
+      // override happens in the file pre-select useEffect a few hundred ms later.
       if (validFiles.length > 0 && !preSelectedFileName) {
         setSelectedFile(validFiles[0].id);
       } else if (validFiles.length === 0) {
         setSelectedFile(null);
         setError(t.debugmanualgeneratorpanel486+`${templateId}`+t.debugmanualgeneratorpanel486a);
       }
-      // If preSelectedFileName exists: DO NOT auto-select, wait for useEffect Pre-Selection!
     } catch {
       setError(t.debugmanualgeneratorpanel420);
     }
-  }, [preSelectedFileName]); // IMPORTANT: preSelectedFileName for auto-select logic
+  }, [preSelectedFileName]);
 
   const loadSchemaTables = useCallback(async () => {
     try {
@@ -638,24 +882,10 @@ export default function DebugManualGeneratorPanel({
         // Project selected but no linked schemas found - this is acceptable
       }
 
-      // Last fallback: gtree-test API (nur wenn gar kein Projekt ausgewählt)
-      if (allTables.length === 0 && !projectIdToUse) {
-        try {
-          const gtreeData = await apiClient.get('/gtree-test/1');
-          if (gtreeData.gtree && gtreeData.gtree[0] && gtreeData.gtree[0].project[0]) {
-            const tables = gtreeData.gtree[0].project[0].tables || [];
-
-            const fallbackTables = tables.map((table: any) => ({
-              ...table,
-              database_name: t.debugmanualgeneratorpanel600
-            }));
-
-            allTables.push(...fallbackTables);
-          }
-        } catch {
-          // gtree-test fallback failed - just leave allTables empty
-        }
-      }
+      // Without a project selection we just leave the list empty. We used
+      // to fall back to a hard-coded /gtree-test/1 demo schema here, but
+      // that endpoint was an unauthenticated test route and has been
+      // removed as part of the API hardening pass.
 
       setSchemaTables(allTables);
 
@@ -688,16 +918,16 @@ export default function DebugManualGeneratorPanel({
 
       setLanguageOptions(languageOpts);
 
-      // Auto-select first language - ONLY if NO preSelectedLanguageCode is present!
-      // IMPORTANT: preSelectedLanguageCode is read from the closure, NOT from dependencies!
-      if (languageOpts.length > 0 && !selectedLanguage && !preSelectedLanguageCode) {
+      // Auto-select first language - ONLY if neither TreeView nor LS pre-selection exists.
+      // effPreLanguageCode folds in both sources; we still check selectedLanguage so we
+      // don't clobber a value the user has already changed manually mid-session.
+      if (languageOpts.length > 0 && !selectedLanguage && !effPreLanguageCode) {
         setSelectedLanguage(languageOpts[0].value);
       }
-      // If preSelectedLanguageCode exists: DO NOT auto-select, wait for useEffect Pre-Selection!
     } catch {
       setLanguageOptions([]);
     }
-  }, [selectedLanguage, selectedProject, preSelectedLanguageCode]);
+  }, [selectedLanguage, selectedProject, effPreLanguageCode]);
 
   // Load data on component mount
   useEffect(() => {
@@ -731,23 +961,81 @@ export default function DebugManualGeneratorPanel({
     }
   }, []);
 
-  // Update schema versions when table selection changes OR when schemaTables are loaded
-  // 🎯 WICHTIG: Auch für Project-Dateien (keine Tabelle ausgewählt) Schema-Versionen laden!
+  // Unique database/schema options derived from schemaTables. A project can link
+  // multiple floating schemas, each carrying many tables — we want one option per
+  // schema, not per table. Order is alphabetical so the dropdown is stable across
+  // reloads regardless of which table got fetched first.
+  const databaseOptions = useMemo(() => {
+    if (!Array.isArray(schemaTables) || schemaTables.length === 0) return [];
+    const seen = new Set<number>();
+    const opts: Array<{label: string, value: number, is_schema_locked: boolean}> = [];
+    schemaTables.forEach((tbl) => {
+      const sid = tbl.schema_id;
+      if (typeof sid === 'number' && !seen.has(sid)) {
+        seen.add(sid);
+        opts.push({
+          label: tbl.database_name || `Schema ${sid}`,
+          value: sid,
+          is_schema_locked: tbl.is_schema_locked === true,
+        });
+      }
+    });
+    return opts.sort((a, b) => a.label.localeCompare(b.label));
+  }, [schemaTables]);
+
+  // Sync DB from selected table — for db_table_file mode the table is the
+  // anchor, so its schema_id wins. The user can't pick a "different" DB while a
+  // table from another DB is selected; that would be incoherent.
   useEffect(() => {
-    if (selectedTable !== null && schemaTables[selectedTable]?.schema_id) {
-      // Tabelle ausgewählt → Schema-ID von der Tabelle
-      loadSchemaVersions(schemaTables[selectedTable].schema_id);
-      setMigrationFromVersion(null); // Reset migration version on table change
-    } else if (selectedTable === null && schemaTables.length > 0 && schemaTables[0]?.schema_id) {
-      // 🎯 NEU: Keine Tabelle ausgewählt (Project-Datei), aber schemaTables vorhanden
-      // → Schema-ID von der ERSTEN Tabelle nehmen (alle Tabellen gehören zum gleichen Schema)
-      loadSchemaVersions(schemaTables[0].schema_id);
-      // Migration-Version NICHT zurücksetzen bei Project-Dateien, da keine Tabelle gewählt wird
+    if (selectedTable !== null && schemaTables[selectedTable]?.schema_id !== undefined) {
+      const sid = schemaTables[selectedTable].schema_id as number;
+      if (sid !== selectedDatabaseSchemaId) {
+        setSelectedDatabaseSchemaId(sid);
+      }
+    }
+  }, [selectedTable, schemaTables, selectedDatabaseSchemaId]);
+
+  // Auto-pick first DB when none is selected yet (or the previously-selected one
+  // is no longer in the list, e.g. after the user switched projects). Without
+  // this, the Schema-Version dropdown stays empty even though valid DBs exist.
+  useEffect(() => {
+    if (databaseOptions.length === 0) return;
+    const stillValid = selectedDatabaseSchemaId !== null
+      && databaseOptions.some(opt => opt.value === selectedDatabaseSchemaId);
+    if (!stillValid) {
+      setSelectedDatabaseSchemaId(databaseOptions[0].value);
+    }
+  }, [databaseOptions, selectedDatabaseSchemaId]);
+
+  // Tracks whether the next "DB changed" effect run is the initial restore
+  // (mount-time) or a real user-initiated switch. On the initial run we MUST
+  // NOT clobber selectedSchemaVersion / migrationFromVersion — those were just
+  // restored from LS and clearing them here defeats the whole purpose of the
+  // persistence layer. On every subsequent run (user actually picked a
+  // different DB) clearing is correct because the previous version may not
+  // exist in the new schema.
+  const dbChangeIsRestoreRef = useRef(true);
+
+  // Load schema versions for the currently-selected DB. selectedDatabaseSchemaId
+  // is the unified driver: it's set automatically from the table in db_table_file
+  // mode, or directly by the user in project_file mode. Either way, versions
+  // come from the right schema — fixing the old behavior where schemaTables[0]
+  // was hardcoded.
+  useEffect(() => {
+    if (selectedDatabaseSchemaId !== null) {
+      loadSchemaVersions(selectedDatabaseSchemaId);
+      if (!dbChangeIsRestoreRef.current) {
+        // User-initiated DB switch — invalidate stale version + migration source.
+        setMigrationFromVersion(null);
+        setSelectedSchemaVersion(null);
+      }
+      dbChangeIsRestoreRef.current = false;
     } else {
       setSchemaVersions([]);
       setMigrationFromVersion(null);
+      setSelectedSchemaVersion(null);
     }
-  }, [selectedTable, schemaTables, loadSchemaVersions]);
+  }, [selectedDatabaseSchemaId, loadSchemaVersions]);
 
   // 🎯 NEU: Schema-Version Optionen für das Dropdown (alle verfügbaren Versionen)
   const schemaVersionOptions = useMemo(() => {
@@ -759,13 +1047,31 @@ export default function DebugManualGeneratorPanel({
       .sort((a, b) => b.value - a.value);
   }, [schemaVersions]);
 
-  // 🎯 NEU: Automatisch die höchste Version auswählen, wenn Schema-Versionen geladen werden
+  // Validate + auto-pick max for selectedSchemaVersion. Two cases:
+  //   (1) restored value isn't in this DB's available versions → clear → next
+  //       render falls through to (2)
+  //   (2) nothing selected → pick the max (= newest) version
   useEffect(() => {
-    if (schemaVersions.length > 0 && selectedSchemaVersion === null) {
-      const maxVersion = Math.max(...schemaVersions.map(v => v.version_number));
-      setSelectedSchemaVersion(maxVersion);
+    if (schemaVersions.length === 0) return;
+    const validNumbers = schemaVersions.map(v => v.version_number);
+    if (selectedSchemaVersion !== null && !validNumbers.includes(selectedSchemaVersion)) {
+      setSelectedSchemaVersion(null);
+      return;
+    }
+    if (selectedSchemaVersion === null) {
+      setSelectedSchemaVersion(Math.max(...validNumbers));
     }
   }, [schemaVersions, selectedSchemaVersion]);
+
+  // Validate migrationFromVersion against currently-available versions. Same
+  // pattern as above — clear silently if the restored value isn't valid.
+  useEffect(() => {
+    if (schemaVersions.length === 0) return;
+    const validNumbers = schemaVersions.map(v => v.version_number);
+    if (migrationFromVersion !== null && !validNumbers.includes(migrationFromVersion)) {
+      setMigrationFromVersion(null);
+    }
+  }, [schemaVersions, migrationFromVersion]);
 
   // 🎯 ANGEPASST: Migration-Optionen basierend auf selectedSchemaVersion filtern
   // Nur Versionen < selectedSchemaVersion anzeigen
@@ -796,68 +1102,376 @@ export default function DebugManualGeneratorPanel({
     }
   }, [selectedSchemaVersion, migrationFromVersion]);
 
-  // Pre-select table when opened from TreeView
+  // Pre-select table when opened from TreeView or restored from LS.
+  const lsTableRestoredRef = useRef(false);
   useEffect(() => {
     // Only auto-select if:
     // 1. We have pre-selected table info from TreeView
     // 2. Tables are loaded
     // 3. No table has been selected yet (or manually changed by user)
-    if (preSelectedTableId && preSelectedTableName && schemaTables.length > 0) {
-      // Find the table by name in the loaded schema tables
+    // Restore by table name. Same one-shot guard pattern as the file restore —
+    // we don't want the LS table name to permanently bias future db_table_file
+    // selections after the user has manually changed things. Restored
+    // databaseSchemaId narrows the lookup when the same tablename exists in
+    // multiple schemas.
+    if (!lsTableRestoredRef.current && effPreTableName && schemaTables.length > 0 && selectedTable === null) {
+      lsTableRestoredRef.current = true;
+      const wantSchemaId = restored.selection.databaseSchemaId;
       const tableIndex = schemaTables.findIndex(
-        (table) => table.tablename === preSelectedTableName
+        (table) => table.tablename === effPreTableName
+          && (wantSchemaId == null || table.schema_id === wantSchemaId)
       );
-
-      // Only set if found and not already set (to avoid overwriting user selection)
-      if (tableIndex !== -1 && selectedTable === null) {
-        // Use setTimeout to ensure this runs after the component has fully mounted
-        setTimeout(() => {
-          setSelectedTable(tableIndex);
-        }, 100);
+      if (tableIndex !== -1) {
+        setTimeout(() => setSelectedTable(tableIndex), 100);
       }
     }
-  }, [preSelectedTableId, preSelectedTableName, schemaTables, selectedTable]);
+  }, [effPreTableName, schemaTables, selectedTable]);
 
-  // Pre-select template when opened from File Preview
+  // Pre-select / restore template. Validates first — if the stored/passed-in id
+  // points to a template that no longer exists, we clear it silently rather
+  // than leaving the dropdown in a "ghost" state showing nothing.
   useEffect(() => {
-    if (preSelectedTemplateId && templates.length > 0 && !selectedTemplate) {
-      // Check if the template exists in the loaded templates
-      // Try both number and string comparison in case of type mismatch
-      const templateExists = templates.some(tpl => tpl.id === preSelectedTemplateId || tpl.id == preSelectedTemplateId);
-      if (templateExists) {
-        setTimeout(() => {
-          setSelectedTemplate(preSelectedTemplateId);
-        }, 100);
-      }
+    if (templates.length === 0) return;
+    if (selectedTemplate !== null) {
+      // Validate the currently-set template (could be from LS, could be stale)
+      const exists = templates.some(tpl => tpl.id === selectedTemplate);
+      if (!exists) setSelectedTemplate(null);
+      return;
     }
-  }, [preSelectedTemplateId, templates, selectedTemplate]);
+    if (effPreTemplateId !== undefined && effPreTemplateId !== null) {
+      const exists = templates.some(tpl => tpl.id === effPreTemplateId);
+      if (exists) setTimeout(() => setSelectedTemplate(effPreTemplateId), 100);
+    }
+  }, [effPreTemplateId, templates, selectedTemplate]);
 
-  // Pre-select file when opened from File Preview
+  // Pre-select / restore file. Two paths:
+  //   • TreeView pre-selection (preSelectedFileId): always honored if files have
+  //     loaded and the id matches. Blocks loadTemplateFiles's auto-pick already,
+  //     so we just resolve the id → setSelectedFile.
+  //   • LS restore (effPreFileName): runs ONCE, as an override after the auto-pick.
+  //     The ref guard prevents the LS name from sticking forever and silently
+  //     hijacking every future template switch.
+  const lsFileRestoredRef = useRef(false);
   useEffect(() => {
-    if (preSelectedFileId && templateFiles.length > 0) {
-      // Match by ID instead of filename
-      const matchedFile = templateFiles.find(f => f.id === preSelectedFileId);
-      if (matchedFile) {
-        // Slight delay after template files load
-        setTimeout(() => {
-          setSelectedFile(matchedFile.id); // Use the normalized index-based ID
-        }, 200);
+    if (templateFiles.length === 0) return;
+    // TreeView ID path (existing behavior, preserved)
+    if (preSelectedFileId && selectedFile === null) {
+      const matched = templateFiles.find(f => f.id === preSelectedFileId);
+      if (matched) {
+        setTimeout(() => setSelectedFile(matched.id), 200);
+        lsFileRestoredRef.current = true; // TreeView wins; LS skip on subsequent mounts (well, won't reach here)
+        return;
       }
     }
-  }, [preSelectedFileName, preSelectedFileId, templateFiles, selectedFile]);
+    // LS restore path — one-shot
+    if (!lsFileRestoredRef.current && effPreFileName) {
+      lsFileRestoredRef.current = true;
+      const matched = templateFiles.find(
+        f => f.file_name === effPreFileName || (f as any).filename === effPreFileName
+      );
+      if (matched && matched.id !== selectedFile) {
+        setSelectedFile(matched.id);
+      }
+    }
+  }, [preSelectedFileId, effPreFileName, templateFiles, selectedFile]);
 
-  // Pre-select language when opened from File Preview
+  // Pre-select / restore language.
   useEffect(() => {
-    if (preSelectedLanguageCode && languageOptions.length > 0 && !selectedLanguage) {
-      // Check if the language exists in the loaded language options
-      const languageExists = languageOptions.some(l => l.value === preSelectedLanguageCode);
-      if (languageExists) {
-        setTimeout(() => {
-          setSelectedLanguage(preSelectedLanguageCode);
-        }, 100);
-      }
+    if (effPreLanguageCode && languageOptions.length > 0 && !selectedLanguage) {
+      const exists = languageOptions.some(l => l.value === effPreLanguageCode);
+      if (exists) setTimeout(() => setSelectedLanguage(effPreLanguageCode), 100);
     }
-  }, [preSelectedLanguageCode, languageOptions, selectedLanguage]);
+  }, [effPreLanguageCode, languageOptions, selectedLanguage]);
+
+  // ─── Auto-persist selection to localStorage ─────────────────────────────
+  // Gating: we only start saving after the first batch of data (templates)
+  // has loaded. Without this gate, the initial render — where state is still
+  // null/empty pending restore — would persist null values and overwrite the
+  // user's actual saved state. Once templates load, restoration is either
+  // done or actively happening; either way the saved state will converge to
+  // what the user has on screen.
+  const persistEnabledRef = useRef(false);
+  useEffect(() => {
+    if (templates.length > 0) persistEnabledRef.current = true;
+  }, [templates]);
+
+  useEffect(() => {
+    if (!persistEnabledRef.current) return;
+
+    // Resolve fileId → fileName (we persist by name for re-import stability).
+    let fileName: string | null = null;
+    if (selectedFile !== null) {
+      const f = templateFiles.find(x => x.id === selectedFile);
+      if (f) fileName = f.file_name || (f as any).filename || null;
+    }
+    // Resolve table-index → tablename (same reason).
+    const tableName = selectedTable !== null && schemaTables[selectedTable]
+      ? schemaTables[selectedTable].tablename
+      : null;
+
+    saveStorage({
+      version: DEBUG_PANEL_STORAGE_VERSION,
+      ui: { activeTab: activeTabIndex, workflowMode, activeProfileId },
+      selection: {
+        templateId: selectedTemplate,
+        fileName,
+        tableName,
+        databaseSchemaId: selectedDatabaseSchemaId,
+        schemaVersion: selectedSchemaVersion,
+        migrationFromVersion,
+        projectId: selectedProjectForGenerator,
+        languageCode: selectedLanguage,
+        includeTemplateSource,
+        skipCache,
+      },
+      profiles,
+    });
+  }, [
+    activeTabIndex, workflowMode, activeProfileId,
+    selectedTemplate, selectedFile, selectedTable,
+    templateFiles, schemaTables,
+    selectedDatabaseSchemaId, selectedSchemaVersion, migrationFromVersion,
+    selectedProjectForGenerator, selectedLanguage,
+    includeTemplateSource, skipCache,
+    profiles,
+  ]);
+
+  // ─── Profile system ─────────────────────────────────────────────────────
+  // Build a PersistedSelection snapshot from current state. Used when the
+  // user saves a profile. We resolve fileId→fileName and tableIndex→tableName
+  // here (same as the auto-save effect) so the profile is portable across
+  // template re-imports.
+  const buildCurrentSelection = useCallback((): PersistedSelection => {
+    let fileName: string | null = null;
+    if (selectedFile !== null) {
+      const f = templateFiles.find(x => x.id === selectedFile);
+      if (f) fileName = f.file_name || (f as any).filename || null;
+    }
+    const tableName = selectedTable !== null && schemaTables[selectedTable]
+      ? schemaTables[selectedTable].tablename
+      : null;
+    return {
+      templateId: selectedTemplate,
+      fileName,
+      tableName,
+      databaseSchemaId: selectedDatabaseSchemaId,
+      schemaVersion: selectedSchemaVersion,
+      migrationFromVersion,
+      projectId: selectedProjectForGenerator,
+      languageCode: selectedLanguage,
+      includeTemplateSource,
+      skipCache,
+    };
+  }, [
+    selectedTemplate, selectedFile, selectedTable, templateFiles, schemaTables,
+    selectedDatabaseSchemaId, selectedSchemaVersion, migrationFromVersion,
+    selectedProjectForGenerator, selectedLanguage,
+    includeTemplateSource, skipCache,
+  ]);
+
+  // Apply a PersistedSelection to the live state. Reverse of buildCurrentSelection.
+  // fileName/tableName are resolved against the currently-loaded data; if a
+  // referenced file/table no longer exists we silently skip that one — better
+  // than dumping a half-applied profile and silently locking the user out of
+  // a usable form.
+  const applySelection = useCallback((sel: PersistedSelection) => {
+    setSelectedTemplate(sel.templateId);
+    // selectedFile + selectedTable are resolved by the existing pre-select
+    // useEffects once the underlying data loads in response to the new template.
+    // We can't set them directly here because templateFiles/schemaTables won't
+    // be up to date yet. Instead we stash the name into the restored ref so
+    // the effects pick it up — but that's a bit ugly. Simpler: clear them and
+    // let the auto-select kick in. The user will see their named file once
+    // templateFiles loads (see useEffect that matches by fileName).
+    setSelectedFile(null);
+    setSelectedTable(null);
+    setSelectedDatabaseSchemaId(sel.databaseSchemaId);
+    setSelectedSchemaVersion(sel.schemaVersion);
+    setMigrationFromVersion(sel.migrationFromVersion);
+    setSelectedProjectForGenerator(sel.projectId);
+    setSelectedLanguage(sel.languageCode);
+    setIncludeTemplateSource(sel.includeTemplateSource);
+    setSkipCache(sel.skipCache);
+    // Reset the DB-change "restore" flag — applying a profile is conceptually
+    // similar to a fresh mount, so we want selectedSchemaVersion to survive
+    // the loadSchemaVersions effect rather than getting cleared.
+    dbChangeIsRestoreRef.current = true;
+    // Stash the fileName/tableName into restoredRef so the existing pre-select
+    // effects can find them when data reloads.
+    if (restoredRef.current) {
+      restoredRef.current = {
+        ...restoredRef.current,
+        selection: { ...restoredRef.current.selection, fileName: sel.fileName, tableName: sel.tableName },
+      };
+    }
+  }, []);
+
+  // Load a profile by id: apply its selection + auto-collapse the header
+  // (matches user spec: "Profile load = fertig konfiguriert, jetzt arbeiten").
+  // Also bumps lastUsed for the "Verwalten" dialog's sort order.
+  const loadProfile = useCallback((profileId: string) => {
+    const p = profiles.find(x => x.id === profileId);
+    if (!p) return;
+    applySelection(p.selection);
+    setActiveProfileId(profileId);
+    setHeaderCollapsed(true);
+    // Bump lastUsed
+    setProfiles(prev => prev.map(x =>
+      x.id === profileId ? { ...x, lastUsed: new Date().toISOString() } : x
+    ));
+  }, [profiles, applySelection]);
+
+  // Detect "would this save overwrite an existing profile" — name match is
+  // case-insensitive + trimmed so "Test " and "test" collide. Used both to
+  // change the save button label ("Speichern" → "Überschreiben") and to
+  // decide which branch saveCurrentAsProfile takes.
+  const existingProfileForCurrentName = useMemo(() => {
+    const wanted = newProfileName.trim().toLowerCase();
+    if (!wanted) return null;
+    return profiles.find(p => p.name.trim().toLowerCase() === wanted) || null;
+  }, [profiles, newProfileName]);
+
+  // Save current state as a profile. If the name matches an existing one,
+  // OVERWRITE it (update selection + bump lastUsed) rather than creating a
+  // duplicate — matches the user's mental model of "naming a profile is the
+  // primary key". The save-as dialog already telegraphs this via the button
+  // label so there's no surprise.
+  const saveCurrentAsProfile = useCallback(() => {
+    const name = newProfileName.trim();
+    if (!name) return; // dialog button should already be disabled
+    const now = new Date().toISOString();
+    const selection = buildCurrentSelection();
+    const description = newProfileDescription.trim() || undefined;
+
+    let savedId: string;
+    if (existingProfileForCurrentName) {
+      // Overwrite: preserve id + createdAt, replace everything else.
+      savedId = existingProfileForCurrentName.id;
+      setProfiles(prev => prev.map(p => p.id === savedId ? {
+        ...p,
+        name,
+        description,
+        lastUsed: now,
+        selection,
+      } : p));
+    } else {
+      // Create new.
+      const newProfile: DebugPanelProfile = {
+        id: newProfileId(),
+        name,
+        description,
+        createdAt: now,
+        lastUsed: now,
+        selection,
+      };
+      savedId = newProfile.id;
+      setProfiles(prev => [...prev, newProfile]);
+    }
+    setActiveProfileId(savedId);
+    setNewProfileName('');
+    setNewProfileDescription('');
+    setShowSaveAsDialog(false);
+
+    // If the save was invoked from the "save before commit" prompt flow,
+    // collapse and queue the fetchCode call. The actual fetch happens in a
+    // useEffect placed AFTER fetchCode is declared (see further down) to
+    // avoid use-before-define errors.
+    if (proceedAfterSaveAsRef.current) {
+      proceedAfterSaveAsRef.current = false;
+      setHeaderCollapsed(true);
+      setPendingFetchAfterCommitFlow(true);
+    }
+  }, [newProfileName, newProfileDescription, buildCurrentSelection, existingProfileForCurrentName]);
+
+  const deleteProfile = useCallback((profileId: string) => {
+    setProfiles(prev => prev.filter(p => p.id !== profileId));
+    if (activeProfileId === profileId) setActiveProfileId(null);
+  }, [activeProfileId]);
+
+  const renameProfile = useCallback((profileId: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setProfiles(prev => prev.map(p =>
+      p.id === profileId ? { ...p, name: trimmed } : p
+    ));
+  }, []);
+
+  // ─── Raw Template (Tab 0) ─────────────────────────────────────────────────
+  //
+  // fetchRawTemplate: GET /templates/{id}/files returns the full file array;
+  // we pick the one matching selectedFile and pull file_content out. We don't
+  // route through /template-output (the existing loadTemplateFiles endpoint)
+  // because that endpoint returns COMPILED metadata for code-prep, not the
+  // raw source text the user wants to author. Two different concerns →
+  // two different endpoints.
+  const fetchRawTemplate = async () => {
+    if (!selectedTemplate || selectedFile === null || selectedFile === undefined) {
+      setError(t.debugmanualgeneratorpanel746);
+      return;
+    }
+    setRawTemplateLoading(true);
+    setError('');
+    try {
+      const data = await apiClient.get(`/templates/${selectedTemplate}/files`);
+      const files: any[] = Array.isArray(data) ? data : (data.data || []);
+      const file = files.find((f) => Number(f.id) === Number(selectedFile));
+      if (!file) {
+        setError(t.debugmanualgeneratorpanel_raw_not_found || 'Template file not found in API response.');
+        setRawTemplateLoading(false);
+        return;
+      }
+      const content = String(file.file_content ?? '');
+      setRawTemplate(content);
+      setRawTemplateOriginal(content);
+      setActiveTabIndex(0); // jump to Raw Template tab
+    } catch (err: any) {
+      setError((err?.response?.data?.message as string) || t.debugmanualgeneratorpanel_raw_load_failed || 'Failed to load raw template.');
+    } finally {
+      setRawTemplateLoading(false);
+    }
+  };
+
+  // saveRawTemplate: PUT the edited content back. Backend requires the full
+  // file-metadata payload (file_name / file_path / file_content / file_type)
+  // — we pull the existing metadata from templateFiles[] and override only
+  // the content. Triggered AFTER the confirm dialog approves so the user
+  // can't overwrite the DB with a fat-finger click.
+  const saveRawTemplate = async () => {
+    if (!selectedTemplate || selectedFile === null || selectedFile === undefined) return;
+    const file: any = templateFiles.find((f) => f.id === selectedFile);
+    if (!file) {
+      setError(t.debugmanualgeneratorpanel_raw_not_found || 'Template file not found.');
+      return;
+    }
+    setRawTemplateLoading(true);
+    setError('');
+    try {
+      await apiClient.put(`/templates/${selectedTemplate}/files/${selectedFile}`, {
+        file_name: file.file_name || file.filename,
+        file_path: file.file_path || file.file_name || file.filename,
+        file_content: rawTemplate,
+        file_type: file.file_type || 'template',
+        file_order: file.file_order ?? 0,
+        output_path: file.output_path ?? '/',
+        form_window_type: file.form_window_type ?? 0,
+        language_override: file.language_override ?? null,
+      });
+      setRawTemplateOriginal(rawTemplate); // mark clean
+    } catch (err: any) {
+      setError((err?.response?.data?.message as string) || t.debugmanualgeneratorpanel_raw_save_failed || 'Failed to save raw template.');
+    } finally {
+      setRawTemplateLoading(false);
+      setShowSaveConfirmDialog(false);
+    }
+  };
+
+  // Loading or selection-change of the file invalidates any in-progress raw
+  // template edit — reset the editor + dirty marker so the user doesn't see
+  // stale content under the new file's header.
+  useEffect(() => {
+    setRawTemplate('');
+    setRawTemplateOriginal('');
+  }, [selectedTemplate, selectedFile]);
 
   const fetchCode = async () => {
     if (!selectedTemplate || (selectedFile === null || selectedFile === undefined)) {
@@ -926,9 +1540,26 @@ export default function DebugManualGeneratorPanel({
         params.set('skip_cache', '1');
       }
 
-      // Add migration_from_version parameter if set
+      // Add migration_from_versions parameter if set.
+      // The backend (UltimateTemplateController::buildUltimateGtree) reads a
+      // per-schema map: {"<schema_id>": <from_version_number>} as JSON. The old
+      // singular `migration_from_version` param name + bare number was a no-op
+      // here — same parameter shape as in CodeGenerationPanel must be used so
+      // the backend's $request->query('migration_from_versions') resolves it.
+      //
+      // Source of the schema_id is selectedDatabaseSchemaId, which is the unified
+      // driver (auto-synced from the selected table in db_table_file mode, or
+      // explicitly picked by the user in project_file mode). The old code fell
+      // back to schemaTables[0].schema_id when no table was selected, which made
+      // the 2nd DB in a multi-schema project unreachable for migrations.
       if (migrationFromVersion !== null) {
-        params.set('migration_from_version', migrationFromVersion.toString());
+        const migrationSchemaId = selectedDatabaseSchemaId
+          ?? (selectedTable !== null ? schemaTables[selectedTable]?.schema_id : undefined);
+        if (migrationSchemaId) {
+          params.set('migration_from_versions', JSON.stringify({
+            [migrationSchemaId]: migrationFromVersion,
+          }));
+        }
       }
 
       // 🎯 NEU: Add schema_version parameter for Project-Dateien
@@ -937,10 +1568,40 @@ export default function DebugManualGeneratorPanel({
         params.set('schema_version', selectedSchemaVersion.toString());
       }
 
+      // 🎯 NEU: Schema-Filter mitsenden. Wenn das Projekt mehrere Schemas
+      // verknüpft hat (z.B. ein "system_test_project_database" + "x_db" +
+      // "y_db"), würde das Backend ohne diesen Filter ALLE laden, alle
+      // Tabellen flach in eine Collection mergen und dann beim
+      // `firstWhere('table_name', 'users')` zufällig die FALSCHE users-
+      // Tabelle gewinnen (eine aus einem anderen Schema mit fs_id=NULL,
+      // anderer Version, etc.). Mit dem schema_ids-Filter lädt der Builder
+      // nur die für den aktuell ausgewählten DB sichtbaren Tabellen.
+      if (selectedDatabaseSchemaId !== null) {
+        params.append('schema_ids[]', selectedDatabaseSchemaId.toString());
+      }
+
       let data: any = null;
       let errorMessage: string | null = null;
       try {
-        data = await apiClient.get(`/ultimate-template/${selectedTemplate}?${params.toString()}`);
+        // If the user has the raw template loaded/edited in Tab 0, send it
+        // as an in-memory override so the compile reflects THEIR edits
+        // instead of the stored DB version. Without this, "Code Template
+        // holen" + edit + "Code vorbereiten" would silently compile the
+        // old DB content — surprising and useless for iteration.
+        //
+        // We send the override whenever rawTemplate is non-empty (not just
+        // dirty) — if the user loaded it once and clicks Prepare again,
+        // they expect their loaded content to be compiled, not an
+        // independent re-fetch from DB. Same content → same result either
+        // way; the override path just skips the cache (see backend note).
+        const hasOverride = rawTemplate.length > 0 && selectedFile !== null && selectedFile !== undefined;
+        if (hasOverride) {
+          data = await apiClient.post(`/ultimate-template/${selectedTemplate}?${params.toString()}`, {
+            override_files: [{ id: selectedFile, file_content: rawTemplate }],
+          });
+        } else {
+          data = await apiClient.get(`/ultimate-template/${selectedTemplate}?${params.toString()}`);
+        }
       } catch (err: any) {
         errorMessage = err?.response?.data?.message || t.debugmanualgeneratorpanel959;
         data = null;
@@ -1089,7 +1750,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
           }
 
           setPreparedCode(codeWithGTree);
-          setActiveTabIndex(0); // Switch to prepared code tab
+          setActiveTabIndex(1); // Switch to Prepared Code tab (was 0 before Raw Template tab was inserted at index 0)
           setExecutedResult(''); // Clear previous result
         } else {
           // Enhanced error message with debug info
@@ -1131,6 +1792,115 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       setLoading(false);
     }
   };
+
+  // requestCommit: entry point for BOTH commit-style buttons:
+  //   • action='raw'      → "Code Template holen" → fetchRawTemplate
+  //   • action='compile'  → "Code vorbereiten"    → fetchCode
+  // Decides whether to first show the "save as profile?" nudge dialog, or
+  // skip straight to the commit. Either way, the header auto-collapses to
+  // give the code area more room.
+  // Rules:
+  //   • Active profile already loaded → skip prompt (nothing new to save).
+  //   • User opted out this session → skip prompt.
+  //   • Otherwise → show prompt; user decides via the dialog buttons.
+  // The chosen action is stashed in a ref so the deferred consumer
+  // useEffect below (and the post-save-as continuation in
+  // saveCurrentAsProfile) can call the right fetch function regardless of
+  // which button started the flow.
+  const requestCommit = useCallback((action: 'raw' | 'compile' | 'generate') => {
+    pendingCommitActionRef.current = action;
+    const shouldPrompt = activeProfileId === null && !dontAskSaveBeforeCommitRef.current;
+    if (shouldPrompt) {
+      setShowSaveBeforeCommitPrompt(true);
+      return;
+    }
+    setHeaderCollapsed(true);
+    setPendingFetchAfterCommitFlow(true);
+  }, [activeProfileId]);
+
+  // Consumer for the deferred "fetch after save dialog closes" hand-off.
+  // Sits below fetchRawTemplate/fetchCode so the closure captures them
+  // correctly (use-before-define would break this if placed alongside
+  // saveCurrentAsProfile up top). Reads pendingCommitActionRef to decide
+  // which fetch function to call.
+  //
+  // 'generate' is the mega-button case → kicks off the FULL chain:
+  //   • raw fetch (only if rawTemplate is empty — preserves user edits)
+  //   • compile (chained via pendingCompileAfterRawFetch)
+  //   • execute (chained via pendingExecuteAfterCompile)
+  useEffect(() => {
+    if (!pendingFetchAfterCommitFlow) return;
+    setPendingFetchAfterCommitFlow(false);
+    const action = pendingCommitActionRef.current;
+    if (action === 'compile') {
+      void fetchCode();
+    } else if (action === 'generate') {
+      if (rawTemplate.length === 0) {
+        // Raw template not loaded yet → fetch it first, then chain compile + execute
+        setPendingCompileAfterRawFetch(true);
+        setPendingExecuteAfterCompile(true);
+        void fetchRawTemplate();
+      } else {
+        // Raw already there (user may have edited it) — skip raw fetch, go
+        // straight to compile + execute. This preserves edits.
+        setPendingExecuteAfterCompile(true);
+        void fetchCode();
+      }
+    } else {
+      // action === 'raw' → only fetch raw, nothing chained
+      void fetchRawTemplate();
+    }
+    // fetchRawTemplate/fetchCode are intentionally excluded from deps —
+    // they're redefined every render but their behavior is determined by
+    // the current state snapshot when invoked, which is what we want here.
+     
+  }, [pendingFetchAfterCommitFlow]);
+
+  // Chain step 2: raw fetched → compile. Fires when rawTemplate gets populated
+  // while pendingCompileAfterRawFetch is set (= mega-button started a full chain).
+  const [pendingCompileAfterRawFetch, setPendingCompileAfterRawFetch] = useState(false);
+  useEffect(() => {
+    if (!pendingCompileAfterRawFetch) return;
+    if (rawTemplateLoading) return;
+    if (!rawTemplate) return;
+    setPendingCompileAfterRawFetch(false);
+    setTimeout(() => { void fetchCode(); }, 80);
+     
+  }, [pendingCompileAfterRawFetch, rawTemplateLoading, rawTemplate]);
+
+  // Chain step 3: compile finished → execute. fetchCode updates preparedCode;
+  // when that flips from empty to populated AND we're flagged, fire executeCode.
+  // Used by both the mega-button chain and the output→GO action.
+  const [pendingExecuteAfterCompile, setPendingExecuteAfterCompile] = useState(false);
+  useEffect(() => {
+    if (!pendingExecuteAfterCompile) return;
+    if (loading) return;
+    if (!preparedCode) return;
+    setPendingExecuteAfterCompile(false);
+    setTimeout(() => executeCode(), 120);
+     
+  }, [pendingExecuteAfterCompile, loading, preparedCode]);
+
+  // Auto-switch to the tab that matches the chosen workflow mode. We use a ref
+  // to track the "last applied" mode so this only fires on actual mode CHANGES,
+  // not on every render — and not on initial mount either (we want to honor
+  // whatever activeTabIndex was restored from LS, not override it).
+  const lastAppliedWorkflowModeRef = useRef<WorkflowMode | null>(null);
+  useEffect(() => {
+    if (lastAppliedWorkflowModeRef.current === null) {
+      // First render: just record, don't override the restored activeTabIndex.
+      lastAppliedWorkflowModeRef.current = workflowMode;
+      return;
+    }
+    if (lastAppliedWorkflowModeRef.current === workflowMode) return;
+    lastAppliedWorkflowModeRef.current = workflowMode;
+    // Mode → primary tab index:
+    //   develop → 0 (Roh-Template)
+    //   debug   → 1 (Vorbereiteter Code)
+    //   output  → 2 (Ausgeführtes Ergebnis)
+    const tabForMode: Record<WorkflowMode, number> = { develop: 0, debug: 1, output: 2 };
+    setActiveTabIndex(tabForMode[workflowMode]);
+  }, [workflowMode]);
 
   // Check if selected project is locked
   const isProjectLocked = (): boolean => {
@@ -1233,11 +2003,11 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
       // Set the final result
       setExecutedResult(result);
-      setActiveTabIndex(1); // Switch to result tab
+      setActiveTabIndex(2); // Switch to Executed Result tab (was 1 before Raw Template tab)
     } catch (execError) {
       // Set error result when execution fails
       setExecutedResult(t.debugmanualgeneratorpanel1155+` `+t.debugmanualgeneratorpanel1048+` `+t.debugmanualgeneratorpanel1155a+`\n\n${(execError as Error).message || t.schematranslationpanel319}`);
-      setActiveTabIndex(1); // Switch to result tab to show error
+      setActiveTabIndex(2); // Switch to Executed Result tab to show error
 
       // Enhanced error handling with line number detection
       let errorMessage = '';
@@ -1367,7 +2137,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
           // Set the fallback result with a note about fallback
           setExecutedResult(`${t.debugmanualgeneratorpanel1439}\n\n${result}\n\n${t.debugmanualgeneratorpanel1439_2}\n${errorMessage}`);
-          setActiveTabIndex(1); // Switch to result tab
+          setActiveTabIndex(2); // Switch to Executed Result tab (was 1 before Raw Template tab)
         } catch (fallbackErr) {
           // Use the enhanced error message from the main catch block
           const fallbackError = fallbackErr as Error;
@@ -1376,7 +2146,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       } else {
         // For non-SyntaxErrors (ReferenceError, TypeError, etc.), show error immediately without fallback
         setExecutedResult(`${errorMessage}\n\n${t.debugmanualgeneratorpanel1448_2}`);
-        setActiveTabIndex(1); // Switch to result tab
+        setActiveTabIndex(2); // Switch to Executed Result tab (was 1 before Raw Template tab)
       }
     }
   };
@@ -1455,7 +2225,7 @@ function ${functionName}() {
       }
 
       setEditorUnlocked(true);
-      setActiveTabIndex(0); // Switch to code tab
+      setActiveTabIndex(1); // Switch to Prepared Code tab (the editor that the unlock applies to; was index 0 before Raw Template tab was added)
     } else {
       // Lock editor again (reset)
       setEditorUnlocked(false);
@@ -1464,11 +2234,15 @@ function ${functionName}() {
     }
   };
 
-  // Dropdown Options
-  const templateOptions = Array.isArray(templates) ? templates.map(tpl => ({
-    label: `${tpl.id}: ${tpl.name}`,
-    value: tpl.id
-  })) : [];
+  // Dropdown Options — alphabetical by name. We deliberately don't surface
+  // the template id in the label; the id was only useful while debugging
+  // and is meaningless to the user.
+  const templateOptions = Array.isArray(templates) ? [...templates]
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+    .map(tpl => ({
+      label: tpl.name,
+      value: tpl.id
+    })) : [];
 
   const fileOptions = Array.isArray(templateFiles) ? templateFiles
     .filter(f => f && f.id !== undefined && f.id !== null) // Filter invalid entries first
@@ -1538,10 +2312,186 @@ function ${functionName}() {
         <ErrorFallback error={error} resetError={() => {}} />
       )}
     >
-      <div className="debug-manual-generator-panel h-full p-4 overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
-        <Card className="border" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary }}>
-        <div className="space-y-4">
-          <h2 className="text-xl font-bold mb-4" style={{ color: colors.textPrimary }}>{t.debugmanualgeneratorpanel1602}</h2>
+      {/* Root + Card chain is set up as a vertical flex column so the code
+          editor at the bottom can claim flex-1 of whatever vertical space
+          the dock pane gives us. Earlier this panel used vh-relative math
+          (calc(100vh - …)) which broke whenever the panel wasn't full-height
+          (Scoriet's app header steals ~150px from the viewport, so 100vh
+          over-counted and the page overflowed). Flex sizing makes this
+          self-correcting: the dock decides our height, we propagate flex-1
+          all the way down to the code container, the math takes care of
+          itself.
+          Card got replaced with a plain styled div because PrimeReact's
+          Card injects 3 wrapper divs (root → body → content) that don't
+          carry flex through, and overriding all of them via pt was uglier
+          than just doing it ourselves. */}
+      <div className="debug-manual-generator-panel h-full p-4 flex flex-col overflow-hidden" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
+        <div className="border rounded flex-1 min-h-0 flex flex-col" style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, padding: '1.25rem' }}>
+        <div className="flex flex-col h-full gap-4">
+          {/* ─── Header bar: title + Profile dropdown + collapse toggle ─── */}
+          {/* Always visible. When the body is collapsed only this bar + the
+              compact status line below remain — gives the code area roughly
+              25-30% more vertical space, which is the main point of the
+              refactor. */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <h2 className="text-xl font-bold" style={{ color: colors.textPrimary }}>
+              {t.debugmanualgeneratorpanel1602}
+            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Profile dropdown — power-user shortcut for switching between
+                  named selection snapshots. Active profile gets a ✓ marker.
+                  "Speichern als..." opens a dialog (Phase 3b). "Verwalten..."
+                  opens a Rename/Delete dialog (Phase 3c). */}
+              <Dropdown
+                value={activeProfileId}
+                options={[
+                  ...profiles
+                    .slice()
+                    .sort((a, b) => (b.lastUsed || '').localeCompare(a.lastUsed || ''))
+                    .map(p => ({ label: p.name, value: p.id })),
+                ]}
+                onChange={(e) => {
+                  if (e.value) loadProfile(e.value);
+                }}
+                placeholder={profiles.length === 0 ? 'Keine Profile' : 'Profil laden…'}
+                className="text-sm"
+                style={{ minWidth: 180 }}
+                disabled={profiles.length === 0}
+                emptyMessage="Keine Profile vorhanden"
+              />
+              <Button
+                icon="pi pi-save"
+                label="Speichern als…"
+                onClick={() => {
+                  setNewProfileName('');
+                  setNewProfileDescription('');
+                  setShowSaveAsDialog(true);
+                }}
+                size="small"
+                outlined
+                style={{ borderColor: colors.borderPrimary, color: colors.textSecondary }}
+                title="Aktuelle Auswahl als neues Profil speichern"
+              />
+              <Button
+                icon="pi pi-cog"
+                onClick={() => setShowManageProfilesDialog(true)}
+                size="small"
+                outlined
+                disabled={profiles.length === 0}
+                style={{ borderColor: colors.borderPrimary, color: colors.textSecondary }}
+                title="Profile verwalten"
+              />
+              {/* Toggle button. Filled style when expanded (the "Einklappen"
+                  action is what most users want after first config) so it
+                  doesn't blend into the other outlined controls. When already
+                  collapsed it stays outlined since the user also has the
+                  clickable status line as a re-expand target.
+                  No tooltip — PrimeReact stacks long tooltips vertically
+                  against the right viewport edge and the result looked broken. */}
+              <Button
+                icon={headerCollapsed ? 'pi pi-chevron-down' : 'pi pi-chevron-up'}
+                label={headerCollapsed ? 'Erweitern' : 'Einklappen'}
+                onClick={() => setHeaderCollapsed(c => !c)}
+                size="small"
+                outlined={headerCollapsed}
+                style={headerCollapsed
+                  ? { borderColor: colors.borderPrimary, color: colors.textSecondary }
+                  : { backgroundColor: colors.infoText, borderColor: colors.infoText, color: colors.textInverse, fontWeight: 600 }
+                }
+              />
+            </div>
+          </div>
+
+          {/* ─── Compact status line — visible only when collapsed ─── */}
+          {/* The whole line is a click-target that re-expands the header
+              (in addition to the explicit "Erweitern" button), so the user
+              has two equally-valid ways to get back to the form. Pflichtfelder
+              that aren't satisfied yet are rendered in the warning color so
+              the user immediately sees what's missing without expanding. */}
+          {headerCollapsed && (() => {
+            const fileType = getFileGenerationType();
+            const tplObj = templates.find(tpl => tpl.id === selectedTemplate);
+            const fileObj = templateFiles.find(f => f.id === selectedFile);
+            const dbObj = databaseOptions.find(d => d.value === selectedDatabaseSchemaId);
+            const tblObj = selectedTable !== null ? schemaTables[selectedTable] : null;
+            const langObj = languageOptions.find(l => l.value === selectedLanguage);
+            const projObj = Array.isArray(projects)
+              ? projects.find(p => p.id === selectedProjectForGenerator)
+              : undefined;
+
+            type Item = { icon: string; value: string; missing?: boolean };
+            const items: Item[] = [];
+            items.push({ icon: '📁', value: tplObj?.name || '—', missing: !tplObj });
+            items.push({
+              icon: '📄',
+              value: fileObj?.file_name || (fileObj as any)?.filename || '—',
+              missing: !fileObj,
+            });
+            if (fileType === 'db_table_file' || fileType === 'db_table_file_languages') {
+              items.push({
+                icon: '📊',
+                value: tblObj ? `${tblObj.tablename}${tblObj.database_name ? ` (${tblObj.database_name})` : ''}` : '—',
+                missing: !tblObj,
+              });
+            } else if (fileType === 'project_file' || fileType === 'project_file_languages') {
+              items.push({ icon: '🗃', value: dbObj?.label || '—', missing: !dbObj });
+              if (selectedSchemaVersion !== null) {
+                const mig = migrationFromVersion !== null ? ` ← Migration v${migrationFromVersion}` : '';
+                items.push({ icon: '📐', value: `V${selectedSchemaVersion}${mig}` });
+              }
+              items.push({
+                icon: '⚙️',
+                value: projObj?.name || '—',
+                missing: !projObj,
+              });
+            }
+            if (fileType === 'project_file_languages' || fileType === 'db_table_file_languages') {
+              items.push({
+                icon: '🌐',
+                value: langObj?.label || '—',
+                missing: !langObj,
+              });
+            }
+            if (skipCache) items.push({ icon: '⚡', value: 'ohne Cache' });
+            if (includeTemplateSource) items.push({ icon: '📜', value: 'Source-include' });
+
+            return (
+              <div
+                className="cursor-pointer rounded p-3 text-sm transition"
+                style={{
+                  backgroundColor: colors.bgTertiary,
+                  border: `1px solid ${colors.borderPrimary}`,
+                }}
+                onClick={() => setHeaderCollapsed(false)}
+                title="Klicken zum Erweitern"
+              >
+                <div className="flex items-center gap-x-3 gap-y-1 flex-wrap" style={{ color: colors.textSecondary }}>
+                  {items.map((it, idx) => (
+                    <React.Fragment key={idx}>
+                      {idx > 0 && <span style={{ color: colors.textMuted }}>·</span>}
+                      <span
+                        style={{
+                          color: it.missing ? colors.errorText : colors.textPrimary,
+                          fontWeight: it.missing ? 600 : 400,
+                        }}
+                      >
+                        {it.missing && <span className="mr-1">⚠️</span>}
+                        <span className="mr-1">{it.icon}</span>
+                        {it.value}
+                      </span>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ─── Full form: description + combobox grid + options ─── */}
+          {/* Hidden when collapsed. The fragment keeps the same DOM structure
+              the previous version had, so existing CSS / grid behavior is
+              unchanged. */}
+          {!headerCollapsed && (
+          <>
           <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>
             {t.debugmanualgeneratorpanel1604}
           </p>
@@ -1581,40 +2531,81 @@ function ${functionName}() {
               />
             </div>
 
-            {/* 3. Table Dropdown ODER Schema-Version Dropdown (je nach Dateityp) */}
-            <div>
-              {shouldShowTableDropdown() ? (
-                <>
-                  {/* DB-Tabellen-Datei: Table-Dropdown anzeigen */}
+            {/* 3+4. Slot is conditional:
+                   - db_table_file → ONE dropdown: Tabelle (DB is implied by the table)
+                   - project_file  → TWO dropdowns: Datenbank + Schema-Version
+                   - else          → ONE disabled placeholder
+                 React fragments don't add DOM nodes, so the project_file branch
+                 lays out as two siblings in the grid — that's why we wrap each
+                 dropdown in its own <div> instead of one outer wrapper. */}
+            {shouldShowTableDropdown() ? (
+              <div>
+                {/* DB-Tabellen-Datei: Table-Dropdown anzeigen */}
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                  {t.templatemanagementpanel118} <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1319}</span>
+                </label>
+                <Dropdown
+                  value={selectedTable}
+                  options={tableOptions}
+                  onChange={(e) => {
+                    // Prevent selecting locked tables
+                    const selectedOption = tableOptions.find(opt => opt.value === e.value);
+                    if (selectedOption?.is_schema_locked) {
+                      return; // Don't allow selection
+                    }
+                    setSelectedTable(e.value);
+                  }}
+                  placeholder={t.debugmanualgeneratorpanel1661}
+                  className="w-full"
+                  itemTemplate={(option) => (
+                    <div className={`flex items-center justify-between w-full ${option.is_schema_locked ? 'opacity-60' : ''}`}>
+                      <span className={option.is_schema_locked ? 'text-red-400' : ''}>
+                        {option.label}
+                      </span>
+                      {option.is_schema_locked && (
+                        <div className="flex items-center gap-2">
+                          <i className="pi pi-lock text-red-500" title={t.debugmanualgeneratorpanel1670} />
+                          <span className="text-xs text-red-400">{t.debugmanualgeneratorpanel1671}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  valueTemplate={(option) => option ? (
+                    <div className="flex items-center">
+                      {option.is_schema_locked && <i className="pi pi-lock text-red-500 mr-2" />}
+                      <span className={option.is_schema_locked ? 'text-red-400' : ''}>
+                        {option.label}
+                      </span>
+                    </div>
+                  ) : t.debugmanualgeneratorpanel1683}
+                />
+              </div>
+            ) : shouldShowProjectDropdown() ? (
+              <>
+                {/* 3a. Datenbank-Dropdown — user picks WHICH schema to compile against.
+                       Necessary for multi-schema projects: before, the panel silently
+                       defaulted to schemaTables[0].schema_id, hiding any 2nd+ schema. */}
+                <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                    {t.templatemanagementpanel118} <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1319}</span>
+                    🗄️ Datenbank {databaseOptions.length > 0 ? <span className="text-xs" style={{ color: colors.successText }}>(Pflichtfeld)</span> : <span className="text-xs" style={{ color: colors.textMuted }}>(keine verfügbar)</span>}
                   </label>
                   <Dropdown
-                    value={selectedTable}
-                    options={tableOptions}
-                    onChange={(e) => {
-                      // Prevent selecting locked tables
-                      const selectedOption = tableOptions.find(opt => opt.value === e.value);
-                      if (selectedOption?.is_schema_locked) {
-                        return; // Don't allow selection
-                      }
-                      setSelectedTable(e.value);
-                    }}
-                    placeholder={t.debugmanualgeneratorpanel1661}
+                    value={selectedDatabaseSchemaId}
+                    options={databaseOptions}
+                    onChange={(e) => setSelectedDatabaseSchemaId(e.value)}
+                    placeholder={databaseOptions.length > 0 ? 'Datenbank wählen' : 'keine DB verfügbar'}
                     className="w-full"
-                    itemTemplate={(option) => (
+                    disabled={databaseOptions.length === 0}
+                    itemTemplate={(option) => option ? (
                       <div className={`flex items-center justify-between w-full ${option.is_schema_locked ? 'opacity-60' : ''}`}>
                         <span className={option.is_schema_locked ? 'text-red-400' : ''}>
                           {option.label}
                         </span>
                         {option.is_schema_locked && (
-                          <div className="flex items-center gap-2">
-                            <i className="pi pi-lock text-red-500" title={t.debugmanualgeneratorpanel1670} />
-                            <span className="text-xs text-red-400">{t.debugmanualgeneratorpanel1671}</span>
-                          </div>
+                          <i className="pi pi-lock text-red-500" title={t.debugmanualgeneratorpanel1670} />
                         )}
                       </div>
-                    )}
+                    ) : null}
                     valueTemplate={(option) => option ? (
                       <div className="flex items-center">
                         {option.is_schema_locked && <i className="pi pi-lock text-red-500 mr-2" />}
@@ -1622,12 +2613,11 @@ function ${functionName}() {
                           {option.label}
                         </span>
                       </div>
-                    ) : t.debugmanualgeneratorpanel1683}
+                    ) : 'Datenbank wählen'}
                   />
-                </>
-              ) : shouldShowProjectDropdown() ? (
-                <>
-                  {/* 🎯 NEU: Project-Datei: Schema-Version Dropdown anzeigen */}
+                </div>
+                {/* 3b. Schema-Version — versions of the DB picked above. */}
+                <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
                     {t.debugmanualgeneratorpanel1690}{schemaVersionOptions.length > 0 ? <span className="text-xs" style={{ color: colors.successText }}>{t.debugmanualgeneratorpanel1690_2}</span> : <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1690_3}</span>}
                   </label>
@@ -1650,23 +2640,23 @@ function ${functionName}() {
                       {t.debugmanualgeneratorpanel1708}{selectedSchemaVersion}{t.debugmanualgeneratorpanel1708_2}
                     </div>
                   )}
-                </>
-              ) : (
-                <>
-                  {/* Weder Table noch Project: Deaktiviertes Dropdown */}
-                  <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
-                    {t.templatemanagementpanel118} <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1302}</span>
-                  </label>
-                  <Dropdown
-                    value={null}
-                    options={[]}
-                    placeholder={t.debugmanualgeneratorpanel1310}
-                    className="w-full"
-                    disabled={true}
-                  />
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                {/* Weder Table noch Project: Deaktiviertes Dropdown */}
+                <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                  {t.templatemanagementpanel118} <span className="text-xs" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel1302}</span>
+                </label>
+                <Dropdown
+                  value={null}
+                  options={[]}
+                  placeholder={t.debugmanualgeneratorpanel1310}
+                  className="w-full"
+                  disabled={true}
+                />
+              </div>
+            )}
 
             {/* 4. Project Dropdown - IMMER FOURTH (disabled wenn nicht project_file) */}
             <div>
@@ -1756,6 +2746,8 @@ function ${functionName}() {
               </div>
             </div>
           </div>
+          </>
+          )}
 
           {/* ⚠️ VALIDATION WARNING BANNERS */}
 
@@ -2027,158 +3019,83 @@ function ${functionName}() {
             </div>
           )}
 
-          {/* Action Button */}
-          <div className="flex space-x-2">
+          {/* ─── Top action toolbar (single bordered strip) ─────────────
+              Replaces the loud blue mega-button + separate workflow controls
+              with a single, visually-cohesive toolbar bar. All buttons use the
+              same small size and outlined style so nothing screams; the only
+              tonal emphasis is the green tint on the primary action and the
+              blue tint on the GO button.
+              Two non-overlapping actions:
+                • Generieren & Anzeigen (left): FULL chain raw → compile → execute.
+                • Workflow ▾ + GO (right): single step picked by the dropdown
+                  (develop=raw fetch, debug=compile, output=execute). */}
+          <div className="flex items-center gap-2 p-2 rounded border flex-wrap" style={{
+            borderColor: colors.borderPrimary,
+            backgroundColor: colors.bgTertiary,
+          }}>
+            {/* LEFT: Mega-button — full chain. Toolbar look: transparent at rest,
+                hover highlight. Color comes from .tb-success modifier (CSS-based
+                so the global !important rules don't override it). */}
             <Button
-              label={loading ? t.debugmanualgeneratorpanel2076: t.debugmanualgeneratorpanel1369}
-              icon={loading ? "pi pi-spinner pi-spin" : ((isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-code")}
-              onClick={fetchCode}
-              disabled={!isButtonEnabled || isProjectLocked() || isSchemaLocked()}
-              style={{ backgroundColor: (isProjectLocked() || isSchemaLocked()) ? colors.errorText : colors.infoText, color: colors.textInverse }}
-              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? t.debugmanualgeneratorpanel2081 : undefined)}
+              label="Generieren & Anzeigen"
+              icon={loading ? 'pi pi-spinner pi-spin' : ((isProjectLocked() || isSchemaLocked()) ? 'pi pi-lock' : 'pi pi-bolt')}
+              size="small"
+              text
+              onClick={() => requestCommit('generate')}
+              disabled={!isButtonEnabled || loading || isProjectLocked() || isSchemaLocked()}
+              className="toolbar-btn tb-success"
+              style={{ fontWeight: 600 }}
             />
 
-            <Button
-              label={t.debugmanualgeneratorpanel1377}
-              icon={(isProjectLocked() || isSchemaLocked()) ? "pi pi-lock" : "pi pi-play"}
-              onClick={executeCode}
-              disabled={!preparedCode || isProjectLocked() || isSchemaLocked()}
-              style={{ backgroundColor: (isProjectLocked() || isSchemaLocked()) ? colors.errorText : colors.successText, color: colors.textInverse }}
-              tooltip={isProjectLocked() ? "Projekt gesperrt - Abo erneuern" : (isSchemaLocked() ? t.debugmanualgeneratorpanel2090 : undefined)}
-            />
+            {/* Visual divider between the two action groups */}
+            <div className="h-6 w-px mx-1" style={{ backgroundColor: colors.borderPrimary }} />
 
-            <Button
-              label={t.debugmanualgeneratorpanel1385}
-              icon="pi pi-search"
-              onClick={() => {
-                try {
-                  let debugOutput = '';
-
-                  debugOutput += `🔠🔠🔠 Scoriet Template Debug Analysis 🔠🔠🔠\n`;
-                  debugOutput += `⏰ Analysis started at: ${new Date().toLocaleTimeString()}\n\n`;
-
-                  debugOutput += `⚙️ CONFIGURATION ANALYSIS\n`;
-                  debugOutput += `==============================\n`;
-                  debugOutput += `Template: ${selectedTemplate || t.debugmanualgeneratorpanel1396}\n`;
-                  debugOutput += `File: ${getSelectedFileName() || t.debugmanualgeneratorpanel1396}\n`;
-                  debugOutput += `Type: ${getFileGenerationType() || t.testprojectschemas50}\n`;
-                  debugOutput += `Project: ${selectedProjectForGenerator || t.debugmanualgeneratorpanel1396}\n`;
-                  debugOutput += `Table: ${selectedTable !== null ? selectedTable : t.debugmanualgeneratorpanel1396}\n`;
-                  debugOutput += `Available Tables: ${tableOptions.length}\n\n`;
-
-                  if (preparedCode) {
-                    const codeLines = preparedCode.split('\n');
-                    debugOutput += `📄 GENERATED JAVASCRIPT ANALYSIS\n`;
-                    debugOutput += `====================================\n`;
-                    debugOutput += `Total Lines: ${codeLines.length}\n`;
-                    debugOutput += `Code Size: ${(preparedCode.length / 1024).toFixed(2)} KB\n\n`;
-
-                    // JavaScript Syntax Analysis (ESLint4B-style)
-                    debugOutput += `🔍 JAVASCRIPT SYNTAX ANALYSIS\n`;
-                    debugOutput += `==============================\n`;
-
-                    const syntaxIssues: string[] = [];
-                    codeLines.forEach((line, index) => {
-                      const lineNum = index + 1;
-                      const trimmed = line.trim();
-
-                      if (trimmed) {
-                        // Check for common syntax issues
-                        if (trimmed.includes('tables[]')) {
-                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2131}`);
-                        }
-
-                        if (trimmed.includes("'") && !trimmed.includes("\\\\'")) {
-                          const singleQuotes = (trimmed.match(/'/g) || []).length;
-                          if (singleQuotes % 2 !== 0) {
-                            syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2137}`);
-                          }
-                        }
-
-                        if (trimmed.includes('undefined')) {
-                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2142}`);
-                        }
-
-                        if (trimmed.includes('gtree[0].project[0].tables[') && !trimmed.includes('gtree[0].project[0].tables[0]') && !trimmed.includes('gtree[0].project[0].tables[i]')) {
-                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2146}`);
-                        }
-
-                        if (trimmed.includes('sContentResult +=') && trimmed.includes('\\n') && !trimmed.includes('\\\\u000A')) {
-                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2150}\\n${t.debugmanualgeneratorpanel2150_2}\\\\u000A${t.debugmanualgeneratorpanel2150_3}`);
-                        }
-
-                        // Check for bracket balance in the line
-                        const openBrackets = (trimmed.match(/\{/g) || []).length;
-                        const closeBrackets = (trimmed.match(/\}/g) || []).length;
-                        const openParens = (trimmed.match(/\(/g) || []).length;
-                        const closeParens = (trimmed.match(/\)/g) || []).length;
-
-                        if (openBrackets !== closeBrackets && !trimmed.endsWith('{') && !trimmed.startsWith('}')) {
-                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2160}`);
-                        }
-
-                        if (openParens !== closeParens && !trimmed.includes('for (')) {
-                          syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2164}`);
-                        }
-                      }
-                    });
-
-                    if (syntaxIssues.length === 0) {
-                      debugOutput += `${t.debugmanualgeneratorpanel2170}\n`;
-                    } else {
-                      debugOutput += `${t.debugmanualgeneratorpanel2172}${syntaxIssues.length}${t.debugmanualgeneratorpanel2172_2}\n\n`;
-                      syntaxIssues.forEach(issue => {
-                        debugOutput += `${issue}\n`;
-                      });
-                    }
-                    debugOutput += `\n`;
-                  }
-
-                  const issues = [];
-                  if (!selectedProjectForGenerator && shouldShowProjectDropdown()) {
-                    issues.push(t.debugmanualgeneratorpanel1473);
-                  }
-                  if ((selectedTable === null || selectedTable === undefined) && shouldShowTableDropdown()) {
-                    issues.push(t.debugmanualgeneratorpanel1476);
-                  }
-                  if (!selectedLanguage && shouldShowLanguageDropdown()) {
-                    issues.push(t.debugmanualgeneratorpanel1479);
-                  }
-                  if (preparedCode && preparedCode.includes('tables[]')) {
-                    issues.push(t.debugmanualgeneratorpanel1482);
-                  }
-
-                  debugOutput += `⚠️ POTENTIAL ISSUES ANALYSIS\n`;
-                  debugOutput += `==============================\n`;
-                  if (issues.length === 0) {
-                    debugOutput += `✅ No issues detected\n`;
+            {/* RIGHT (ml-auto pushes to far edge): Workflow chooser + GO */}
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              <span className="text-sm" style={{ color: colors.textSecondary }}>Workflow:</span>
+              <Dropdown
+                value={workflowMode}
+                options={[
+                  { label: '✏️ Template entwickeln', value: 'develop' },
+                  { label: '🐛 Code testen / debuggen', value: 'debug' },
+                  { label: '👁 Output ansehen', value: 'output' },
+                ]}
+                onChange={(e) => { if (e.value) setWorkflowMode(e.value as WorkflowMode); }}
+                className="text-sm"
+                style={{ minWidth: 220 }}
+              />
+              {/* → GO. Action is mode-specific (no overlap with the mega-button):
+                    develop → fetchRawTemplate    (load raw into Tab 1)
+                    debug   → fetchCode           (compile into Tab 2)
+                    output  → executeCode         (run existing compiled code) */}
+              <Button
+                icon="pi pi-arrow-right"
+                label="GO"
+                size="small"
+                text
+                onClick={() => {
+                  if (workflowMode === 'develop') {
+                    requestCommit('raw');
+                  } else if (workflowMode === 'debug') {
+                    requestCommit('compile');
                   } else {
-                    issues.forEach(issue => debugOutput += `${issue}\n`);
+                    executeCode();
                   }
-
-                  debugOutput += `\n=== Debug Analysis Complete ===`;
-
-                  setDebugInfo(debugOutput);
-                  setActiveTabIndex(2); // Switch to debug tab
-
-                } catch (debugError) {
-                  setDebugInfo(`❌ Error in Debug Helper:${(debugError as Error).message}\n\nDetails: ${debugError}`);
-                  setActiveTabIndex(2);
+                }}
+                disabled={
+                  workflowMode === 'output'
+                    ? (!preparedCode || isProjectLocked() || isSchemaLocked())
+                    : (!isButtonEnabled || loading || rawTemplateLoading || isProjectLocked() || isSchemaLocked())
                 }
-              }}
-              disabled={!preparedCode}
-              style={{ backgroundColor: colors.infoText, color: colors.textInverse }}
-            />
-
-            <Button
-              label={editorUnlocked ? t.debugmanualgeneratorpanel2217 : t.debugmanualgeneratorpanel2217_2}
-              icon={editorUnlocked ? "pi pi-lock" : "pi pi-unlock"}
-              onClick={handleUnlockEditor}
-              style={{ backgroundColor: editorUnlocked ? colors.errorText : colors.warningText, color: colors.textInverse }}
-              tooltip={editorUnlocked ? t.debugmanualgeneratorpanel2221 : t.debugmanualgeneratorpanel2221_2}
-              tooltipOptions={{ position: 'top' }}
-            />
+                className="toolbar-btn tb-info"
+                style={{ fontWeight: 600 }}
+              />
+            </div>
           </div>
+
+          {/* (no mode-specific extras row anymore — all per-tab actions
+              live in their tab toolbars. Debug-Helfer trigger moved to
+              Tab 2 since it operates on preparedCode and writes to Tab 4.) */}
 
           {error && (
             <div className="p-4 border-b" style={{ backgroundColor: colors.errorBg, borderColor: colors.errorText, color: colors.errorText }}>
@@ -2196,162 +3113,378 @@ function ${functionName}() {
             </div>
           )}
 
-          {/* 3-Tab System */}
-          {preparedCode && (
-            <div style={{ backgroundColor: colors.bgSecondary }}>
+          {/* 4-Tab System — always visible once a file is selected.
+              Tab order matters: Raw Template (Tab 0) is the AUTHOR view
+              (source you type/edit), Prepared Code (Tab 1) is what the
+              engine compiles your template down to, Executed Result (Tab 2)
+              is the final output, Debug Helper (Tab 3) is static analysis.
+              Workflow flows left → right: write → compile → execute → debug.
+
+              Previously this TabView was gated on `preparedCode &&` —
+              hidden entirely until the user pressed "Code holen". That made
+              the raw template tab unreachable. Now we render as soon as
+              there's a file context to talk about; the prepared/executed/
+              debug tabs show empty-state placeholders when their respective
+              buffer is empty. */}
+          {(selectedFile !== null && selectedFile !== undefined) && (
+            // flex-1 + min-h-0 → claim the remaining vertical space in the
+            // panel column. themed-tabview-flex is a class we add CSS rules
+            // for below to make TabView's internal containers (.p-tabview,
+            // .p-tabview-panels, .p-tabview-panel) inherit the height, since
+            // PrimeReact doesn't size them via flex by default.
+            <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: colors.bgSecondary }}>
               <TabView
                 activeIndex={activeTabIndex}
                 onTabChange={(e: any) => setActiveTabIndex(e.index)}
-                className="themed-tabview"
+                className="themed-tabview themed-tabview-flex"
               >
-              <TabPanel header={t.debugmanualgeneratorpanel1531} style={{ color: colors.textPrimary }}>
-                <div className="p-4 rounded border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel2253}</span>
-                    <div className="flex gap-2">
+              {/* ── TAB 0: Raw Template ─────────────────────────────────── */}
+              <TabPanel header={t.debugmanualgeneratorpanel_tab_raw_template || 'Raw Template'} style={{ color: colors.textPrimary }}>
+                <div className="rounded border flex-1 min-h-0 flex flex-col" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+                  {/* Toolbar: filename + dirty flag + Copy + Save buttons.
+                      Save fires the confirm dialog (NOT the API) because
+                      overwriting the stored template file is a destructive
+                      operation; the dialog gives the user a 1-second
+                      sanity check. */}
+                  <div className="flex justify-between items-center p-2 border-b" style={{ borderColor: colors.borderPrimary, backgroundColor: colors.bgSecondary }}>
+                    <div className="text-sm flex items-center gap-2" style={{ color: colors.textMuted }}>
+                      {(() => {
+                        const file: any = templateFiles.find((f) => f.id === selectedFile);
+                        const name = file ? (file.file_name || file.filename || '?') : '—';
+                        const dirty = rawTemplate !== rawTemplateOriginal;
+                        return (
+                          <>
+                            <i className="pi pi-file-edit" />
+                            <span>{name}</span>
+                            {dirty && (
+                              <span className="ml-2 px-2 py-0.5 rounded text-xs" style={{ backgroundColor: colors.warningText + '33', color: colors.warningText, fontWeight: 600 }}>
+                                {t.debugmanualgeneratorpanel_dirty_indicator || 'unsaved'}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {/* Tab 1 toolbar — all text-style for visual consistency
+                        with the top toolbar. Tint encodes intent:
+                          warning (orange) = own-tab fetch action
+                          info (blue)      = forward navigation to next tab
+                          muted            = passive utilities (copy)
+                          success (green)  = persisted-state write (save) */}
+                    <div className="flex gap-1 flex-wrap">
                       <Button
-                        label={t.debugmanualgeneratorpanel1537}
-                        icon="pi pi-database"
+                        label={t.debugmanualgeneratorpanel_btn_get_template || 'Code Template (neu) laden'}
+                        icon={rawTemplateLoading ? 'pi pi-spinner pi-spin' : 'pi pi-cloud-download'}
                         size="small"
-                        onClick={() => {
-                          const gtreeData = localStorage.getItem('scoriet_gtree');
-                          if (gtreeData) {
-                            const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
-                            const formattedGTree = `const gtree = ${jsonData};`;
-
-                            // Try modern clipboard API first
-                            if (navigator.clipboard && window.isSecureContext) {
-                              navigator.clipboard.writeText(formattedGTree).then(() => {
-                                // Successfully copied
-                              }).catch(() => {
-                                // Fallback to legacy method
-                                copyToClipboardFallback(formattedGTree, t);
-                              });
-                            } else {
-                              // Fallback for older browsers or non-secure contexts
-                              copyToClipboardFallback(formattedGTree, t);
-                            }
-                          }
-                        }}
-                        disabled={!localStorage.getItem('scoriet_gtree')}
-                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
+                        text
+                        onClick={() => requestCommit('raw')}
+                        disabled={!isButtonEnabled || rawTemplateLoading || isProjectLocked() || isSchemaLocked()}
+                        className="toolbar-btn tb-warning"
                       />
                       <Button
-                        label={t.debugmanualgeneratorpanel1564}
-                        icon="pi pi-download"
+                        label="Javascript generieren →"
+                        icon={loading ? 'pi pi-spinner pi-spin' : 'pi pi-code'}
                         size="small"
-                        onClick={() => {
-                          const gtreeData = localStorage.getItem('scoriet_gtree');
-                          if (gtreeData) {
-                            try {
-                              const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
-                              const formattedGTree = `const gtree = ${jsonData};`;
-                              const blob = new Blob([formattedGTree], { type: 'application/javascript' });
-                              const url = URL.createObjectURL(blob);
-                              const a = document.createElement('a');
-                              a.href = url;
-                              a.download = `gtree-${selectedProject?.name || 'export'}-${new Date().toISOString().split('T')[0]}.js`;
-                              document.body.appendChild(a);
-                              a.click();
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            } catch {
-                              alert(t.debugmanualgeneratorpanel1583);
-                            }
-                          }
-                        }}
-                        disabled={!localStorage.getItem('scoriet_gtree')}
-                        style={{ backgroundColor: colors.successText, borderColor: colors.successText, color: colors.textInverse }}
+                        text
+                        onClick={() => requestCommit('compile')}
+                        disabled={!isButtonEnabled || loading || isProjectLocked() || isSchemaLocked()}
+                        className="toolbar-btn tb-info"
+                        style={{ fontWeight: 600 }}
                       />
                       <Button
-                        label={t.debugmanualgeneratorpanel2310}
-                        icon="pi pi-upload"
-                        size="small"
-                        onClick={() => {
-                          // Create hidden file input
-                          const fileInput = document.createElement('input');
-                          fileInput.type = 'file';
-                          fileInput.accept = '.js,.json';
-                          fileInput.onchange = (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (event) => {
-                                try {
-                                  let content = event.target?.result as string;
-
-                                  // Remove "const gtree = " if present
-                                  if (content.includes('const gtree =')) {
-                                    content = content.replace(/const\s+gtree\s*=\s*/, '').replace(/;?\s*$/, '');
-                                  }
-
-                                  // Parse JSON to validate
-                                  const gtreeData = JSON.parse(content);
-
-                                  // Validate basic structure
-                                  if (!Array.isArray(gtreeData) || gtreeData.length === 0) {
-                                    alert(t.debugmanualgeneratorpanel2336);
-                                    return;
-                                  }
-
-                                  if (!gtreeData[0]?.project || !Array.isArray(gtreeData[0].project)) {
-                                    alert(t.debugmanualgeneratorpanel2341);
-                                    return;
-                                  }
-
-                                  // Save to localStorage
-                                  localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
-
-                                  alert(`${t.debugmanualgeneratorpanel2348}\n\n📊 Projekt: ${gtreeData[0].project[0]?.projectname || t.debugmanualgeneratorpanel2348_2}\n${t.debugmanualgeneratorpanel2348_3}${gtreeData[0].project[0]?.tables?.length || 0}`);
-
-                                } catch (error) {
-                                  alert(`${t.debugmanualgeneratorpanel2351}\n\n${(error as Error).message}\n\n${t.debugmanualgeneratorpanel2351_2}`);
-                                }
-                              };
-                              reader.readAsText(file);
-                            }
-                          };
-                          fileInput.click();
-                        }}
-                        style={{ backgroundColor: colors.warningText, borderColor: colors.warningText, color: colors.textInverse }}
-                        tooltip={t.debugmanualgeneratorpanel2359}
-                        tooltipOptions={{ position: 'top' }}
-                      />
-                      <Button
-                        label={t.debugmanualgeneratorpanel2364}
-                        icon="pi pi-paste"
-                        size="small"
-                        onClick={() => setShowGTreeImportModal(true)}
-                        style={{ backgroundColor: colors.infoText, borderColor: colors.infoText, color: colors.textInverse }}
-                        tooltip={t.debugmanualgeneratorpanel2368}
-                        tooltipOptions={{ position: 'top' }}
-                      />
-                      <Button
-                        label={t.debugmanualgeneratorpanel1591}
+                        label={t.debugmanualgeneratorpanel_btn_copy_template || 'Copy'}
                         icon="pi pi-copy"
                         size="small"
+                        text
                         onClick={() => {
-                          const codeText = preparedCode || '';
-
-                          // Try modern clipboard API first
+                          const text = rawTemplate || '';
                           if (navigator.clipboard && window.isSecureContext) {
-                            navigator.clipboard.writeText(codeText).then(() => {
-                              // Successfully copied
-                            }).catch(() => {
-                              copyToClipboardFallback(codeText, t);
-                            });
+                            navigator.clipboard.writeText(text).catch(() => copyToClipboardFallback(text, t));
                           } else {
-                            copyToClipboardFallback(codeText, t);
+                            copyToClipboardFallback(text, t);
                           }
                         }}
-                        disabled={!preparedCode}
-                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
+                        disabled={!rawTemplate}
+                        className="toolbar-btn tb-neutral"
+                      />
+                      <Button
+                        label={t.debugmanualgeneratorpanel_btn_save_template || 'Save to file'}
+                        icon="pi pi-save"
+                        size="small"
+                        text
+                        onClick={() => setShowSaveConfirmDialog(true)}
+                        disabled={rawTemplateLoading || rawTemplate === rawTemplateOriginal || !selectedFile}
+                        className="toolbar-btn tb-success"
                       />
                     </div>
                   </div>
 
-                  {/* Code Editor with Line Numbers and Syntax Highlighting */}
-                  <div className="w-full border rounded code-editor-container" style={{height: '400px', overflow: 'auto', backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary}}>
+                  {/* Editor — uses the existing LineNumbersCodeDisplay
+                      (react-simple-code-editor + Prism) for consistency with
+                      the Prepared Code tab. Template DSL with {:…:} markers
+                      doesn't have a dedicated Prism mode; JS highlighting
+                      is "close enough" and matches Tab 1 visually.
+                      Height: flex-1 in the parent column so the editor takes
+                      exactly the space the panel offers (driven by the dock
+                      pane, not by viewport math). min-h-0 is required by
+                      flexbox to let the child shrink past its content size. */}
+                  <div className="flex-1 min-h-0 overflow-auto">
+                    {rawTemplate || rawTemplateLoading ? (
+                      <LineNumbersCodeDisplay
+                        code={rawTemplate}
+                        readOnly={false}
+                        onChange={setRawTemplate}
+                        colors={colors}
+                        t={t}
+                      />
+                    ) : (
+                      <div className="p-6 text-sm" style={{ color: colors.textMuted }}>
+                        {t.debugmanualgeneratorpanel_no_template_loaded
+                          || "Click 'Code Template holen' to load the raw template source, or start writing from scratch in this area once a template file is selected above."}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </TabPanel>
+
+              {/* ── TAB 1: Prepared Code ────────────────────────────────── */}
+              <TabPanel header={t.debugmanualgeneratorpanel1531} style={{ color: colors.textPrimary }}>
+                <div className="p-4 rounded border flex-1 min-h-0 flex flex-col" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel2253}</span>
+                    <div className="flex gap-2 flex-wrap">
+                      {/* Editor entsperren — affects THIS tab's editor. */}
+                      <Button
+                        label={editorUnlocked ? t.debugmanualgeneratorpanel2217 : t.debugmanualgeneratorpanel2217_2}
+                        icon={editorUnlocked ? 'pi pi-lock' : 'pi pi-unlock'}
+                        size="small"
+                        text
+                        onClick={handleUnlockEditor}
+                        className={`toolbar-btn ${editorUnlocked ? 'tb-error' : 'tb-warning'}`}
+                      />
+                      {/* Forward step → Tab 3: run the compiled code we're
+                          looking at. User principle: every tab → next tab. */}
+                      <Button
+                        label="Code ausführen →"
+                        icon={(isProjectLocked() || isSchemaLocked()) ? 'pi pi-lock' : 'pi pi-play'}
+                        size="small"
+                        text
+                        onClick={executeCode}
+                        disabled={!preparedCode || isProjectLocked() || isSchemaLocked()}
+                        className="toolbar-btn tb-success"
+                        style={{ fontWeight: 600 }}
+                      />
+                      {/* Forward branch → Tab 4: static analysis of the JS.
+                          Lives here because it operates on preparedCode (the
+                          buffer this tab shows). Uses the inline analyzer
+                          previously inside the top-toolbar Debug button. */}
+                      <Button
+                        label="Debug-Helfer →"
+                        icon="pi pi-search"
+                        size="small"
+                        text
+                        onClick={() => {
+                          try {
+                            let debugOutput = '';
+                            debugOutput += `🔠🔠🔠 Scoriet Template Debug Analysis 🔠🔠🔠\n`;
+                            debugOutput += `⏰ Analysis started at: ${new Date().toLocaleTimeString()}\n\n`;
+                            debugOutput += `⚙️ CONFIGURATION ANALYSIS\n==============================\n`;
+                            debugOutput += `Template: ${selectedTemplate || t.debugmanualgeneratorpanel1396}\n`;
+                            debugOutput += `File: ${getSelectedFileName() || t.debugmanualgeneratorpanel1396}\n`;
+                            debugOutput += `Type: ${getFileGenerationType() || t.testprojectschemas50}\n`;
+                            debugOutput += `Project: ${selectedProjectForGenerator || t.debugmanualgeneratorpanel1396}\n`;
+                            debugOutput += `Table: ${selectedTable !== null ? selectedTable : t.debugmanualgeneratorpanel1396}\n`;
+                            debugOutput += `Available Tables: ${tableOptions.length}\n\n`;
+                            if (preparedCode) {
+                              const codeLines = preparedCode.split('\n');
+                              debugOutput += `📄 GENERATED JAVASCRIPT ANALYSIS\n====================================\n`;
+                              debugOutput += `Total Lines: ${codeLines.length}\n`;
+                              debugOutput += `Code Size: ${(preparedCode.length / 1024).toFixed(2)} KB\n\n`;
+                              debugOutput += `🔍 JAVASCRIPT SYNTAX ANALYSIS\n==============================\n`;
+                              const syntaxIssues: string[] = [];
+                              codeLines.forEach((line, index) => {
+                                const lineNum = index + 1;
+                                const trimmed = line.trim();
+                                if (trimmed) {
+                                  if (trimmed.includes('tables[]')) syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2131}`);
+                                  if (trimmed.includes("'") && !trimmed.includes("\\\\'")) {
+                                    const singleQuotes = (trimmed.match(/'/g) || []).length;
+                                    if (singleQuotes % 2 !== 0) syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2137}`);
+                                  }
+                                  if (trimmed.includes('undefined')) syntaxIssues.push(`Line ${lineNum}: ${t.debugmanualgeneratorpanel2142}`);
+                                }
+                              });
+                              if (syntaxIssues.length === 0) debugOutput += `${t.debugmanualgeneratorpanel2170}\n`;
+                              else {
+                                debugOutput += `${t.debugmanualgeneratorpanel2172}${syntaxIssues.length}${t.debugmanualgeneratorpanel2172_2}\n\n`;
+                                syntaxIssues.forEach(issue => debugOutput += `${issue}\n`);
+                              }
+                              debugOutput += `\n`;
+                            }
+                            const issues: string[] = [];
+                            if (!selectedProjectForGenerator && shouldShowProjectDropdown()) issues.push(t.debugmanualgeneratorpanel1473);
+                            if ((selectedTable === null || selectedTable === undefined) && shouldShowTableDropdown()) issues.push(t.debugmanualgeneratorpanel1476);
+                            if (!selectedLanguage && shouldShowLanguageDropdown()) issues.push(t.debugmanualgeneratorpanel1479);
+                            if (preparedCode && preparedCode.includes('tables[]')) issues.push(t.debugmanualgeneratorpanel1482);
+                            debugOutput += `⚠️ POTENTIAL ISSUES ANALYSIS\n==============================\n`;
+                            if (issues.length === 0) debugOutput += `✅ No issues detected\n`;
+                            else issues.forEach(issue => debugOutput += `${issue}\n`);
+                            debugOutput += `\n=== Debug Analysis Complete ===`;
+                            setDebugInfo(debugOutput);
+                            setActiveTabIndex(3);
+                          } catch (debugError) {
+                            setDebugInfo(`❌ Error in Debug Helper:${(debugError as Error).message}\n\nDetails: ${debugError}`);
+                            setActiveTabIndex(3);
+                          }
+                        }}
+                        disabled={!preparedCode}
+                        className="toolbar-btn tb-info"
+                        style={{ fontWeight: 600 }}
+                      />
+                      {/* Export ▾ — collapses the three "send-stuff-out" actions
+                          (GTree copy, GTree download, code copy) into a single
+                          menu button. Cuts Tab 2's toolbar from 2 rows to 1. */}
+                      <Button
+                        label="Export"
+                        icon="pi pi-share-alt"
+                        size="small"
+                        text
+                        onClick={(e) => exportMenuRef.current?.toggle(e)}
+                        aria-haspopup
+                        aria-controls="tab2-export-menu"
+                        className="toolbar-btn tb-neutral"
+                      />
+                      <Menu
+                        id="tab2-export-menu"
+                        ref={exportMenuRef}
+                        popup
+                        model={[
+                          {
+                            label: t.debugmanualgeneratorpanel1537 || 'GTree kopieren',
+                            icon: 'pi pi-database',
+                            disabled: !localStorage.getItem('scoriet_gtree'),
+                            command: () => {
+                              const gtreeData = localStorage.getItem('scoriet_gtree');
+                              if (gtreeData) {
+                                const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
+                                const formattedGTree = `const gtree = ${jsonData};`;
+                                if (navigator.clipboard && window.isSecureContext) {
+                                  navigator.clipboard.writeText(formattedGTree).catch(() => copyToClipboardFallback(formattedGTree, t));
+                                } else {
+                                  copyToClipboardFallback(formattedGTree, t);
+                                }
+                              }
+                            },
+                          },
+                          {
+                            label: t.debugmanualgeneratorpanel1564 || 'GTree herunterladen',
+                            icon: 'pi pi-download',
+                            disabled: !localStorage.getItem('scoriet_gtree'),
+                            command: () => {
+                              const gtreeData = localStorage.getItem('scoriet_gtree');
+                              if (gtreeData) {
+                                try {
+                                  const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
+                                  const formattedGTree = `const gtree = ${jsonData};`;
+                                  const blob = new Blob([formattedGTree], { type: 'application/javascript' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `gtree-${selectedProject?.name || 'export'}-${new Date().toISOString().split('T')[0]}.js`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  URL.revokeObjectURL(url);
+                                } catch {
+                                  alert(t.debugmanualgeneratorpanel1583);
+                                }
+                              }
+                            },
+                          },
+                          { separator: true },
+                          {
+                            label: t.debugmanualgeneratorpanel1591 || 'Code kopieren',
+                            icon: 'pi pi-copy',
+                            disabled: !preparedCode,
+                            command: () => {
+                              const codeText = preparedCode || '';
+                              if (navigator.clipboard && window.isSecureContext) {
+                                navigator.clipboard.writeText(codeText).catch(() => copyToClipboardFallback(codeText, t));
+                              } else {
+                                copyToClipboardFallback(codeText, t);
+                              }
+                            },
+                          },
+                        ]}
+                      />
+
+                      {/* Import ▾ — same idea for the two import paths. */}
+                      <Button
+                        label="Import"
+                        icon="pi pi-cloud-upload"
+                        size="small"
+                        text
+                        onClick={(e) => importMenuRef.current?.toggle(e)}
+                        aria-haspopup
+                        aria-controls="tab2-import-menu"
+                        className="toolbar-btn tb-neutral"
+                      />
+                      <Menu
+                        id="tab2-import-menu"
+                        ref={importMenuRef}
+                        popup
+                        model={[
+                          {
+                            label: t.debugmanualgeneratorpanel2310 || 'GTree aus Datei',
+                            icon: 'pi pi-upload',
+                            command: () => {
+                              const fileInput = document.createElement('input');
+                              fileInput.type = 'file';
+                              fileInput.accept = '.js,.json';
+                              fileInput.onchange = (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onload = (event) => {
+                                    try {
+                                      let content = event.target?.result as string;
+                                      if (content.includes('const gtree =')) {
+                                        content = content.replace(/const\s+gtree\s*=\s*/, '').replace(/;?\s*$/, '');
+                                      }
+                                      const gtreeData = JSON.parse(content);
+                                      if (!Array.isArray(gtreeData) || gtreeData.length === 0) {
+                                        alert(t.debugmanualgeneratorpanel2336);
+                                        return;
+                                      }
+                                      if (!gtreeData[0]?.project || !Array.isArray(gtreeData[0].project)) {
+                                        alert(t.debugmanualgeneratorpanel2341);
+                                        return;
+                                      }
+                                      localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
+                                      alert(`${t.debugmanualgeneratorpanel2348}\n\n📊 Projekt: ${gtreeData[0].project[0]?.projectname || t.debugmanualgeneratorpanel2348_2}\n${t.debugmanualgeneratorpanel2348_3}${gtreeData[0].project[0]?.tables?.length || 0}`);
+                                    } catch (error) {
+                                      alert(`${t.debugmanualgeneratorpanel2351}\n\n${(error as Error).message}\n\n${t.debugmanualgeneratorpanel2351_2}`);
+                                    }
+                                  };
+                                  reader.readAsText(file);
+                                }
+                              };
+                              fileInput.click();
+                            },
+                          },
+                          {
+                            label: t.debugmanualgeneratorpanel2364 || 'GTree aus Zwischenablage',
+                            icon: 'pi pi-paste',
+                            command: () => setShowGTreeImportModal(true),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Code Editor with Line Numbers and Syntax Highlighting.
+                      Height: flex-1 in the parent column (see Tab 0). */}
+                  <div className="w-full border rounded code-editor-container flex-1 min-h-0" style={{overflow: 'auto', backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary}}>
                     <ErrorBoundary
                       fallback={
                         <div className="h-full flex items-center justify-center" style={{ backgroundColor: colors.bgSecondary, color: colors.textSecondary }}>
@@ -2477,40 +3610,39 @@ function ${functionName}() {
               </TabPanel>
 
               <TabPanel header={t.debugmanualgeneratorpanel1679} style={{ color: colors.textPrimary }}>
-                <div className="rounded border" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+                <div className="rounded border flex-1 min-h-0 flex flex-col" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   {/* Button Bar */}
                   <div className="flex justify-between items-center p-2 border-b" style={{ borderColor: colors.borderPrimary, backgroundColor: colors.bgSecondary }}>
                     <div className="text-sm" style={{ color: colors.textMuted }}>{t.debugmanualgeneratorpanel2526}</div>
-                    <div className="flex gap-2">
+                    {/* Tab 3 toolbar — text-style buttons for consistency with the
+                        top toolbar and the other tabs' toolbars. (Code ausführen
+                        lives in Tab 2's toolbar where the source JS is — Tab 3
+                        only shows the result, no forward-action needed here.) */}
+                    <div className="flex gap-1 flex-wrap">
                       <Button
                         label={t.debugmanualgeneratorpanel1591}
                         icon="pi pi-copy"
                         size="small"
+                        text
                         onClick={() => {
                           const codeText = executedResult || '';
-
-                          // Try modern clipboard API first
                           if (navigator.clipboard && window.isSecureContext) {
-                            navigator.clipboard.writeText(codeText).then(() => {
-                              // Successfully copied
-                            }).catch(() => {
-                              copyToClipboardFallback(codeText, t);
-                            });
+                            navigator.clipboard.writeText(codeText).catch(() => copyToClipboardFallback(codeText, t));
                           } else {
                             copyToClipboardFallback(codeText, t);
                           }
                         }}
                         disabled={!executedResult}
-                        style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary, color: colors.textPrimary }}
+                        className="toolbar-btn tb-neutral"
                       />
                       <Button
                         label={t.debugmanualgeneratorpanel2550}
                         icon="pi pi-download"
                         size="small"
+                        text
                         onClick={() => {
                           if (executedResult) {
                             try {
-                              // Use the processed filename from backend (with %1-%9 replaced)
                               const blob = new Blob([executedResult], { type: t.codegenerationpanel300 });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');
@@ -2526,13 +3658,13 @@ function ${functionName}() {
                           }
                         }}
                         disabled={!executedResult}
-                        style={{ backgroundColor: colors.successText, borderColor: colors.successText, color: colors.textInverse }}
+                        className="toolbar-btn tb-success"
                       />
                     </div>
                   </div>
 
-                  {/* Code Display with Line Numbers */}
-                  <div className="max-h-96 overflow-auto">
+                  {/* Code Display with Line Numbers — flex-1 fill of parent. */}
+                  <div className="flex-1 min-h-0 overflow-auto">
                     {executedResult ? (
                       <table className="w-full border-collapse" style={{ fontFamily: '"Courier New", "Consolas", "Monaco", "Lucida Console", monospace', fontSize: '0.875rem', lineHeight: 1.4 }}>
                         <tbody>
@@ -2570,7 +3702,7 @@ function ${functionName}() {
               </TabPanel>
 
               <TabPanel header={t.debugmanualgeneratorpanel1750} style={{ color: colors.textPrimary }}>
-                <div className="p-4 rounded border max-h-96 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
+                <div className="p-4 rounded border flex-1 min-h-0 overflow-auto" style={{ backgroundColor: colors.bgTertiary, borderColor: colors.borderPrimary }}>
                   <div
                     className="text-sm whitespace-pre-wrap font-mono"
                     style={{
@@ -2587,8 +3719,390 @@ function ${functionName}() {
             </div>
           )}
           </div>
-        </Card>
+        </div>
       </div>
+
+      {/* Save Raw Template Confirm Dialog — a destructive write-back to the
+          stored template file. The Save button on Tab 0 opens this rather
+          than firing the PUT directly so a fat-finger click can't replace
+          a production template with whatever happens to be in the editor. */}
+      <Dialog
+        header={t.debugmanualgeneratorpanel_save_confirm_title || 'Save to Template File'}
+        visible={showSaveConfirmDialog}
+        style={{ width: '480px' }}
+        modal
+        onHide={() => setShowSaveConfirmDialog(false)}
+        pt={{
+          root: { style: { backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary } },
+          header: { style: { backgroundColor: colors.dialogHeader, color: colors.textPrimary, borderBottom: `1px solid ${colors.borderPrimary}` } },
+          content: { style: { backgroundColor: colors.bgSecondary, color: colors.textPrimary } },
+          footer: { style: { backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderPrimary}` } },
+        }}
+        footer={
+          <div>
+            <Button
+              label={t.debugmanualgeneratorpanel2632 /* "Cancel" */}
+              icon="pi pi-times"
+              onClick={() => setShowSaveConfirmDialog(false)}
+              className="p-button-text"
+              style={{ color: colors.textSecondary }}
+              disabled={rawTemplateLoading}
+            />
+            <Button
+              label={t.debugmanualgeneratorpanel_btn_save_template || 'Save'}
+              icon={rawTemplateLoading ? 'pi pi-spinner pi-spin' : 'pi pi-save'}
+              onClick={saveRawTemplate}
+              style={{ backgroundColor: colors.successText, color: colors.textInverse }}
+              disabled={rawTemplateLoading}
+            />
+          </div>
+        }
+      >
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <i className="pi pi-exclamation-triangle text-2xl" style={{ color: colors.warningText }} />
+            <div className="text-sm" style={{ color: colors.textPrimary }}>
+              {t.debugmanualgeneratorpanel_save_confirm_msg
+                || 'This will overwrite the stored template file in the database with the editor contents. Continue?'}
+            </div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* ─── Profile "Save As..." Dialog ───────────────────────────────────
+          Opens from the Save-as button in the header. Captures a snapshot of
+          the current selection under a user-provided name. We don't enforce
+          unique names — duplicates are the user's problem to manage. */}
+      <Dialog
+        header="Aktuelles Setup als Profil speichern"
+        visible={showSaveAsDialog}
+        style={{ width: '480px' }}
+        modal
+        onHide={() => setShowSaveAsDialog(false)}
+        pt={{
+          root: { style: { backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary } },
+          header: { style: { backgroundColor: colors.dialogHeader, color: colors.textPrimary, borderBottom: `1px solid ${colors.borderPrimary}` } },
+          content: { style: { backgroundColor: colors.bgSecondary, color: colors.textPrimary } },
+          footer: { style: { backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderPrimary}` } },
+        }}
+        footer={
+          <div>
+            <Button
+              label="Abbrechen"
+              icon="pi pi-times"
+              onClick={() => {
+                // If this dialog was opened from the save-before-commit prompt,
+                // honor the original intent (collapse + fetch) even if the user
+                // cancels the save. Otherwise they'd have to click "Code Template
+                // holen" again, which is confusing UX.
+                if (proceedAfterSaveAsRef.current) {
+                  proceedAfterSaveAsRef.current = false;
+                  setHeaderCollapsed(true);
+                  setPendingFetchAfterCommitFlow(true);
+                }
+                setShowSaveAsDialog(false);
+              }}
+              className="p-button-text"
+              style={{ color: colors.textSecondary }}
+            />
+            <Button
+              label={existingProfileForCurrentName ? `"${existingProfileForCurrentName.name}" aktualisieren` : 'Speichern'}
+              icon={existingProfileForCurrentName ? 'pi pi-refresh' : 'pi pi-save'}
+              onClick={saveCurrentAsProfile}
+              disabled={!newProfileName.trim()}
+              style={{
+                backgroundColor: existingProfileForCurrentName ? colors.warningText : colors.successText,
+                color: colors.textInverse,
+              }}
+            />
+          </div>
+        }
+      >
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+              Profil-Name *
+            </label>
+            <InputText
+              value={newProfileName}
+              onChange={(e) => setNewProfileName(e.target.value)}
+              placeholder="z.B. Migration-Test, Model-Generierung..."
+              className="w-full"
+              autoFocus
+            />
+            {/* Same-name detection → overwrite hint. Color matches the
+                "warning" tone of the action button so the link between this
+                hint and that button is obvious. */}
+            {existingProfileForCurrentName && (
+              <div className="mt-2 text-xs flex items-start gap-2 p-2 rounded" style={{
+                color: colors.warningText,
+                backgroundColor: colors.warningText + '15',
+                border: `1px solid ${colors.warningText}40`,
+              }}>
+                <i className="pi pi-exclamation-triangle mt-0.5" />
+                <span>
+                  Ein Profil mit diesem Namen existiert bereits. Beim Klick auf
+                  „Aktualisieren" wird es mit deinem aktuellen Setup
+                  überschrieben.
+                </span>
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+              Beschreibung (optional)
+            </label>
+            <InputText
+              value={newProfileDescription}
+              onChange={(e) => setNewProfileDescription(e.target.value)}
+              placeholder="Was speichert dieses Profil?"
+              className="w-full"
+            />
+          </div>
+          <div className="text-xs p-3 rounded" style={{
+            color: colors.textSecondary,
+            backgroundColor: colors.bgTertiary,
+            border: `1px solid ${colors.borderPrimary}`,
+          }}>
+            <div className="font-medium mb-1" style={{ color: colors.textPrimary }}>Wird gespeichert:</div>
+            <div>• Template + Datei + Tabelle/DB-Version + Migration</div>
+            <div>• Projekt + Sprache</div>
+            <div>• Optionen (Source-include, Cache-Skip)</div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* ─── Profile "Verwalten" Dialog ────────────────────────────────────
+          Rename + delete existing profiles. Rename is in-place; delete is
+          immediate (no second confirmation — accidentally deleted profiles
+          can just be re-created, and the modal already implies destructive
+          intent by being a "manage" screen). */}
+      <Dialog
+        header="Profile verwalten"
+        visible={showManageProfilesDialog}
+        style={{ width: '640px' }}
+        modal
+        onHide={() => {
+          setShowManageProfilesDialog(false);
+          setEditingProfileId(null);
+          setEditingProfileName('');
+        }}
+        pt={{
+          root: { style: { backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary } },
+          header: { style: { backgroundColor: colors.dialogHeader, color: colors.textPrimary, borderBottom: `1px solid ${colors.borderPrimary}` } },
+          content: { style: { backgroundColor: colors.bgSecondary, color: colors.textPrimary } },
+          footer: { style: { backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderPrimary}` } },
+        }}
+        footer={
+          <div>
+            <Button
+              label="Schließen"
+              icon="pi pi-times"
+              onClick={() => {
+                setShowManageProfilesDialog(false);
+                setEditingProfileId(null);
+                setEditingProfileName('');
+              }}
+              className="p-button-text"
+              style={{ color: colors.textSecondary }}
+            />
+          </div>
+        }
+      >
+        <div className="p-4">
+          {profiles.length === 0 ? (
+            <div className="text-sm text-center py-8" style={{ color: colors.textMuted }}>
+              Keine Profile vorhanden.<br />
+              Speichere zuerst ein Profil über „Speichern als…".
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {profiles
+                .slice()
+                .sort((a, b) => (b.lastUsed || '').localeCompare(a.lastUsed || ''))
+                .map(p => {
+                  const isEditing = editingProfileId === p.id;
+                  const lastUsedDate = p.lastUsed ? new Date(p.lastUsed) : null;
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 p-2 rounded"
+                      style={{
+                        backgroundColor: colors.bgTertiary,
+                        border: `1px solid ${colors.borderPrimary}`,
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        {isEditing ? (
+                          <InputText
+                            value={editingProfileName}
+                            onChange={(e) => setEditingProfileName(e.target.value)}
+                            className="w-full"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                renameProfile(p.id, editingProfileName);
+                                setEditingProfileId(null);
+                                setEditingProfileName('');
+                              } else if (e.key === 'Escape') {
+                                setEditingProfileId(null);
+                                setEditingProfileName('');
+                              }
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <div className="font-medium truncate" style={{ color: colors.textPrimary }}>
+                              {p.name}
+                              {activeProfileId === p.id && (
+                                <span className="ml-2 text-xs" style={{ color: colors.successText }}>● aktiv</span>
+                              )}
+                            </div>
+                            {p.description && (
+                              <div className="text-xs truncate" style={{ color: colors.textSecondary }}>
+                                {p.description}
+                              </div>
+                            )}
+                            <div className="text-xs" style={{ color: colors.textMuted }}>
+                              Zuletzt: {lastUsedDate ? lastUsedDate.toLocaleString() : '—'}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              icon="pi pi-check"
+                              size="small"
+                              onClick={() => {
+                                renameProfile(p.id, editingProfileName);
+                                setEditingProfileId(null);
+                                setEditingProfileName('');
+                              }}
+                              style={{ backgroundColor: colors.successText, color: colors.textInverse }}
+                            />
+                            <Button
+                              icon="pi pi-times"
+                              size="small"
+                              outlined
+                              onClick={() => {
+                                setEditingProfileId(null);
+                                setEditingProfileName('');
+                              }}
+                              style={{ borderColor: colors.borderPrimary, color: colors.textSecondary }}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              icon="pi pi-pencil"
+                              size="small"
+                              outlined
+                              onClick={() => {
+                                setEditingProfileId(p.id);
+                                setEditingProfileName(p.name);
+                              }}
+                              title="Umbenennen"
+                              style={{ borderColor: colors.borderPrimary, color: colors.textSecondary }}
+                            />
+                            <Button
+                              icon="pi pi-trash"
+                              size="small"
+                              outlined
+                              onClick={() => deleteProfile(p.id)}
+                              title="Löschen"
+                              style={{ borderColor: colors.errorText, color: colors.errorText }}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      </Dialog>
+
+      {/* ─── "Save before commit" prompt dialog ─────────────────────────
+          Fires from requestCommit when no profile is loaded and the user
+          hasn't opted out for this session. Three exit paths:
+            • "Speichern als…" → opens save-as dialog, sets the proceed-after
+              ref so we continue with collapse + fetch once save completes
+              (handled in saveCurrentAsProfile).
+            • "Nein, weiter" → collapse + fetch immediately, no save.
+            • "Nicht mehr fragen" → same as Nein but flips the session ref so
+              future commits skip the prompt entirely.
+          All three paths result in the same end state (header collapsed,
+          fetchRawTemplate called) — only the side-effect on profiles +
+          dontAsk ref differs. */}
+      <Dialog
+        header="Konfiguration als Profil speichern?"
+        visible={showSaveBeforeCommitPrompt}
+        style={{ width: '520px' }}
+        modal
+        onHide={() => setShowSaveBeforeCommitPrompt(false)}
+        pt={{
+          root: { style: { backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary } },
+          header: { style: { backgroundColor: colors.dialogHeader, color: colors.textPrimary, borderBottom: `1px solid ${colors.borderPrimary}` } },
+          content: { style: { backgroundColor: colors.bgSecondary, color: colors.textPrimary } },
+          footer: { style: { backgroundColor: colors.bgSecondary, borderTop: `1px solid ${colors.borderPrimary}` } },
+        }}
+      >
+        <div className="p-4 space-y-4">
+          <div className="text-sm" style={{ color: colors.textPrimary }}>
+            Du holst gleich das Template ab. Möchtest du diese Konfiguration
+            (Template, DB, Version, Sprache …) zuerst als Profil speichern?
+          </div>
+          <div className="text-xs p-3 rounded" style={{
+            color: colors.textSecondary,
+            backgroundColor: colors.bgTertiary,
+            border: `1px solid ${colors.borderPrimary}`,
+          }}>
+            💡 Tipp: Mit einem Profil kannst du dieses Setup später jederzeit
+            mit einem Klick wiederherstellen.
+          </div>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button
+              label="Ja, als Profil speichern…"
+              icon="pi pi-save"
+              onClick={() => {
+                setShowSaveBeforeCommitPrompt(false);
+                proceedAfterSaveAsRef.current = true;
+                setNewProfileName('');
+                setNewProfileDescription('');
+                setShowSaveAsDialog(true);
+              }}
+              style={{ backgroundColor: colors.successText, color: colors.textInverse }}
+            />
+            <Button
+              label="Nein, jetzt nicht"
+              icon="pi pi-arrow-right"
+              onClick={() => {
+                setShowSaveBeforeCommitPrompt(false);
+                setHeaderCollapsed(true);
+                setPendingFetchAfterCommitFlow(true);
+              }}
+              outlined
+              style={{ borderColor: colors.borderPrimary, color: colors.textSecondary }}
+            />
+            <Button
+              label="Diese Sitzung nicht mehr fragen"
+              icon="pi pi-eye-slash"
+              onClick={() => {
+                dontAskSaveBeforeCommitRef.current = true;
+                setShowSaveBeforeCommitPrompt(false);
+                setHeaderCollapsed(true);
+                setPendingFetchAfterCommitFlow(true);
+              }}
+              text
+              size="small"
+              style={{ color: colors.textMuted }}
+            />
+          </div>
+        </div>
+      </Dialog>
 
       {/* GTree Import Modal */}
       <Dialog
@@ -2714,6 +4228,34 @@ function ${functionName}() {
           color: ${colors.textPrimary} !important;
         }
 
+        /* TabView flex-fill: PrimeReact renders three nested wrappers
+           (.p-tabview → contains .p-tabview-nav-container + .p-tabview-panels).
+           To let the active tab panel grow to fill the parent we need:
+           - the root .p-tabview to be a flex column filling parent
+           - .p-tabview-panels to take the remaining space after the nav header
+           - .p-tabview-panel (the active panel content) to fill that space
+           Without this the panels collapse to their content height and the
+           code editor at the bottom can't claim flex-1 of anything. */
+        .debug-manual-generator-panel .themed-tabview-flex {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+        }
+        .debug-manual-generator-panel .themed-tabview-flex .p-tabview-panels {
+          flex: 1 1 auto;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          padding: 0.75rem !important;
+        }
+        .debug-manual-generator-panel .themed-tabview-flex .p-tabview-panel {
+          flex: 1 1 auto;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
         /* Button Styling */
         .debug-manual-generator-panel .p-button.p-button-outlined {
           color: ${colors.textSecondary} !important;
@@ -2721,6 +4263,65 @@ function ${functionName}() {
         }
         .debug-manual-generator-panel .p-button.p-button-outlined:hover {
           background-color: ${colors.bgTertiary} !important;
+          color: ${colors.textPrimary} !important;
+        }
+
+        /* Toolbar-button look. Two competing rules from elsewhere in the app
+           force a blue background on .p-button-text — we have to out-specify
+           BOTH to win:
+             (1) app.css:364: .p-button { background: ... !important; }     [0,1,0]
+             (2) styles.css:1573: .p-button.p-button-text:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn) {
+                   background: ... !important;
+                 }                                                          [0,5,0]
+           Rule 2 is the killer. To beat it we match the same :not chain
+           PLUS add our own classes, giving us [0,7,0]. The :not arguments
+           are dummy classes that no button ever has — purely a specificity
+           hack, but it is the cleanest way without resorting to IDs. */
+        .debug-manual-generator-panel .p-button.toolbar-btn:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn),
+        .debug-manual-generator-panel .p-button.p-button-text.toolbar-btn:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn) {
+          background: transparent !important;
+          background-color: transparent !important;
+          border: 1px solid transparent !important;
+          padding: 0.35rem 0.7rem !important;
+          font-size: 0.875rem !important;
+          transition: background-color 120ms ease, border-color 120ms ease;
+        }
+        .debug-manual-generator-panel .p-button.toolbar-btn:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn):not(:disabled):hover,
+        .debug-manual-generator-panel .p-button.p-button-text.toolbar-btn:not(.landing-lang-selector):not(.landing-header-btn):not(.landing-social-btn):not(:disabled):hover {
+          background: ${colors.bgPrimary} !important;
+          background-color: ${colors.bgPrimary} !important;
+          border-color: ${colors.borderPrimary} !important;
+        }
+        .debug-manual-generator-panel .p-button.toolbar-btn:disabled,
+        .debug-manual-generator-panel .p-button.p-button-text.toolbar-btn:disabled {
+          opacity: 0.4 !important;
+        }
+        /* Color modifiers — only the text/icon color, no background. Higher
+           specificity than the global .p-button.p-button-text rule so our
+           color wins regardless of inline style. */
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-warning,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-warning .p-button-icon,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-warning .p-button-label {
+          color: ${colors.warningText} !important;
+        }
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-info,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-info .p-button-icon,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-info .p-button-label {
+          color: ${colors.infoText} !important;
+        }
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-success,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-success .p-button-icon,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-success .p-button-label {
+          color: ${colors.successText} !important;
+        }
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-error,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-error .p-button-icon,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-error .p-button-label {
+          color: ${colors.errorText} !important;
+        }
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-neutral,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-neutral .p-button-icon,
+        .debug-manual-generator-panel .p-button.toolbar-btn.tb-neutral .p-button-label {
           color: ${colors.textPrimary} !important;
         }
 

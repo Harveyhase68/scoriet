@@ -6,7 +6,7 @@
  * These routes are specifically for the Scoriet CLI client (RUST)
  * and have additional security measures compared to web API routes.
  *
- * Base URL: /cli/*
+ * Base URL: /cli/v1/*  (v1 prefix is applied in bootstrap/app.php)
  */
 
 use App\Http\Controllers\Cli\AuthController;
@@ -34,6 +34,35 @@ Route::prefix('auth')->group(function () {
     // the IP-throttle is a second line that catches attackers cycling sessions.
     Route::post('/verify-2fa', [AuthController::class, 'verifyTwoFactor'])
         ->middleware('throttle:30,1'); // 30 attempts per minute per IP
+});
+
+/*
+|--------------------------------------------------------------------------
+| CLI System Info Routes (PUBLIC — no authentication required)
+|--------------------------------------------------------------------------
+| /version is needed by clients to negotiate API compatibility BEFORE they
+| have a token (e.g. an older CLI binary checking "is the server too new?").
+| /health is needed by load balancers / Kubernetes liveness probes / uptime
+| monitors that cannot carry credentials. Neither endpoint leaks user data.
+| A light throttle is enough to keep them from being used as a DoS amplifier.
+*/
+Route::prefix('system')->middleware('throttle:60,1')->group(function () {
+    // Get CLI API version
+    Route::get('/version', function () {
+        return response()->json([
+            'version' => '1.0.0',
+            'api_version' => '1.0',
+            'scoriet_version' => config('app.version', '1.0.0'),
+        ]);
+    });
+
+    // Health check
+    Route::get('/health', function () {
+        return response()->json([
+            'status' => 'healthy',
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    });
 });
 
 // Protected routes (require Personal Access Token)
@@ -91,12 +120,15 @@ Route::middleware('auth:api')->group(function () {
         // Get deployment settings (protected files + install/update scripts)
         Route::get('/{id}/deployment-settings', [ProjectController::class, 'deploymentSettings']);
 
-        // FTP/SSH Deployment Routes (CLI uses getSettingsForCli which returns actual password)
-        // Note: Using {id} for consistency with other routes, controller finds the Project
-        Route::get('/{id}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'getSettingsForCli']);
-        Route::put('/{id}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'updateSettings']);
-        Route::post('/{id}/ftp-test', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'testConnection']);
-        Route::post('/{id}/ftp-upload', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'upload']);
+        // FTP/SSH Deployment Routes (CLI uses getSettingsForCli which returns actual password).
+        // Parameter is {project} — three of these controller methods type-hint
+        // `Project $project` and rely on Laravel's route-model binding to load
+        // the row. A mismatched {id} placeholder silently fails to bind and
+        // returns 403 "Unauthorized" from the auth check.
+        Route::get('/{project}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'getSettingsForCli']);
+        Route::put('/{project}/ftp-settings', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'updateSettings']);
+        Route::post('/{project}/ftp-test', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'testConnection']);
+        Route::post('/{project}/ftp-upload', [\App\Http\Controllers\Api\FtpSshUploadController::class, 'upload']);
     });
 
     /*
@@ -151,6 +183,9 @@ Route::middleware('auth:api')->group(function () {
         // Get template details
         Route::get('/{id}', [TemplateController::class, 'show']);
 
+        // Update template (partial update — only fields in the body change)
+        Route::put('/{id}', [TemplateController::class, 'update']);
+
         // Delete template (HARD delete - permanent!)
         Route::delete('/{id}', [TemplateController::class, 'delete']);
 
@@ -170,11 +205,19 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/project/{projectId}', [TemplateController::class, 'projectTemplates']);
 
         // Template File Management
-        // List files in a template
+        // List files in a template (metadata only — content omitted to keep
+        // list responses small even for templates with many large files).
         Route::get('/{templateId}/files', [TemplateFileController::class, 'list']);
+
+        // Get a single file WITH file_content. Use this when you actually
+        // need the bytes — list() above only returns metadata.
+        Route::get('/{templateId}/files/{fileId}', [TemplateFileController::class, 'show']);
 
         // Add file to template
         Route::post('/{templateId}/files', [TemplateFileController::class, 'add']);
+
+        // Update file (partial update — only sent fields change).
+        Route::put('/{templateId}/files/{fileId}', [TemplateFileController::class, 'update']);
 
         // Delete file from template (HARD delete - permanent!)
         Route::delete('/{templateId}/files/{fileId}', [TemplateFileController::class, 'delete']);
@@ -186,8 +229,14 @@ Route::middleware('auth:api')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('generate')->middleware('cli.access')->group(function () {
-        // Generate code (returns job ID for progress tracking)
-        Route::post('/', [GenerateController::class, 'generate']);
+        // Generate code (dispatches a background job, returns job_id).
+        // Extra throttle:cli-generate (30/hour per token) on top of the
+        // global cli-default ceiling — each generation costs credits AND
+        // queue-worker time, so this is the real DoS/credit-drain valve.
+        // Progress/download/cancel keep the default 1000/h cap so polling
+        // loops aren't artificially constrained.
+        Route::post('/', [GenerateController::class, 'generate'])
+            ->middleware('throttle:cli-generate');
 
         // Get generation progress
         Route::get('/progress/{jobId}', [GenerateController::class, 'progress']);
@@ -197,30 +246,6 @@ Route::middleware('auth:api')->group(function () {
 
         // Cancel generation job
         Route::post('/cancel/{jobId}', [GenerateController::class, 'cancel']);
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | CLI System Info Routes
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('system')->group(function () {
-        // Get CLI API version
-        Route::get('/version', function () {
-            return response()->json([
-                'version' => '1.0.0',
-                'api_version' => '1.0',
-                'scoriet_version' => config('app.version', '1.0.0'),
-            ]);
-        });
-
-        // Health check
-        Route::get('/health', function () {
-            return response()->json([
-                'status' => 'healthy',
-                'timestamp' => now()->toIso8601String(),
-            ]);
-        });
     });
 
 });

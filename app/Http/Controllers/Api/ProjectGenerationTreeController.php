@@ -3,17 +3,41 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
 use App\Models\ProjectGenerationTree;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class ProjectGenerationTreeController extends Controller
 {
+    /**
+     * BOLA guard: caller must be able to see the project. The generation
+     * tree contains the full file layout and template structure of a
+     * project; without this an authenticated user could enumerate any
+     * other user's generated output by passing their project id.
+     */
+    private function denyIfProjectInvisible($projectId): ?JsonResponse
+    {
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->isVisibleTo(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to view this project.'], 403);
+        }
+        return null;
+    }
+
     /**
      * Get the latest generation tree for a project with version info
      */
     public function show(Request $request, $projectId): JsonResponse
     {
+        if ($deny = $this->denyIfProjectInvisible($projectId)) {
+            return $deny;
+        }
+
         try {
             $generationTree = ProjectGenerationTree::where('project_id', $projectId)->first();
             
@@ -44,6 +68,10 @@ class ProjectGenerationTreeController extends Controller
      */
     public function checkUpdates(Request $request, $projectId): JsonResponse
     {
+        if ($deny = $this->denyIfProjectInvisible($projectId)) {
+            return $deny;
+        }
+
         try {
             $since = $request->get('since');
             if (!$since) {

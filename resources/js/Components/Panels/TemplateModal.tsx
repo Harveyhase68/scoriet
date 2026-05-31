@@ -8,13 +8,17 @@ import { Dropdown } from 'primereact/dropdown';
 import { AutoComplete } from 'primereact/autocomplete';
 import { Chips } from 'primereact/chips';
 import { Checkbox } from 'primereact/checkbox';
-//import { TabView, TabPanel } from 'primereact/tabview';
+import { MultiSelect } from 'primereact/multiselect';
+import { TabPanel } from 'primereact/tabview';
+import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { usePage } from '@inertiajs/react';
 import { ProtectedFilesEditor } from '@/Components/ProtectedFilesEditor';
 import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScriptsEditor';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
+import { apiClient as api } from '@/lib/api';
 
 interface TemplateVariable {
     id?: number;
@@ -44,6 +48,10 @@ interface TemplateModalProps {
     onCreateVariable?: () => void;
     onEditVariable?: (variable: TemplateVariable) => void;
     onDeleteVariable?: (variableId: number) => void;
+    // Project assignment: parent provides the project list and the current
+    // template's linked IDs; the modal returns the chosen IDs in onSave/
+    // onSubmit values as `linked_project_ids` so the parent can persist them.
+    availableProjects?: Array<{ id: number; name: string }>;
 }
 
 const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -62,12 +70,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     onLoadVariables,
     onCreateVariable,
     onEditVariable,
-    onDeleteVariable
+    onDeleteVariable,
+    availableProjects = []
 }) => {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
+  const toast = useToast();
 
   // Get template categories and languages from Inertia props
   const { props } = usePage<any>();
@@ -201,6 +211,14 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     const [originalProtectedFiles, setOriginalProtectedFiles] = React.useState<string[]>([]);
     const [originalInstallScript, setOriginalInstallScript] = React.useState<ScriptStep[]>([]);
     const [originalUpdateScript, setOriginalUpdateScript] = React.useState<ScriptStep[]>([]);
+
+    // Project assignment — which projects this template is linked to. The
+    // parent panel loads the projects list once and passes it in via props;
+    // we only own the current selection here. Persistence happens through
+    // values.linked_project_ids in onSave/onSubmit so the parent can call
+    // the linked-projects API once the template ID exists.
+    const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
+    const [originalLinkedProjectIds, setOriginalLinkedProjectIds] = useState<number[]>([]);
 
     // Check if private template needs unlock (for free users)
     const checkPrivateTemplateSubscription = useCallback(async () => {
@@ -342,6 +360,13 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setOriginalInstallScript(loadedInstallScript);
             setOriginalUpdateScript(loadedUpdateScript);
 
+            // Linked projects come pre-loaded on the template payload (see
+            // TemplateManagementPanel.loadMyTemplates) — no extra round-trip
+            // needed.
+            const loadedLinkedIds: number[] = (editingTemplate.linked_project_ids || []).map((n: any) => Number(n));
+            setLinkedProjectIds(loadedLinkedIds);
+            setOriginalLinkedProjectIds(loadedLinkedIds);
+
             // Load template variables
             if (onLoadVariables) {
                 onLoadVariables();
@@ -375,6 +400,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setProtectedFiles([]);
             setInstallScript([]);
             setUpdateScript([]);
+            setLinkedProjectIds([]);
+            setOriginalLinkedProjectIds([]);
 
             // Reset originals
             setOriginalProtectedFiles([]);
@@ -390,12 +417,13 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
     }, [visible, editingTemplate, reset, userType]);
 
-    // Effect to check for changes when protected files or scripts change
+    // Effect to check for changes when protected files, scripts, or linked
+    // project assignments change.
     useEffect(() => {
         if (editingTemplate) {
             checkFormChanges();
         }
-    }, [protectedFiles, installScript, updateScript]);
+    }, [protectedFiles, installScript, updateScript, linkedProjectIds]);
 
     // Don't render anything if not visible - AFTER all hooks
     if (!visible) return null;
@@ -423,8 +451,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         const protectedFilesChanged = JSON.stringify(protectedFiles) !== JSON.stringify(originalProtectedFiles);
         const installScriptChanged = JSON.stringify(installScript) !== JSON.stringify(originalInstallScript);
         const updateScriptChanged = JSON.stringify(updateScript) !== JSON.stringify(originalUpdateScript);
+        // Compare sorted copies — order in the multiselect is irrelevant for
+        // a "did anything change" check.
+        const linkedProjectsChanged =
+            JSON.stringify([...linkedProjectIds].sort()) !== JSON.stringify([...originalLinkedProjectIds].sort());
 
-        const hasChanges = formFieldsChanged || protectedFilesChanged || installScriptChanged || updateScriptChanged;
+        const hasChanges = formFieldsChanged || protectedFilesChanged || installScriptChanged || updateScriptChanged || linkedProjectsChanged;
 
         setHasFormChanges(hasChanges);
     };
@@ -433,12 +465,13 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         try {
             setIsLoading(true);
             if (onSave) {
-                // Include protected files and scripts in the save
+                // Include protected files, scripts and project assignments
                 const saveData = {
                     ...values,
                     protected_files: protectedFiles,
                     install_script: installScript,
-                    update_script: updateScript
+                    update_script: updateScript,
+                    linked_project_ids: linkedProjectIds
                 };
                 await onSave(saveData);
                 setIsSaved(true);
@@ -451,16 +484,48 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     });
 
     const handleSubmit = handleFormSubmit(async (values) => {
-        // Include protected files and scripts in the submission
+        // Pre-flight name uniqueness check — we'd rather catch the duplicate
+        // here than after the user has wrestled with the modal, because
+        // backend rejection used to clobber the form state (see catch below).
+        // exclude_id makes sure the check ignores the row we're editing.
+        try {
+            const nameChanged = !editingTemplate || editingTemplate.name !== values.name;
+            if (nameChanged) {
+                const check = await api.checkTemplateName(values.name, editingTemplate?.id);
+                if (check.exists) {
+                    toast.showError(t.templatemodal_name_taken);
+                    return; // KEEP modal open, KEEP edits, no reset
+                }
+            }
+        } catch {
+            // Network blip on the pre-check shouldn't block submit — fall
+            // through and let the backend be the authority. The catch below
+            // handles a real rejection cleanly.
+        }
+
+        // Include protected files, scripts and project assignments
         const submissionData = {
             ...values,
             protected_files: protectedFiles,
             install_script: installScript,
-            update_script: updateScript
+            update_script: updateScript,
+            linked_project_ids: linkedProjectIds
         };
-        await onSubmit(submissionData);
-        reset();
-        setIsSaved(false);
+
+        try {
+            await onSubmit(submissionData);
+            // Only reset on confirmed success. The parent re-throws on
+            // failure (after showing its own specific toast), so without
+            // this try/catch a backend rejection would still hit reset()
+            // and wipe the user's edits.
+            reset();
+            setIsSaved(false);
+        } catch {
+            // Intentionally silent — the parent already toasted the
+            // backend-specific reason (e.g. "name has already been taken").
+            // We just swallow here to STOP the reset() flow and keep every
+            // field exactly as the user left it. The modal stays open.
+        }
     });
 
     return (
@@ -469,7 +534,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             header={editingTemplate ? t.templatemodal186 : t.templatemodal147}
             visible={visible}
             onHide={onCancel}
-            style={{ width: '950px' }}
+            style={{ width: '1150px', height: '85vh' }}
+            contentClassName="template-modal-dialog-content"
             contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
             headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
             modal
@@ -477,7 +543,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             draggable={true}
             resizable={true}
         >
-            <form className="template-modal-form space-y-4">
+            <form className="template-modal-form flex flex-col h-full px-6 py-5">
+                <div className="flex-1 min-h-0">
+                <TabViewSideMenu storageKey="templateModal" defaultWidth={220}>
+                <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.templatemodal_tab_general}</span>}>
+                <div className="space-y-4">
                 {/* Template Name */}
                 <div>
                     <label htmlFor="name" className="block text-sm font-medium mb-2">
@@ -540,122 +610,124 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     />
                 </div>
 
-                {/* Category - Full Width with AutoComplete */}
-                <div>
-                    <label htmlFor="category" className="block text-sm font-medium mb-2">
-                        {t.templatemodal220}
-                    </label>
-                    <Controller
-                        name="category"
-                        control={control}
-                        rules={{ required: t.templatemodal226 }}
-                        render={({ field }) => (
-                            <AutoComplete
-                                id="category"
-                                value={field.value}
-                                suggestions={filteredCategories}
-                                completeMethod={(e) => {
-                                    const query = e.query.toLowerCase();
-                                    const filtered = templateCategories.filter((cat: string) =>
-                                        cat.toLowerCase().includes(query)
-                                    );
-                                    setFilteredCategories(filtered);
-                                }}
-                                onChange={(e) => {
-                                    field.onChange(e.value);
-                                    checkFormChanges();
-                                }}
-                                placeholder={t.templatemodal281}
-                                className="w-full"
-                                inputClassName="w-full"
-                                panelClassName="template-modal-autocomplete-panel"
-                                dropdown
-                                forceSelection={false}
-                            />
+                {/* Category + Language — side by side, AutoComplete each */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="category" className="block text-sm font-medium mb-2">
+                            {t.templatemodal220}
+                        </label>
+                        <Controller
+                            name="category"
+                            control={control}
+                            rules={{ required: t.templatemodal226 }}
+                            render={({ field }) => (
+                                <AutoComplete
+                                    id="category"
+                                    value={field.value}
+                                    suggestions={filteredCategories}
+                                    completeMethod={(e) => {
+                                        const query = e.query.toLowerCase();
+                                        const filtered = templateCategories.filter((cat: string) =>
+                                            cat.toLowerCase().includes(query)
+                                        );
+                                        setFilteredCategories(filtered);
+                                    }}
+                                    onChange={(e) => {
+                                        field.onChange(e.value);
+                                        checkFormChanges();
+                                    }}
+                                    placeholder={t.templatemodal281}
+                                    className="w-full"
+                                    inputClassName="w-full"
+                                    panelClassName="template-modal-autocomplete-panel"
+                                    dropdown
+                                    forceSelection={false}
+                                />
+                            )}
+                        />
+                        {errors.category && (
+                            <small className="text-red-400 mt-1 block">{errors.category.message}</small>
                         )}
-                    />
-                    {errors.category && (
-                        <small className="text-red-400 mt-1 block">{errors.category.message}</small>
-                    )}
-                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                        {t.templatemodal293} {templateCategories.slice(0, 5).join(', ')}...
+                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                            {t.templatemodal293} {templateCategories.slice(0, 5).join(', ')}...
+                        </div>
+                    </div>
+
+                    <div>
+                        <label htmlFor="language" className="block text-sm font-medium mb-2">
+                            {t.templatemodal248}
+                        </label>
+                        <Controller
+                            name="language"
+                            control={control}
+                            rules={{ required: t.templatemodal254 }}
+                            render={({ field }) => (
+                                <AutoComplete
+                                    id="language"
+                                    value={field.value}
+                                    suggestions={filteredLanguages}
+                                    completeMethod={(e) => {
+                                        const query = e.query.toLowerCase();
+                                        const filtered = templateLanguages.filter((lang: string) =>
+                                            lang.toLowerCase().includes(query)
+                                        );
+                                        setFilteredLanguages(filtered);
+                                    }}
+                                    onChange={(e) => {
+                                        field.onChange(e.value);
+                                        checkFormChanges();
+                                    }}
+                                    placeholder={t.templatemodal322}
+                                    className="w-full"
+                                    inputClassName="w-full"
+                                    panelClassName="template-modal-autocomplete-panel"
+                                    dropdown
+                                    forceSelection={false}
+                                />
+                            )}
+                        />
+                        {errors.language && (
+                            <small className="text-red-400 mt-1 block">{errors.language.message}</small>
+                        )}
+                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                            {t.templatemodal334} {templateLanguages.slice(0, 5).join(', ')}...
+                        </div>
                     </div>
                 </div>
 
-                {/* Language - Full Width with AutoComplete */}
-                <div>
-                    <label htmlFor="language" className="block text-sm font-medium mb-2">
-                        {t.templatemodal248}
-                    </label>
-                    <Controller
-                        name="language"
-                        control={control}
-                        rules={{ required: t.templatemodal254 }}
-                        render={({ field }) => (
-                            <AutoComplete
-                                id="language"
-                                value={field.value}
-                                suggestions={filteredLanguages}
-                                completeMethod={(e) => {
-                                    const query = e.query.toLowerCase();
-                                    const filtered = templateLanguages.filter((lang: string) =>
-                                        lang.toLowerCase().includes(query)
-                                    );
-                                    setFilteredLanguages(filtered);
-                                }}
-                                onChange={(e) => {
-                                    field.onChange(e.value);
-                                    checkFormChanges();
-                                }}
-                                placeholder={t.templatemodal322}
-                                className="w-full"
-                                inputClassName="w-full"
-                                panelClassName="template-modal-autocomplete-panel"
-                                dropdown
-                                forceSelection={false}
-                            />
-                        )}
-                    />
-                    {errors.language && (
-                        <small className="text-red-400 mt-1 block">{errors.language.message}</small>
-                    )}
-                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                        {t.templatemodal334} {templateLanguages.slice(0, 5).join(', ')}...
+                {/* Tags + Compatibility Tag + Generation Order — one row.
+                  * Grid columns (6/4/2 of 12) so Tags get the most breathing
+                  * room for chips, Generation Order shrinks to just its
+                  * spinner. */}
+                <div className="grid grid-cols-12 gap-4">
+                    <div className="col-span-6">
+                        <label htmlFor="tags" className="block text-sm font-medium mb-2">
+                            {t.templatemodal537}
+                        </label>
+                        <Controller
+                            name="tags"
+                            control={control}
+                            render={({ field }) => (
+                                <Chips
+                                    id="tags"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                        field.onChange(e.value);
+                                        checkFormChanges();
+                                    }}
+                                    placeholder={t.templatemodal290}
+                                    className="w-full"
+                                    separator=","
+                                    pt={{
+                                        container: { className: 'w-full' },
+                                        input: { className: 'flex-1 w-full' }
+                                    }}
+                                />
+                            )}
+                        />
                     </div>
-                </div>
 
-                {/* Tags */}
-                <div>
-                    <label htmlFor="tags" className="block text-sm font-medium mb-2">
-                        {t.templatemodal537}
-                    </label>
-                    <Controller
-                        name="tags"
-                        control={control}
-                        render={({ field }) => (
-                            <Chips
-                                id="tags"
-                                value={field.value}
-                                onChange={(e) => {
-                                    field.onChange(e.value);
-                                    checkFormChanges();
-                                }}
-                                placeholder={t.templatemodal290}
-                                className="w-full"
-                                separator=","
-                                pt={{
-                                    container: { className: 'w-full' },
-                                    input: { className: 'flex-1 w-full' }
-                                }}
-                            />
-                        )}
-                    />
-                </div>
-
-                {/* Plug & Play Section */}
-                <div className="flex gap-4">
-                    {/* Compatibility Tag */}
-                    <div className="flex-1">
+                    <div className="col-span-4">
                         <label htmlFor="compatibility_tag" className="block text-sm font-medium mb-2">
                             {t.templatemodal_compatibility_tag}
                         </label>
@@ -680,8 +752,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Generation Order */}
-                    <div style={{ width: '140px' }}>
+                    <div className="col-span-2">
                         <label htmlFor="generation_order" className="block text-sm font-medium mb-2">
                             {t.templatemodal_generation_order}
                         </label>
@@ -708,7 +779,41 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     </div>
                 </div>
 
+                {/* Project Assignment + Visibility — one row. Project
+                  * assignment is saved through linked_project_ids in the
+                  * form payload; the parent panel calls /templates/{id}/
+                  * linked-projects after the template itself is persisted. */}
                 <div className="flex gap-4">
+                    <div className="flex-1">
+                        <label htmlFor="linked_projects" className="block text-sm font-medium mb-2">
+                            {t.templatemodal_project_assignment}
+                        </label>
+                        {availableProjects.length > 0 ? (
+                            <MultiSelect
+                                inputId="linked_projects"
+                                value={linkedProjectIds}
+                                options={availableProjects}
+                                optionLabel="name"
+                                optionValue="id"
+                                onChange={(e) => {
+                                    setLinkedProjectIds((e.value as number[]) || []);
+                                }}
+                                placeholder={t.templatemodal_project_assignment_placeholder}
+                                className="w-full"
+                                display="chip"
+                                filter
+                                panelClassName="template-modal-multiselect-panel"
+                            />
+                        ) : (
+                            <div className="text-sm italic" style={{ color: colors.textMuted }}>
+                                {t.templatemodal_project_assignment_empty}
+                            </div>
+                        )}
+                        <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                            {t.templatemodal_project_assignment_help}
+                        </div>
+                    </div>
+
                     {/* Visibility - Hidden if locked (cloned from store) */}
                     {editingTemplate?.visibility_locked ? (
                         <div className="flex-1">
@@ -767,33 +872,6 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                         </div>
                     )}
 
-                    {/* System Template (conditional) */}
-                    {userType === 'system' && (
-                        <div className="flex-1">
-                            <label htmlFor="is_system_template" className="block text-sm font-medium mb-2">
-                                {t.templatemodal399}
-                            </label>
-                            <Controller
-                                name="is_system_template"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <Checkbox
-                                            inputId="is_system_template"
-                                            checked={field.value}
-                                            onChange={(e) => {
-                                                field.onChange(e.checked);
-                                                checkFormChanges();
-                                            }}
-                                        />
-                                        <label htmlFor="is_system_template" className="cursor-pointer" style={{ color: colors.textSecondary }}>
-                                            {t.templatemodal399}
-                                        </label>
-                                    </div>
-                                )}
-                            />
-                        </div>
-                    )}
                 </div>
 
                 {/* Private Template Unlock Section - Only for new templates with private visibility */}
@@ -913,6 +991,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     </div>
                 )}
 
+                </div>
+                </TabPanel>
+
+                <TabPanel header={<span><i className="pi pi-file mr-2" />{t.templatemodal_tab_files}</span>}>
+                <div className="space-y-4">
                 {/* Template Files Section */}
                 <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center mb-4">
@@ -1041,6 +1124,11 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     )}
                 </div>
 
+                </div>
+                </TabPanel>
+
+                <TabPanel header={<span><i className="pi pi-list mr-2" />{t.templatemodal_tab_variables}</span>}>
+                <div className="space-y-4">
                 {/* Custom Variables Section */}
                 <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     <div className="flex justify-between items-center mb-4">
@@ -1153,8 +1241,36 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     )}
                 </div>
 
-                {/* Is Active */}
-                <div className="mt-4">
+                </div>
+                </TabPanel>
+
+                <TabPanel header={<span><i className="pi pi-server mr-2" />{t.templatemodal_tab_deploy}</span>}>
+                <div className="space-y-4">
+                    <DeploymentScriptsEditor
+                        installScript={installScript}
+                        updateScript={updateScript}
+                        onInstallScriptChange={setInstallScript}
+                        onUpdateScriptChange={setUpdateScript}
+                    />
+                </div>
+                </TabPanel>
+
+                <TabPanel header={<span><i className="pi pi-shield mr-2" />{t.templatemodal_tab_protected}</span>}>
+                <div className="space-y-4">
+                    <ProtectedFilesEditor
+                        files={protectedFiles}
+                        onChange={setProtectedFiles}
+                    />
+                </div>
+                </TabPanel>
+                </TabViewSideMenu>
+                </div>
+
+                {/* Is Active + System Template — global toggles outside the
+                  * tabs so they're always visible right above the save
+                  * buttons. System Template is only available for system
+                  * users. */}
+                <div className="mt-4 flex items-center gap-6">
                     <Controller
                         name="is_active"
                         control={control}
@@ -1174,29 +1290,30 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                             </div>
                         )}
                     />
+                    {userType === 'system' && (
+                        <Controller
+                            name="is_system_template"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="flex items-center gap-2">
+                                    <Checkbox
+                                        inputId="is_system_template"
+                                        checked={field.value}
+                                        onChange={(e) => {
+                                            field.onChange(e.checked);
+                                            checkFormChanges();
+                                        }}
+                                    />
+                                    <label htmlFor="is_system_template" className="cursor-pointer" style={{ color: colors.textSecondary }}>
+                                        {t.templatemodal399}
+                                    </label>
+                                </div>
+                            )}
+                        />
+                    )}
                 </div>
 
-                {/* Protected Files Section */}
-                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
-                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>{t.templatemodal999}</h3>
-                    <ProtectedFilesEditor
-                        files={protectedFiles}
-                        onChange={setProtectedFiles}
-                    />
-                </div>
-
-                {/* Deployment Scripts Section */}
-                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
-                    <h3 className="text-lg font-semibold mb-4" style={{ color: colors.textSecondary }}>{t.templatemodal1008}</h3>
-                    <DeploymentScriptsEditor
-                        installScript={installScript}
-                        updateScript={updateScript}
-                        onInstallScriptChange={setInstallScript}
-                        onUpdateScriptChange={setUpdateScript}
-                    />
-                </div>
-
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 justify-end pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                     <Button type="button" onClick={onCancel}>
                         {t.templatemodal655}
                     </Button>
@@ -1232,6 +1349,46 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
 
             {/* Theme-aware styles for PrimeReact components */}
             <style>{`
+                /* Dialog content is just the layout shell — padding lives on
+                 * the inner <form> via Tailwind (px-6 py-5) so we don't have
+                 * to fight PrimeReact's stylesheet load order. Without
+                 * padding:0 here, PrimeReact's default .p-dialog-content
+                 * padding would stack on top of the form padding. */
+                .p-dialog .p-dialog-content.template-modal-dialog-content {
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    padding: 0;
+                }
+                .template-modal-dialog-content .template-modal-form {
+                    flex: 1;
+                    min-height: 0;
+                }
+                /* MultiSelect dropdown (project assignment) — match the
+                 * AutoComplete panel styling so it reads as part of the
+                 * same form. */
+                .template-modal-multiselect-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border: 1px solid var(--theme-border-primary) !important;
+                }
+                .template-modal-multiselect-panel .p-multiselect-items .p-multiselect-item {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-modal-multiselect-panel .p-multiselect-items .p-multiselect-item:hover {
+                    background-color: var(--theme-bg-tertiary) !important;
+                }
+                .template-modal-multiselect-panel .p-multiselect-items .p-multiselect-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: #fff !important;
+                }
+                .template-modal-form .p-multiselect {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-modal-form .p-multiselect .p-multiselect-label {
+                    color: var(--theme-text-primary) !important;
+                }
                 .template-modal-form .p-inputtext {
                     background-color: var(--theme-bg-secondary) !important;
                     color: var(--theme-text-primary) !important;

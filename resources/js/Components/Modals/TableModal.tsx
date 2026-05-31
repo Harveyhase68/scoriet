@@ -5,12 +5,21 @@ import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { SchemaTable, DisplayState, GenerationMode, apiClient } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { AuditBadge, AuditInfoBlock } from '@/Components/Schema/AuditBadge';
 
 export interface TableField {
   id: string;
   name: string;
   type: string;
   length?: number | null;
+  // Structured type args (replace the older typeArgs string). Each is only
+  // meaningful for certain base types:
+  //   enum/set     → enumValues = ["Privatkunde","NGO",...]
+  //   decimal/etc. → precision + scale
+  //   varchar/...  → length
+  precision?: number | null;
+  scale?: number | null;
+  enumValues?: string[] | null;
   unsigned: boolean;
   nullable: boolean;
   autoIncrement: boolean;
@@ -29,9 +38,22 @@ export interface TableField {
   linkOrderField: string;
   linkOrderDirection: 'ASC' | 'DESC';
   editmask: string;
+  // MySQL GENERATED ALWAYS AS (...) STORED|VIRTUAL — imported from SQL and shown
+  // in the edit modal so users can review/refine the expression. Storage mode
+  // tracks whether MySQL persists the value or recomputes it on read.
+  isGenerated: boolean;
+  generationExpression: string;
+  generationStorage: 'stored' | 'virtual' | null;
   // Generation / display state (orthogonal: display is UI-hint only, generation controls emit)
   displayState: DisplayState;
   generationMode: GenerationMode;
+  // Per-field audit/version — server-managed, read-only in this UI.
+  // Surfaced via <AuditBadge> in the detail pane; not edited by the user.
+  version?: number;
+  createdAt?: string;
+  createdByUsername?: string;
+  updatedAt?: string;
+  updatedByUsername?: string;
 }
 
 interface TableModalProps {
@@ -49,6 +71,7 @@ interface TableModalProps {
     reportPatternId: number | null,
     tableDisplayState: DisplayState,
     tableGenerationMode: GenerationMode,
+    tableComment: string,
   ) => void;
   table?: SchemaTable | null;
   loading?: boolean;
@@ -65,26 +88,63 @@ interface ReportPatternOption {
 }
 
 const DATA_TYPES = [
-  'bigint', 'int', 'smallint', 'tinyint',
-  'varchar', 'char', 'text', 'longtext',
-  'decimal', 'float', 'double',
-  'date', 'datetime', 'timestamp', 'time',
-  'boolean', 'json', 'enum'
+  // Integer
+  'bigint', 'int', 'mediumint', 'smallint', 'tinyint',
+  // String
+  'varchar', 'char', 'tinytext', 'text', 'mediumtext', 'longtext',
+  // Binary
+  'binary', 'varbinary', 'tinyblob', 'blob', 'mediumblob', 'longblob',
+  // Numeric
+  'decimal', 'numeric', 'float', 'double',
+  // Date/Time
+  'date', 'datetime', 'timestamp', 'time', 'year',
+  // Structured / enumerated
+  'boolean', 'json', 'enum', 'set'
 ];
 
+/**
+ * Available UI control types per field. Grouped by category in the order they
+ * appear in the dropdown — keeps related controls visually together.
+ *
+ * Adding a new entry: a new value is harmless server-side (no whitelist), but
+ * the code-generator template must know what to emit. If the new control
+ * pulls its options from another table (combobox-style), also add it to
+ * LOOKUP_CONTROL_TYPES below so the link_* config UI shows.
+ */
 const CONTROL_TYPES = [
-  'TEXT',
-  'TEXTAREA',
-  'CHECKBOX',
-  'COMBOBOX',
-  'LISTBOX',
-  'RADIOBUTTONS',
-  'DATEPICKER',
-  'DATETIMEPICKER',
-  'TIMEPICKER',
-  'COLORPICKER',
-  'FILEUPLOAD'
+  // Text & numeric input
+  'TEXT', 'NUMBER', 'CURRENCY', 'PASSWORD', 'CAPTCHA', 'RATING', 'SLIDER',
+  // Multi-line & rich editors
+  'TEXTAREA', 'WYSIWYGEDIT', 'MARKDOWN', 'HTML', 'CODEEDITOR', 'JSONEDITOR',
+  // Boolean / single choice
+  'CHECKBOX', 'SWITCH', 'RADIOBUTTONS',
+  // Selection from a set (single or multi)
+  'COMBOBOX', 'LISTBOX', 'MULTISELECT', 'TAGSELECT', 'PICKLIST', 'TREEVIEW',
+  // Date / time pickers
+  'MONTHPICKER', 'DATEPICKER', 'DATETIMEPICKER', 'DATERANGEPICKER', 'TIMEPICKER', 'WEEKPICKER',
+  // Visual pickers
+  'COLORPICKER', 'ICONPICKER',
+  // File / media upload
+  'FILEUPLOAD', 'SIGNATURE', 'IMAGE', 'VIDEO', 'AUDIO', 'CAMERA',
+  // Geo
+  'LOCATION', 'MAP',
+  // Codes
+  'BARCODE', 'QRCODE',
+  // Form mechanics
+  'HIDDEN', 'LABEL',
 ];
+
+/**
+ * Control types that pull their options from another table — these show the
+ * link_table / link_field / link_display_field / link_order_field /
+ * link_order_direction configuration row.
+ *
+ * Listed as a Set so the conditional reads naturally and stays cheap.
+ */
+const LOOKUP_CONTROL_TYPES = new Set<string>([
+  'COMBOBOX', 'LISTBOX', 'RADIOBUTTONS',
+  'MULTISELECT', 'TAGSELECT', 'TREEVIEW', 'PICKLIST',
+]);
 
 const DISPLAY_STATE_OPTIONS: { value: DisplayState; label: string }[] = [
   { value: 'enabled',   label: 'Enabled' },
@@ -105,14 +165,73 @@ const GENERATION_MODE_OPTIONS: { value: GenerationMode; label: string }[] = [
 /**
  * Parse field type to extract base type and length
  */
-function parseFieldType(fieldType: string): { type: string; length: number | null } {
-  const match = fieldType.match(/^([a-zA-Z]+)(?:\((\d+)\))?/i);
-  if (match) {
-    const type = match[1].toLowerCase();
-    const length = match[2] ? parseInt(match[2], 10) : null;
-    return { type, length };
+// Backward-compat splitter for legacy rows whose field_type still has a
+// payload baked in (e.g. "enum('a','b','c')"). After the May-2026 migration
+// the backend serves structured columns (field_length / field_precision /
+// field_scale / field_enum_values) and field_type is a bare base name —
+// this function is only invoked as a fallback when those columns are absent.
+function parseLegacyFieldType(fieldType: string): {
+  type: string;
+  length: number | null;
+  precision: number | null;
+  scale: number | null;
+  enumValues: string[] | null;
+} {
+  const openParen = fieldType.indexOf('(');
+  if (openParen === -1) {
+    return { type: fieldType.toLowerCase().trim(), length: null, precision: null, scale: null, enumValues: null };
   }
-  return { type: fieldType.toLowerCase(), length: null };
+  const closeParen = fieldType.lastIndexOf(')');
+  if (closeParen <= openParen) {
+    return { type: fieldType.toLowerCase().trim(), length: null, precision: null, scale: null, enumValues: null };
+  }
+  const baseName = fieldType.substring(0, openParen).toLowerCase().trim();
+  const inner = fieldType.substring(openParen + 1, closeParen);
+
+  if (baseName === 'enum' || baseName === 'set') {
+    return { type: baseName, length: null, precision: null, scale: null, enumValues: parseQuotedCsv(inner) };
+  }
+  if (['decimal', 'numeric', 'float', 'double'].includes(baseName)) {
+    const parts = inner.split(',').map(s => s.trim());
+    const p = parts[0] && /^\d+$/.test(parts[0]) ? parseInt(parts[0], 10) : null;
+    const s = parts[1] && /^\d+$/.test(parts[1]) ? parseInt(parts[1], 10) : null;
+    return { type: baseName, length: null, precision: p, scale: s, enumValues: null };
+  }
+  // Single-int length (varchar, tinyint, ...)
+  const trimmed = inner.trim();
+  const isPureInteger = trimmed.length > 0 && [...trimmed].every(c => c >= '0' && c <= '9');
+  if (isPureInteger) {
+    return { type: baseName, length: parseInt(trimmed, 10), precision: null, scale: null, enumValues: null };
+  }
+  return { type: baseName, length: null, precision: null, scale: null, enumValues: null };
+}
+
+// Parse "'a','b','c''d'" → ["a","b","c'd"]. Handles MySQL's '' escape.
+function parseQuotedCsv(inner: string): string[] {
+  const values: string[] = [];
+  let i = 0;
+  const len = inner.length;
+  while (i < len) {
+    while (i < len && (inner[i] === ' ' || inner[i] === ',' || inner[i] === '\t')) i++;
+    if (i >= len) break;
+    if (inner[i] !== "'") {
+      const start = i;
+      while (i < len && inner[i] !== ',') i++;
+      values.push(inner.substring(start, i).trim());
+      continue;
+    }
+    i++;
+    let buf = '';
+    while (i < len) {
+      if (inner[i] === "'") {
+        if (i + 1 < len && inner[i + 1] === "'") { buf += "'"; i += 2; continue; }
+        i++; break;
+      }
+      buf += inner[i]; i++;
+    }
+    values.push(buf);
+  }
+  return values;
 }
 
 /**
@@ -175,6 +294,9 @@ function createDefaultField(): TableField {
     name: 'id',
     type: 'bigint',
     length: null,
+    precision: null,
+    scale: null,
+    enumValues: null,
     unsigned: false,
     nullable: false,
     autoIncrement: true,
@@ -188,6 +310,9 @@ function createDefaultField(): TableField {
     linkOrderField: '',
     linkOrderDirection: 'ASC',
     editmask: '',
+    isGenerated: false,
+    generationExpression: '',
+    generationStorage: null,
     displayState: 'enabled',
     generationMode: 'full',
   };
@@ -228,6 +353,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
   const [tableName, setTableName] = useState('');
   const [singularName, setSingularName] = useState('');
   const [fileKeyName, setFileKeyName] = useState('');
+  const [tableComment, setTableComment] = useState('');
   const [fileNameRenamed, setFileNameRenamed] = useState('');
   const [fileNameShort, setFileNameShort] = useState('');
   const [formSetId, setFormSetId] = useState<number | null>(null);
@@ -410,6 +536,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       setTableName(table.table_name);
       setSingularName(table.singular_name || '');
       setFileKeyName(table.filekeyname || table.primarykeyfield || '');
+      setTableComment(table.comment || '');
       setFileNameRenamed(table.file_name_renamed || '');
       setFileNameShort(table.file_name_short || '');
 
@@ -471,7 +598,22 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
         const editmask = field.editmask || '';
 
         const controlType = field.control_type || detectControlType(field.field_type, field.field_name, linkTable);
-        const { type, length } = parseFieldType(field.field_type);
+
+        // Backend (post-migration) ships structured columns directly. If any
+        // are present, use them as-is. Otherwise fall back to parseLegacyFieldType
+        // which extracts them from the embedded payload of older rows.
+        const hasStructuredArgs = field.field_length !== undefined
+          || field.field_precision !== undefined
+          || field.field_scale !== undefined
+          || field.field_enum_values !== undefined;
+        const legacy = hasStructuredArgs
+          ? { type: field.field_type?.toLowerCase() || '', length: null, precision: null, scale: null, enumValues: null }
+          : parseLegacyFieldType(field.field_type || '');
+        const type = legacy.type;
+        const length = field.field_length ?? legacy.length;
+        const precision = field.field_precision ?? legacy.precision;
+        const scale = field.field_scale ?? legacy.scale;
+        const enumValues = (Array.isArray(field.field_enum_values) ? field.field_enum_values : null) ?? legacy.enumValues;
 
         let constraintType: 'none' | 'primary' | 'index' | 'unique' = 'none';
         if (isPrimaryKey) constraintType = 'primary';
@@ -482,7 +624,10 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
           id: field.id?.toString() || index.toString(),
           name: field.field_name,
           type,
-          length: field.field_length || length,
+          length,
+          precision,
+          scale,
+          enumValues,
           unsigned: field.is_unsigned || false,
           nullable: field.is_nullable,
           autoIncrement: isAutoIncrement,
@@ -498,8 +643,16 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
           linkOrderField,
           linkOrderDirection,
           editmask,
+          isGenerated: Boolean(field.is_generated),
+          generationExpression: field.generation_expression || '',
+          generationStorage: (field.generation_storage as 'stored' | 'virtual' | null) || null,
           displayState: (field.display_state as DisplayState) || 'enabled',
           generationMode: (field.generation_mode as GenerationMode) || 'full',
+          version: field.version,
+          createdAt: field.created_at,
+          createdByUsername: field.created_by_username,
+          updatedAt: field.updated_at,
+          updatedByUsername: field.updated_by_username,
         };
       }) || [];
 
@@ -564,6 +717,9 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       name: '',
       type: 'varchar',
       length: null,
+      precision: null,
+      scale: null,
+      enumValues: null,
       unsigned: false,
       nullable: true,
       autoIncrement: false,
@@ -577,6 +733,9 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       linkOrderField: '',
       linkOrderDirection: 'ASC',
       editmask: '',
+      isGenerated: false,
+      generationExpression: '',
+      generationStorage: null,
       displayState: 'enabled',
       generationMode: 'full',
     };
@@ -696,9 +855,21 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       }).catch(() => { /* best-effort */ });
     });
 
+    // Belt-and-braces enum/set cleanup: the textarea onBlur normalizes on
+    // focus-out, but a user who hits Save before clicking elsewhere never
+    // triggers onBlur. Strip empty lines + trim each entry here so the
+    // backend never receives whitespace-only or empty enum values.
+    const cleanedFields = fields.map((f) => {
+      if ((f.type === 'enum' || f.type === 'set') && Array.isArray(f.enumValues)) {
+        const cleaned = f.enumValues.map(s => s.trim()).filter(s => s.length > 0);
+        return { ...f, enumValues: cleaned.length > 0 ? cleaned : null };
+      }
+      return f;
+    });
+
     onSave(
       tableName,
-      fields,
+      cleanedFields,
       fileKeyName,
       fileNameRenamed,
       fileNameShort,
@@ -707,6 +878,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
       reportPatternId,
       tableDisplayState,
       tableGenerationMode,
+      tableComment,
     );
   };
 
@@ -729,8 +901,6 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
     resetForm();
     onClose();
   };
-
-  const i18nExtra = t as unknown as Record<string, string>;
 
   // Shared select styling
   const selectStyle = {
@@ -793,7 +963,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
           onTabChange={(e: { index: number }) => setActiveTab(e.index)}
         >
           {/* ------------------ TAB 1: Table Settings ------------------ */}
-          <TabPanel header={<span><i className="pi pi-cog mr-2" />{i18nExtra.tablemodal_tab_settings || 'Table Settings'}</span>}>
+          <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.tablemodal_tab_settings}</span>}>
             <div className="space-y-4 overflow-y-auto pr-2" style={{ maxHeight: isMaximized ? 'calc(95vh - 320px)' : '55vh' }}>
 
               {/* Table Name (full width) */}
@@ -865,7 +1035,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                 {/* Display State (table) */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {i18nExtra.tablemodal_display_state || 'Display State'}
+                    {t.tablemodal_display_state}
                   </label>
                   <select
                     value={tableDisplayState}
@@ -879,14 +1049,14 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     ))}
                   </select>
                   <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                    {i18nExtra.tablemodal_display_state_hint || 'Passed to gtree as metadata — does not filter generation.'}
+                    {t.tablemodal_display_state_hint}
                   </div>
                 </div>
 
                 {/* Generation Mode (table) */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {i18nExtra.tablemodal_generation_mode || 'Generation Mode'}
+                    {t.tablemodal_generation_mode}
                   </label>
                   <select
                     value={tableGenerationMode}
@@ -900,7 +1070,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     ))}
                   </select>
                   <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                    {i18nExtra.tablemodal_generation_mode_hint || 'Controls nmaxtables iteration and per-table file generation.'}
+                    {t.tablemodal_generation_mode_hint}
                   </div>
                 </div>
               </div>
@@ -909,7 +1079,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {i18nExtra.tablemodal_singular_name || 'Singular Name'}
+                    {t.tablemodal_singular_name}
                   </label>
                   <input
                     type="text"
@@ -918,11 +1088,11 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     disabled={loading}
                     className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                     style={selectStyle}
-                    placeholder={i18nExtra.tablemodal_singular_placeholder || 'e.g., product, address'}
+                    placeholder={t.tablemodal_singular_placeholder}
                     maxLength={100}
                   />
                   <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                    {i18nExtra.tablemodal_singular_help || 'Singular form for templates'} {'{:filesingular:}'}
+                    {t.tablemodal_singular_help} {'{:filesingular:}'}
                   </div>
                 </div>
 
@@ -965,11 +1135,41 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                 </div>
               </div>
 
+              {/* Row: Table Comment — mirrors MySQL's CREATE TABLE ... COMMENT='...'
+                 clause and is round-tripped through Parser/Storage/Export.
+                 The audit chip surfaces the table's per-row version + last
+                 update info; both ship to SQL inside the COMMENT JSON blob. */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium" style={{ color: colors.textSecondary }}>
+                    {t.tablemodal_table_comment}
+                  </label>
+                  {isEditMode && table && (
+                    <AuditBadge
+                      version={table.version}
+                      createdAt={table.created_at}
+                      createdByUsername={table.created_by_username}
+                      updatedAt={table.updated_at}
+                      updatedByUsername={table.updated_by_username}
+                    />
+                  )}
+                </div>
+                <textarea
+                  value={tableComment}
+                  onChange={(e) => setTableComment(e.target.value)}
+                  disabled={loading}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ ...selectStyle, resize: 'vertical' }}
+                  placeholder={t.tablemodal_table_comment_placeholder}
+                />
+              </div>
+
               {/* Row: FormSet | ReportPattern */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {i18nExtra.tablemodal_form_set || 'Form Set'}
+                    {t.tablemodal_form_set}
                   </label>
                   <select
                     value={formSetId ?? ''}
@@ -978,19 +1178,19 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                     style={selectStyle}
                   >
-                    <option value="">{i18nExtra.tablemodal_use_project_default || '— Project default —'}</option>
+                    <option value="">{t.tablemodal_use_project_default}</option>
                     {availableFormSets.map(fs => (
                       <option key={fs.id} value={fs.id}>{fs.name}</option>
                     ))}
                   </select>
                   <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                    {i18nExtra.tablemodal_form_set_hint || 'Override the project-wide FormSet for this table.'}
+                    {t.tablemodal_form_set_hint}
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {i18nExtra.tablemodal_report_pattern || 'Report Pattern'}
+                    {t.tablemodal_report_pattern}
                   </label>
                   <select
                     value={reportPatternId ?? ''}
@@ -999,16 +1199,34 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
                     style={selectStyle}
                   >
-                    <option value="">{i18nExtra.tablemodal_no_report_pattern || '— No report —'}</option>
+                    <option value="">{t.tablemodal_no_report_pattern}</option>
                     {availableReportPatterns.map(rp => (
                       <option key={rp.id} value={rp.id}>{rp.name}</option>
                     ))}
                   </select>
                   <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                    {i18nExtra.tablemodal_report_pattern_hint || 'Optional: which Report Pattern this table should use.'}
+                    {t.tablemodal_report_pattern_hint}
                   </div>
                 </div>
               </div>
+
+              {/* Read-only metadata footer — shows the per-table version
+               * + audit timestamps that ride along inside the SQL COMMENT
+               * JSON blob. Surfacing them here lets the user verify that a
+               * round-trip (export → drop → re-import) preserved history
+               * without giving them edit controls — those values are
+               * managed by the observer and storage layer. */}
+              {isEditMode && table && (
+                <AuditInfoBlock
+                  version={table.version}
+                  createdAt={table.created_at}
+                  createdByUsername={table.created_by_username}
+                  updatedAt={table.updated_at}
+                  updatedByUsername={table.updated_by_username}
+                  title="Table metadata"
+                  hint="Server-managed. Survives SQL export/import via the COMMENT JSON. Reset by deleting the DB and re-importing the SQL backup."
+                />
+              )}
             </div>
           </TabPanel>
 
@@ -1024,7 +1242,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
            *           when nothing is selected so the list spans the full
            *           panel width, which keeps the screen un-cluttered. */}
           <TabPanel
-            header={<span><i className="pi pi-list mr-2" />{`${i18nExtra.tablemodal_tab_fields || 'Fields'} (${fields.length})`}</span>}
+            header={<span><i className="pi pi-list mr-2" />{`${t.tablemodal_tab_fields} (${fields.length})`}</span>}
             contentClassName="panel-fill"
           >
             <div className="flex flex-col h-full min-h-0">
@@ -1183,11 +1401,25 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     className="flex-1 min-w-0 overflow-y-auto rounded p-4"
                     style={{ backgroundColor: colors.bgTertiary, border: `1px solid ${colors.borderPrimary}` }}
                   >
-                    {/* (a) Field name — wide, full width. */}
+                    {/* (a) Field name — wide, full width. Audit chip shows
+                     * the per-field version and last update on the right;
+                     * round-tripped via the SQL COMMENT JSON blob. */}
                     <div className="mb-3">
-                      <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                        {isEditMode ? t.edittablemodal526 : t.createtablemodal424}
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-xs" style={{ color: colors.textMuted }}>
+                          {isEditMode ? t.edittablemodal526 : t.createtablemodal424}
+                        </label>
+                        {isEditMode && field.version !== undefined && (
+                          <AuditBadge
+                            compact
+                            version={field.version}
+                            createdAt={field.createdAt}
+                            createdByUsername={field.createdByUsername}
+                            updatedAt={field.updatedAt}
+                            updatedByUsername={field.updatedByUsername}
+                          />
+                        )}
+                      </div>
                       <input
                         type="text"
                         value={field.name}
@@ -1206,7 +1438,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                     <div className="grid gap-3 mb-3" style={{ gridTemplateColumns: '140px 1fr' }}>
                       <div>
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {i18nExtra.tablemodal_caption_language || 'Language'}
+                          {t.tablemodal_caption_language}
                         </label>
                         <select
                           value={captionLangCode}
@@ -1228,7 +1460,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                       </div>
                       <div>
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {i18nExtra.tablemodal_caption || 'Caption'}
+                          {t.tablemodal_caption}
                         </label>
                         <input
                           type="text"
@@ -1242,8 +1474,8 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           style={fieldSelectStyle}
                           placeholder={
                             !tableName.trim() || !field.name.trim()
-                              ? (i18nExtra.tablemodal_caption_needs_names || 'Set table + field name first')
-                              : (i18nExtra.tablemodal_caption_placeholder || 'Translated caption shown in generated UI')
+                              ? (t.tablemodal_caption_needs_names)
+                              : (t.tablemodal_caption_placeholder)
                           }
                         />
                       </div>
@@ -1281,11 +1513,15 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           value={field.type}
                           onChange={(e) => {
                             const newType = e.target.value;
+                            // Reset args from the previous type — values for a different
+                            // base type carry no meaning (enumValues from ENUM don't apply
+                            // to a new DECIMAL, etc.).
+                            const argsReset = { precision: null, scale: null, enumValues: null };
                             if (!field.linkTable || field.linkTable.trim() === '') {
                               const newControlType = detectControlType(newType, field.name, '');
-                              updateField(field.id, { type: newType, controlType: newControlType });
+                              updateField(field.id, { type: newType, controlType: newControlType, ...argsReset });
                             } else {
-                              updateField(field.id, { type: newType });
+                              updateField(field.id, { type: newType, ...argsReset });
                             }
                           }}
                           disabled={loading}
@@ -1372,6 +1608,91 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                       </div>
                     </div>
 
+                    {/* (d2) Type-args panel — appears only for base types whose
+                     * MySQL syntax needs more than a single length integer:
+                     *   enum/set     → newline-separated value list
+                     *   decimal/etc. → precision + scale spinners
+                     * Stored in their own structured columns so templates can
+                     * read item.enum_values / item.precision / item.scale
+                     * without re-parsing the type string. */}
+                    {(field.type === 'enum' || field.type === 'set') && (
+                      <div className="mb-3">
+                        <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
+                          {field.type.toUpperCase()} Values (one per line)
+                        </label>
+                        <textarea
+                          value={(field.enumValues ?? []).join('\n')}
+                          onChange={(e) => {
+                            // Keep the raw split — DON'T trim or drop empty
+                            // lines here. The previous "trim + filter" on
+                            // every keystroke ate the user's Enter and Space
+                            // inputs: typing "abc<Enter>" would split to
+                            // ["abc",""], filter to ["abc"], and re-derive
+                            // the textarea value as "abc" — so the cursor
+                            // jumped back and the user couldn't start a new
+                            // line. Same for trailing spaces. Cleanup now
+                            // happens onBlur and again at save time.
+                            updateField(field.id, { enumValues: e.target.value.split('\n') });
+                          }}
+                          onBlur={() => {
+                            // Normalize once the user leaves the field: drop
+                            // empty lines, trim each entry. Same logic that
+                            // used to run on every keystroke — but only fires
+                            // when the user is done editing, so it can't
+                            // interrupt their typing.
+                            const current = field.enumValues ?? [];
+                            const cleaned = current.map(s => s.trim()).filter(s => s.length > 0);
+                            const changed = cleaned.length !== current.length
+                              || cleaned.some((v, i) => v !== current[i]);
+                            if (changed) {
+                              updateField(field.id, { enumValues: cleaned.length > 0 ? cleaned : null });
+                            }
+                          }}
+                          disabled={loading}
+                          rows={Math.max(3, (field.enumValues ?? []).length + 1)}
+                          className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1 font-mono"
+                          style={{ ...fieldSelectStyle, resize: 'vertical' }}
+                          placeholder={"Privatkunde\nFirmenkunde\nNGO"}
+                        />
+                      </div>
+                    )}
+                    {(field.type === 'decimal' || field.type === 'numeric' || field.type === 'float' || field.type === 'double') && (
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Precision</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={field.precision ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateField(field.id, { precision: v ? parseInt(v, 10) : null });
+                            }}
+                            disabled={loading}
+                            placeholder="e.g., 10"
+                            className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                            style={fieldSelectStyle}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Scale</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={field.scale ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateField(field.id, { scale: v ? parseInt(v, 10) : null });
+                            }}
+                            disabled={loading}
+                            placeholder="e.g., 2"
+                            className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
+                            style={fieldSelectStyle}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     {/* (e) Default Value group. The outer "Default Value"
                      * header makes it explicit that the NULL checkbox refers
                      * to THIS default value, not to the column's nullability
@@ -1380,7 +1701,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                      * an empty-string default the user can then edit. */}
                     <div className="mb-3">
                       <div className="text-xs mb-1" style={{ color: colors.textMuted }}>
-                        {i18nExtra.tablemodal_default_value || 'Default Value'}
+                        {t.tablemodal_default_value}
                       </div>
                       <div className="grid gap-3" style={{ gridTemplateColumns: '90px 1fr' }}>
                         <div className="text-center">
@@ -1394,7 +1715,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                         </div>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                            {i18nExtra.tablemodal_default_value_label || 'Value'}
+                            {t.tablemodal_default_value_label}
                           </label>
                           <input
                             type="text"
@@ -1403,17 +1724,65 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                             disabled={loading || field.defaultValue === null}
                             className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1"
                             style={{ ...fieldSelectStyle, opacity: field.defaultValue === null ? 0.5 : 1 }}
-                            placeholder={field.defaultValue === null ? 'NULL' : (i18nExtra.tablemodal_default_value_placeholder || 'e.g., 0, ""')}
+                            placeholder={field.defaultValue === null ? 'NULL' : (t.tablemodal_default_value_placeholder)}
                           />
                         </div>
                       </div>
+                    </div>
+
+                    {/* (e2) Generation Expression — MySQL GENERATED ALWAYS AS (...).
+                     * Always visible so the user can recognize generated columns even when
+                     * the expression is empty. The Storage chip on the right shows whether
+                     * MySQL persists the value (STORED) or recomputes it on read (VIRTUAL). */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs" style={{ color: colors.textMuted }}>
+                          {t.tablemodal_generation_expression}
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs flex items-center gap-1" style={{ color: colors.textMuted }}>
+                            <input
+                              type="checkbox"
+                              checked={field.isGenerated}
+                              onChange={(e) => updateField(field.id, {
+                                isGenerated: e.target.checked,
+                                generationStorage: e.target.checked ? (field.generationStorage || 'virtual') : null,
+                                generationExpression: e.target.checked ? field.generationExpression : '',
+                              })}
+                              disabled={loading}
+                            />
+                            {t.tablemodal_generation_is_generated}
+                          </label>
+                          <select
+                            value={field.generationStorage || 'virtual'}
+                            onChange={(e) => updateField(field.id, { generationStorage: e.target.value as 'stored' | 'virtual' })}
+                            disabled={loading || !field.isGenerated}
+                            className="px-2 py-0.5 rounded text-xs focus:outline-none focus:ring-1"
+                            style={{ ...fieldSelectStyle, opacity: field.isGenerated ? 1 : 0.5 }}
+                          >
+                            <option value="virtual">VIRTUAL</option>
+                            <option value="stored">STORED</option>
+                          </select>
+                        </div>
+                      </div>
+                      <textarea
+                        value={field.generationExpression}
+                        onChange={(e) => updateField(field.id, { generationExpression: e.target.value })}
+                        disabled={loading || !field.isGenerated}
+                        rows={2}
+                        className="w-full px-2 py-1 rounded text-sm focus:outline-none focus:ring-1 font-mono"
+                        style={{ ...fieldSelectStyle, opacity: field.isGenerated ? 1 : 0.5, resize: 'vertical' }}
+                        placeholder={field.isGenerated
+                          ? (t.tablemodal_generation_expression_placeholder)
+                          : ''}
+                      />
                     </div>
 
                     {/* (f) Display State | Generation Mode. */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                       <div>
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {i18nExtra.tablemodal_field_display_state || 'Display State'}
+                          {t.tablemodal_field_display_state}
                         </label>
                         <select
                           value={field.displayState}
@@ -1429,7 +1798,7 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                       </div>
                       <div>
                         <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
-                          {i18nExtra.tablemodal_field_generation_mode || 'Generation Mode'}
+                          {t.tablemodal_field_generation_mode}
                         </label>
                         <select
                           value={field.generationMode}
@@ -1455,7 +1824,10 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           value={field.controlType}
                           onChange={(e) => {
                             const newControlType = e.target.value;
-                            if (newControlType !== 'COMBOBOX' && newControlType !== 'LISTBOX' && newControlType !== 'RADIOBUTTONS') {
+                            // Switching AWAY from a lookup-style control clears
+                            // the link_* fields so they don't survive as orphan
+                            // data on the next save.
+                            if (!LOOKUP_CONTROL_TYPES.has(newControlType)) {
                               updateField(field.id, { controlType: newControlType, linkTable: '', linkField: '', linkDisplayField: '', linkOrderField: '', linkOrderDirection: 'ASC' });
                             } else {
                               updateField(field.id, { controlType: newControlType });
@@ -1492,10 +1864,10 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                       </div>
                     </div>
 
-                    {/* (h) Link table — only for COMBOBOX / LISTBOX /
-                     * RADIOBUTTONS. 5 fields: table, value (linkField),
-                     * display, order, direction. */}
-                    {(field.controlType === 'COMBOBOX' || field.controlType === 'LISTBOX' || field.controlType === 'RADIOBUTTONS') && (
+                    {/* (h) Link table — shown for every lookup-style control
+                     * (see LOOKUP_CONTROL_TYPES above). 5 fields: table,
+                     * value (linkField), display, order, direction. */}
+                    {LOOKUP_CONTROL_TYPES.has(field.controlType) && (
                       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 pt-3" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <div>
                           <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>
@@ -1581,6 +1953,22 @@ export default function TableModal({ mode, isOpen, onClose, onSave, table, loadi
                           </select>
                         </div>
                       </div>
+                    )}
+
+                    {/* Read-only metadata footer for this field — version +
+                     * audit. Mirrors the Table Settings block but per-field.
+                     * Values are managed by SchemaFieldObserver and survive
+                     * SQL round-trips inside the COMMENT JSON. */}
+                    {isEditMode && field.version !== undefined && (
+                      <AuditInfoBlock
+                        version={field.version}
+                        createdAt={field.createdAt}
+                        createdByUsername={field.createdByUsername}
+                        updatedAt={field.updatedAt}
+                        updatedByUsername={field.updatedByUsername}
+                        title="Field metadata"
+                        hint="Server-managed. Any change to this field bumps the version. Travels with the field through SQL export/import via the COMMENT JSON."
+                      />
                     )}
                   </div>
                   );

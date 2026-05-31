@@ -5,12 +5,10 @@ import TabViewSideMenu from '@/Components/TabViewSideMenu';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { apiClient } from '@/lib/api';
 
-// Tab order in the side menu — keep these constants in sync with the
-// <TabPanel> children below. Numeric indices because TabView/TabViewSideMenu
-// speaks indices, not labels.
+// Default tab when the modal opens. Members/Invitations tabs are indexed
+// implicitly by JSX child order — they were named constants here for
+// documentation but no code path actually referenced them.
 const TAB_OVERVIEW = 0;
-const TAB_MEMBERS = 1;
-const TAB_INVITATIONS = 2;
 
 interface Team {
   id: number;

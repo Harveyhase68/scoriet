@@ -21,21 +21,14 @@ use App\Services\TemplateCacheService;
 class TemplateController extends Controller
 {
     /**
-     * Generate a unique full_name: username/template_slug
-     * If duplicate exists, append _2, _3, etc.
+     * Generate a unique full_name: username/template_slug.
+     * Thin wrapper around Template::buildFullName() — kept so the many
+     * existing call-sites in this controller continue to compile. The
+     * canonical implementation lives on the model.
      */
     private function generateFullName(string $username, string $templateName): string
     {
-        $base = strtolower($username) . '/' . Str::slug($templateName, '_');
-        $fullName = $base;
-        $counter = 2;
-
-        while (Template::where('full_name', $fullName)->exists()) {
-            $fullName = $base . '_' . $counter;
-            $counter++;
-        }
-
-        return $fullName;
+        return Template::buildFullName($username, $templateName);
     }
 
     /**
@@ -801,19 +794,31 @@ class TemplateController extends Controller
             'files.*.managed_files.*.size' => 'required_with:files.*.managed_files|integer',
         ]);
 
+        // Re-derive full_name on every save so it always reflects the
+        // canonical "{creator.username}/{template.name}" form. Use the
+        // template's actual creator (not the editing user) because
+        // full_name is the template's permanent identity.
+        $owner = $template->creator ?? $user;
+        $canonicalFullName = Template::buildFullName(
+            $owner->username ?? $owner->name,
+            $validated['name'],
+            $template->id
+        );
+
         // Only system users can set/change system template flag
         $updateData = [
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'category' => $validated['category'],
-            'language' => $validated['language'],
-            'tags' => $validated['tags'] ?? [],
-            'is_active' => $validated['is_active'] ?? true,
+            'name'              => $validated['name'],
+            'full_name'         => $canonicalFullName,
+            'description'       => $validated['description'],
+            'category'          => $validated['category'],
+            'language'          => $validated['language'],
+            'tags'              => $validated['tags'] ?? [],
+            'is_active'         => $validated['is_active'] ?? true,
             'compatibility_tag' => $validated['compatibility_tag'] ?? null,
-            'generation_order' => $validated['generation_order'] ?? 0,
-            'protected_files' => $validated['protected_files'] ?? [],
-            'install_script' => $validated['install_script'] ?? [],
-            'update_script' => $validated['update_script'] ?? [],
+            'generation_order'  => $validated['generation_order'] ?? 0,
+            'protected_files'   => $validated['protected_files'] ?? [],
+            'install_script'    => $validated['install_script'] ?? [],
+            'update_script'     => $validated['update_script'] ?? [],
         ];
 
         // Check if user needs to pay for changing to private (Free users only)
@@ -1333,16 +1338,23 @@ class TemplateController extends Controller
     {
         $user = Auth::user();
         $name = $request->get('name');
+        // exclude_id lets edit-mode callers ignore the row they are editing —
+        // without it, a "did this name change" check against an unchanged
+        // name would always trip on itself.
+        $excludeId = $request->get('exclude_id');
 
         if (!$name) {
             return response()->json(['exists' => false]);
         }
 
-        $exists = Template::where('creator_user_id', $user->id)
-            ->where('name', $name)
-            ->exists();
+        $query = Template::where('creator_user_id', $user->id)
+            ->where('name', $name);
 
-        return response()->json(['exists' => $exists]);
+        if ($excludeId !== null && $excludeId !== '') {
+            $query->where('id', '!=', (int) $excludeId);
+        }
+
+        return response()->json(['exists' => $query->exists()]);
     }
 
     /**

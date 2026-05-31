@@ -410,9 +410,14 @@ const convertSchemaToEdges = (tables: SchemaTable[]): Edge[] => {
 interface PanelT2Props {
   preSelectedSchemaId?: number;
   isReadOnly?: boolean;
+  // Lets us push the actual schema name into the tab title once it's loaded,
+  // so users see "Database Designer (neues_schema)" instead of the technical
+  // "Database Designer (Schema 12)" fallback that was used when the opener
+  // didn't pass the name through.
+  updateTabTitle?: (newTitle: string) => void;
 }
 
-export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: PanelT2Props) {
+export default function PanelT2({ preSelectedSchemaId, isReadOnly = false, updateTabTitle }: PanelT2Props) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -443,6 +448,18 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [floatingSchemas, setFloatingSchemas] = useState<FloatingSchema[]>([]);
   const [selectedSchema, setSelectedSchema] = useState<FloatingSchema | null>(null);
+
+  // Push the schema name into the tab title whenever the selection changes.
+  // This covers both the open-from-tree path (which already passes the name)
+  // and any internal schema switch (where the parent never sees the change).
+  // Without this, switching schemas from inside the panel left the tab title
+  // pointing at the original schema or at the "(Schema 12)" id-fallback.
+  useEffect(() => {
+    if (!updateTabTitle) return;
+    if (selectedSchema?.name) {
+      updateTabTitle(`${t.index1163}(${selectedSchema.name})`);
+    }
+  }, [selectedSchema?.id, selectedSchema?.name, updateTabTitle, t.index1163]);
 
   // Compute read-only mode: Simple rule - only owner can edit
   const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
@@ -948,7 +965,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, [selectedProject, selectedVersion, selectedSchema, loadSchemaVersions]);
 
   // Create a new table with modal data
-  const handleCreateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string, singularName: string, formSetId: number | null, reportPatternId: number | null, tableDisplayState: string = 'enabled', tableGenerationMode: string = 'full') => {
+  const handleCreateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string, singularName: string, formSetId: number | null, reportPatternId: number | null, tableDisplayState: string = 'enabled', tableGenerationMode: string = 'full', tableComment: string = '') => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id) {
       setError(t.panelt2704);
       return;
@@ -958,8 +975,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     try {
       const columns = fields.map(field => ({
         column_name: field.name,
+        // Bare base type — args travel in their own columns now.
         data_type: field.type,
         field_length: field.length || null,
+        field_precision: field.precision || null,
+        field_scale: field.scale ?? null,
+        field_enum_values: Array.isArray(field.enumValues) ? field.enumValues : null,
         is_unsigned: field.unsigned || false,
         is_nullable: field.nullable,
         is_auto_increment: field.autoIncrement,
@@ -978,6 +999,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         link_order_field: field.linkOrderField || null,
         link_order_direction: field.linkOrderDirection || 'ASC',
         editmask: field.editmask || null,
+        is_generated: field.isGenerated || false,
+        generation_expression: field.generationExpression || null,
+        generation_storage: field.isGenerated ? (field.generationStorage || 'virtual') : null,
         display_state: field.displayState || 'enabled',
         generation_mode: field.generationMode || 'full'
       }));
@@ -993,6 +1017,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           report_pattern_id: reportPatternId,
           display_state: tableDisplayState,
           generation_mode: tableGenerationMode,
+          comment: tableComment,
           columns: columns
         });
       } catch (err: any) {
@@ -1013,7 +1038,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
   }, [selectedVersion, selectedSchema, loadSchemaVersionWithSchema, selectedProject]);
 
   // Update an existing table with modal data
-  const handleUpdateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string, singularName: string, formSetId: number | null, reportPatternId: number | null, tableDisplayState: string = 'enabled', tableGenerationMode: string = 'full') => {
+  const handleUpdateTable = useCallback(async (tableName: string, fields: any[], fileKeyName: string, fileNameRenamed: string, fileNameShort: string, singularName: string, formSetId: number | null, reportPatternId: number | null, tableDisplayState: string = 'enabled', tableGenerationMode: string = 'full', tableComment: string = '') => {
     if (!selectedProject || !selectedVersion || !selectedVersion.id || !pendingEditTable) {
       setError(t.panelt2764);
       return;
@@ -1023,8 +1048,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     try {
       const columns = fields.map(field => ({
         column_name: field.name,
+        // Bare base type — args travel in their own columns now.
         data_type: field.type,
         field_length: field.length || null,
+        field_precision: field.precision || null,
+        field_scale: field.scale ?? null,
+        field_enum_values: Array.isArray(field.enumValues) ? field.enumValues : null,
         is_unsigned: field.unsigned || false,
         is_nullable: field.nullable,
         is_auto_increment: field.autoIncrement,
@@ -1043,6 +1072,9 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         link_order_field: field.linkOrderField || null,
         link_order_direction: field.linkOrderDirection || 'ASC',
         editmask: field.editmask || null,
+        is_generated: field.isGenerated || false,
+        generation_expression: field.generationExpression || null,
+        generation_storage: field.isGenerated ? (field.generationStorage || 'virtual') : null,
         display_state: field.displayState || 'enabled',
         generation_mode: field.generationMode || 'full'
       }));
@@ -1058,6 +1090,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
           report_pattern_id: reportPatternId,
           display_state: tableDisplayState,
           generation_mode: tableGenerationMode,
+          comment: tableComment,
           columns: columns
         });
       } catch (err: any) {
@@ -1321,64 +1354,6 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
     }
   }, [pasteTableName, pasteTableData, selectedVersion, selectedSchema, schemaVersions, loadSchemaVersions, loadSchemaVersionWithSchema, t.applicationsmodal66]);
 
-  // Keyboard Shortcuts for Copy/Paste
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      // Only handle Ctrl+C and Ctrl+V (or Cmd on Mac)
-      if (!(e.ctrlKey || e.metaKey)) return;
-
-      // Ctrl+C - Copy selected table (only when not typing in an input/textarea)
-      if (e.key === 'c' || e.key === 'C') {
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-          return;
-        }
-        if (selectedNode && (selectedNode.data as any).table) {
-          e.preventDefault();
-          const table = (selectedNode.data as any).table;
-          await handleCopyTable(table);
-        }
-      }
-
-      // Ctrl+V - Paste table from clipboard
-      if (e.key === 'v' || e.key === 'V') {
-        // Don't interfere with normal paste in input fields
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-          return;
-        }
-
-        e.preventDefault();
-
-        try {
-          // Try to read from clipboard
-          const clipboardText = await navigator.clipboard.readText();
-          const tableData = JSON.parse(clipboardText);
-
-          if (!tableData._scoriet_table_copy) {
-            return; // Silently ignore if not a table
-          }
-
-          // Generate suggested name
-          const baseName = tableData.table_name;
-          const existingTables = nodes.map(n => (n.data as any).table?.table_name).filter(Boolean);
-          let suggestedName = `${baseName}_copy`;
-          let counter = 2;
-          while (existingTables.includes(suggestedName)) {
-            suggestedName = `${baseName}_copy_${counter}`;
-            counter++;
-          }
-          setPasteTableName(suggestedName);
-          setPasteTableData(tableData);
-          setShowPasteModal(true);
-        } catch (_err) {
-          // Silently ignore errors (clipboard might contain non-JSON data)
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNode, nodes, handleCopyTable]);
-
   const performDeleteTable = useCallback(async (table: SchemaTable) => {
     if (!selectedVersion) return;
 
@@ -1438,8 +1413,10 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
         return;
       }
 
-      // SAFETY CHECK: Double confirm which table we're about to delete
-      const confirmMessage = `${t.panelt21530}"${pendingDeleteTable.table_name}" (ID: ${pendingDeleteTable.id})${t.panelt21530_2}`;
+      // SAFETY CHECK: Double confirm which table we're about to delete.
+      // Table name alone is enough for the user — the id was added for
+      // debugging and shouldn't surface in the UI.
+      const confirmMessage = `${t.panelt21530}"${pendingDeleteTable.table_name}"${t.panelt21530_2}`;
       if (!confirm(confirmMessage)) {
         return;
       }
@@ -1474,17 +1451,25 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             });
           }
 
-          // Reload floating schemas to update last_version
+          // Same stale-closure trap as handleCreateNewVersion: loadFloatingSchemas()
+          // updates state but the `selectedSchema` reference held by THIS closure
+          // is still the pre-POST snapshot with the old last_version. Patch the
+          // bumped value into a local copy and thread it through the subsequent
+          // calls so loadSchemaVersionWithSchema's "isLatestVersion" check
+          // (PanelT2.tsx:727) sees the correct number — otherwise the Edit/Delete
+          // table buttons would be hidden on the just-created version.
           await loadFloatingSchemas();
+          const updatedSchemaForDelete = { ...selectedSchema, last_version: Number(result.new_version_number) };
 
           // Reload schema versions to get the new version
-          const newVersions = await loadSchemaVersions(selectedSchema);
+          const newVersions = await loadSchemaVersions(updatedSchemaForDelete);
           const newVersion = newVersions?.find((v: SchemaVersionExtended) => Number(v.version_number) === Number(result.new_version_number));
 
           if (newVersion) {
+            setSelectedSchema(updatedSchemaForDelete);
             setSelectedVersion(newVersion);
             // Refresh the table view for the new version
-            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+            loadSchemaVersionWithSchema(updatedSchemaForDelete, newVersion);
           }
         }
       } catch (err) {
@@ -1575,12 +1560,27 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false }: Pan
             throw new Error(data?.message || data?.error || t.panelt2841);
           }
 
-          // Reload schema versions
-          await loadSchemaVersions(selectedSchema);
+          // CRITICAL: bump last_version in our local schema reference BEFORE the
+          // follow-up loads. The backend increments schema.last_version on POST,
+          // but our React state still holds the pre-POST snapshot (=stale). Any
+          // downstream call that reads `schema.last_version` (e.g. the
+          // isLatestVersion check inside loadSchemaVersionWithSchema at ~ln 727)
+          // would otherwise compare newVersion (=3) against the stale 2 and
+          // conclude "not latest", which hides the Edit + Delete table buttons
+          // in the FormTableGridNode (PanelT2.tsx:174 / :200) until the user
+          // manually reloads. We patch the value locally + pass `updatedSchema`
+          // to subsequent calls so they see the bumped value.
+          const bumpedVersionNumber = Number(newVersion?.version_number) || newVersionNumber;
+          const updatedSchema = { ...selectedSchema, last_version: bumpedVersionNumber };
+          setSelectedSchema(updatedSchema);
 
-          // Select the newly created version
+          // Reload schema versions using the UPDATED schema so the inner
+          // loadSchemaVersionWithSchema call gets a correct last_version.
+          await loadSchemaVersions(updatedSchema);
+
+          // Select the newly created version with the UPDATED schema reference.
           setTimeout(() => {
-            loadSchemaVersionWithSchema(selectedSchema, newVersion);
+            loadSchemaVersionWithSchema(updatedSchema, newVersion);
           }, 200);
 
           setError(null);

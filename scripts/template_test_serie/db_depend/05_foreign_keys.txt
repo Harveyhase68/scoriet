@@ -1,0 +1,41 @@
+================================================================================
+TEST 05: FOREIGN KEYS
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+================================================================================
+
+Tabelle: {:tablename:}
+Hat Foreign Keys: {:hasforeignkeys:}
+
+[A] ALLE FOREIGN KEYS — via nmaxforeignkeys
+--------------------------------------------------------------------------------
+{:for nmaxforeignkeys:}
+--- FK #{:i:} ---
+  foreign.name             = {:foreign.name:}
+  foreign.constraintname   = {:foreign.constraintname:}
+  foreign.referencedtable  = {:foreign.referencedtable:}
+  foreign.referencedfield  = {:foreign.referencedfield:}
+  foreign.ondelete         = {:foreign.ondelete:}
+  foreign.onupdate         = {:foreign.onupdate:}
+{:endfor:}
+
+[B] UNIQUE FOREIGN KEYS PER ZIEL-TABELLE — via nmaxforeignkeysunique
+--------------------------------------------------------------------------------
+Falls eine Tabelle mehrere FKs auf dieselbe Ziel-Tabelle hat,
+ist diese Variante dedupliziert (z.B. nicht doppelt für 'created_by' und 'updated_by' auf users).
+
+{:for nmaxforeignkeysunique:}
+  • FK auf {:foreign.referencedtable:}({:foreign.referencedfield:})
+    Quelle: {:foreign.name:}
+{:endfor:}
+
+================================================================================
+EXPECTED bei 'users':
+  [A] 1 Foreign Key:
+        - foreign.name = ug_no
+        - foreign.referencedtable = user_groups
+        - foreign.referencedfield = ug_no
+        - foreign.constraintname = fk_user_groups
+        - foreign.ondelete = NO ACTION (oder RESTRICT)
+================================================================================

@@ -1,0 +1,49 @@
+================================================================================
+TEST 07: GENERATED COLUMNS (Neue gtree-Felder)
+================================================================================
+File-Type: db_table_file
+Expected Output: 1× pro Tabelle.
+================================================================================
+
+Tabelle: {:tablename:}
+
+Dieser Test verifiziert die GENERATED-ALWAYS-AS Logik im gtree.
+
+================================================================================
+
+{:for nmaxitems:}
+{:if item.is_generated:}
+═══ GENERATED: {:item.name:} ═══
+  Type:       {:item.type:}({:item.size:})
+  Expression: {:item.generation_expression:}
+  Storage:    {:item.generation_storage:}
+
+  Code-Generation behandelt das speziell:
+  - KEIN public setter (Wert wird von der DB berechnet)
+  - In Model-Definitionen ggf. als computed/virtual markieren
+  - Bei Laravel-Models in $appends/$casts statt $fillable
+
+  Beispiel-PHP:
+    // Read-only generated column — no setter
+    public function get{:item.pascalcase:}(): ?string {
+        return $this->attributes['{:item.name:}'] ?? null;
+    }
+
+{:else:}
+  ✓ normales Feld: {:item.name:} ({:item.type:})
+{:endif:}
+{:endfor:}
+
+================================================================================
+EXPECTED bei 'user_groups':
+  - ug_display ist GENERATED:
+      Expression beginnt mit "(trim(concat(_utf8mb4'UG-',lpad(ifnull..."
+      Storage = 'stored'
+  - alle anderen Felder zeigen "✓ normales Feld"
+
+Bei 'users' sollten ALLE Felder als "✓ normales Feld" auftauchen.
+
+NOTE: Wenn `item.is_generated` im Output noch als Platzhalter steht
+(nicht ersetzt), prüfe ob der gtree-Backend-Patch geladen ist
+(UltimateTemplateController.php — wurde 2026-05-23 erweitert).
+================================================================================

@@ -1,0 +1,46 @@
+================================================================================
+TEST 08: %-PLATZHALTER MIT SPRACHE (%2) IM DATEINAMEN
+================================================================================
+File-Type: project_file_languages
+Filename-Pattern in Template: 08_filename_lang_%2_%9[u].txt
+Expected Output: N× generiert (1× pro Sprache).
+
+WICHTIG: Im Template-Editor diesen GENAUEN Dateinamen eintragen:
+    08_filename_lang_%2_%9[u].txt
+
+%2 ist der language_code-Platzhalter. Bei file_type=project_file_languages
+wird er per Sprache mit dem entsprechenden Code ersetzt (de, en, fr, ...).
+
+Beispiel-Output bei 2 Sprachen (de, en) und projectname="TestProject":
+    08_filename_lang_de_TESTPROJECT.txt
+    08_filename_lang_en_TESTPROJECT.txt
+
+================================================================================
+CONTENT (sollte je Sprache unterschiedlich sein):
+--------------------------------------------------------------------------------
+
+Sprache in dieser Datei: {:selectedlanguage:}
+Index in Sprachen-Liste: {:selectedlanguageindex:}
+
+Caption (übersetzt):     {:projectcaption:}
+Description (übersetzt): {:projectdescription:}
+
+Locale-Werte für diese Sprache:
+  Datumsformat:          {:dateformat:}
+  Zeitformat:            {:timeformat:}
+  Dezimaltrennzeichen:   "{:decimalsep:}"
+  Tausendertrennzeichen: "{:thousandsep:}"
+  Währung:               {:currencysym:}
+  Zeitzone:              {:timezone:}
+
+================================================================================
+EXPECTED:
+  Datei "08_filename_lang_de_<UPPERPROJECTNAME>.txt":
+    selectedlanguage = de
+    selectedlanguageindex = (Index von de in lang[])
+    dateformat z.B. "d.m.Y"
+
+  Datei "08_filename_lang_en_<UPPERPROJECTNAME>.txt":
+    selectedlanguage = en
+    dateformat z.B. "Y-m-d"
+================================================================================

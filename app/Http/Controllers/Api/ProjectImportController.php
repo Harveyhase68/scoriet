@@ -121,16 +121,44 @@ class ProjectImportController extends Controller
         ]);
 
         try {
-            // Delete uploaded ZIP
+            // Path-traversal guard: both `zip_path` and `temp_dir` arrive
+            // from the user. Without these checks an authenticated caller
+            // could pass `../../../../etc/passwd` (or any absolute path on
+            // Windows) and our deleteDirectory() would happily traverse and
+            // delete arbitrary files. We pin both inputs to the storage
+            // sandbox and canonicalise via realpath() to neutralise `..` /
+            // symlink tricks before any delete operation runs.
+            $sandbox = realpath(storage_path('app'));
+
+            // ZIP path is relative to storage/app — Storage::disk('local')
+            // already sandboxes it, but we still reject obvious traversal
+            // attempts up front so we don't silently no-op on a hostile path.
             $zipPath = $request->input('zip_path');
+            if ($zipPath !== null && (str_contains($zipPath, '..') || str_starts_with($zipPath, '/') || preg_match('#^[A-Za-z]:[\\\\/]#', $zipPath))) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'Invalid zip_path: traversal sequences and absolute paths are not allowed.',
+                ], 422);
+            }
             if ($zipPath && Storage::disk('local')->exists($zipPath)) {
                 Storage::disk('local')->delete($zipPath);
             }
 
-            // Delete temp directory if provided
+            // temp_dir is an absolute filesystem path (it came back from the
+            // import upload). Only allow paths that resolve inside our
+            // storage sandbox — anything else is either a bug or an attack.
             $tempDir = $request->input('temp_dir');
-            if ($tempDir && file_exists($tempDir)) {
-                $this->deleteDirectory($tempDir);
+            if ($tempDir) {
+                $resolved = realpath($tempDir);
+                if (!$resolved || !$sandbox || strncmp($resolved, $sandbox, strlen($sandbox)) !== 0) {
+                    return response()->json([
+                        'success' => false,
+                        'error'   => 'Invalid temp_dir: path must resolve inside the storage sandbox.',
+                    ], 422);
+                }
+                if (file_exists($resolved)) {
+                    $this->deleteDirectory($resolved);
+                }
             }
 
             return response()->json([

@@ -1,0 +1,961 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Scoriet CLI API v1",
+    "description": "Public API for Scoriet (Schema-to-Stack Studio). All endpoints live under /cli/v1/*.\n\n## Rate limits (per Passport token)\n\n- **cli-default**: 1000 requests/hour — applies to every authenticated endpoint. Generous enough that legitimate clients (CLI, svc polling, Postman) never hit it.\n- **cli-generate**: 30 requests/hour — additionally applied to `POST /generate/`. Each generation costs credits and queue-worker time, so this is the real DoS/credit-drain guard. Progress/download/cancel are NOT counted against this limit (polling stays unrestricted up to cli-default).\n- **Unauthenticated** calls fall back to per-IP buckets (60/h or 5/h respectively).\n\nWhen exhausted, you get HTTP 429 with a `Retry-After` header — Postman/curl/CLI will show the seconds until your bucket refills.\n\n## Response envelope\n\n**Every** response on this surface follows the same shape:\n\n**Success (2xx):**\n```json\n{\n  \"success\": true,\n  \"data\":    { ... },                  // the actual payload\n  \"meta\":    { \"updated_fields\": [...], \"pagination\": {...} },  // optional\n  \"warnings\": [ { \"code\": \"...\", \"message\": \"...\" } ]            // optional\n}\n```\n\n**Error (4xx/5xx):**\n```json\n{\n  \"success\": false,\n  \"error\": {\n    \"code\":    \"VALIDATION_FAILED\",     // machine-readable\n    \"message\": \"Human-readable\",\n    \"details\": { \"name\": [\"already taken\"] }  // optional\n  }\n}\n```\n\nCommon error codes: `VALIDATION_FAILED`, `NOT_FOUND`, `UNAUTHORIZED`, `FORBIDDEN`, `CONFLICT`, `INSUFFICIENT_CREDITS`, `RATE_LIMITED`, `SERVER_ERROR`.\n\nLegacy keys (`template`, `templates`, `schemas`, `settings`, etc.) are still inside `data` — e.g. `data.template`, `data.templates`. The middleware moves them there automatically so the wire-shape is stable.\n\n## Quick Start\n\n1. Open the collection variables (top-level **Variables** tab) and fill in `email` + `password`.\n2. Run **🔑 Auth → Login (authorize)** — the response auto-saves the bearer token into `cli_token` via the test script (it knows to unwrap `data.token.access_token`).\n3. Every other request reuses `{{cli_token}}` automatically.\n\n## Variables\n\n- `base_url` – defaults to `http://10.0.0.8:8000/cli/v1` (change to your install)\n- `email`, `password` – your Scoriet account\n- `cli_token` – auto-set after login\n- `template_id`, `project_id`, `schema_id`, `job_id` – pre-filled with sample ids; replace with your own after listing\n\n## Auth\n\n- Public endpoints (`/system/*`, `/auth/authorize`, `/auth/verify-2fa`) skip auth\n- Everything else inherits Bearer-token auth from the collection level",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{cli_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://10.0.0.8:8000/cli/v1",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "office@scoriet.dev",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cli_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "two_factor_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "template_id",
+      "value": "4",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "schema_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "schema_version_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "file_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "job_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🌐 System (Public)",
+      "description": "Endpoints that work without authentication. Use these for smoke tests, version negotiation, and uptime monitoring.",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/system/health",
+              "host": ["{{base_url}}"],
+              "path": ["system", "health"]
+            },
+            "description": "Liveness probe. Returns 200 + `{status: healthy, timestamp}`. No auth, no DB query — useful for load balancers."
+          }
+        },
+        {
+          "name": "API Version",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/system/version",
+              "host": ["{{base_url}}"],
+              "path": ["system", "version"]
+            },
+            "description": "Returns CLI binary version + API version + Scoriet app version. Used by clients to check compatibility before login."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔑 Auth",
+      "description": "Login, logout, token refresh. **Start here.** The Login request auto-saves the token to {{cli_token}}.",
+      "item": [
+        {
+          "name": "Login (authorize)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "// Every /cli/v1/* response is wrapped in the standard envelope —",
+                  "// payload lives under json.data, not at the top level.",
+                  "const data = json && json.data ? json.data : {};",
+                  "",
+                  "// 2FA challenge — store the two_factor_token for the verify-2fa request",
+                  "if (data.two_factor_required && data.two_factor_token) {",
+                  "    pm.collectionVariables.set('two_factor_token', data.two_factor_token);",
+                  "    console.log('🔐 2FA required — two_factor_token saved. Run \"Verify 2FA\" next.');",
+                  "    return;",
+                  "}",
+                  "",
+                  "// Normal success — save the access token for all subsequent requests",
+                  "if (json.success && data.token && data.token.access_token) {",
+                  "    pm.collectionVariables.set('cli_token', data.token.access_token);",
+                  "    console.log('✅ Token saved to {{cli_token}}, expires ' + data.token.expires_at);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"client_name\": \"Postman Test\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/authorize",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "authorize"]
+            },
+            "description": "Issues a Personal Access Token. If 2FA is enabled, returns a `two_factor_token` instead — run **Verify 2FA** next.\n\nThrottled at 10 requests/minute per IP."
+          }
+        },
+        {
+          "name": "Verify 2FA (only if 2FA enabled)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json && json.data ? json.data : {};",
+                  "if (json.success && data.token && data.token.access_token) {",
+                  "    pm.collectionVariables.set('cli_token', data.token.access_token);",
+                  "    console.log('✅ 2FA passed, token saved.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"two_factor_token\": \"{{two_factor_token}}\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/verify-2fa",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify-2fa"]
+            },
+            "description": "Sends the 6-digit TOTP code (or 10-digit recovery code) plus the `two_factor_token` from the Login response. Issues the actual access token on success.\n\nAdditional optional fields: `trust_device` (boolean), `device_id` (string)."
+          }
+        },
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/whoami",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "whoami"]
+            },
+            "description": "Returns the authenticated user — great smoke-test after login to confirm the token works."
+          }
+        },
+        {
+          "name": "Verify token still valid",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/verify",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Check CLI access",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/cli-access",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "cli-access"]
+            },
+            "description": "Returns whether the current user has a CLI subscription (required for most non-auth endpoints)."
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json && json.data ? json.data : {};",
+                  "if (json.success && data.token && data.token.access_token) {",
+                  "    pm.collectionVariables.set('cli_token', data.token.access_token);",
+                  "    console.log('✅ Token refreshed.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Revokes the current token and issues a fresh one. The new token replaces {{cli_token}} automatically."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Revokes the current token. After this, {{cli_token}} will return 401 on every endpoint until you log in again."
+          }
+        }
+      ]
+    },
+    {
+      "name": "📁 Projects",
+      "description": "Full CRUD on projects. Replace {{project_id}} after running List.",
+      "item": [
+        {
+          "name": "List projects",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/",
+              "host": ["{{base_url}}"],
+              "path": ["projects", ""]
+            }
+          }
+        },
+        {
+          "name": "Get project details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Create project",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"postman_test_project\",\n  \"description\": \"Created from Postman as a smoke test\",\n  \"is_public\": false,\n  \"allow_join_requests\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/",
+              "host": ["{{base_url}}"],
+              "path": ["projects", ""]
+            },
+            "description": "**Name rules:** lowercase letters, numbers, and underscores only — same as templates."
+          }
+        },
+        {
+          "name": "Update project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description from Postman\",\n  \"is_public\": false,\n  \"allow_join_requests\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete project (HARD)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}"]
+            },
+            "description": "⚠️ Permanent — no soft delete on the CLI surface."
+          }
+        },
+        {
+          "name": "Get project settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/settings",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Get deployment settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/deployment-settings",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "deployment-settings"]
+            },
+            "description": "Returns the project's protected files list + install/update scripts."
+          }
+        },
+        {
+          "name": "Get FTP/SSH settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/ftp-settings",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "ftp-settings"]
+            }
+          }
+        },
+        {
+          "name": "Update FTP/SSH settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deployment_type\": \"sftp\",\n  \"ftp_host\": \"example.com\",\n  \"ftp_port\": 22,\n  \"ftp_username\": \"deploy\",\n  \"ftp_password\": \"your-password\",\n  \"ftp_directory\": \"/var/www/myproject\",\n  \"ftp_passive\": true,\n  \"ftp_ssl\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/ftp-settings",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "ftp-settings"]
+            },
+            "description": "**Field names** (mirror the DB columns):\n- `deployment_type` — `ftp` or `sftp`\n- `ftp_host`, `ftp_port`, `ftp_username`, `ftp_password`\n- `ftp_directory` — remote target path\n- `ftp_passive` — boolean (FTP only, ignored for SFTP)\n- `ftp_ssl` — boolean (FTPS)\n\nAll fields optional — send only what you want to change.\n\nSending `ftp_password: \"********\"` keeps the existing password (matches the web UI behaviour where the field is masked).\n\nResponse echoes `updated_fields` so you can verify what actually persisted."
+          }
+        },
+        {
+          "name": "Test FTP/SSH connection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/projects/{{project_id}}/ftp-test",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{project_id}}", "ftp-test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Templates",
+      "description": "Full CRUD on templates plus clone/link/unlink. The PUT endpoint is the one just added in this session.",
+      "item": [
+        {
+          "name": "List templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/",
+              "host": ["{{base_url}}"],
+              "path": ["templates", ""]
+            }
+          }
+        },
+        {
+          "name": "Get template details",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Create template",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"postman_test_template\",\n  \"description\": \"Created via Postman\",\n  \"category\": \"Web\",\n  \"language\": \"PHP\",\n  \"visibility\": \"private\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/",
+              "host": ["{{base_url}}"],
+              "path": ["templates", ""]
+            },
+            "description": "**Name rules:** lowercase letters, numbers, and underscores only.\n\n**Required:** name, language.\n**Optional:** description, category, visibility (public/private)."
+          }
+        },
+        {
+          "name": "Update template (NEW)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated via Postman 🚀\",\n  \"tags\": [\"test\", \"postman\"],\n  \"visibility\": \"private\",\n  \"is_active\": true,\n  \"compatibility_tag\": \"scoriet/laravel_base\",\n  \"generation_order\": 0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}"]
+            },
+            "description": "**Partial update** — only fields in the body change. Send `{\"description\": \"x\"}` to change only the description.\n\nNot updateable here: `is_system_template` (admin-only concern), `creator_user_id`.\n\nRename: if you change `name`, uniqueness is re-checked against your other templates."
+          }
+        },
+        {
+          "name": "Delete template (HARD)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}"]
+            },
+            "description": "⚠️ Permanent. System templates cannot be deleted via CLI."
+          }
+        },
+        {
+          "name": "Clone template",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_name\": \"postman_clone_of_original\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/clone",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "clone"]
+            },
+            "description": "Creates an editable copy with full version history attached.\n\n**Body fields (all optional):**\n- `new_name` — clone's name (lowercase/digits/underscores). Defaults to the original name.\n- `visibility` — `public` or `private`. Defaults to `public`. Private requires patron/system tier.\n- `project_id` — optional 'home project' to record on the clone. Without it, the clone simply belongs to you; you can link it to one or more projects later via `/templates/{id}/link`.\n\n**Identity:** the clone's `full_name` is always `<your-username>/<new_name>` (with `_2`, `_3` suffix if you already have a template with that name). No more `projectname/templatename` confusion — the full_name is your permanent identity for this template."
+          }
+        },
+        {
+          "name": "Link template to project",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/link",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "link"]
+            }
+          }
+        },
+        {
+          "name": "Unlink template from project",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/unlink",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "unlink"]
+            }
+          }
+        },
+        {
+          "name": "List templates linked to project",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/project/{{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "project", "{{project_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📄 Template Files",
+      "description": "Full CRUD on template files. `list` returns metadata only (cheap); `show` returns one file WITH its `file_content` bytes; `update` is a partial PUT that supports content edits.",
+      "item": [
+        {
+          "name": "List files in template",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "files"]
+            },
+            "description": "Returns metadata for every file in the template — `file_name`, `file_path`, `content_size`, `file_order`, etc. **`file_content` is NOT included** to keep list responses small even when a template has many large files. Use **Get single file** to fetch the bytes."
+          }
+        },
+        {
+          "name": "Get single file (with content)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "files", "{{file_id}}"]
+            },
+            "description": "Returns the file metadata **plus** the full `file_content` (the actual template bytes). Same access rules as the list endpoint — owners, public templates, and system templates are readable."
+          }
+        },
+        {
+          "name": "Add file to template",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_name\": \"example.php\",\n  \"file_path\": \"src/\",\n  \"output_path\": \"src/\",\n  \"file_content\": \"<?php\\n\\n// Generated by {:projectname:}\\n\\nclass Example {}\\n\",\n  \"file_type\": \"template\",\n  \"content_type\": \"text\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "files"]
+            },
+            "description": "**Required:** `file_name`, `file_content`.\n\n**Optional:** `file_path`, `output_path`, `file_type`, `content_type`.\n\nUse `\\n` for newlines in JSON. `file_content` may contain Scoriet template syntax like `{:projectname:}`, `{:for nmaxtables:}`, etc."
+          }
+        },
+        {
+          "name": "Update file (partial)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_content\": \"<?php\\n\\n// Updated content for {:projectname:}\\nclass Example {}\\n\",\n  \"file_order\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "files", "{{file_id}}"]
+            },
+            "description": "**Partial update** — only fields you send change.\n\n**Editable fields:** `file_name`, `file_path`, `output_path`, `file_content`, `file_type`, `content_type`, `file_order`.\n\n**Rules:**\n- Only the template creator can update files.\n- System templates are read-only via CLI.\n- Renaming to an existing file_name within the same template returns 409.\n- A body with only unknown fields returns 422 + `expected_fields` list.\n- Mix of known + unknown fields: update succeeds, `warnings.unknown_fields` lists the ignored ones.\n\nResponse includes `updated_fields` echoing what actually persisted."
+          }
+        },
+        {
+          "name": "Delete file from template (HARD)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/templates/{{template_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["templates", "{{template_id}}", "files", "{{file_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🗄️ Database / Schemas",
+      "description": "Schema CRUD + SQL import/export. The SQL import is how external tools push table structures into Scoriet.",
+      "item": [
+        {
+          "name": "List schemas",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/database/list?project_id={{project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["database", "list"],
+              "query": [
+                { "key": "project_id", "value": "{{project_id}}", "description": "Optional — filter to one project. Omit (or disable) to list every schema you have access to (own + public).", "disabled": true }
+              ]
+            },
+            "description": "Lists database schemas.\n\n**Without `project_id`** (default): every schema you can access — your own private ones plus all public schemas.\n\n**With `project_id`**: only the schemas linked to that project. Toggle the query parameter on (uncheck `Disabled`) to filter."
+          }
+        },
+        {
+          "name": "Create empty schema",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_name\": \"postman_test_schema\",\n  \"description\": \"Created from Postman\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/database/create",
+              "host": ["{{base_url}}"],
+              "path": ["database", "create"]
+            },
+            "description": "Creates a new (empty) schema owned by the current user.\n\n**Body fields:**\n- `schema_name` — required, must be unique per user.\n- `description` — optional.\n- `visibility` — optional, `private` (default) or `public`.\n- `project_id` — optional, when present the schema is auto-linked to that project. Omit to create a standalone schema you can link to one or more projects later via `/projects/{id}/schemas` (or any equivalent association endpoint)."
+          }
+        },
+        {
+          "name": "Get schema structure",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/database/{{schema_id}}/structure",
+              "host": ["{{base_url}}"],
+              "path": ["database", "{{schema_id}}", "structure"]
+            },
+            "description": "Returns tables, fields, constraints — the full JSON description of the schema's latest version."
+          }
+        },
+        {
+          "name": "List schema versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/database/{{schema_id}}/versions",
+              "host": ["{{base_url}}"],
+              "path": ["database", "{{schema_id}}", "versions"]
+            }
+          }
+        },
+        {
+          "name": "Import SQL into schema",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_id\": {{schema_id}},\n  \"sql_content\": \"CREATE TABLE products (\\n  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\\n  name VARCHAR(255) NOT NULL,\\n  price DECIMAL(10,2) DEFAULT 0,\\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\\n);\",\n  \"description\": \"Initial product table\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/database/import-sql",
+              "host": ["{{base_url}}"],
+              "path": ["database", "import-sql"]
+            },
+            "description": "Parses raw SQL DDL (CREATE TABLE / ALTER TABLE / etc.) and persists it as schema tables/fields/constraints.\n\n**Optional:** `schema_version` — if set, imports into that specific version. Otherwise creates a new version."
+          }
+        },
+        {
+          "name": "Copy version (snapshot to new version)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_id\": {{schema_id}},\n  \"source_version\": 1,\n  \"description\": \"Branched from v1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/database/copy-version",
+              "host": ["{{base_url}}"],
+              "path": ["database", "copy-version"]
+            }
+          }
+        },
+        {
+          "name": "Export schema as SQL",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schema_id\": {{schema_id}},\n  \"format\": \"mysql\",\n  \"version\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/database/export",
+              "host": ["{{base_url}}"],
+              "path": ["database", "export"]
+            },
+            "description": "**Format:** `mysql` | `postgresql`.\n\nReturns the schema as DDL ready for execution."
+          }
+        },
+        {
+          "name": "Delete schema (HARD)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/database/{{schema_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["database", "{{schema_id}}"]
+            },
+            "description": "⚠️ Removes the schema, all versions, all tables, all fields. Permanent."
+          }
+        },
+        {
+          "name": "Delete schema version (HARD)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/database/{{schema_id}}/versions/{{schema_version_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["database", "{{schema_id}}", "versions", "{{schema_version_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "⚡ Generate",
+      "description": "Trigger code generation, poll progress, download ZIP.\n\n**Async flow** (backend dispatches a queue job):\n\n1. **Trigger code generation** → returns 202 with `job_id` and `status: pending`. Auto-saved to `{{job_id}}`.\n2. **Get generation progress** → poll every 1–2 seconds. Status transitions: `pending` → `running` → `completed` | `failed` | `cancelled`. Includes `progress_pct` and timing fields.\n3. **Download generated ZIP** → only valid after `status: completed`. Returns 425 (Too Early) while still pending/running, 410 (Gone) for cancelled/failed jobs.\n4. **Cancel generation job** (optional) → flips a cancel flag; the worker honours it at its next checkpoint (start of job + after generation returns). Returns 409 if the job is already in a terminal state.\n\nThe queue worker (`php artisan queue:work`) must be running for jobs to actually execute. In dev, `composer run dev` includes it.",
+      "item": [
+        {
+          "name": "Trigger code generation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "const data = json && json.data ? json.data : {};",
+                  "if (data.job_id) {",
+                  "    pm.collectionVariables.set('job_id', data.job_id);",
+                  "    console.log('🎬 Job started, id saved: ' + data.job_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}},\n  \"template_id\": {{template_id}},\n  \"output_format\": \"zip\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/generate/",
+              "host": ["{{base_url}}"],
+              "path": ["generate", ""]
+            },
+            "description": "Dispatches a background queue job and returns **immediately** (HTTP 202).\n\n**Response:** `{success: true, data: {job_id, status: 'pending', progress_url, download_url, cancel_url}}` — `job_id` is auto-saved to {{job_id}}.\n\nThen poll **Get generation progress** until `status` is `completed`."
+          }
+        },
+        {
+          "name": "Get generation progress",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generate/progress/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["generate", "progress", "{{job_id}}"]
+            },
+            "description": "Poll every 1–2 seconds. Returns the live job state:\n\n```\n{\n  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled',\n  progress_pct: 0..100,\n  created_at, started_at, completed_at, failed_at,\n  // when completed:\n  files_count, gtree_nodes, download_url,\n  // when failed:\n  errors: [ ... ]\n}\n```\n\nNo blocking — each call returns whatever the worker has written to the state file at that moment."
+          }
+        },
+        {
+          "name": "Download generated ZIP",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/octet-stream" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generate/download/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["generate", "download", "{{job_id}}"]
+            },
+            "description": "Returns a ZIP stream. In Postman click **Save Response → Save to a file**.\n\n**Status gates:**\n- `425 Too Early` if status is `pending` or `running` — keep polling.\n- `410 Gone` if status is `cancelled` or `failed` — job will never produce a file.\n- `200 OK` only when status is `completed`."
+          }
+        },
+        {
+          "name": "Cancel generation job",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/generate/cancel/{{job_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["generate", "cancel", "{{job_id}}"]
+            },
+            "description": "**Co-operative cancel** — sets a flag in the state file. The worker checks it at its yield points (start of handle() and after the generate call returns), so a job already mid-generate-call will finish that call before honouring the cancel.\n\nReturns `409 Conflict` if the job is already in a terminal state (completed/failed/cancelled)."
+          }
+        }
+      ]
+    }
+  ]
+}

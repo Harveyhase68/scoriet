@@ -148,6 +148,25 @@ class SqlParserController extends Controller
             $parser = $this->getParser($databaseType);
             $parsedTables = $parser->parseSQL($sqlScript);
 
+            // Capture schema-wide CHARSET/COLLATION from the dump.
+            // Preferred source: CREATE DATABASE clause. Fallback: trailer of
+            // the first CREATE TABLE. Only patch when the dump actually carries
+            // values — silence (null) must not overwrite a previously-saved
+            // schema default with the migration's fallback.
+            if (method_exists($parser, 'getSchemaDefaults')) {
+                $defaults = $parser->getSchemaDefaults();
+                $patch = [];
+                if (!empty($defaults['charset'])) {
+                    $patch['default_charset'] = $defaults['charset'];
+                }
+                if (!empty($defaults['collation'])) {
+                    $patch['default_collation'] = $defaults['collation'];
+                }
+                if (!empty($patch)) {
+                    $schema->update($patch);
+                }
+            }
+
             // 🛡️ VALIDATION: Check if any tables were parsed before creating a version
             if (empty($parsedTables)) {
                 return response()->json([

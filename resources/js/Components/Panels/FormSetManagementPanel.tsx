@@ -6,6 +6,7 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Card } from 'primereact/card';
 import { MultiSelect } from 'primereact/multiselect';
@@ -74,6 +75,17 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const [editFsDescription, setEditFsDescription] = useState('');
     const [editFsVisibility, setEditFsVisibility] = useState<string>('private');
     const [editingSave, setEditingSave] = useState(false);
+
+    // Create Modal State — mirrors ReportManagementPanel's pattern so the two
+    // management panels feel consistent. The big "+" button in the toolbar
+    // opens this modal; the in-editor "+ Erstellen" path in the Form-Vorlagen
+    // Editor stays as-is (that route exists for users who are already
+    // designing and want to spin off a new template inline).
+    const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newDescription, setNewDescription] = useState('');
+    const [newVisibility, setNewVisibility] = useState<'private' | 'team' | 'public'>('private');
+    const [creating, setCreating] = useState(false);
 
     // Delete Modal State
     const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -227,6 +239,38 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         }
     };
 
+    // Create a new Form Blueprint via the modal. The backend's POST handler
+    // auto-creates the default windows via FormSet::boot(), so we just need
+    // name/description/visibility. After success we reload the "My Form Sets"
+    // table so the new row appears without a manual refresh.
+    const handleCreate = async () => {
+        if (!newName.trim()) return;
+        setCreating(true);
+        try {
+            await apiClient.post('/form-sets', {
+                name: newName,
+                description: newDescription || null,
+                visibility: newVisibility,
+            });
+            toast.showSuccess(t.formsetmanagementpanel_created || 'Form Blueprint created');
+            setCreateModalVisible(false);
+            setNewName('');
+            setNewDescription('');
+            setNewVisibility('private');
+            loadMyFormSets();
+        } catch (err: any) {
+            const data = err?.response?.data || {};
+            // Surface field-level validation errors (esp. "name has already
+            // been taken") instead of the generic outer message. Modal stays
+            // open + form values stay intact so the user can correct the
+            // name without re-typing the rest.
+            const fieldError = data?.errors?.name?.[0];
+            toast.showError(fieldError || data.error || data.message || 'Error creating Form Blueprint');
+        } finally {
+            setCreating(false);
+        }
+    };
+
     // Open edit properties modal
     const handleEditProperties = (formSet: FormSet) => {
         setEditFormSet(formSet);
@@ -253,7 +297,10 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 loadPublicFormSets();
             } catch (err: any) {
                 const data = err?.response?.data || {};
-                toast.showError(data.error || data.message || 'Error updating');
+                // Show the field-level name error verbatim — covers the
+                // "name already taken" case without clobbering the form.
+                const fieldError = data?.errors?.name?.[0];
+                toast.showError(fieldError || data.error || data.message || 'Error updating');
             }
         } catch (error) {
             console.error('Edit error:', error);
@@ -440,7 +487,20 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         label={t.formsetmanagementpanel406}
                         icon="pi pi-plus"
                         className="p-button-success"
-                        onClick={() => onOpenPanel?.('form-designer', { title: t.formsetmanagementpanel409 })}
+                        onClick={() => {
+                            // Open the create modal instead of routing straight
+                            // into the form-designer panel. The modal asks for
+                            // name/description/visibility (mirrors the Report
+                            // Pattern flow) and registers the new Form Blueprint
+                            // in the DB so it shows up in this list. The user
+                            // still has the inline "+ Erstellen" button inside
+                            // the Form-Vorlagen Editor for the "I'm already
+                            // designing and want a new template" path.
+                            setNewName('');
+                            setNewDescription('');
+                            setNewVisibility('private');
+                            setCreateModalVisible(true);
+                        }}
                     />
                 </div>
 
@@ -562,6 +622,68 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 </DataTable>
             </Card>
 
+            {/* CREATE NEW FORM BLUEPRINT MODAL */}
+            <Dialog
+                visible={createModalVisible}
+                onHide={() => { if (!creating) setCreateModalVisible(false); }}
+                header={t.formsetmanagementpanel_create_title || 'New Form Blueprint'}
+                style={{ width: '450px' }}
+                modal closable={!creating}
+                contentStyle={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}
+                headerStyle={{ backgroundColor: colors.dialogHeader, color: colors.textPrimary }}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_name || 'Name'}</label>
+                        <InputText
+                            value={newName}
+                            onChange={(e) => setNewName(e.target.value)}
+                            className="w-full"
+                            placeholder={t.formsetmanagementpanel_name_placeholder || 'e.g. Standard Form Set'}
+                            autoFocus
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_description || 'Description'}</label>
+                        <InputTextarea
+                            value={newDescription}
+                            onChange={(e) => setNewDescription(e.target.value)}
+                            className="w-full"
+                            rows={3}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_visibility || 'Visibility'}</label>
+                        <Dropdown
+                            value={newVisibility}
+                            options={[
+                                { label: t.formsetmanagementpanel_private || 'Private', value: 'private' },
+                                { label: t.formsetmanagementpanel_team || 'Team', value: 'team' },
+                                { label: t.formsetmanagementpanel_public || 'Public', value: 'public' },
+                            ]}
+                            onChange={(e) => setNewVisibility(e.value)}
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                        <Button
+                            label={t.formsetmanagementpanel_cancel || 'Cancel'}
+                            className="p-button-secondary"
+                            onClick={() => setCreateModalVisible(false)}
+                            disabled={creating}
+                        />
+                        <Button
+                            label={creating ? (t.formsetmanagementpanel_saving || 'Saving...') : (t.formsetmanagementpanel_create_btn || 'Create')}
+                            icon={creating ? 'pi pi-spinner pi-spin' : 'pi pi-plus'}
+                            className="p-button-success"
+                            onClick={handleCreate}
+                            loading={creating}
+                            disabled={!newName.trim()}
+                        />
+                    </div>
+                </div>
+            </Dialog>
+
             {/* EDIT PROPERTIES MODAL */}
             <Dialog
                 visible={editModalVisible}
@@ -576,6 +698,15 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_name || 'Name'}</label>
                         <InputText value={editFsName} onChange={(e) => setEditFsName(e.target.value)} className="w-full" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_description || 'Description'}</label>
+                        <InputTextarea
+                            value={editFsDescription}
+                            onChange={(e) => setEditFsDescription(e.target.value)}
+                            className="w-full"
+                            rows={3}
+                        />
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_visibility || 'Visibility'}</label>
@@ -649,7 +780,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             <Dialog
                 visible={inUseModalVisible}
                 onHide={() => { setInUseModalVisible(false); setInUseInfo(null); }}
-                header={(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_title || 'Cannot delete Form Set'}
+                header={t.formsetmanagementpanel_in_use_title}
                 style={{ width: '520px' }}
                 modal
                 closable
@@ -662,13 +793,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             <i className="pi pi-exclamation-triangle text-2xl" style={{ color: colors.warningText }}></i>
                             <div>
                                 <h4 className="font-semibold" style={{ color: colors.warningText }}>
-                                    {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_heading || 'Form Set is still in use'}
+                                    {t.formsetmanagementpanel_in_use_heading}
                                 </h4>
                                 <p className="text-sm mt-1" style={{ color: colors.textSecondary }}>
                                     <strong style={{ color: colors.textPrimary }}>"{inUseInfo?.formSetName}"</strong>
                                     {' '}
-                                    {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_explain
-                                      || 'is referenced and cannot be deleted yet. Remove the references below first, then try again.'}
+                                    {t.formsetmanagementpanel_in_use_explain}
                                 </p>
                             </div>
                         </div>
@@ -678,7 +808,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                             <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-table mr-2"></i>
-                                {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_tables || 'Used by schema tables:'}
+                                {t.formsetmanagementpanel_in_use_tables}
                             </p>
                             <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
                                 {inUseInfo.tables.map(tbl => (
@@ -692,7 +822,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         <div className="rounded p-3 text-sm" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                             <p className="mb-2 font-medium" style={{ color: colors.textSecondary }}>
                                 <i className="pi pi-folder mr-2"></i>
-                                {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_projects || 'Set as default in projects:'}
+                                {t.formsetmanagementpanel_in_use_projects}
                             </p>
                             <ul className="list-disc list-inside space-y-1" style={{ color: colors.textMuted }}>
                                 {inUseInfo.projects.map(p => (
@@ -704,13 +834,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
                     <div className="rounded p-3 text-xs" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                         <i className="pi pi-info-circle mr-2"></i>
-                        {(t as unknown as Record<string, string>).formsetmanagementpanel_in_use_hint
-                          || 'Open the schema designer to remove the form set from those tables, or change the project default in the project settings.'}
+                        {t.formsetmanagementpanel_in_use_hint}
                     </div>
 
                     <div className="flex justify-end pt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
                         <Button
-                            label={(t as unknown as Record<string, string>).formsetmanagementpanel_close || 'Close'}
+                            label={t.formsetmanagementpanel_close}
                             icon="pi pi-times"
                             className="p-button-secondary"
                             onClick={() => { setInUseModalVisible(false); setInUseInfo(null); }}

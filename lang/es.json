@@ -685,6 +685,7 @@
     "templatecontrollerphp421": "Ya existe una plantilla con este nombre",
     "templatecontrollerphp422": "El nombre de la plantilla debe ser único",
     "templatecontrollerphp442": "Plantilla creada exitosamente",
+    "templatecontrollerphp_updated": "Plantilla actualizada exitosamente",
     "templatecontrollerphp457": "Error en la creación de la plantilla",
     "templatecontrollerphp479": "Plantilla no encontrada",
     "templatecontrollerphp489": "Acceso denegado: solo el creador de la plantilla puede eliminarla",

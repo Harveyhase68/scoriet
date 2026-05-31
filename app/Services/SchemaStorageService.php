@@ -2,17 +2,28 @@
 
 namespace App\Services;
 
+use App\Models\Language;
+use App\Services\CommentMetadataCodec;
+use App\Services\Concerns\NormalizesSQLTypeName;
 use App\Models\SchemaConstraint;
 use App\Models\SchemaConstraintColumn;
 use App\Models\SchemaField;
 use App\Models\SchemaForeignKeyReference;
 use App\Models\SchemaForeignKeyReferenceColumn;
 use App\Models\SchemaTable;
+use App\Models\SchemaTranslation;
 use App\Models\SchemaVersion;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SchemaStorageService
 {
+    use NormalizesSQLTypeName;
+
+    public function __construct(private readonly CommentMetadataCodec $codec = new CommentMetadataCodec())
+    {
+    }
+
     /**
      * Generate short file name from table name
      * Examples: "customer_custody_value" -> "ccv", "customers" -> "cus"
@@ -191,16 +202,78 @@ class SchemaStorageService
         // Auto-guess singular name from table name (English rules)
         $singularName = $tableData['singular_name'] ?? $this->guessEnglishSingular($tableData['table_name']);
 
-        return SchemaTable::create([
-            'schema_id' => $schemaId, // Direct schema relationship
+        // The raw COMMENT may be either pure user prose (legacy/foreign SQL) or
+        // a Scoriet JSON-metadata blob (round-trip from our own exporter). The
+        // codec splits the two — `comment` is the human prose to persist,
+        // `meta` carries the audit/version/state we want to restore.
+        $decoded = $this->codec->decode($tableData['comment'] ?? null);
+        $meta = $decoded['meta'];
+        $now = Carbon::now();
+        $currentUser = SchemaTable::currentUsername();
+
+        $row = [
+            'schema_id' => $schemaId,
             'schema_version_id' => $schemaVersion->id,
             'table_name' => $tableData['table_name'],
-            'singular_name' => $singularName, // Auto-guessed or user-provided
-            'primarykeyfield' => $primaryKey, // 🔧 Primary key migration
-            'filekeyname' => $fileKey, // 🔧 File key for templates
-            'file_name_renamed' => $fileNameRenamed, // Auto-generated or provided
-            'file_name_short' => $fileNameShort, // Auto-generated or provided
-        ]);
+            'singular_name' => $singularName,
+            'primarykeyfield' => $primaryKey,
+            'filekeyname' => $fileKey,
+            'file_name_renamed' => $fileNameRenamed,
+            'file_name_short' => $fileNameShort,
+            'comment' => $decoded['comment'],
+        ];
+
+        if ($meta) {
+            // Round-trip import: preserve created_*, refresh updated_* to "now/me".
+            $row['version'] = (int) ($meta['version'] ?? 1);
+            $row['created_by_username'] = $meta['created_by_username'] ?? 'system';
+            $row['created_at'] = isset($meta['created_at']) ? Carbon::parse($meta['created_at']) : $now;
+            $row['updated_by_username'] = $currentUser;
+            $row['updated_at'] = $now;
+            // Optional state keys — only set when present in meta.
+            if (isset($meta['display_state']))     { $row['display_state']     = $meta['display_state']; }
+            if (isset($meta['generation_mode']))   { $row['generation_mode']   = $meta['generation_mode']; }
+            if (isset($meta['singular_name']))     { $row['singular_name']     = $meta['singular_name']; }
+            if (isset($meta['file_name_renamed'])) { $row['file_name_renamed'] = $meta['file_name_renamed']; }
+            if (isset($meta['file_name_short']))   { $row['file_name_short']   = $meta['file_name_short']; }
+
+            // Form/Report pivots arrived as NAMES — resolve to ids in the
+            // local DB. Missing matches keep the column NULL (the table
+            // still loads, just without its UI defaults). We don't crash
+            // the import: foreign SQL dumps with our JSON shape but
+            // unknown FormSets shouldn't be fatal.
+            if (!empty($meta['form_set_name'])) {
+                $formSetId = \App\Models\FormSet::where('name', $meta['form_set_name'])->value('id');
+                if ($formSetId) {
+                    $row['form_set_id'] = (int) $formSetId;
+                }
+            }
+            if (!empty($meta['report_pattern_name'])) {
+                $reportPatternId = \App\Models\ReportPattern::where('name', $meta['report_pattern_name'])->value('id');
+                if ($reportPatternId) {
+                    $row['report_pattern_id'] = (int) $reportPatternId;
+                }
+            }
+        } else {
+            // Legacy / foreign SQL: stamp everything fresh.
+            $row['version'] = 1;
+            $row['created_by_username'] = $currentUser;
+            $row['updated_by_username'] = $currentUser;
+            $row['created_at'] = $now;
+            $row['updated_at'] = $now;
+        }
+
+        // Suppress the observer so our explicit audit/version aren't
+        // clobbered in `creating`. We use forceFill (not create) because
+        // `created_at` / `updated_at` are not in $fillable — they would
+        // otherwise be silently dropped by mass-assignment and then
+        // re-stamped to NOW() by Eloquent's auto-timestamp logic.
+        return SchemaTable::withAuditSuppressed(function () use ($row) {
+            $t = new SchemaTable();
+            $t->forceFill($row);
+            $t->save();
+            return $t;
+        });
     }
 
     private function storeFields(SchemaTable $table, array $fields): void
@@ -210,23 +283,85 @@ class SchemaStorageService
             ->pluck('field_name')
             ->toArray();
 
-        $now = now();
+        $now = Carbon::now();
+        $currentUser = SchemaField::currentUsername();
         $bulkData = [];
+        $newFieldsForCaptions = []; // [field_name => comment] — captions seeded after insert
         foreach ($fields as $index => $fieldData) {
             if (!in_array($fieldData['name'], $existingFieldNames)) {
-                $bulkData[] = [
+                // The raw COMMENT may carry Scoriet JSON metadata (round-trip)
+                // or be plain prose (legacy/foreign). Decode once per field.
+                $decoded = $this->codec->decode($fieldData['comment'] ?? null);
+                $meta = $decoded['meta'];
+
+                // CRITICAL: every row in the bulk insert MUST have the
+                // identical key set. Laravel's `insert($chunk)` builds the
+                // column list from the first row and assumes all later rows
+                // map onto it positionally. If a Scoriet round-trip row
+                // carries a lookup payload (`control_type` etc.) while a
+                // plain row doesn't, the column count mismatch crashes the
+                // whole insert. So we pre-seed every optional column with
+                // its DB default and only OVERRIDE from $meta — guaranteeing
+                // a flat, uniform shape across every $bulkData entry.
+                $row = [
                     'table_id' => $table->id,
                     'field_name' => $fieldData['name'],
                     'field_type' => strtolower($fieldData['type']),
+                    'field_length' => $fieldData['length'] ?? null,
+                    'field_precision' => $fieldData['precision'] ?? null,
+                    'field_scale' => $fieldData['scale'] ?? null,
+                    'field_enum_values' => isset($fieldData['enum_values']) && is_array($fieldData['enum_values'])
+                        ? json_encode($fieldData['enum_values'], JSON_UNESCAPED_UNICODE)
+                        : null,
                     'is_unsigned' => $fieldData['unsigned'] ?? false,
                     'is_nullable' => $fieldData['nullable'] ?? true,
                     'default_value' => $this->normalizeDefaultValue($fieldData['default'] ?? null),
                     'is_auto_increment' => $fieldData['auto_increment'] ?? false,
+                    'is_generated' => $fieldData['is_generated'] ?? false,
+                    'generation_expression' => $fieldData['generation_expression'] ?? null,
+                    'generation_storage' => $fieldData['generation_storage'] ?? null,
                     'field_order' => $index + 1,
-                    'comment' => $fieldData['comment'] ?? null,
-                    'created_at' => $now,
-                    'updated_at' => $now,
+                    'comment' => $decoded['comment'],
+                    // Lookup + state columns — always present, DB defaults
+                    // mirrored explicitly so the row shape stays uniform.
+                    'control_type'         => 'TEXT',     // matches migration default
+                    'link_table'           => null,
+                    'link_field'           => null,
+                    'link_display_field'   => null,
+                    'link_order_field'     => null,
+                    'link_order_direction' => 'ASC',      // matches migration default
+                    'editmask'             => null,
+                    'display_state'        => 'enabled',  // matches migration default
+                    'generation_mode'      => 'full',     // matches migration default
                 ];
+
+                if ($meta) {
+                    // Round-trip: lookup config + audit/version restored from JSON.
+                    $row['version']             = (int) ($meta['version'] ?? 1);
+                    $row['created_by_username'] = $meta['created_by_username'] ?? 'system';
+                    $row['created_at']          = isset($meta['created_at']) ? Carbon::parse($meta['created_at']) : $now;
+                    $row['updated_by_username'] = $currentUser;
+                    $row['updated_at']          = $now;
+                    // Optional lookup/state overrides — only when present in meta.
+                    if (isset($meta['control_type']))         { $row['control_type']         = $meta['control_type']; }
+                    if (isset($meta['link_table']))           { $row['link_table']           = $meta['link_table']; }
+                    if (isset($meta['link_field']))           { $row['link_field']           = $meta['link_field']; }
+                    if (isset($meta['link_display_field']))   { $row['link_display_field']   = $meta['link_display_field']; }
+                    if (isset($meta['link_order_field']))     { $row['link_order_field']     = $meta['link_order_field']; }
+                    if (isset($meta['link_order_direction'])) { $row['link_order_direction'] = $meta['link_order_direction']; }
+                    if (isset($meta['display_state']))        { $row['display_state']        = $meta['display_state']; }
+                    if (isset($meta['generation_mode']))      { $row['generation_mode']      = $meta['generation_mode']; }
+                    if (isset($meta['editmask']))             { $row['editmask']             = $meta['editmask']; }
+                } else {
+                    $row['version']             = 1;
+                    $row['created_by_username'] = $currentUser;
+                    $row['updated_by_username'] = $currentUser;
+                    $row['created_at']          = $now;
+                    $row['updated_at']          = $now;
+                }
+
+                $bulkData[] = $row;
+                $newFieldsForCaptions[$fieldData['name']] = $decoded['comment'];
             }
         }
 
@@ -236,6 +371,70 @@ class SchemaStorageService
                 SchemaField::insert($chunk);
             }
         }
+
+        // Seed captions in the default language. If a SQL COMMENT is present
+        // we use that as the human-readable caption; otherwise the field name
+        // itself is the placeholder. Only fills empty slots — never overwrites
+        // a caption that already exists for that language.
+        if (!empty($newFieldsForCaptions)) {
+            $this->seedFieldCaptions($table, $newFieldsForCaptions);
+        }
+    }
+
+    /**
+     * Seed initial captions for newly-imported fields into schema_translations.
+     * Caption source priority: SQL COMMENT → field name.
+     * Language priority: project default → system default → first active.
+     * Only writes entries that do not already exist (firstOrCreate semantics).
+     */
+    private function seedFieldCaptions(SchemaTable $table, array $fieldsWithComments): void
+    {
+        $languageCode = $this->resolveDefaultLanguageCode($table);
+        if (!$languageCode) {
+            return; // No language configured — nothing to seed.
+        }
+
+        $now = now();
+        foreach ($fieldsWithComments as $fieldName => $comment) {
+            $caption = !empty($comment) ? $comment : $fieldName;
+            $itemName = $table->table_name . '.' . $fieldName;
+
+            SchemaTranslation::firstOrCreate(
+                [
+                    'item_name' => $itemName,
+                    'code' => $languageCode,
+                ],
+                [
+                    'translated_text' => $caption,
+                    'is_active' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+        }
+    }
+
+    /**
+     * Resolve the language code used for initial caption seeding.
+     *
+     * The schema may be linked to one or more projects (M:N). At import time
+     * there is always a triggering project context, so we follow the first
+     * linked project's `default_language`. Fallbacks:
+     *   1. Project (first linked) → default_language
+     *   2. Language → is_default
+     *   3. Language → first active by sort_order
+     */
+    private function resolveDefaultLanguageCode(SchemaTable $table): ?string
+    {
+        $project = $table->floatingSchema?->projects()->first();
+        if ($project && !empty($project->default_language)) {
+            return $project->default_language;
+        }
+
+        $language = Language::where('is_default', true)->first()
+            ?? Language::where('is_active', true)->orderBy('sort_order')->first();
+
+        return $language?->code;
     }
 
     private function storeConstraints(SchemaTable $table, array $constraints, array $tableMap, bool $tolerateMissingReferences = false): void
@@ -313,7 +512,52 @@ class SchemaStorageService
             // Foreign Key Referenzen speichern
             if ($constraintData['type'] === 'FOREIGN KEY' && isset($constraintData['references'])) {
                 $this->storeForeignKeyReference($constraint, $constraintData['references'], $tableMap);
+                $this->configureComboBoxFromForeignKey($constraintData, $fieldsByName);
             }
+        }
+    }
+
+    /**
+     * Configure source fields of a FOREIGN KEY as ComboBox lookups.
+     *
+     * For each source column in the FK constraint we set:
+     *   - control_type        = COMBOBOX
+     *   - link_table          = referenced table name
+     *   - link_field          = referenced column (the lookup key)
+     *   - link_display_field  = same as link_field (user can refine later)
+     *   - link_order_field    = same as link_field
+     *   - link_order_direction = ASC
+     *
+     * Only touches fields whose control_type is still the default 'TEXT' —
+     * never overwrites manually configured UI types on re-import.
+     */
+    private function configureComboBoxFromForeignKey(array $constraintData, \Illuminate\Support\Collection $fieldsByName): void
+    {
+        $sourceColumns = $constraintData['columns'] ?? [];
+        $referencedTable = $constraintData['references']['table'] ?? null;
+        $referencedColumns = $constraintData['references']['columns'] ?? [];
+
+        if (!$referencedTable || empty($sourceColumns) || empty($referencedColumns)) {
+            return;
+        }
+
+        foreach ($sourceColumns as $index => $sourceColumnName) {
+            $field = $fieldsByName->get($sourceColumnName);
+            if (!$field || $field->control_type !== 'TEXT') {
+                continue; // Don't overwrite user-configured controls
+            }
+
+            // For composite FKs match source[i] to referenced[i]; fall back to first.
+            $referencedColumn = $referencedColumns[$index] ?? $referencedColumns[0];
+
+            $field->update([
+                'control_type' => 'COMBOBOX',
+                'link_table' => $referencedTable,
+                'link_field' => $referencedColumn,
+                'link_display_field' => $referencedColumn,
+                'link_order_field' => $referencedColumn,
+                'link_order_direction' => 'ASC',
+            ]);
         }
     }
 
@@ -725,8 +969,42 @@ class SchemaStorageService
                 $tableUpdates['primarykeyfield'] = $prevTable->primarykeyfield;
             }
 
+            // Carry over the rest of the Scoriet-only table settings — these
+            // have no SQL representation outside our COMMENT-JSON blob, so
+            // when the new version came from a raw SQL re-import (no JSON
+            // metadata) they would otherwise vanish. Only fill where the
+            // new table doesn't already have a value, so an explicit
+            // override in the freshly imported JSON wins.
+            if ($prevTable->form_set_id && !$newTable->form_set_id) {
+                $tableUpdates['form_set_id'] = $prevTable->form_set_id;
+            }
+            if ($prevTable->report_pattern_id && !$newTable->report_pattern_id) {
+                $tableUpdates['report_pattern_id'] = $prevTable->report_pattern_id;
+            }
+            if ($prevTable->comment && !$newTable->comment) {
+                $tableUpdates['comment'] = $prevTable->comment;
+            }
+            // display_state / generation_mode default to 'enabled' / 'full' on
+            // a fresh row — only forward when the previous version had an
+            // explicit non-default AND the new one hasn't already deviated
+            // from default (which would imply the user set it deliberately
+            // in the new SQL).
+            if ($prevTable->display_state && $prevTable->display_state !== 'enabled'
+                && (!$newTable->display_state || $newTable->display_state === 'enabled')) {
+                $tableUpdates['display_state'] = $prevTable->display_state;
+            }
+            if ($prevTable->generation_mode && $prevTable->generation_mode !== 'full'
+                && (!$newTable->generation_mode || $newTable->generation_mode === 'full')) {
+                $tableUpdates['generation_mode'] = $prevTable->generation_mode;
+            }
+
             if (!empty($tableUpdates)) {
-                $newTable->update($tableUpdates);
+                // Suppress the observer — this is data migration from the
+                // previous version, not a user edit, so we don't want the
+                // version counter to bump.
+                SchemaTable::withAuditSuppressed(function () use ($newTable, $tableUpdates) {
+                    $newTable->forceFill($tableUpdates)->saveQuietly();
+                });
             }
 
             // Copy field-level settings

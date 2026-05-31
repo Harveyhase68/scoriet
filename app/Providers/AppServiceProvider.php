@@ -5,9 +5,12 @@ namespace App\Providers;
 use Carbon\CarbonInterval;
 use Laravel\Passport\Passport;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Template;
 use App\Models\SchemaVersion;
 use App\Models\Project;
@@ -21,7 +24,9 @@ use App\Observers\SchemaVersionObserver;
 use App\Observers\ProjectObserver;
 use App\Observers\TemplateFileObserver;
 use App\Observers\ProjectTemplateUsageObserver;
+use App\Observers\SchemaFieldObserver;
 use App\Observers\SchemaTableObserver;
+use App\Models\SchemaField;
 use App\Observers\ProjectGenerationTreeObserver;
 use App\Observers\ProjectSchemaObserver;
 use App\Observers\LanguageObserver;
@@ -103,11 +108,58 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         TemplateFile::observe(TemplateFileObserver::class);
         ProjectTemplateUsage::observe(ProjectTemplateUsageObserver::class);
         SchemaTable::observe(SchemaTableObserver::class);
+        SchemaField::observe(SchemaFieldObserver::class);
         ProjectGenerationTree::observe(ProjectGenerationTreeObserver::class);
         ProjectSchema::observe(ProjectSchemaObserver::class);
         Language::observe(LanguageObserver::class);
         ProjectFormSet::observe(ProjectFormSetObserver::class);
         SchemaTranslation::observe(SchemaTranslationObserver::class);
         TemplateFileFieldAssignment::observe(TemplateFileFieldAssignmentObserver::class);
+
+        $this->registerApiRateLimiters();
+    }
+
+    /**
+     * Per-token rate limits for the public CLI/API surface.
+     *
+     * Bucketed by Passport token id (not user id, not IP) so:
+     *   - A user with multiple CLI installs gets full budget per install.
+     *   - A leaked token can't burn through a user's entire allowance
+     *     while the user is still working with another token.
+     *   - Unauthenticated calls fall back to an IP bucket so the limiter
+     *     can't be invoked without `by(...)` and crash.
+     *
+     * Two named limiters:
+     *   cli-default   — broad ceiling for all /cli/v1/* calls (1000/h).
+     *                   Generous enough that legitimate clients (CLI, svc
+     *                   polling progress, dev with Postman) never feel it,
+     *                   but tight enough that a leaked token + malicious
+     *                   loop is capped at a hard hourly limit.
+     *   cli-generate  — tighter limit on code generation (30/h). Each
+     *                   generation costs credits AND queue-worker time,
+     *                   so this is the real DoS / credit-drain valve.
+     *                   30/h still allows a CI pipeline that regenerates
+     *                   on every commit to keep working.
+     *
+     * Polling endpoints (progress, svc/queue, etc.) deliberately don't
+     * get their own tighter limit because they're designed to be polled
+     * every second — the cli-default ceiling is the right level for them.
+     */
+    private function registerApiRateLimiters(): void
+    {
+        $bucketFor = function (Request $request, int $authedPerHour, int $anonPerHour): Limit {
+            $token = $request->user()?->token();
+            return $token
+                ? Limit::perHour($authedPerHour)->by('cli-token:' . $token->id)
+                : Limit::perHour($anonPerHour)->by($request->ip());
+        };
+
+        RateLimiter::for('cli-default', function (Request $request) use ($bucketFor) {
+            return $bucketFor($request, 1000, 60);
+        });
+
+        RateLimiter::for('cli-generate', function (Request $request) use ($bucketFor) {
+            return $bucketFor($request, 30, 5);
+        });
     }
 }

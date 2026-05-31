@@ -240,7 +240,14 @@ export default function CMSAdminPanel({ editPageId }: CMSAdminPanelProps) {
       setShowDialog(false);
       fetchPages();
     } catch (error: any) {
-      toast.showError(t.cmsadminpanel243 + (error.response?.data?.message || error.message));
+      const data = error?.response?.data || {};
+      // Pull field-level errors first — covers the duplicate (slug, locale)
+      // case which used to surface as the generic "API Error: 422
+      // Unprocessable Content". Fall back to the message field, then to
+      // the raw exception string.
+      const fieldError = data?.errors?.slug?.[0] || data?.errors?.locale?.[0] || data?.errors?.title?.[0];
+      const msg = fieldError || data.error || data.message || error.message;
+      toast.showError(t.cmsadminpanel243 + msg);
     } finally {
       setSaving(false);
     }

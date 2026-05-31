@@ -42,8 +42,11 @@ class PostgreSQLParser
             } elseif ($this->currentTokenMatches('KEYWORD', 'DROP')) {
                 $this->parseDropStatement();
             } elseif ($this->currentTokenMatches('KEYWORD', 'COMMENT')) {
-                // Skip COMMENT ON statements
-                $this->skipToSemicolonOrEnd();
+                // `COMMENT ON TABLE/COLUMN ... IS '...'` is where Scoriet
+                // round-trip metadata lives in PostgreSQL exports — we MUST
+                // parse it, not skip. Unparseable variants fall through
+                // gracefully to skip-to-semicolon so foreign dumps don't crash.
+                $this->parseCommentOn();
             } else {
                 $this->position++;
             }
@@ -1061,6 +1064,86 @@ class PostgreSQLParser
         if ($this->currentTokenMatches('SEMICOLON')) {
             $this->consumeToken('SEMICOLON');
         }
+    }
+
+    /**
+     * Parse `COMMENT ON {TABLE|COLUMN} <qualname> IS '<literal>';` and merge
+     * the comment string into the previously-parsed table/field structure.
+     *
+     * Both Scoriet's own exporter (CREATE TABLE first, then COMMENT ON ...
+     * statements) and `pg_dump`'s default ordering put the COMMENT after the
+     * referenced object, so the table is always present in `$this->table_map`
+     * by the time we get here.
+     *
+     * Any unexpected token shape (unknown OBJECT kinds, missing IS, etc.)
+     * falls through to `skipToSemicolonOrEnd` so foreign dumps with quirky
+     * COMMENT variants don't crash the whole import.
+     */
+    private function parseCommentOn()
+    {
+        try {
+            $this->consumeToken('KEYWORD', 'COMMENT');
+            $this->consumeToken('KEYWORD', 'ON');
+
+            // The PG tokenizer has TABLE as a KEYWORD but COLUMN as an
+            // IDENTIFIER (it isn't in the keyword set). We match on value
+            // alone to handle both cleanly. Anything else (SCHEMA, INDEX,
+            // FUNCTION, ...) falls through to the finally-block skip.
+            $kindToken = $this->currentToken();
+            $kind = $kindToken?->value;
+
+            if ($kind === 'TABLE') {
+                $this->consumeToken(); // TABLE
+                $tableName = $this->parseTableName();
+                $this->consumeToken('KEYWORD', 'IS');
+                $valueToken = $this->consumeToken('QUOTED_STRING');
+
+                if (isset($this->table_map[$tableName])) {
+                    $this->table_map[$tableName]['comment'] = $valueToken->value;
+                }
+            } elseif ($kind === 'COLUMN') {
+                $this->consumeToken(); // COLUMN
+                [$tableName, $columnName] = $this->parseQualifiedColumnName();
+                $this->consumeToken('KEYWORD', 'IS');
+                $valueToken = $this->consumeToken('QUOTED_STRING');
+
+                if (isset($this->table_map[$tableName])) {
+                    foreach ($this->table_map[$tableName]['fields'] as &$field) {
+                        if (($field['name'] ?? null) === $columnName) {
+                            $field['comment'] = $valueToken->value;
+                            break;
+                        }
+                    }
+                    unset($field);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('PostgreSQLParser::parseCommentOn skipped a COMMENT statement: ' . $e->getMessage());
+        } finally {
+            $this->skipToSemicolonOrEnd();
+        }
+    }
+
+    /**
+     * Walk a dot-separated qualified identifier (`a`, `a.b`, or `a.b.c`) and
+     * return the LAST TWO segments as [table, column]. PostgreSQL allows
+     * up to schema.table.column, but Scoriet only cares about the table
+     * name (no schema search-path support) and the column name.
+     */
+    private function parseQualifiedColumnName(): array
+    {
+        $parts = [$this->consumeToken()->value];
+        while ($this->currentTokenMatches('DOT')) {
+            $this->consumeToken('DOT');
+            $parts[] = $this->consumeToken()->value;
+        }
+        $count = count($parts);
+        if ($count >= 2) {
+            return [$parts[$count - 2], $parts[$count - 1]];
+        }
+        // Pathological single-identifier case — caller will no-op since
+        // there's no plausible field to attach the comment to.
+        return [$parts[0], $parts[0]];
     }
 
     private function skipToCommaOrRparen()

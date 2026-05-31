@@ -733,12 +733,17 @@ class Project extends Model
     }
 
     /**
-     * Clone a template for this project (editable copy)
+     * Clone a template for this project (editable copy).
+     * The clone's identity is tied to the project owner (since the project
+     * owner is the de-facto "user" performing the clone in this context).
+     * full_name follows the canonical "username/template_slug" — never
+     * project-name based — see Template::buildFullName().
      */
     public function cloneTemplate(Template $template, ?string $newName = null, string $visibility = 'public'): array
     {
-        // Create the cloned template
-        $clonedTemplate = $template->cloneForProject($this, $newName, $visibility);
+        // Create the cloned template (project owner is the creator, project
+        // itself is recorded as the origin via the optional $project arg).
+        $clonedTemplate = $template->cloneForUser($this->owner, $newName, $visibility, $this);
 
         // Record the usage
         $usage = ProjectTemplateUsage::create([
@@ -973,5 +978,37 @@ class Project extends Model
     public function userCanDeleteProject(User $user): bool
     {
         return $this->userHasPermission($user, 'project.delete');
+    }
+
+    /**
+     * Boolean: is *this* project visible to the given user?
+     *
+     * Pairs with the visibleTo() scope. Use this in controllers instead of
+     * `$project->visibleTo($user)->exists()` — that idiom is a latent bug:
+     * scopes run on Project::query(), so it asks "is any project visible?"
+     * not "is THIS project visible?". Public + active projects are visible
+     * to everyone, including unauthenticated callers.
+     */
+    public function isVisibleTo(?User $user): bool
+    {
+        if ($this->visibility === 'public' && $this->is_active) {
+            return true;
+        }
+        if (!$user) {
+            return false;
+        }
+        if ((int) $this->owner_id === (int) $user->id) {
+            return true;
+        }
+        if ($this->members()->where('user_id', $user->id)->exists()) {
+            return true;
+        }
+        return $this->teams()
+            ->whereHas('members', fn ($q) => $q->where('user_id', $user->id))
+            ->where(function ($q) {
+                $q->whereDoesntHave('subscription')
+                  ->orWhereHas('subscription', fn ($s) => $s->where('is_soft_locked', false));
+            })
+            ->exists();
     }
 }

@@ -48,36 +48,47 @@ class DatabaseController extends Controller
     public function createSchema(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'project_id' => 'required|integer|exists:projects,id',
+            // project_id is optional: when provided the new schema is auto-
+            // linked to that project; without it the schema lives standalone
+            // under the user and can be linked to one or more projects later.
+            'project_id'  => 'nullable|integer|exists:projects,id',
             'schema_name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
+            // Allow the caller to pin visibility on create — defaults to
+            // private to preserve the legacy behaviour.
+            'visibility'  => 'nullable|in:private,public',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        $project = Project::find($request->input('project_id'));
+        $user = $request->user();
 
-        // Check access
-        if (!$this->userHasProjectAccess($project, $request->user())) {
-            return response()->json([
-                'success' => false,
-                'message' => __('databasecontrollerphp70'),
-            ], 403);
+        // Resolve the optional project up front so we can short-circuit on
+        // access failures before touching the DB.
+        $project = null;
+        if ($request->filled('project_id')) {
+            $project = Project::find($request->input('project_id'));
+            if (!$this->userHasProjectAccess($project, $user)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('databasecontrollerphp70'),
+                ], 403);
+            }
         }
 
         try {
-            $schemaName = $request->input('schema_name');
+            $schemaName  = $request->input('schema_name');
             $description = $request->input('description', '');
 
             // Check if schema with same name already exists for this user
             $existingSchema = FloatingSchema::where('name', $schemaName)
-                ->where('owner_id', $request->user()->id)
+                ->where('owner_id', $user->id)
                 ->first();
 
             if ($existingSchema) {
@@ -89,27 +100,34 @@ class DatabaseController extends Controller
 
             // Create new schema
             $schema = FloatingSchema::create([
-                'name' => $schemaName,
-                'owner_id' => $request->user()->id,
-                'description' => $description,
-                'visibility' => 'private',
+                'name'         => $schemaName,
+                'owner_id'     => $user->id,
+                'description'  => $description,
+                'visibility'   => $request->input('visibility', 'private'),
                 'last_version' => 0,
             ]);
 
-            // Link schema to project
-            $project->floatingSchemas()->attach($schema->id, [
-                'association_type' => 'linked',
-            ]);
+            // Link schema to project only when one was supplied. Standalone
+            // schemas can be linked later via the project-association
+            // endpoints — same shape as the web UI's "My Databases" flow.
+            if ($project) {
+                $project->floatingSchemas()->attach($schema->id, [
+                    'association_type' => 'linked',
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => __('databasecontrollerphp106'),
-                'schema' => [
-                    'id' => $schema->id,
-                    'name' => $schema->name,
+                'schema'  => [
+                    'id'          => $schema->id,
+                    'name'        => $schema->name,
                     'description' => $schema->description,
-                    'version' => 0,
-                    'created_at' => $schema->created_at->toIso8601String(),
+                    'visibility'  => $schema->visibility,
+                    'owner_id'    => $schema->owner_id,
+                    'project_id'  => $project?->id, // null when standalone
+                    'version'     => 0,
+                    'created_at'  => $schema->created_at->toIso8601String(),
                 ],
             ], 201);
 
@@ -669,9 +687,16 @@ class DatabaseController extends Controller
     }
 
     /**
-     * List databases/schemas for a project
+     * List databases/schemas.
      *
+     * GET /cli/database/list
      * GET /cli/database/list?project_id=1
+     *
+     * Without project_id: returns every schema the user can access (own
+     * schemas plus all public ones). With project_id: returns only the
+     * schemas linked to that one project (the legacy behaviour). Each
+     * row carries `project_id` so callers can group results when listing
+     * across projects.
      *
      * @param Request $request
      * @return JsonResponse
@@ -679,7 +704,7 @@ class DatabaseController extends Controller
     public function list(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'project_id' => 'required|integer|exists:projects,id',
+            'project_id' => 'nullable|integer|exists:projects,id',
         ]);
 
         if ($validator->fails()) {
@@ -690,37 +715,50 @@ class DatabaseController extends Controller
             ], 422);
         }
 
-        $project = Project::find($request->input('project_id'));
+        $user = $request->user();
 
-        // Check access
-        if (!$this->userHasProjectAccess($project, $request->user())) {
-            return response()->json([
-                'success' => false,
-                'message' => __('databasecontrollerphp699'),
-            ], 403);
+        // Build the schema query. Filtering by project requires access to
+        // that project; otherwise fall back to every schema the user can
+        // legitimately see (own + public). The closure-based With() loads
+        // the version list ordered newest-first so we can pluck the latest.
+        if ($request->filled('project_id')) {
+            $project = Project::find($request->input('project_id'));
+
+            if (!$this->userHasProjectAccess($project, $user)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('databasecontrollerphp699'),
+                ], 403);
+            }
+
+            $query = $project->floatingSchemas();
+        } else {
+            $query = FloatingSchema::accessibleByUser($user->id);
         }
 
-        $schemas = $project->floatingSchemas()->with(['versions' => function($query) {
-            $query->orderBy('version_number', 'desc');
+        $schemas = $query->with(['versions' => function ($q) {
+            $q->orderBy('version_number', 'desc');
         }])->get()->map(function ($schema) {
             $latestVersion = $schema->versions->first();
             $tablesCount = $latestVersion ? $latestVersion->tables()->count() : 0;
 
             return [
-                'id' => $schema->id,
-                'name' => $schema->name,
-                'description' => $schema->description,
-                'version' => $latestVersion ? $latestVersion->version_number : null,
-                'version_id' => $latestVersion ? $latestVersion->id : null,
+                'id'           => $schema->id,
+                'name'         => $schema->name,
+                'description'  => $schema->description,
+                'owner_id'     => $schema->owner_id,
+                'visibility'   => $schema->visibility,
+                'version'      => $latestVersion ? $latestVersion->version_number : null,
+                'version_id'   => $latestVersion ? $latestVersion->id : null,
                 'tables_count' => $tablesCount,
-                'created_at' => $schema->created_at->toIso8601String(),
+                'created_at'   => $schema->created_at->toIso8601String(),
             ];
         });
 
         return response()->json([
             'success' => true,
             'schemas' => $schemas,
-            'total' => $schemas->count(),
+            'total'   => $schemas->count(),
         ], 200);
     }
 

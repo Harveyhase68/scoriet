@@ -14,9 +14,12 @@ import { FileUpload } from 'primereact/fileupload';
 import { Message } from 'primereact/message';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 import ProjectUnlockModal from '@/Components/Modals/ProjectUnlockModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import SchemaPrintModal from '@/Components/Panels/SchemaPrintModal';
+import SqlImportModal from '@/Components/SqlImportModal';
+import DatabaseExportModal from '@/Components/DatabaseExportModal';
 import { apiClient } from '@/lib/api';
 
 interface TabPanelProps {
@@ -41,6 +44,8 @@ interface FloatingSchema {
   id: number;
   name: string;
   description?: string;
+  default_charset?: string;
+  default_collation?: string;
   owner_id: number;
   visibility: 'public' | 'private';
   is_system_schema: boolean;
@@ -80,6 +85,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
+  const toast = useToast();
 
   // Use Project Context to get current project and projects list
   const { selectedProject: contextSelectedProject, projects: contextProjects } = useProject();
@@ -126,12 +132,18 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [importPreviewError, setImportPreviewError] = useState<string>('');
   const [showPrintDialog, setShowPrintDialog] = useState(false);
   const [printSchemaId, setPrintSchemaId] = useState<number | null>(null);
+  // Per-row Schema Import / Export: opens the same modals as the Database menu,
+  // but with the clicked schema preselected.
+  const [sqlImportSchemaId, setSqlImportSchemaId] = useState<number | null>(null);
+  const [dbExportSchemaId, setDbExportSchemaId] = useState<number | null>(null);
 
   // Create schema modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: '',
     description: '',
+    default_charset: 'utf8mb4',
+    default_collation: 'utf8mb4_unicode_ci',
     visibility: 'private' as 'public' | 'private',
     is_system_schema: false,
     project_ids: [] as number[]
@@ -154,6 +166,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   const [editForm, setEditForm] = useState({
     name: '',
     description: '',
+    default_charset: 'utf8mb4',
+    default_collation: 'utf8mb4_unicode_ci',
     visibility: 'private' as 'public' | 'private',
     is_system_schema: false
   });
@@ -639,6 +653,18 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           return;
         }
 
+        // Validation failure (especially duplicate-name) — surface as a
+        // visible toast that floats ABOVE the modal, instead of writing to
+        // the panel's setError which lands behind the open create modal.
+        // Keep the modal open so the user can correct the name without
+        // re-typing the rest of the form.
+        const fieldError = errorData?.errors?.name?.[0];
+        if (fieldError) {
+          toast.showError(fieldError);
+          setCreating(false);
+          return;
+        }
+
         throw new Error(errorData.message || t.databasemanagementpanel330);
       }
 
@@ -655,7 +681,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       await loadMySchemas();
       await loadCommunitySchemas();
       setShowCreateModal(false);
-      setCreateForm({ name: '', description: '', visibility: 'private', is_system_schema: false, project_ids: [] });
+      setCreateForm({ name: '', description: '', default_charset: 'utf8mb4', default_collation: 'utf8mb4_unicode_ci', visibility: 'private', is_system_schema: false, project_ids: [] });
       setSuccess(t.databasemanagementpanel336);
 
     } catch (error) {
@@ -670,6 +696,8 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     setEditForm({
       name: schema.name,
       description: schema.description || '',
+      default_charset: schema.default_charset || 'utf8mb4',
+      default_collation: schema.default_collation || 'utf8mb4_unicode_ci',
       visibility: schema.visibility,
       is_system_schema: schema.is_system_schema
     });
@@ -1217,6 +1245,20 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
           />
         )}
         <Button
+          icon="pi pi-upload"
+          className="p-button-rounded p-button-text p-button-sm"
+          style={{ color: '#10b981' }}
+          tooltip={t.panelsewnavigationpanel246}
+          onClick={() => setSqlImportSchemaId(schema.id)}
+        />
+        <Button
+          icon="pi pi-download"
+          className="p-button-rounded p-button-text p-button-sm"
+          style={{ color: '#f59e0b' }}
+          tooltip={t.panelsewnavigationpanel251}
+          onClick={() => setDbExportSchemaId(schema.id)}
+        />
+        <Button
           icon="pi pi-print"
           className="p-button-rounded p-button-text p-button-sm"
           style={{ color: '#3b82f6' }}
@@ -1484,7 +1526,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         header={t.databasemanagementpanel905}
         visible={showCreateModal}
         onHide={() => setShowCreateModal(false)}
-        style={{ width: '450px' }}
+        style={{ width: '750px' }}
         modal
         closable
         draggable={true}
@@ -1527,6 +1569,48 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               rows={3}
               disabled={creating}
             />
+          </div>
+
+          {/* MySQL charset & collation — same UX as the edit modal. Defaults
+              shown are sensible cross-version picks; the SQL importer will
+              overwrite them later if the dump carries CREATE DATABASE info. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="field">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                Default Charset
+              </label>
+              <input
+                type="text"
+                value={createForm.default_charset}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, default_charset: e.target.value.trim() }))}
+                placeholder="utf8mb4"
+                className="w-full px-3 py-2 border rounded"
+                style={{ background: colors.bgPrimary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
+                disabled={creating}
+                maxLength={32}
+              />
+              <small className="block mt-1" style={{ color: colors.textMuted }}>
+                e.g. utf8mb4, latin1
+              </small>
+            </div>
+            <div className="field">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                Default Collation
+              </label>
+              <input
+                type="text"
+                value={createForm.default_collation}
+                onChange={(e) => setCreateForm(prev => ({ ...prev, default_collation: e.target.value.trim() }))}
+                placeholder="utf8mb4_unicode_ci"
+                className="w-full px-3 py-2 border rounded"
+                style={{ background: colors.bgPrimary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
+                disabled={creating}
+                maxLength={64}
+              />
+              <small className="block mt-1" style={{ color: colors.textMuted }}>
+                e.g. utf8mb4_unicode_ci, utf8mb4_0900_ai_ci, utf8mb4_bin
+              </small>
+            </div>
           </div>
 
           <div className="field">
@@ -1616,7 +1700,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
         header={t.databasemanagementpanel981}
         visible={showEditModal}
         onHide={() => setShowEditModal(false)}
-        style={{ width: '450px' }}
+        style={{ width: '750px' }}
         modal
         closable
         draggable={true}
@@ -1659,6 +1743,49 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               rows={3}
               disabled={saving}
             />
+          </div>
+
+          {/* MySQL character set & collation. Free-text inputs because valid
+              values differ between MySQL 5.x (no _0900_) and 9.x. The export
+              echoes whatever the user enters back into every CREATE TABLE
+              trailer; defaults shown are sensible cross-version picks. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="field">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                Default Charset
+              </label>
+              <input
+                type="text"
+                value={editForm.default_charset}
+                onChange={(e) => setEditForm(prev => ({ ...prev, default_charset: e.target.value.trim() }))}
+                placeholder="utf8mb4"
+                className="w-full px-3 py-2 border rounded"
+                style={{ background: colors.bgPrimary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
+                disabled={saving}
+                maxLength={32}
+              />
+              <small className="block mt-1" style={{ color: colors.textMuted }}>
+                e.g. utf8mb4, latin1
+              </small>
+            </div>
+            <div className="field">
+              <label className="block text-sm font-medium mb-2" style={{ color: colors.textPrimary }}>
+                Default Collation
+              </label>
+              <input
+                type="text"
+                value={editForm.default_collation}
+                onChange={(e) => setEditForm(prev => ({ ...prev, default_collation: e.target.value.trim() }))}
+                placeholder="utf8mb4_unicode_ci"
+                className="w-full px-3 py-2 border rounded"
+                style={{ background: colors.bgPrimary, color: colors.textPrimary, borderColor: colors.borderPrimary }}
+                disabled={saving}
+                maxLength={64}
+              />
+              <small className="block mt-1" style={{ color: colors.textMuted }}>
+                e.g. utf8mb4_unicode_ci, utf8mb4_0900_ai_ci, utf8mb4_bin
+              </small>
+            </div>
           </div>
 
           <div className="field">
@@ -2075,7 +2202,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
               disabled={importing}
             />
             <Button
-              label={importing ? t.databasemanagementpanel1997 : t.databasemanagementpanel1280}
+              label={importing ? t.databasemanagementpanel_importing : t.databasemanagementpanel_import_from_excel}
               icon={importing ? 'pi pi-spinner pi-spin' : 'pi pi-upload'}
               onClick={handleImportConfirm}
               disabled={importing || importPreviewLoading || !importFile || importSelectedLanguages.length === 0}
@@ -2615,6 +2742,22 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
       `}</style>
       {/* Schema Print Modal */}
       <SchemaPrintModal visible={showPrintDialog} onHide={() => setShowPrintDialog(false)} initialSchemaId={printSchemaId} />
+      {/* Per-row Schema Import / Export modals (same components as the Database menu uses) */}
+      {sqlImportSchemaId !== null && (
+        <SqlImportModal
+          isOpen={sqlImportSchemaId !== null}
+          onClose={() => setSqlImportSchemaId(null)}
+          onSuccess={() => { setSqlImportSchemaId(null); loadMySchemas(); }}
+          preselectedSchemaId={sqlImportSchemaId}
+        />
+      )}
+      {dbExportSchemaId !== null && (
+        <DatabaseExportModal
+          isOpen={dbExportSchemaId !== null}
+          onClose={() => setDbExportSchemaId(null)}
+          preselectedSchemaId={dbExportSchemaId}
+        />
+      )}
       </div>
     </div>
   );

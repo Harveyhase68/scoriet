@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cli;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateCodeJob;
 use App\Models\Project;
 use App\Models\Template;
 use App\Http\Controllers\Api\UltimateTemplateController;
@@ -92,115 +93,72 @@ class GenerateController extends Controller
             ], 402); // 402 Payment Required
         }
 
+        // -------------------------------------------------------------------
+        // Async dispatch: create a job_id, seed an initial "pending" state
+        // file, queue the GenerateCodeJob, and return 202 immediately.
+        // The actual generation runs on the queue worker — the client polls
+        // /progress/{jobId} until the status is completed (or failed/cancelled).
+        // Credits were already charged above, so a failed job leaves the
+        // charge in place (same behaviour as the legacy synchronous flow).
+        // -------------------------------------------------------------------
         try {
-            // Use UltimateTemplateController to generate code
-            $ultimateController = new UltimateTemplateController();
-
-            try {
-                $generationResult = $ultimateController->generateForCli($project->id, $template->id);
-            } catch (\Exception $genException) {
-                \Log::error('generateForCli threw exception: ' . $genException->getMessage(), [
-                    'trace' => $genException->getTraceAsString(),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Code generation failed',
-                    'error' => $genException->getMessage(),
-                    'file' => $genException->getFile(),
-                    'line' => $genException->getLine(),
-                ], 500);
-            }
-
-            // Validate result structure
-            if (!is_array($generationResult)) {
-                \Log::error('Generation result is not an array', [
-                    'result_type' => gettype($generationResult),
-                    'result' => $generationResult,
-                ]);
-                throw new \Exception('Invalid generation result format: ' . gettype($generationResult));
-            }
-
-            if (!isset($generationResult['success'])) {
-                \Log::error('Generation result missing success key', [
-                    'result_keys' => array_keys($generationResult),
-                    'result' => $generationResult,
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Code generation failed',
-                    'errors' => ['Invalid result structure - missing success key'],
-                    'debug' => [
-                        'result_keys' => array_keys($generationResult),
-                        'has_errors' => isset($generationResult['errors']),
-                    ],
-                ], 400);
-            }
-
-            if (!$generationResult['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Code generation failed',
-                    'errors' => $generationResult['errors'] ?? ['Unknown error occurred'],
-                ], 400);
-            }
-
-            // Create a unique job ID for tracking
-            $jobId = Str::uuid()->toString();
+            $jobId        = Str::uuid()->toString();
             $outputFormat = $request->input('output_format', 'zip');
 
-            // Store generation result temporarily
-            $generationData = [
-                'job_id' => $jobId,
-                'project_id' => $project->id,
-                'template_id' => $template->id,
-                'user_id' => $request->user()->id,
-                'generated_files' => $generationResult['files'] ?? [],
-                'gtree' => $generationResult['gtree'] ?? [],
-                'output_format' => $outputFormat,
-                'created_at' => now()->toIso8601String(),
-                'status' => 'completed',
-            ];
-
-            // Store in temp storage (cache or database)
+            // Seed the state file BEFORE dispatching — that way an immediate
+            // progress poll never sees a 404 race between dispatch and the
+            // worker's first writeState() call.
             Storage::disk('local')->put(
                 "cli-generations/{$jobId}.json",
-                json_encode($generationData, JSON_PRETTY_PRINT)
+                json_encode([
+                    'job_id'        => $jobId,
+                    'project_id'    => $project->id,
+                    'template_id'   => $template->id,
+                    'user_id'       => $user->id,
+                    'output_format' => $outputFormat,
+                    'status'        => 'pending',
+                    'progress_pct'  => 0,
+                    'created_at'    => now()->toIso8601String(),
+                ], JSON_PRETTY_PRINT)
+            );
+
+            GenerateCodeJob::dispatch(
+                $jobId,
+                $project->id,
+                $template->id,
+                $user->id,
+                $outputFormat
             );
 
             return response()->json([
-                'success' => true,
-                'message' => 'Code generation completed successfully',
-                'job_id' => $jobId,
-                'project' => [
-                    'id' => $project->id,
+                'success'      => true,
+                'message'      => 'Code generation queued.',
+                'job_id'       => $jobId,
+                'status'       => 'pending',
+                'project'      => [
+                    'id'   => $project->id,
                     'name' => $project->name,
                 ],
-                'template' => [
-                    'id' => $template->id,
+                'template'     => [
+                    'id'   => $template->id,
                     'name' => $template->name,
                 ],
-                'generation' => [
-                    'files_count' => count($generationResult['files'] ?? []),
-                    'gtree_nodes' => count($generationResult['gtree'] ?? []),
-                ],
-                'download_url' => "/cli/generate/download/{$jobId}",
-            ], 201);
+                'progress_url' => "/cli/v1/generate/progress/{$jobId}",
+                'cancel_url'   => "/cli/v1/generate/cancel/{$jobId}",
+                'download_url' => "/cli/v1/generate/download/{$jobId}",
+            ], 202); // 202 Accepted — work queued, not yet done
 
         } catch (\Exception $e) {
-            \Log::error('CLI Generate failed: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
-                'project_id' => $request->input('project_id'),
+            \Log::error('CLI Generate dispatch failed: ' . $e->getMessage(), [
+                'trace'       => $e->getTraceAsString(),
+                'project_id'  => $request->input('project_id'),
                 'template_id' => $request->input('template_id'),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Code generation failed',
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
+                'message' => 'Failed to queue code generation',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -216,7 +174,6 @@ class GenerateController extends Controller
      */
     public function progress(string $jobId, Request $request): JsonResponse
     {
-        // Check if generation data exists
         if (!Storage::disk('local')->exists("cli-generations/{$jobId}.json")) {
             return response()->json([
                 'success' => false,
@@ -224,27 +181,45 @@ class GenerateController extends Controller
             ], 404);
         }
 
-        $generationData = json_decode(
+        $state = json_decode(
             Storage::disk('local')->get("cli-generations/{$jobId}.json"),
             true
-        );
+        ) ?: [];
 
-        // Verify user has access
-        if ((string)$generationData['user_id'] !== (string)$request->user()->id) {
+        // Ownership check — never let one user poll another user's job state.
+        if ((string)($state['user_id'] ?? '') !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied',
             ], 403);
         }
 
-        return response()->json([
-            'success' => true,
-            'job_id' => $jobId,
-            'status' => $generationData['status'],
-            'progress' => 100, // Always 100% for now (sync generation)
-            'files_count' => count($generationData['generated_files'] ?? []),
-            'created_at' => $generationData['created_at'],
-        ], 200);
+        $status = $state['status'] ?? 'unknown';
+
+        $response = [
+            'success'      => true,
+            'job_id'       => $jobId,
+            'status'       => $status,
+            'progress_pct' => $state['progress_pct'] ?? 0,
+            'created_at'   => $state['created_at']   ?? null,
+            'started_at'   => $state['started_at']   ?? null,
+            'completed_at' => $state['completed_at'] ?? null,
+            'failed_at'    => $state['failed_at']    ?? null,
+            'updated_at'   => $state['updated_at']   ?? null,
+        ];
+
+        // Only expose result counts once the job is actually done so callers
+        // don't accidentally trust "0 files" while the worker is still busy.
+        if ($status === 'completed') {
+            $response['files_count'] = $state['files_count'] ?? count($state['generated_files'] ?? []);
+            $response['gtree_nodes'] = $state['gtree_nodes'] ?? count($state['gtree'] ?? []);
+            $response['download_url'] = "/cli/v1/generate/download/{$jobId}";
+        }
+        if ($status === 'failed') {
+            $response['errors'] = $state['errors'] ?? [];
+        }
+
+        return response()->json($response, 200);
     }
 
     /**
@@ -258,7 +233,6 @@ class GenerateController extends Controller
      */
     public function download(string $jobId, Request $request)
     {
-        // Check if generation data exists
         if (!Storage::disk('local')->exists("cli-generations/{$jobId}.json")) {
             return response()->json([
                 'success' => false,
@@ -269,14 +243,31 @@ class GenerateController extends Controller
         $generationData = json_decode(
             Storage::disk('local')->get("cli-generations/{$jobId}.json"),
             true
-        );
+        ) ?: [];
 
         // Verify user has access
-        if ((string)$generationData['user_id'] !== (string)$request->user()->id) {
+        if ((string)($generationData['user_id'] ?? '') !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied',
             ], 403);
+        }
+
+        // Status gate: only `completed` jobs have files to download.
+        // 425 (Too Early) tells clients "try again later" without making
+        // them parse a generic 4xx; 410 (Gone) covers cancelled/failed
+        // jobs that will never produce a file.
+        $status = $generationData['status'] ?? 'unknown';
+        if ($status !== 'completed') {
+            $tooEarly  = in_array($status, ['pending', 'running'], true);
+            return response()->json([
+                'success'      => false,
+                'message'      => $tooEarly
+                    ? 'Generation is still in progress — poll /progress/{jobId} until status is "completed".'
+                    : "Generation ended with status '{$status}', no download available.",
+                'status'       => $status,
+                'progress_pct' => $generationData['progress_pct'] ?? 0,
+            ], $tooEarly ? 425 : 410);
         }
 
         try {
@@ -350,34 +341,52 @@ class GenerateController extends Controller
      */
     public function cancel(string $jobId, Request $request): JsonResponse
     {
-        // Check if generation data exists
-        if (!Storage::disk('local')->exists("cli-generations/{$jobId}.json")) {
+        $path = "cli-generations/{$jobId}.json";
+        if (!Storage::disk('local')->exists($path)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Job not found',
             ], 404);
         }
 
-        $generationData = json_decode(
-            Storage::disk('local')->get("cli-generations/{$jobId}.json"),
-            true
-        );
+        $state = json_decode(Storage::disk('local')->get($path), true) ?: [];
 
-        // Verify user has access
-        if ((string)$generationData['user_id'] !== (string)$request->user()->id) {
+        if ((string)($state['user_id'] ?? '') !== (string)$request->user()->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied',
             ], 403);
         }
 
-        // For sync generation, jobs are already completed
-        // For future async implementation, this would cancel the running job
+        $currentStatus = $state['status'] ?? 'unknown';
+
+        // Already-terminal states can't be cancelled. Return the current
+        // status so the caller can decide whether to keep polling or move on.
+        if (in_array($currentStatus, ['completed', 'failed', 'cancelled'], true)) {
+            return response()->json([
+                'success'         => false,
+                'message'         => "Job is already '{$currentStatus}' — cannot cancel.",
+                'status'          => $currentStatus,
+                'cancel_accepted' => false,
+            ], 409);
+        }
+
+        // Co-operative cancellation: we can't actually preempt a running
+        // worker (PHP doesn't have safe thread interruption), so we flip
+        // a flag in the state file and the GenerateCodeJob checks it
+        // at its yield points (start of handle() and after generateForCli()
+        // returns). If the job is still pending in the queue, the very
+        // first check will short-circuit it before any work is done.
+        $state['cancel_requested']    = true;
+        $state['cancel_requested_at'] = now()->toIso8601String();
+        Storage::disk('local')->put($path, json_encode($state, JSON_PRETTY_PRINT));
 
         return response()->json([
-            'success' => true,
-            'message' => 'Job already completed (cannot cancel)',
-            'status' => $generationData['status'],
+            'success'         => true,
+            'message'         => 'Cancellation requested. The worker will pick this up at its next check.',
+            'job_id'          => $jobId,
+            'status'          => $currentStatus,
+            'cancel_accepted' => true,
         ], 200);
     }
 }

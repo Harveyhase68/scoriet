@@ -4,7 +4,7 @@ import { InputText } from 'primereact/inputtext';
 import { Password } from 'primereact/password';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
-import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { useTranslation, SupportedLanguage, getStoredLanguage, syncLanguageFromUser, triggerLanguageReloadIfPending } from '@/i18n';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
 import TwoFactorVerifyDialog, { generateDeviceId } from './TwoFactorVerifyDialog';
 
@@ -212,6 +212,12 @@ export default function LoginModal({
         },
       });
 
+      // Track whether the profile's language differs from local storage —
+      // we'll only act on it after the success callback runs (it may queue
+      // a redirect_after_login navigation that would reload the app
+      // naturally, making our own reload unnecessary and disruptive).
+      let langChanged = false;
+
       if (userResponse.ok) {
         const userData = await userResponse.json();
         // Store user_id, user_type and is_inner_core in localStorage for later use
@@ -223,6 +229,8 @@ export default function LoginModal({
         if (userData.theme) {
           syncThemeFromUser(userData.theme as ThemeMode);
         }
+
+        langChanged = syncLanguageFromUser(userData.language);
       }
 
       // Show notification if other sessions were revoked (single-session enforcement)
@@ -238,9 +246,17 @@ export default function LoginModal({
         }));
       }
 
+      // Snapshot the redirect key before the success callback consumes it,
+      // so triggerLanguageReloadIfPending below can make the right call.
+      const redirectWasPending = !!localStorage.getItem('redirect_after_login');
+
       // Success - close modal
       onLoginSuccess?.();
       onHide();
+
+      // After the success callback (which may have started a navigation),
+      // reload only if the language changed and no redirect was queued.
+      triggerLanguageReloadIfPending(langChanged, redirectWasPending);
 
     } catch (error) {
       // Better error messages for common scenarios
@@ -351,6 +367,10 @@ export default function LoginModal({
       ? localStorage.getItem('access_token')
       : sessionStorage.getItem('access_token');
 
+    // Track profile-language change across try/catch so we can act on it
+    // after the success callback (same contract as the non-2FA path).
+    let langChanged = false;
+
     try {
       const userResponse = await fetch('/api/user', {
         headers: {
@@ -369,6 +389,8 @@ export default function LoginModal({
         if (userData.theme) {
           syncThemeFromUser(userData.theme as ThemeMode);
         }
+
+        langChanged = syncLanguageFromUser(userData.language);
       }
     } catch (err) {
       console.error(t.loginmodal339, err);
@@ -402,9 +424,16 @@ export default function LoginModal({
       );
     }
 
+    // Snapshot the redirect key before the success callback consumes it.
+    const redirectWasPending = !!localStorage.getItem('redirect_after_login');
+
     // Success - close modal
     onLoginSuccess?.();
     handleHide();
+
+    // Reload only if the language changed and no redirect was queued by
+    // the success callback (e.g. "Goto App" already navigates to /app).
+    triggerLanguageReloadIfPending(langChanged, redirectWasPending);
   };
 
   return (

@@ -14,15 +14,16 @@ import 'prismjs/components/prism-sql';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { apiClient } from '@/lib/api';
 
-// Tab order in the side menu — named constants instead of magic numbers
-// so the conditional rendering stays readable.
+// Default tab when the modal opens. The other tabs (Download, Database) are
+// indexed implicitly by JSX child order; they were named constants here for
+// documentation but nothing actually referenced them, so the dead-name pair
+// went away to satisfy the unused-vars rule.
 const TAB_VIEW = 0;
-const TAB_DOWNLOAD = 1;
-const TAB_DATABASE = 2;
 
 interface DatabaseExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  preselectedSchemaId?: number;
 }
 
 interface DatabaseSchema {
@@ -49,14 +50,14 @@ const highlightSQL = (code: string) => {
   }
 };
 
-export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportModalProps) {
+export default function DatabaseExportModal({ isOpen, onClose, preselectedSchemaId }: DatabaseExportModalProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
   const { selectedProject } = useProject();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
-  const [selectedSchemaId, setSelectedSchemaId] = useState<number | null>(null);
+  const [selectedSchemaId, setSelectedSchemaId] = useState<number | null>(preselectedSchemaId ?? null);
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const [schemaVersions, setSchemaVersions] = useState<SchemaVersion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -93,8 +94,9 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
   const logEndRef = useRef<HTMLDivElement>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Export options
-  const [dropTablesFirst, setDropTablesFirst] = useState(true);
+  // Export options — default OFF: dropping tables is destructive, the user
+  // should opt in explicitly so it doesn't happen by accident.
+  const [dropTablesFirst, setDropTablesFirst] = useState(false);
 
   const loadSchemas = useCallback(async () => {
     if (!selectedProject) return;
@@ -121,9 +123,14 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
       }
       setSchemas(schemasArray);
 
-      // Auto-select first schema if available
+      // Preselect the requested schema if provided and present in the list,
+      // otherwise auto-select the first schema.
       if (schemasArray && schemasArray.length > 0) {
-        setSelectedSchemaId(schemasArray[0].id);
+        if (preselectedSchemaId && schemasArray.some((s: DatabaseSchema) => s.id === preselectedSchemaId)) {
+          setSelectedSchemaId(preselectedSchemaId);
+        } else {
+          setSelectedSchemaId(schemasArray[0].id);
+        }
       }
     } catch (error) {
       // Error loading schemas
@@ -132,7 +139,14 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
     } finally {
       setLoadingSchemas(false);
     }
-  }, [selectedProject]);
+  }, [selectedProject, preselectedSchemaId]);
+
+  // Sync preselectedSchemaId when modal reopens with a different target schema
+  useEffect(() => {
+    if (isOpen && preselectedSchemaId) {
+      setSelectedSchemaId(preselectedSchemaId);
+    }
+  }, [isOpen, preselectedSchemaId]);
 
   const loadSchemaVersions = async (schemaId: number) => {
     setLoadingVersions(true);
@@ -745,7 +759,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
         <div className="flex-1 min-h-0">
           <TabViewSideMenu
             storageKey="databaseExportModal"
-            defaultWidth={200}
+            defaultWidth={260}
             activeIndex={activeTabIndex}
             onTabChange={(e) => setActiveTabIndex(e.index)}
           >
@@ -1075,7 +1089,7 @@ export default function DatabaseExportModal({ isOpen, onClose }: DatabaseExportM
                       disabled={servicePolling}
                     />
                     <span className="text-sm" style={{ color: colors.textSecondary }}>
-                      DROP TABLE IF EXISTS vor CREATEt.databaseexportmodal1160
+                      {t.databaseexportmodal1160}
                     </span>
                   </label>
                   <div className="mt-2 text-xs" style={{ color: colors.warningText }}>

@@ -13,6 +13,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
 import { ProgressSpinner } from 'primereact/progressspinner';
+import { Dialog } from 'primereact/dialog';
 import {
   ReactFlow,
   MiniMap,
@@ -26,6 +27,7 @@ import {
   NodeResizer,
   useReactFlow,
   ReactFlowProvider,
+  SelectionMode,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useProject } from '@/contexts/ProjectContext';
@@ -36,6 +38,17 @@ import { apiClient } from '@/lib/api';
 // Stable reference for ReactFlow's multiSelectionKeyCode prop — must NOT be
 // recreated each render, otherwise the internal store loops on updates.
 const MULTI_SELECTION_KEYS = ['Control', 'Shift', 'Meta'];
+
+// Marquee-selection mouse routing:
+//   - LEFT button (0) → lasso (selectionOnDrag)
+//   - MIDDLE (1) / RIGHT (2) → pan the canvas
+// Figma/Sketch-style: drag empty space with left mouse = select multiple
+// controls. Dragging a node still moves it (ReactFlow auto-distinguishes
+// node vs pane). Without this swap, ReactFlow's default left-drag-pans
+// behaviour wins over selectionOnDrag and the lasso is unreachable.
+// Plain number[] (not readonly tuple) — ReactFlow's panOnDrag prop expects
+// a mutable array type. Module-level const keeps the reference stable.
+const PAN_ON_DRAG_BUTTONS: number[] = [1, 2];
 
 // ========== INTERFACES ==========
 
@@ -95,6 +108,14 @@ interface FormElement {
   tab_order?: number;
   is_visible: boolean;
   default_control_height?: number;
+  // WinDev-style anchors (stored as 0..100 percentages on form_elements).
+  // anchor_right / _bottom shift position when the window resizes;
+  // anchor_width / _height stretch the element's size. Used by the Layout
+  // Designer to make the container follow the per-table window override.
+  anchor_right?: number | null;
+  anchor_bottom?: number | null;
+  anchor_width?: number | null;
+  anchor_height?: number | null;
 }
 
 interface FormFieldPlacement {
@@ -154,6 +175,12 @@ interface SchemaTableInfo {
   id: number;
   table_name: string;
   singular_name?: string;
+  // User-designated "file key" — sortable business id like user_no. Used as
+  // the default ORDER BY in the Live Preview's main list query so records
+  // appear in a stable, user-meaningful order rather than physical InnoDB
+  // insertion order. Falls back to primarykeyfield if not set.
+  filekeyname?: string | null;
+  primarykeyfield?: string | null;
   fields?: SchemaField[];
 }
 
@@ -182,7 +209,26 @@ interface ContainerFrameNodeData {
   columns: number;
   maxFields?: number;
   borderColor: string;
+  // Tab-related fields (only populated for tab_container). The strip is
+  // rendered inline in ContainerFrameNode when tabs.length > 0.
+  containerElementId?: number;
+  tabs?: FormLayoutTab[];
+  activeTabId?: number | null;
+  selectedTabId?: number | null;
+  onSelectTab?: (tabId: number) => void;
+  onAddTab?: () => void;
+  selectedLanguage?: string | null;
   [key: string]: unknown;
+}
+
+interface FormLayoutTab {
+  id: number;
+  form_window_id: number;
+  schema_table_id: number;
+  tab_container_element_id: number;
+  sort_order: number;
+  tab_label: string | null;
+  tab_labels: Record<string, string> | null;
 }
 
 interface ButtonPlacementData {
@@ -301,19 +347,12 @@ const BUTTON_DEFAULT_ICONS: Record<string, string> = {
   button_custom: 'pi-cog',
 };
 
-const BUTTON_DEFAULT_COLORS: Record<string, string> = {
-  button_nav_first: '#1e40af',
-  button_nav_prev: '#1e40af',
-  button_nav_next: '#1e40af',
-  button_nav_last: '#1e40af',
-  button_save: '#059669',
-  button_new: '#059669',
-  button_cancel: '#6b7280',
-  button_close: '#6b7280',
-  button_delete: '#dc2626',
-  button_print: '#7c3aed',
-  button_custom: '#3b82f6',
-};
+// Single hardcoded fallback if neither template button nor FormSet provides a
+// color. Per-type "category colors" (green Save, red Delete, gray Cancel etc.)
+// were removed — the FormSet's `default_button_color` is the single source of
+// truth, so the auto-placed layout looks consistent with how it'll render at
+// runtime in the generated forms.
+const BUTTON_FALLBACK_COLOR = '#3b82f6';
 
 const BUTTON_DEFAULT_LABELS: Record<string, string> = {
   button_nav_first: 'First',
@@ -469,7 +508,24 @@ const WindowFrameNode = ({ data }: { data: WindowFrameNodeData }) => {
 };
 
 const ContainerFrameNode = ({ data }: { data: ContainerFrameNodeData }) => {
-  const isTab = data.elementType === 'tab_container' || data.elementType === 'tab_panel';
+  const isTabContainer = data.elementType === 'tab_container';
+  const tabs = Array.isArray(data.tabs) ? data.tabs : [];
+  // Always render the tab strip for tab_container — even with 0 tabs we need
+  // the "+" button visible so the user has a way out of the empty state.
+  // (Earlier requirement was tabs.length > 0, which created a chicken-and-egg:
+  // no tabs ⇒ no strip ⇒ no "+" ⇒ no way to add the first tab.)
+  const showTabStrip = isTabContainer;
+
+  // Resolve a tab's label for display: per-language > fallback string > "Tab N+1".
+  const labelForTab = (tab: FormLayoutTab): string => {
+    const lang = data.selectedLanguage;
+    if (lang && tab.tab_labels && typeof tab.tab_labels[lang] === 'string' && tab.tab_labels[lang]) {
+      return tab.tab_labels[lang];
+    }
+    if (tab.tab_label && tab.tab_label !== '') return tab.tab_label;
+    return `Tab ${tab.sort_order + 1}`;
+  };
+
   return (
     <div
       style={{
@@ -479,41 +535,135 @@ const ContainerFrameNode = ({ data }: { data: ContainerFrameNodeData }) => {
         borderRadius: 6,
         backgroundColor: 'rgba(55, 65, 81, 0.15)',
         overflow: 'visible',
-        pointerEvents: 'none',
+        // pointerEvents: 'none' on the wrapper would kill the tab clicks.
+        // Children re-enable pointer events where they need to be clickable
+        // (the tab strip); the empty body stays click-through so fields
+        // underneath are still draggable.
+        pointerEvents: showTabStrip ? 'auto' : 'none',
       }}
     >
-      <div
-        style={{
-          backgroundColor: isTab ? 'rgba(79, 70, 229, 0.3)' : 'rgba(55, 65, 81, 0.4)',
-          padding: '3px 8px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          borderBottom: `1px dashed ${data.borderColor || '#6b7280'}`,
-        }}
-      >
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#d1d5db' }}>
-          {isTab ? '📑 ' : '📦 '}{data.label}
-        </span>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          {data.columns > 0 && (
+      {showTabStrip ? (
+        // Tab strip: one button per tab, plus a "+" to add.
+        <div
+          style={{
+            backgroundColor: 'rgba(31, 41, 55, 0.85)',
+            padding: '4px 6px 0 6px',
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 2,
+            borderBottom: `1px solid ${data.borderColor || '#6b7280'}`,
+            overflowX: 'auto',
+            // Reserve header height ≈ 32 px (matches backend TAB_HEADER_HEIGHT)
+            height: 32,
+            boxSizing: 'border-box',
+          }}
+        >
+          {tabs.map((tab) => {
+            const isActive = data.activeTabId === tab.id;
+            const isSelected = data.selectedTabId === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  data.onSelectTab?.(tab.id);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: 11,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? '#fff' : '#9ca3af',
+                  backgroundColor: isActive ? 'rgba(79, 70, 229, 0.6)' : 'rgba(55, 65, 81, 0.4)',
+                  border: isSelected ? '1px solid #fbbf24' : `1px solid ${isActive ? 'rgba(79, 70, 229, 0.8)' : 'transparent'}`,
+                  borderBottom: 'none',
+                  borderTopLeftRadius: 4,
+                  borderTopRightRadius: 4,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transform: isActive ? 'translateY(1px)' : 'translateY(0)',
+                  pointerEvents: 'auto',
+                }}
+                title={`Tab ${tab.sort_order + 1}`}
+              >
+                {labelForTab(tab)}
+              </button>
+            );
+          })}
+          {tabs.length === 0 && (
             <span style={{
-              fontSize: 9, backgroundColor: 'rgba(59,130,246,0.3)',
-              color: '#93c5fd', padding: '1px 5px', borderRadius: 3,
+              fontSize: 10, color: '#6b7280', fontStyle: 'italic',
+              padding: '4px 6px', pointerEvents: 'none',
             }}>
-              {data.columns} col
+              📑 {data.label}
             </span>
           )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onAddTab?.();
+            }}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              color: '#9ca3af',
+              backgroundColor: 'transparent',
+              border: '1px dashed #4b5563',
+              borderBottom: 'none',
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4,
+              cursor: 'pointer',
+              pointerEvents: 'auto',
+            }}
+            title="Add tab"
+          >
+            +
+          </button>
+          <div style={{ flex: 1 }} />
           {data.maxFields != null && data.maxFields > 0 && (
             <span style={{
               fontSize: 9, backgroundColor: 'rgba(249,115,22,0.3)',
               color: '#fdba74', padding: '1px 5px', borderRadius: 3,
+              marginBottom: 4, pointerEvents: 'none',
             }}>
               max: {data.maxFields}
             </span>
           )}
         </div>
-      </div>
+      ) : (
+        // Plain header for non-tab containers (unchanged classic look).
+        <div
+          style={{
+            backgroundColor: isTabContainer ? 'rgba(79, 70, 229, 0.3)' : 'rgba(55, 65, 81, 0.4)',
+            padding: '3px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px dashed ${data.borderColor || '#6b7280'}`,
+          }}
+        >
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#d1d5db' }}>
+            {isTabContainer ? '📑 ' : '📦 '}{data.label}
+          </span>
+          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            {data.columns > 0 && (
+              <span style={{
+                fontSize: 9, backgroundColor: 'rgba(59,130,246,0.3)',
+                color: '#93c5fd', padding: '1px 5px', borderRadius: 3,
+              }}>
+                {data.columns} col
+              </span>
+            )}
+            {data.maxFields != null && data.maxFields > 0 && (
+              <span style={{
+                fontSize: 9, backgroundColor: 'rgba(249,115,22,0.3)',
+                color: '#fdba74', padding: '1px 5px', borderRadius: 3,
+              }}>
+                max: {data.maxFields}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1047,14 +1197,26 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   const [selectedPlacementId, setSelectedPlacementId] = useState<number | null>(null);
   const [selectedButtonNodeId, setSelectedButtonNodeId] = useState<string | null>(null);
   const [selectedMenuNodeId, setSelectedMenuNodeId] = useState<string | null>(null);
+  // Tab state: persistent tabs for current (window × table), keyed by container
+  // element id → active tab id. selectedTabId controls the properties panel.
+  const [layoutTabs, setLayoutTabs] = useState<FormLayoutTab[]>([]);
+  const [activeTabByContainer, setActiveTabByContainer] = useState<Record<number, number>>({});
+  const [selectedTabId, setSelectedTabId] = useState<number | null>(null);
   // Tab Order: ordered multi-selection of placement DB ids in click order
   const [orderedSelection, setOrderedSelection] = useState<number[]>([]);
+  // Parallel selection tracker by ReactFlow node id (string) — required for
+  // unsaved buttons/fields/menus that don't have a DB id yet so they would
+  // otherwise be invisible to orderedSelection's number[] path. Multi-edit
+  // (W/H/Anchor) reads from this so 4 freshly-dropped buttons can still be
+  // edited as a group.
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [tabOrderModalVisible, setTabOrderModalVisible] = useState(false);
   const tabOrderMenuRef = useRef<Menu>(null);
   // Stable callback ref for ReactFlow's onPaneClick — inline arrows would be a
   // new function each render and trigger ReactFlow's StoreUpdater into a loop.
   const handlePaneClick = useCallback(() => {
     setOrderedSelection((prev) => (prev.length === 0 ? prev : []));
+    setSelectedNodeIds((prev) => (prev.length === 0 ? prev : []));
   }, []);
   // Stable references for ReactFlow's array/object props (snapGrid, fitViewOptions).
   // Inline literals would be re-created each render and feed ReactFlow's
@@ -1084,6 +1246,69 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // Live-geometry tick: incremented after every drag/resize end so
+  // buildAllNodes re-runs and the container auto-grow picks up the new
+  // field positions from placementsRef. Without this, the container only
+  // refits on Save (when `placements` state updates), and the user sees
+  // the container border lag behind their drag.
+  const [geometryTick, setGeometryTick] = useState(0);
+
+  // ---- Layout Designer Defaults (Zahnrad-Settings) ----
+  // Persisted in localStorage so the user doesn't have to re-set them every
+  // session. Window dimensions are NOT persisted here — they live on the
+  // FormWindow itself (default_width/default_height) and get saved through
+  // the dedicated API on dialog confirm.
+  const SETTINGS_LS_KEY = 'form_layout_designer_defaults_v1';
+  type DesignerDefaults = {
+    labelPosition: 'top' | 'left';
+    controlHeight: number;
+    gap: number;
+  };
+  const readDesignerDefaults = (): DesignerDefaults => {
+    try {
+      const raw = localStorage.getItem(SETTINGS_LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          labelPosition: parsed.labelPosition === 'left' ? 'left' : 'top',
+          controlHeight: Number.isFinite(parsed.controlHeight) && parsed.controlHeight > 0 ? Number(parsed.controlHeight) : 56,
+          gap: Number.isFinite(parsed.gap) && parsed.gap >= 0 ? Number(parsed.gap) : 8,
+        };
+      }
+    } catch { /* corrupted localStorage — fall through to defaults */ }
+    return { labelPosition: 'top', controlHeight: 56, gap: 8 };
+  };
+  const [designerDefaults, setDesignerDefaults] = useState<DesignerDefaults>(readDesignerDefaults);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  // Draft state while editing the dialog — applied only on "Save"
+  const [draftSettings, setDraftSettings] = useState<DesignerDefaults & { windowWidth: number; windowHeight: number }>({
+    labelPosition: 'top',
+    controlHeight: 56,
+    gap: 8,
+    windowWidth: 800,
+    windowHeight: 600,
+  });
+
+  // ---- Per-Layout Dimension Override ----
+  // Window width/height that this PARTICULAR table's layout uses, stored in
+  // form_table_layouts. Null means "no override → fall back to the FormWindow
+  // template's default_width/height". Changing this MUST NOT touch the
+  // template, so multiple tables sharing the same window can have different
+  // layout dimensions.
+  const [tableLayoutOverride, setTableLayoutOverride] = useState<{ width: number | null; height: number | null } | null>(null);
+
+  // Effective dimensions used for rendering this layout: per-table override
+  // wins, else FormWindow template default. The TEMPLATE itself is never
+  // changed from here — that would propagate to every other table sharing
+  // the same window.
+  const effectiveWindowWidth = useMemo(
+    () => tableLayoutOverride?.width ?? currentWindow?.default_width ?? 800,
+    [tableLayoutOverride, currentWindow]
+  );
+  const effectiveWindowHeight = useMemo(
+    () => tableLayoutOverride?.height ?? currentWindow?.default_height ?? 600,
+    [tableLayoutOverride, currentWindow]
+  );
 
   // ---- ReactFlow state ----
   const [nodes, setNodes, onNodesChange] = useNodesState([] as Node[]);
@@ -1200,6 +1425,35 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
     }
   }, []);
 
+  // ========== LOAD LAYOUT TABS ==========
+
+  // Pulls all FormLayoutTab rows for the current (window × table) and sets
+  // the first tab per tab_container as the active one. Safe to call on
+  // any window type — main_menu / data_table returns an empty list and
+  // the rest of the component degrades gracefully.
+  const loadLayoutTabs = useCallback(async (windowId: number, tableId: number) => {
+    try {
+      const resp: any = await apiClient.get(`/form-windows/${windowId}/tables/${tableId}/tabs`);
+      const tabs: FormLayoutTab[] = Array.isArray(resp) ? resp : (resp.data || []);
+      setLayoutTabs(tabs);
+      // Pick the first tab per container as active. Without this default,
+      // a tab_container with 3 tabs would render an empty body until the
+      // user clicks a header.
+      const active: Record<number, number> = {};
+      for (const tab of tabs) {
+        if (active[tab.tab_container_element_id] === undefined) {
+          active[tab.tab_container_element_id] = tab.id;
+        }
+      }
+      setActiveTabByContainer(active);
+      setSelectedTabId(null);
+    } catch {
+      setLayoutTabs([]);
+      setActiveTabByContainer({});
+      setSelectedTabId(null);
+    }
+  }, []);
+
   // ========== LOAD PLACEMENTS ==========
 
   const loadPlacements = useCallback(async (windowId: number, tableId: number) => {
@@ -1231,6 +1485,106 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       setMenuPlacements([]);
     }
   }, [selectedWindowType]);
+
+  // ========== TAB CRUD ==========
+  // Declared after loadPlacements so handleDeleteTab can include it in its
+  // deps without hitting the TDZ during the initial render. JavaScript hoists
+  // `const` declarations but leaves them in the temporal dead zone until
+  // evaluation, so a useCallback dep referencing an undeclared-as-of-here
+  // const would throw at registration time.
+
+  // Activate a tab AND open its properties panel. Both pieces of state are
+  // updated together — clicking a tab header is a navigation gesture and an
+  // edit gesture rolled into one. Deselects other element kinds so the
+  // properties pane shows the tab, not whatever was selected before.
+  const handleSelectTab = useCallback((tabId: number) => {
+    const tab = layoutTabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    setActiveTabByContainer((prev) => ({
+      ...prev,
+      [tab.tab_container_element_id]: tabId,
+    }));
+    setSelectedTabId(tabId);
+    setSelectedPlacementId(null);
+    setSelectedButtonNodeId(null);
+    setSelectedMenuNodeId(null);
+  }, [layoutTabs]);
+
+  // Create a new tab for a given tab_container via the API and add it to
+  // local state. The backend assigns sort_order = max+1, so the new tab
+  // lands at the right end of the strip. We immediately activate it (so
+  // the user sees the empty panel they just created) and open its
+  // properties for labeling.
+  const handleAddTab = useCallback(async (containerElementId: number) => {
+    if (!currentWindow?.id || selectedTableId == null) return;
+    try {
+      const resp: any = await apiClient.post(
+        `/form-windows/${currentWindow.id}/tables/${selectedTableId}/tabs`,
+        { tab_container_element_id: containerElementId }
+      );
+      const newTab: FormLayoutTab = resp.data || resp;
+      setLayoutTabs((prev) => [...prev, newTab]);
+      setActiveTabByContainer((prev) => ({ ...prev, [containerElementId]: newTab.id }));
+      setSelectedTabId(newTab.id);
+      setSelectedPlacementId(null);
+      setSelectedButtonNodeId(null);
+      setSelectedMenuNodeId(null);
+      // Tabs persist immediately via the API call, but we still mark the
+      // window as dirty so the Save button turns green — the user expects
+      // visual feedback that *anything* changed, and clicking Save then
+      // commits whatever pending placement edits exist (no-op for tabs).
+      setHasUnsavedChanges(true);
+    } catch (err) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Failed to add tab: ' + String(err), life: 4000 });
+    }
+  }, [currentWindow, selectedTableId]);
+
+  // Update a tab's label / per-language map. Optimistically updates local
+  // state, then PATCHes. The optimistic update keeps the strip / properties
+  // panel responsive without a round-trip wait.
+  const handleUpdateTab = useCallback(async (tabId: number, updates: Partial<FormLayoutTab>) => {
+    setLayoutTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...updates } : t)));
+    setHasUnsavedChanges(true);
+    try {
+      await apiClient.patch(`/form-layout-tabs/${tabId}`, updates);
+    } catch (err) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Failed to save tab: ' + String(err), life: 4000 });
+    }
+  }, []);
+
+  // Delete a tab. Fields whose tab_panel_id pointed at this tab get nulled
+  // by the FK onDelete=set null — they become "tab-less" until the user
+  // moves them or re-runs auto-place. We refresh placements to reflect that.
+  const handleDeleteTab = useCallback(async (tabId: number) => {
+    const tab = layoutTabs.find((tb) => tb.id === tabId);
+    if (!tab) return;
+    const confirmed = window.confirm(t.formlayoutdesigner_delete_tab_confirm || 'Delete this tab? Fields in it will lose their tab assignment but won\'t be deleted.');
+    if (!confirmed) return;
+    try {
+      await apiClient.delete(`/form-layout-tabs/${tabId}`);
+      const remaining = layoutTabs.filter((tb) => tb.id !== tabId);
+      setLayoutTabs(remaining);
+      const stillInContainer = remaining.filter((tb) => tb.tab_container_element_id === tab.tab_container_element_id);
+      setActiveTabByContainer((prev) => {
+        const next = { ...prev };
+        if (stillInContainer.length > 0) {
+          next[tab.tab_container_element_id] = stillInContainer[0].id;
+        } else {
+          delete next[tab.tab_container_element_id];
+        }
+        return next;
+      });
+      setSelectedTabId(null);
+      setHasUnsavedChanges(true);
+      // Refresh placements so tab_panel_id values for the orphaned fields
+      // are reloaded as NULL.
+      if (currentWindow?.id && selectedTableId != null) {
+        await loadPlacements(currentWindow.id, selectedTableId);
+      }
+    } catch (err) {
+      toast.current?.show({ severity: 'error', summary: 'Error', detail: 'Failed to delete tab: ' + String(err), life: 4000 });
+    }
+  }, [layoutTabs, currentWindow, selectedTableId, loadPlacements, t]);
 
   // ========== INITIAL LOADS ==========
 
@@ -1330,6 +1684,21 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       }
       setCurrentWindow(matchingWindow);
 
+      // Load per-table dimension override (form_table_layouts) so the canvas
+      // and the Settings dialog know the *effective* size for this specific
+      // (window × table) pair. Missing row → both nulls, fall back to template
+      // default_width/height at render time.
+      if (selectedTableId != null && selectedWindowType !== 'main_menu') {
+        try {
+          const ov: any = await apiClient.get(`/form-windows/${matchingWindow.id}/table-layouts/${selectedTableId}`);
+          setTableLayoutOverride({ width: ov?.width ?? null, height: ov?.height ?? null });
+        } catch {
+          setTableLayoutOverride(null);
+        }
+      } else {
+        setTableLayoutOverride(null);
+      }
+
       // Load fields for selected table
       const selectedTable = tables.find((tbl) => Number(tbl.id) === Number(selectedTableId));
       setCurrentFields(selectedTable?.fields || []);
@@ -1343,6 +1712,16 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
       // Load existing placements
       await loadPlacements(matchingWindow.id, selectedTableId || 0);
+
+      // Load tabs (only meaningful for non-main_menu types where we have
+      // a table; for main_menu we just clear).
+      if (selectedWindowType !== 'main_menu' && selectedTableId != null) {
+        await loadLayoutTabs(matchingWindow.id, selectedTableId);
+      } else {
+        setLayoutTabs([]);
+        setActiveTabByContainer({});
+        setSelectedTabId(null);
+      }
     } catch (err) {
       toast.current?.show({ severity: 'error', summary: t.formlayoutdesigner_error || 'Error', detail: String(err), life: 4000 });
     } finally {
@@ -1379,8 +1758,11 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       selectable: false,
       data: {
         label: currentWindow.display_name || currentWindow.name,
-        windowWidth: currentWindow.default_width || 800,
-        windowHeight: currentWindow.default_height || 600,
+        // Use the EFFECTIVE dims (per-table override > template default) so the
+        // canvas reflows when the user changes window size in Settings — without
+        // mutating the FormWindow template.
+        windowWidth: effectiveWindowWidth,
+        windowHeight: effectiveWindowHeight,
         backgroundColor: bgColor,
         windowColor: winColor,
         textColor: txtColor,
@@ -1389,24 +1771,87 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
     // Container frame nodes - offset by header height
     const elements = currentWindow.elements || [];
+    // Window-size delta vs. the template's original size. Anchors stretch the
+    // container width/height by this delta × (anchor_width|height / 100), so
+    // a fully-anchored container (anchor_width=100, anchor_height=100) grows
+    // 1:1 with the window — exactly what the user expects when changing
+    // window size in the Settings dialog.
+    const tplWidth = currentWindow.default_width || 800;
+    const tplHeight = currentWindow.default_height || 600;
+    const winDeltaW = effectiveWindowWidth - tplWidth;
+    const winDeltaH = effectiveWindowHeight - tplHeight;
+
     for (const el of elements) {
       const isContainer = el.element_type === 'container' || el.element_type === 'tab_container' || el.element_type === 'tab_panel' || el.element_type === 'menu_container';
       if (!isContainer) continue;
 
+      // Apply anchors so the container follows the window size.
+      // anchor_width / anchor_height are stored as 0..100 percentages.
+      const anchW = Number(el.anchor_width ?? 0);
+      const anchH = Number(el.anchor_height ?? 0);
+      const anchoredWidth = Math.max(40, (el.width || 0) + (winDeltaW * anchW / 100));
+      const anchoredHeight = Math.max(40, (el.height || 0) + (winDeltaH * anchH / 100));
+
+      // CONTENT-AUTO-GROW: scan placements for this container; if any field
+      // sits below the anchored container height, grow the container so it
+      // wraps all its children. Stops the "fields stack at the bottom edge"
+      // issue when auto-place generates more rows than fit. The grown height
+      // wins only when it exceeds the anchored size — so anchor stretching
+      // still works as designed for sparsely populated containers.
+      //
+      // IMPORTANT: read positions/sizes from placementsRef, not the state
+      // `placements`. handleNodesChange updates ref live (drag/resize) but
+      // not state — so reading state would give stale values and the
+      // container wouldn't shrink back after the user resizes a field
+      // smaller. Ref has the freshest geometry; state is just for data
+      // props (control type, captions, ...).
+      const childPlacements = placements.filter(
+        (p) => Number(p.container_element_id) === Number(el.id)
+      );
+      let contentBottom = 0;
+      for (const cp of childPlacements) {
+        const cpKey = cp.id || cp.schema_field_id || `rc-${cp.sort_order}`;
+        const live = placementsRef.current.find(
+          (pp) => String(pp.id || pp.schema_field_id || `rc-${pp.sort_order}`) === String(cpKey)
+        );
+        const liveY = live?.y_position ?? cp.y_position ?? 0;
+        const liveH = live?.height ?? cp.height ?? 32;
+        const bottom = liveY + liveH;
+        if (bottom > contentBottom) contentBottom = bottom;
+      }
+      const containerWidth = anchoredWidth;
+      const containerHeight = Math.max(anchoredHeight, contentBottom + 20);
+
       const containerLabel = el.tab_label || el.button_label || el.element_type.replace(/_/g, ' ');
+      // For tab_container, attach the tabs that belong to this container
+      // (filtered out of the flat layoutTabs list) plus the active tab id
+      // and the click handlers. ContainerFrameNode reads these to draw
+      // the tab strip.
+      const tabsForContainer = el.element_type === 'tab_container'
+        ? layoutTabs
+            .filter((tb) => Number(tb.tab_container_element_id) === Number(el.id))
+            .sort((a, b) => a.sort_order - b.sort_order)
+        : [];
       newNodes.push({
         id: `container-${el.id || el.sort_order}`,
         type: 'containerFrame',
         position: { x: el.x_position, y: el.y_position + WINDOW_HEADER_HEIGHT },
         draggable: false,
         selectable: false,
-        style: { width: el.width, height: el.height },
+        style: { width: containerWidth, height: containerHeight },
         data: {
           label: containerLabel,
           elementType: el.element_type,
           columns: el.container_columns || 1,
           maxFields: el.max_fields,
           borderColor: '#6b7280',
+          containerElementId: el.id,
+          tabs: tabsForContainer,
+          activeTabId: el.id != null ? (activeTabByContainer[Number(el.id)] ?? null) : null,
+          selectedTabId,
+          onSelectTab: handleSelectTab,
+          onAddTab: el.id != null ? () => handleAddTab(Number(el.id)) : undefined,
+          selectedLanguage,
         } as ContainerFrameNodeData,
       });
     }
@@ -1522,6 +1967,21 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       const field = isReportCtrl ? null : (placement.schema_field || currentFields.find((f) => Number(f.id) === Number(placement.schema_field_id)));
       if (!field && !isReportCtrl) continue;
 
+      // Tab filter: if this placement's container is a tab_container, only
+      // render the field when it belongs to the currently active tab. A
+      // null tab_panel_id on a field inside a tab_container means the field
+      // was orphaned (e.g. its tab was deleted) — we show those on the
+      // currently active tab so the user can re-assign them.
+      const containerEl = (currentWindow.elements || []).find((e: any) => Number(e.id) === Number(placement.container_element_id));
+      if (containerEl?.element_type === 'tab_container') {
+        const activeId = activeTabByContainer[Number(containerEl.id)] ?? null;
+        const placementTabId = placement.tab_panel_id ?? null;
+        if (placementTabId != null && placementTabId !== activeId) continue;
+        // If placementTabId == null AND there's an active tab, show it on the
+        // active tab; if no active tab at all, render (the user will see
+        // orphans on every container view).
+      }
+
       // Get latest geometry from ref (may have been updated by drag/resize)
       const placementKey = placement.id || placement.schema_field_id || `rc-${placement.sort_order}`;
       const refPlacement = placementsRef.current.find((p) => {
@@ -1539,7 +1999,20 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         type: 'fieldPlacement',
         position: { x: px, y: py },
         parentId: `container-${placement.container_element_id}`,
-        extent: 'parent' as const,
+        // No `extent` and no `expandParent` here. Earlier attempts to use
+        // either led to either (a) a hard horizontal clamp the user didn't
+        // want or (b) ReactFlow growing the container in unwanted directions
+        // because `extent` is interpreted in ABSOLUTE flow coordinates (not
+        // parent-relative) and `expandParent` doesn't discriminate which
+        // edge was crossed. We now handle the desired behaviour in two
+        // simple places instead:
+        //   1. handleNodesChange clamps x/y to >= 0 (no escape left/up)
+        //      and prevents the field from drifting past the container's
+        //      right edge during drag.
+        //   2. Render-time container auto-grow (max field y+h + 20) sets
+        //      the container height authoritatively after the user releases.
+        //      Downward drag just works — the container fits on the next
+        //      paint, no live expansion needed.
         draggable: true,
         selectable: true,
         // `selected` is NOT set here — it is preserved from ReactFlow's internal
@@ -1563,7 +2036,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
     // Button placement nodes - placed directly on window frame (not inside containers)
     for (const btn of buttonPlacements) {
       const nodeId = `button-${btn.id || btn.button_type}-${btn.sort_order}`;
-      const bgColor2 = btn.button_background_color || BUTTON_DEFAULT_COLORS[btn.button_type] || '#3b82f6';
+      const bgColor2 = btn.button_background_color || currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR;
       const txtColor2 = btn.button_text_color || '#ffffff';
       const icon = btn.button_icon || BUTTON_DEFAULT_ICONS[btn.button_type] || '';
       const label = (btn.button_labels && selectedLanguage ? btn.button_labels[selectedLanguage] : null) || btn.button_label || BUTTON_DEFAULT_LABELS[btn.button_type] || btn.button_type;
@@ -1655,12 +2128,41 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       }
       return newNodes.map((n) => (selectedById.get(n.id) ? { ...n, selected: true } : n));
     });
-  }, [currentWindow, currentFormSet, placements, currentFields, buttonPlacements, menuPlacements, selectedLanguage, selectedWindowType, schemaTables, setNodes]);
+  }, [currentWindow, currentFormSet, placements, currentFields, buttonPlacements, menuPlacements, selectedLanguage, selectedWindowType, schemaTables, geometryTick, layoutTabs, activeTabByContainer, selectedTabId, handleSelectTab, handleAddTab, setNodes]);
 
   // Rebuild nodes when data changes (NOT on selection change)
   useEffect(() => {
     buildAllNodes();
   }, [buildAllNodes]);
+
+  // Selection-only patch for the data_table grid node.
+  // The grid renders all columns inside a SINGLE ReactFlow node, so the
+  // selection state lives in the node's data (column[].isSelected) rather
+  // than in ReactFlow's own `selected` flag. buildAllNodes deliberately
+  // doesn't include selectedPlacementId in its deps (would re-run the whole
+  // canvas rebuild on every click). So we patch JUST the grid node's data
+  // here when the selection changes — cheap, no full rebuild.
+  useEffect(() => {
+    const currentKey = selectedPlacementId != null ? String(selectedPlacementId) : null;
+    setNodes((prev) => {
+      let changed = false;
+      const next = prev.map((n) => {
+        if (n.type !== 'formTableGrid') return n;
+        const data = n.data as FormTableGridNodeData;
+        if (data.selectedColumnKey === currentKey) return n;
+        changed = true;
+        return {
+          ...n,
+          data: {
+            ...data,
+            selectedColumnKey: currentKey,
+            columns: data.columns.map((c) => ({ ...c, isSelected: c.key === currentKey })),
+          } as FormTableGridNodeData,
+        };
+      });
+      return changed ? next : prev;
+    });
+  }, [selectedPlacementId, setNodes]);
 
   // ========== NODE INTERACTION HANDLERS ==========
 
@@ -1686,6 +2188,21 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       const m = menuPlacementsRef.current.find((mm) => `menu-${mm.id || mm.temp_id}` === n.id);
       if (m?.id != null) collectIds.push(m.id);
     }
+    // Parallel selection tracker keyed by ReactFlow node id (string). Covers
+    // unsaved buttons/fields/menus (no DB id yet) so multi-edit still works
+    // for freshly-dropped items.
+    const collectNodeIds: string[] = [
+      ...placementNodes.map((n) => n.id),
+      ...buttonNodes.map((n) => n.id),
+      ...menuNodes.map((n) => n.id),
+    ];
+    setSelectedNodeIds((prev) => {
+      if (prev.length === collectNodeIds.length && prev.every((v, i) => v === collectNodeIds[i])) {
+        return prev;
+      }
+      return collectNodeIds;
+    });
+
     setOrderedSelection((prev) => {
       const stillSelected = prev.filter((id) => collectIds.includes(id));
       const newlyAdded = collectIds.filter((id) => !prev.includes(id));
@@ -1711,18 +2228,21 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       setSelectedPlacementId(Number(idStr));
       setSelectedButtonNodeId(null);
       setSelectedMenuNodeId(null);
+      setSelectedTabId(null);
       const p = placementsRef.current.find((p) => Number(p.id || p.schema_field_id) === Number(idStr));
       setLiveGeometry(p ? { x: p.x_position, y: p.y_position, w: p.width, h: p.height } : null);
     } else if (lastButton && !lastPlacement && !lastMenu) {
       setSelectedButtonNodeId(lastButton.id);
       setSelectedPlacementId(null);
       setSelectedMenuNodeId(null);
+      setSelectedTabId(null);
       const b = buttonPlacementsRef.current.find((b) => `button-${b.id || b.button_type}-${b.sort_order}` === lastButton.id);
       setLiveGeometry(b ? { x: b.x_position, y: b.y_position, w: b.width, h: b.height } : null);
     } else if (lastMenu && !lastPlacement && !lastButton) {
       setSelectedMenuNodeId(lastMenu.id);
       setSelectedPlacementId(null);
       setSelectedButtonNodeId(null);
+      setSelectedTabId(null);
       const m = menuPlacementsRef.current.find((item) => `menu-${item.id || item.temp_id}` === lastMenu.id);
       setLiveGeometry(m ? { x: m.x_position, y: m.y_position, w: m.width, h: m.height } : null);
     } else if (!lastPlacement && !lastButton && !lastMenu) {
@@ -1734,6 +2254,10 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       setSelectedPlacementId(null);
       setSelectedButtonNodeId(null);
       setSelectedMenuNodeId(null);
+      // Tab selection persists on pane click — the tab strip is not a
+      // ReactFlow node, so an empty canvas click shouldn't deselect the
+      // tab the user just clicked. handlePaneClick handles the explicit
+      // empty-canvas-deselect path if we ever need that.
     }
     // Mixed selection (e.g. fields + buttons): we leave the existing single
     // states untouched — selectedKind === 'mixed' renders an info box.
@@ -1747,21 +2271,26 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   const menuPlacementsRef = useRef<MenuItemPlacementData[]>(menuPlacements);
   useEffect(() => { menuPlacementsRef.current = menuPlacements; }, [menuPlacements]);
 
-  // Helper: update a menu item property while preserving latest drag positions from ref
+  // Helper: update a menu item property while preserving latest drag positions from ref.
+  // Same cascade fix as updateButtonProps/updatePlacementProp: every menu row must
+  // have its ref geometry merged in, otherwise the ref←state sync useEffect discards
+  // pending drags on the rows that aren't being edited. Ref is also updated
+  // synchronously so the next render sees the new geometry without a double-Enter.
   const updateMenuItemProp = useCallback((nodeId: string, updates: Partial<MenuItemPlacementData>) => {
-    setMenuPlacements(prev => prev.map(m => {
-      if (`menu-${m.id || m.temp_id}` !== nodeId) return m;
-      // Merge ref positions (latest from drag) with property updates
+    const next = menuPlacementsRef.current.map((m) => {
       const refItem = menuPlacementsRef.current.find(r => (r.id || r.temp_id) === (m.id || m.temp_id));
-      return {
+      const withRefGeom = refItem ? {
         ...m,
-        x_position: refItem?.x_position ?? m.x_position,
-        y_position: refItem?.y_position ?? m.y_position,
-        width: refItem?.width ?? m.width,
-        height: refItem?.height ?? m.height,
-        ...updates,
-      };
-    }));
+        x_position: refItem.x_position,
+        y_position: refItem.y_position,
+        width: refItem.width,
+        height: refItem.height,
+      } : m;
+      if (`menu-${m.id || m.temp_id}` !== nodeId) return withRefGeom;
+      return { ...withRefGeom, ...updates };
+    });
+    menuPlacementsRef.current = next;
+    setMenuPlacements(next);
     setHasUnsavedChanges(true);
   }, []);
 
@@ -1790,7 +2319,17 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
           const idStr = nodeId.replace('placement-', '');
           placementsRef.current = placementsRef.current.map((p) => {
             if (String(p.id || p.schema_field_id) === idStr) {
-              return { ...p, x_position: Math.round(change.position!.x), y_position: Math.round(change.position!.y) };
+              // Clamp to >= 0 so the user can't drag the field above or to
+              // the left of the container. Downward (y) and rightward (x)
+              // are intentionally unbounded — the container's render-time
+              // auto-grow handles the height when the user drops below the
+              // current bottom, and the field can still sit on the right
+              // edge horizontally. ReactFlow doesn't ship a direction-
+              // discriminating extent, so a tiny clamp here is the cleanest
+              // way to forbid only the two "bad" directions.
+              const clampedX = Math.max(0, Math.round(change.position!.x));
+              const clampedY = Math.max(0, Math.round(change.position!.y));
+              return { ...p, x_position: clampedX, y_position: clampedY };
             }
             return p;
           });
@@ -1858,6 +2397,12 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
     }
 
     if (geometryChanged) {
+      // Tick the geometry counter — pulls buildAllNodes back through its
+      // useEffect dep so the container auto-grow recomputes against the
+      // fresh placementsRef geometry. Without this, the container would
+      // only refit after Save (which mutates the placements state).
+      setGeometryTick((t) => t + 1);
+
       // Update liveGeometry for the selected node so properties panel shows real-time values
       if (selectedPlacementId != null) {
         const p = placementsRef.current.find((p) => Number(p.id || p.schema_field_id) === Number(selectedPlacementId));
@@ -1931,7 +2476,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         button_label: BUTTON_DEFAULT_LABELS[buttonTypeStr] || 'Button',
         button_icon: BUTTON_DEFAULT_ICONS[buttonTypeStr] || null,
         button_action: null,
-        button_background_color: BUTTON_DEFAULT_COLORS[buttonTypeStr] || '#3b82f6',
+        button_background_color: currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR,
         button_text_color: '#ffffff',
         x_position: Math.max(0, Math.round(position.x)),
         y_position: Math.max(0, Math.round(position.y) - WINDOW_HEADER_HEIGHT),
@@ -2303,7 +2848,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
   // ========== AUTO-PLACE ==========
 
-  const handleAutoPlace = useCallback(() => {
+  const handleAutoPlace = useCallback(async () => {
     if (!currentWindow) return;
     // For non-menu types, table selection is required
     if (selectedWindowType !== 'main_menu' && selectedTableId == null) return;
@@ -2429,10 +2974,12 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       return;
     }
 
-    // Find containers in current window
+    // Find containers in current window. tab_panel is intentionally absent —
+    // it's a Layout-level concept now (form_layout_tabs), not a Template-level
+    // element that the user drops into the window.
     const elements = currentWindow.elements || [];
     const containers = elements.filter((el: any) =>
-      el.element_type === 'container' || el.element_type === 'tab_container' || el.element_type === 'tab_panel'
+      el.element_type === 'container' || el.element_type === 'tab_container'
     );
 
     if (containers.length === 0) {
@@ -2440,39 +2987,118 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       return;
     }
 
-    // Auto-place fields (frontend-only, no DB save until user clicks Save)
+    // ── Tab pre-step ──
+    // Auto-Place may need to spawn multiple tab_panel records for a single
+    // tab_container (when max_fields × N covers fewer fields than the table
+    // has). We wipe any existing tabs for the affected tab_containers first
+    // so the run is idempotent, then create new ones lazily during the
+    // placement loop. Tabs hit the DB immediately (one POST per tab) so we
+    // get real IDs to write into tab_panel_id; if the user abandons the
+    // Auto-Place by not saving, leftover empty tabs remain — harmless and
+    // overwritten on the next Auto-Place.
+    const tabContainerIds = containers
+      .filter((c: any) => c.element_type === 'tab_container')
+      .map((c: any) => Number(c.id));
+    const tabsToWipe = layoutTabs.filter((tb) => tabContainerIds.includes(tb.tab_container_element_id));
+    for (const tb of tabsToWipe) {
+      try {
+        await apiClient.delete(`/form-layout-tabs/${tb.id}`);
+      } catch { /* silent — the next call will surface real errors */ }
+    }
+    const newTabsByContainer: Record<number, FormLayoutTab[]> = {};
+    const spawnTab = async (containerId: number): Promise<FormLayoutTab | null> => {
+      try {
+        const resp: any = await apiClient.post(
+          `/form-windows/${currentWindow.id}/tables/${selectedTableId}/tabs`,
+          { tab_container_element_id: containerId }
+        );
+        const newTab: FormLayoutTab = resp.data || resp;
+        if (!newTabsByContainer[containerId]) newTabsByContainer[containerId] = [];
+        newTabsByContainer[containerId].push(newTab);
+        return newTab;
+      } catch {
+        return null;
+      }
+    };
+    // Matches FormLayoutController::TAB_HEADER_HEIGHT. The visible tab strip
+    // is 32 px; the extra 10 px is breathing room so the first row of fields
+    // doesn't touch the strip's bottom edge.
+    const TAB_HEADER_HEIGHT = 42;
+
+    // Auto-place fields (frontend-only, no DB save until user clicks Save).
+    //
+    // Defaults source: the Zahnrad-Settings (designerDefaults) are AUTHORITATIVE
+    // for height/gap/label_position. We deliberately do NOT fall through to
+    // `currentContainer.container_gap` / `default_control_height` even though
+    // the DB carries defaults (8 / 56) for those columns — otherwise the
+    // user's global preference would silently be overruled by the per-
+    // container row's default, which surprised the user ("ignored my
+    // settings"). Per-container fine-tuning is a future-feature; today
+    // Auto-Place follows the Zahnrad uniformly.
+    // Scrollbar gutter: native vertical scrollbar steals ~15-17px from the
+    // container's content width when the form gets long enough to overflow
+    // (which the Live Preview shows with overflow:auto). Reserving that gutter
+    // up-front avoids a horizontal scrollbar appearing as soon as a single
+    // pixel of horizontal overflow exists. 17px matches Chrome/Edge default;
+    // Firefox is similar. The few pixels we "lose" on short forms (no scroll
+    // needed) are imperceptible at field widths of 400+.
+    const SCROLLBAR_GUTTER = 17;
+
+    const computeFieldWidth = (container: FormElement, gapPx: number, cols: number): number => {
+      const usable = Math.max(40, (container.width || 0) - SCROLLBAR_GUTTER);
+      return cols > 1 ? Math.floor((usable - (cols - 1) * gapPx) / cols) : usable;
+    };
+
     const newPlacements: FormFieldPlacement[] = [];
     let containerIdx = 0;
     let fieldCount = 0;
     let currentContainer = containers[containerIdx];
     let columns = currentContainer.container_columns || 1;
     let maxFields = currentContainer.max_fields || 0;
-    let gap = currentContainer.container_gap || 8;
-    // Full container width - no padding, start at 0/0
-    let fieldWidth = columns > 1 ? Math.floor((currentContainer.width - (columns - 1) * gap) / columns) : currentContainer.width;
-    let fieldHeight = currentContainer.default_control_height || 56;
+    let gap = designerDefaults.gap;
+    let fieldHeight = designerDefaults.controlHeight;
+    let fieldWidth = computeFieldWidth(currentContainer, gap, columns);
+    // Active tab for the current container. Only non-null when the current
+    // container is a tab_container — gets spawned lazily so we only create
+    // tabs that will actually hold fields.
+    let currentTab: FormLayoutTab | null = null;
+    if (currentContainer.element_type === 'tab_container') {
+      currentTab = await spawnTab(Number(currentContainer.id));
+    }
 
     for (const field of currentFields) {
       if (field.is_auto_increment) continue;
       if (['created_at', 'updated_at', 'deleted_at'].includes(field.field_name)) continue;
 
-      // Move to next container if current is full
+      // Container/tab full: tab_container spawns a NEW tab on the same
+      // container; plain container jumps to the NEXT container in the list.
       if (maxFields > 0 && fieldCount >= maxFields) {
-        containerIdx++;
-        if (containerIdx >= containers.length) break;
-        currentContainer = containers[containerIdx];
-        columns = currentContainer.container_columns || 1;
-        maxFields = currentContainer.max_fields || 0;
-        gap = currentContainer.container_gap || 8;
-        fieldWidth = columns > 1 ? Math.floor((currentContainer.width - (columns - 1) * gap) / columns) : currentContainer.width;
-        fieldHeight = currentContainer.default_control_height || 56;
-        fieldCount = 0;
+        if (currentContainer.element_type === 'tab_container') {
+          currentTab = await spawnTab(Number(currentContainer.id));
+          fieldCount = 0;
+        } else {
+          containerIdx++;
+          if (containerIdx >= containers.length) break;
+          currentContainer = containers[containerIdx];
+          columns = currentContainer.container_columns || 1;
+          maxFields = currentContainer.max_fields || 0;
+          gap = designerDefaults.gap;
+          fieldHeight = designerDefaults.controlHeight;
+          fieldWidth = computeFieldWidth(currentContainer, gap, columns);
+          fieldCount = 0;
+          currentTab = currentContainer.element_type === 'tab_container'
+            ? await spawnTab(Number(currentContainer.id))
+            : null;
+        }
       }
 
       const col = fieldCount % columns;
       const row = Math.floor(fieldCount / columns);
       const x = col * (fieldWidth + gap);
-      const y = row * (fieldHeight + gap);
+      // tab_container: reserve TAB_HEADER_HEIGHT for the strip so the first
+      // row doesn't draw on top of the tabs.
+      const yBase = currentContainer.element_type === 'tab_container' ? TAB_HEADER_HEIGHT : 0;
+      const y = yBase + row * (fieldHeight + gap);
 
       // Determine control type based on field type
       let controlType = 'text';
@@ -2491,7 +3117,9 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         schema_table_id: Number(selectedTableId),
         schema_field_id: field.id,
         container_element_id: Number(currentContainer.id),
-        tab_panel_id: currentContainer.element_type === 'tab_panel' ? Number(currentContainer.id) : null,
+        // tab_panel_id points at the spawned FormLayoutTab row when we're
+        // inside a tab_container; null for plain containers.
+        tab_panel_id: currentTab?.id ?? null,
         x_position: x,
         y_position: y,
         width: fieldWidth,
@@ -2499,7 +3127,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         caption_override: null,
         control_type_override: controlType,
         control_type: controlType,
-        label_position: 'top',
+        label_position: designerDefaults.labelPosition,
         label_width: 100,
         sort_order: newPlacements.length + 1,
         is_visible: true,
@@ -2622,11 +3250,26 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
     setPlacements(newPlacements);
     setButtonPlacements(newButtons);
     setHasUnsavedChanges(true); // Mark as unsaved - user must click Save
+
+    // Reflect the freshly-spawned tabs in local state so the canvas
+    // strip + properties panel see them without another round-trip.
+    const allNewTabs = Object.values(newTabsByContainer).flat();
+    if (allNewTabs.length > 0 || tabsToWipe.length > 0) {
+      setLayoutTabs(allNewTabs);
+      const activeMap: Record<number, number> = {};
+      for (const tb of allNewTabs) {
+        if (activeMap[tb.tab_container_element_id] === undefined) {
+          activeMap[tb.tab_container_element_id] = tb.id;
+        }
+      }
+      setActiveTabByContainer(activeMap);
+      setSelectedTabId(null);
+    }
     setSelectedPlacementId(null);
     setSelectedButtonNodeId(null);
     setLiveGeometry(null);
     toast.current?.show({ severity: 'success', summary: t.formlayoutdesigner_success || 'Success', detail: t.formlayoutdesigner_auto_placed || 'Fields and buttons auto-placed. Click Save to persist.', life: 3000 });
-  }, [currentWindow, selectedTableId, selectedWindowType, currentFields, placements, buttonPlacements, menuPlacements, schemaTables, t]);
+  }, [currentWindow, selectedTableId, selectedWindowType, currentFields, placements, buttonPlacements, menuPlacements, schemaTables, layoutTabs, t]);
 
   // ========== DELETE PLACEMENT ==========
 
@@ -2652,24 +3295,27 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
   const updatePlacementProp = useCallback(<K extends keyof FormFieldPlacement>(key: K, value: FormFieldPlacement[K]) => {
     if (selectedPlacementId == null) return;
-    setPlacements((prev) =>
-      prev.map((p) => {
-        if (Number(p.id || p.schema_field_id) === Number(selectedPlacementId)) {
-          // Merge with ref values (has latest drag/resize positions) to avoid losing them
-          const refP = placementsRef.current.find((rp) =>
-            Number(rp.id || rp.schema_field_id) === Number(selectedPlacementId)
-          );
-          return {
-            ...p,
-            // Apply latest geometry from ref
-            ...(refP ? { x_position: refP.x_position, y_position: refP.y_position, width: refP.width, height: refP.height } : {}),
-            // Apply the property change
-            [key]: value,
-          };
-        }
-        return p;
-      })
-    );
+    // CRITICAL: merge ref geometry for EVERY field, not just the selected one,
+    // AND sync ref synchronously before setState. The useEffect that syncs
+    // `placementsRef.current = placements` runs AFTER buildAllNodes, so without
+    // the synchronous ref update the user would have to press Enter twice
+    // before the new size is reflected. Same pattern applied to buttons.
+    const next = placementsRef.current.map((p) => {
+      const refP = placementsRef.current.find((rp) =>
+        Number(rp.id || rp.schema_field_id) === Number(p.id || p.schema_field_id)
+      );
+      const withRefGeom = refP ? {
+        ...p,
+        x_position: refP.x_position,
+        y_position: refP.y_position,
+        width: refP.width,
+        height: refP.height,
+      } : p;
+      if (Number(p.id || p.schema_field_id) !== Number(selectedPlacementId)) return withRefGeom;
+      return { ...withRefGeom, [key]: value };
+    });
+    placementsRef.current = next;
+    setPlacements(next);
     // Also patch the corresponding ReactFlow node IMMEDIATELY so the canvas
     // reflects the change in the same frame instead of waiting for the
     // buildAllNodes useEffect to fire after React commits state. Geometry-only
@@ -2695,66 +3341,95 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
   // ========== MULTI-EDIT HELPERS ==========
 
-  // Apply updates to ALL placements whose id is in orderedSelection.
-  // Mirrors updatePlacementProp's geometry-merge so positions/sizes from a
-  // recent drag/resize aren't lost.
+  // Apply updates to ALL placements selected via selectedNodeIds (works for
+  // unsaved placements too). Mirrors updatePlacementProp's geometry-merge so
+  // positions/sizes from a recent drag/resize aren't lost.
   const updateMultiplePlacements = useCallback((updates: Partial<FormFieldPlacement>) => {
-    if (orderedSelection.length === 0) return;
-    setPlacements((prev) => prev.map((p) => {
-      if (p.id == null || !orderedSelection.includes(p.id)) return p;
-      const refP = placementsRef.current.find((rp) => rp.id === p.id);
-      return {
+    // Driven by selectedNodeIds so unsaved placements participate.
+    const selectedFieldKeys = selectedNodeIds.filter((id) => id.startsWith('placement-'));
+    if (selectedFieldKeys.length === 0) return;
+    const next = placementsRef.current.map((p) => {
+      const pKey = `placement-${p.id || p.schema_field_id || `rc-${p.sort_order}`}`;
+      const refP = placementsRef.current.find((rp) =>
+        Number(rp.id || rp.schema_field_id) === Number(p.id || p.schema_field_id)
+      );
+      const withRefGeom = refP ? {
         ...p,
-        ...(refP ? { x_position: refP.x_position, y_position: refP.y_position, width: refP.width, height: refP.height } : {}),
-        ...updates,
-      };
-    }));
+        x_position: refP.x_position,
+        y_position: refP.y_position,
+        width: refP.width,
+        height: refP.height,
+      } : p;
+      if (!selectedFieldKeys.includes(pKey)) return withRefGeom;
+      return { ...withRefGeom, ...updates };
+    });
+    placementsRef.current = next;
+    setPlacements(next);
     setHasUnsavedChanges(true);
-  }, [orderedSelection]);
+  }, [selectedNodeIds]);
 
   const updateMultipleButtons = useCallback((updates: Partial<ButtonPlacementData>) => {
-    if (orderedSelection.length === 0) return;
-    setButtonPlacements((prev) => prev.map((b) => {
-      if (b.id == null || !orderedSelection.includes(b.id)) return b;
-      const refB = buttonPlacementsRef.current.find((rb) => rb.id === b.id);
-      return {
+    // Driven by selectedNodeIds (string keys) so unsaved buttons are included.
+    const selectedButtonKeys = selectedNodeIds.filter((id) => id.startsWith('button-'));
+    if (selectedButtonKeys.length === 0) return;
+    const next = buttonPlacementsRef.current.map((b) => {
+      const bKey = `button-${b.id || b.button_type}-${b.sort_order}`;
+      // Pull ref geometry into the new state for EVERY row — this prevents
+      // pending drags on non-edited buttons from being clobbered when the
+      // ref←state sync useEffect fires.
+      const refB = buttonPlacementsRef.current.find((rb) =>
+        `button-${rb.id || rb.button_type}-${rb.sort_order}` === bKey
+      );
+      const withRefGeom = refB ? {
         ...b,
-        ...(refB ? { x_position: refB.x_position, y_position: refB.y_position, width: refB.width, height: refB.height } : {}),
-        ...updates,
-      };
-    }));
+        x_position: refB.x_position,
+        y_position: refB.y_position,
+        width: refB.width,
+        height: refB.height,
+      } : b;
+      if (!selectedButtonKeys.includes(bKey)) return withRefGeom;
+      return { ...withRefGeom, ...updates };
+    });
+    // Update ref FIRST (synchronous) so the next buildAllNodes pass — which
+    // may run before the sync useEffect — already sees the new values. This
+    // is the fix for the "double-Enter required" symptom.
+    buttonPlacementsRef.current = next;
+    setButtonPlacements(next);
     setHasUnsavedChanges(true);
-  }, [orderedSelection]);
+  }, [selectedNodeIds]);
 
   // Categorize the current multi-selection. 'single' = nothing or one item;
   // 'fields'/'buttons'/'menus' = ≥2 items all of one kind; 'mixed' = ≥2 of different kinds.
+  // Driven by selectedNodeIds (string keys) so freshly-dropped, not-yet-saved
+  // items still count toward multi-edit — the older DB-id path missed them.
   const selectedKind = useMemo<'single' | 'fields' | 'buttons' | 'menus' | 'mixed'>(() => {
-    if (orderedSelection.length < 2) return 'single';
-    const fIds = new Set<number>();
-    placements.forEach((p) => { if (p.id != null) fIds.add(p.id); });
-    const bIds = new Set<number>();
-    buttonPlacements.forEach((b) => { if (b.id != null) bIds.add(b.id); });
-    const mIds = new Set<number>();
-    menuPlacements.forEach((m) => { if (m.id != null) mIds.add(m.id); });
-    let allF = true, allB = true, allM = true;
-    for (const id of orderedSelection) {
-      if (!fIds.has(id)) allF = false;
-      if (!bIds.has(id)) allB = false;
-      if (!mIds.has(id)) allM = false;
+    if (selectedNodeIds.length < 2) return 'single';
+    let fCount = 0, bCount = 0, mCount = 0;
+    for (const nodeId of selectedNodeIds) {
+      if (nodeId.startsWith('placement-')) fCount++;
+      else if (nodeId.startsWith('button-')) bCount++;
+      else if (nodeId.startsWith('menu-')) mCount++;
     }
-    if (allF) return 'fields';
-    if (allB) return 'buttons';
-    if (allM) return 'menus';
+    const total = fCount + bCount + mCount;
+    if (fCount === total) return 'fields';
+    if (bCount === total) return 'buttons';
+    if (mCount === total) return 'menus';
     return 'mixed';
-  }, [orderedSelection, placements, buttonPlacements, menuPlacements]);
+  }, [selectedNodeIds]);
 
   const multiSelectedFields = useMemo(
-    () => placements.filter((p) => p.id != null && orderedSelection.includes(p.id)),
-    [placements, orderedSelection]
+    () => placements.filter((p) => {
+      const nodeId = `placement-${p.id || p.schema_field_id || `rc-${p.sort_order}`}`;
+      return selectedNodeIds.includes(nodeId);
+    }),
+    [placements, selectedNodeIds]
   );
   const multiSelectedButtons = useMemo(
-    () => buttonPlacements.filter((b) => b.id != null && orderedSelection.includes(b.id)),
-    [buttonPlacements, orderedSelection]
+    () => buttonPlacements.filter((b) => {
+      const nodeId = `button-${b.id || b.button_type}-${b.sort_order}`;
+      return selectedNodeIds.includes(nodeId);
+    }),
+    [buttonPlacements, selectedNodeIds]
   );
 
   // Returns the common value across `items[key]` if all rows agree; null otherwise.
@@ -2810,19 +3485,43 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   };
    
   const updateButtonShared = (key: string, value: any) => {
-    if (multiEditButtons) {
-       
-      updateMultipleButtons({ [key]: value } as any);
-    } else {
-      setButtonPlacements((prev) => prev.map((b) =>
-        `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId
-           
-          ? ({ ...b, [key]: value } as any)
-          : b
-      ));
-      setHasUnsavedChanges(true);
-    }
+    updateButtonProps({ [key]: value });
   };
+
+  // Apply a set of property updates to the currently selected button (single
+  // edit) or delegate to updateMultipleButtons (multi edit). Every button row
+  // in state has its ref geometry merged in first so in-flight drags on the
+  // non-edited buttons aren't discarded by the buttonPlacementsRef←state sync.
+  // This is the academically correct fix to the "property change reverts drag"
+  // cascade: the bug isn't in any single helper — it's that the ref sync over-
+  // writes pending drags whenever state mutates for any reason.
+  function updateButtonProps(updates: Partial<ButtonPlacementData>) {
+    if (multiEditButtons) {
+      updateMultipleButtons(updates);
+      return;
+    }
+    if (!selectedButtonNodeId) return;
+    const next = buttonPlacementsRef.current.map((b) => {
+      const bKey = `button-${b.id || b.button_type}-${b.sort_order}`;
+      const refB = buttonPlacementsRef.current.find(
+        (rb) => `button-${rb.id || rb.button_type}-${rb.sort_order}` === bKey
+      );
+      const withRefGeom = refB ? {
+        ...b,
+        x_position: refB.x_position,
+        y_position: refB.y_position,
+        width: refB.width,
+        height: refB.height,
+      } : b;
+      if (bKey !== selectedButtonNodeId) return withRefGeom;
+      return { ...withRefGeom, ...updates } as any;
+    });
+    // Sync ref FIRST so a buildAllNodes run that fires before the ref-sync
+    // useEffect already sees the new values — fixes "needs Enter twice".
+    buttonPlacementsRef.current = next;
+    setButtonPlacements(next);
+    setHasUnsavedChanges(true);
+  }
   // Visual styling for grayed-out per-item inputs in multi-edit mode.
   const disabledStyle = { opacity: 0.4, pointerEvents: 'none' as const };
 
@@ -2945,7 +3644,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         <Button
           icon="pi pi-trash"
           onClick={async () => {
-            if (placements.length === 0 && buttonPlacements.length === 0 && menuPlacements.length === 0) return;
+            if (placements.length === 0 && buttonPlacements.length === 0 && menuPlacements.length === 0 && layoutTabs.length === 0) return;
             const confirmed = window.confirm(t.formlayoutdesigner_clear_confirm || 'Remove all fields and buttons from this layout?');
             if (!confirmed) return;
 
@@ -2960,6 +3659,15 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                     promises.push(apiClient.put(`/form-layout/${currentWindow.id}/placements`, { placements: [], table_id: selectedTableId }));
                   }
                   promises.push(apiClient.put(`/form-layout/${currentWindow.id}/buttons`, { buttons: [] }));
+                  // Tabs are independent rows in form_layout_tabs, NOT cleared
+                  // by the placements/buttons endpoints. Without this loop a
+                  // "Clear" would leave orphan tabs in the DB — and the next
+                  // Auto-Place would try to recreate sort_order=0 against
+                  // those orphans, hitting the unique constraint or stacking
+                  // a fresh set after the leftovers.
+                  for (const tb of layoutTabs) {
+                    promises.push(apiClient.delete(`/form-layout-tabs/${tb.id}`));
+                  }
                 }
                 await Promise.all(promises);
               } catch {
@@ -2970,6 +3678,9 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
             setPlacements([]);
             setButtonPlacements([]);
             setMenuPlacements([]);
+            setLayoutTabs([]);
+            setActiveTabByContainer({});
+            setSelectedTabId(null);
             setSelectedPlacementId(null);
             setSelectedButtonNodeId(null);
             setSelectedMenuNodeId(null);
@@ -2977,7 +3688,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
             setHasUnsavedChanges(false);
             toast.current?.show({ severity: 'info', summary: t.formlayoutdesigner_saved || 'Cleared', detail: t.formlayoutdesigner_clear || 'All items deleted.', life: 3000 });
           }}
-          disabled={!currentWindow || (placements.length === 0 && buttonPlacements.length === 0 && menuPlacements.length === 0)}
+          disabled={!currentWindow || (placements.length === 0 && buttonPlacements.length === 0 && menuPlacements.length === 0 && layoutTabs.length === 0)}
           className="p-button-sm p-button-danger p-button-outlined"
           style={{ fontSize: 12 }}
           tooltip={t.formlayoutdesigner_clear || 'Clear all'}
@@ -3031,7 +3742,156 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
           className="p-button-sm p-button-outlined"
           style={{ fontSize: 12 }}
         />
+
+        {/* Settings (Zahnrad): Defaults for auto-place + per-layout window dimensions.
+            Pre-fill with the *effective* dimensions: per-table override if set,
+            else the FormWindow template defaults. */}
+        <Button
+          icon="pi pi-cog"
+          onClick={() => {
+            setDraftSettings({
+              ...designerDefaults,
+              windowWidth: tableLayoutOverride?.width ?? currentWindow?.default_width ?? 800,
+              windowHeight: tableLayoutOverride?.height ?? currentWindow?.default_height ?? 600,
+            });
+            setShowSettingsDialog(true);
+          }}
+          tooltip="Layout-Defaults & Fenstergröße (pro Tabelle)"
+          tooltipOptions={{ position: 'bottom' }}
+          disabled={!currentWindow || selectedTableId == null}
+          className="p-button-sm p-button-text"
+          style={{ fontSize: 12 }}
+        />
       </div>
+
+      {/* ===== SETTINGS DIALOG ===== */}
+      <Dialog
+        header="Layout-Designer Einstellungen"
+        visible={showSettingsDialog}
+        onHide={() => setShowSettingsDialog(false)}
+        style={{ width: 460 }}
+        modal
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '6px 2px' }}>
+          {/* --- Auto-Place Defaults (persisted in localStorage) --- */}
+          <div style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Defaults für Auto-Place
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
+              Label-Position
+            </label>
+            <Dropdown
+              value={draftSettings.labelPosition}
+              options={[
+                { label: 'Über dem Feld (top)', value: 'top' },
+                { label: 'Links vom Feld (left)', value: 'left' },
+              ]}
+              onChange={(e) => setDraftSettings(prev => ({ ...prev, labelPosition: e.value }))}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
+              Control-Höhe (px)
+            </label>
+            <InputNumber
+              value={draftSettings.controlHeight}
+              onValueChange={(e) => setDraftSettings(prev => ({ ...prev, controlHeight: e.value ?? 56 }))}
+              min={20} max={300}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
+              Abstand zwischen Controls (px)
+            </label>
+            <InputNumber
+              value={draftSettings.gap}
+              onValueChange={(e) => setDraftSettings(prev => ({ ...prev, gap: e.value ?? 8 }))}
+              min={0} max={100}
+              className="w-full"
+            />
+          </div>
+
+          {/* --- Window Dimensions (saved to FormWindow) --- */}
+          <div style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8 }}>
+            Fenstergröße ({currentWindow?.display_name || ''})
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
+                Breite (px)
+              </label>
+              <InputNumber
+                value={draftSettings.windowWidth}
+                onValueChange={(e) => setDraftSettings(prev => ({ ...prev, windowWidth: e.value ?? 800 }))}
+                min={200} max={4000}
+                className="w-full"
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
+                Höhe (px)
+              </label>
+              <InputNumber
+                value={draftSettings.windowHeight}
+                onValueChange={(e) => setDraftSettings(prev => ({ ...prev, windowHeight: e.value ?? 600 }))}
+                min={200} max={4000}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+            <Button
+              label="Abbrechen"
+              icon="pi pi-times"
+              onClick={() => setShowSettingsDialog(false)}
+              className="p-button-sm p-button-text"
+            />
+            <Button
+              label="Übernehmen"
+              icon="pi pi-check"
+              onClick={async () => {
+                // Persist auto-place defaults locally
+                const newDefaults: DesignerDefaults = {
+                  labelPosition: draftSettings.labelPosition,
+                  controlHeight: draftSettings.controlHeight,
+                  gap: draftSettings.gap,
+                };
+                try {
+                  localStorage.setItem(SETTINGS_LS_KEY, JSON.stringify(newDefaults));
+                } catch { /* localStorage full / disabled — keep in-memory state at least */ }
+                setDesignerDefaults(newDefaults);
+
+                // Persist per-table window dimension OVERRIDE (NOT the FormWindow
+                // template itself — that would propagate to every table using the
+                // same window, which was the bug the user hit). The override lives
+                // in form_table_layouts keyed by (form_window_id, schema_table_id).
+                if (currentWindow && selectedTableId != null) {
+                  try {
+                    await apiClient.put(`/form-windows/${currentWindow.id}/table-layouts/${selectedTableId}`, {
+                      width: draftSettings.windowWidth,
+                      height: draftSettings.windowHeight,
+                    });
+                    setTableLayoutOverride({ width: draftSettings.windowWidth, height: draftSettings.windowHeight });
+                    toast.current?.show({ severity: 'success', summary: 'Gespeichert', detail: `Layout-Größe: ${draftSettings.windowWidth}×${draftSettings.windowHeight}px.`, life: 2500 });
+                  } catch {
+                    toast.current?.show({ severity: 'error', summary: 'Fehler', detail: 'Layout-Größe konnte nicht gespeichert werden.', life: 4000 });
+                  }
+                }
+                setShowSettingsDialog(false);
+              }}
+              className="p-button-sm p-button-success"
+            />
+          </div>
+        </div>
+      </Dialog>
 
       {/* ===== MAIN BODY ===== */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -3136,8 +3996,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                           style={{
                             display: 'flex', alignItems: 'center', gap: 6,
                             padding: '5px 8px', marginBottom: 3, borderRadius: 4,
-                            backgroundColor: isPlaced && btn.type !== 'button_custom' ? 'rgba(107,114,128,0.15)' : `${BUTTON_DEFAULT_COLORS[btn.type]}22`,
-                            border: `1px solid ${isPlaced && btn.type !== 'button_custom' ? 'transparent' : BUTTON_DEFAULT_COLORS[btn.type] + '44'}`,
+                            backgroundColor: isPlaced && btn.type !== 'button_custom' ? 'rgba(107,114,128,0.15)' : `${currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR}22`,
+                            border: `1px solid ${isPlaced && btn.type !== 'button_custom' ? 'transparent' : (currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR) + '44'}`,
                             cursor: isPlaced && btn.type !== 'button_custom' ? 'default' : 'grab',
                             opacity: isPlaced && btn.type !== 'button_custom' ? 0.55 : 1, fontSize: 11,
                           }}
@@ -3145,7 +4005,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                           {isPlaced && btn.type !== 'button_custom' ? (
                             <i className="pi pi-check" style={{ color: '#22c55e', fontSize: 11 }} />
                           ) : (
-                            <i className={`pi ${BUTTON_DEFAULT_ICONS[btn.type]}`} style={{ color: BUTTON_DEFAULT_COLORS[btn.type], fontSize: 12 }} />
+                            <i className={`pi ${BUTTON_DEFAULT_ICONS[btn.type]}`} style={{ color: currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR, fontSize: 12 }} />
                           )}
                           <span style={{ flex: 1, color: isPlaced && btn.type !== 'button_custom' ? colors.textMuted : colors.textPrimary, fontSize: 11 }}>
                             {BUTTON_DEFAULT_LABELS[btn.type]}{btn.type === 'button_custom' ? ' +' : ''}
@@ -4401,6 +5261,15 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                 onEdgesChange={onEdgesChange}
                 nodeTypes={nodeTypes}
                 multiSelectionKeyCode={MULTI_SELECTION_KEYS}
+                // Marquee/lasso: left-drag on empty pane selects everything
+                // it touches. Pan moves to middle/right mouse. Partial mode
+                // marks a node as selected the moment the rectangle touches
+                // its bounding box (vs Full = must be entirely inside) —
+                // less frustrating when picking a row of fields where the
+                // last column extends past where the user stopped dragging.
+                selectionOnDrag
+                selectionMode={SelectionMode.Partial}
+                panOnDrag={PAN_ON_DRAG_BUTTONS}
                 onPaneClick={handlePaneClick}
                 onSelectionChange={handleSelectionChange}
                 onDragOver={handleDragOver}
@@ -4578,8 +5447,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
           </div>
         )}
 
-        {/* Field/Button/Menu Properties */}
-        {(selectedPlacement || selectedButton || selectedMenuItem || selectedKind !== 'single') && (
+        {/* Field/Button/Menu/Tab Properties */}
+        {(selectedPlacement || selectedButton || selectedMenuItem || selectedTabId != null || selectedKind !== 'single') && (
           <div className="properties-panel" style={{
             width: 260,
             flexShrink: 0,
@@ -4639,7 +5508,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                   gap: 8,
                 }}>
                   <i className="pi pi-info-circle" style={{ fontSize: 14, marginTop: 1 }} />
-                  <span>{orderedSelection.length} {(t as any).formlayoutdesigner_mixed_selection || 'elements of different types selected — no common properties.'}</span>
+                  <span>{orderedSelection.length} {t.formlayoutdesigner_mixed_selection}</span>
                 </div>
               )}
 
@@ -4658,7 +5527,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                   gap: 6,
                 }}>
                   <i className="pi pi-objects-column" />
-                  <span>{multiSelectedFields.length} {(t as any).formlayoutdesigner_fields_selected || 'fields selected — common properties only'}</span>
+                  <span>{multiSelectedFields.length} {t.formlayoutdesigner_fields_selected}</span>
                 </div>
               )}
 
@@ -4677,7 +5546,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                   gap: 6,
                 }}>
                   <i className="pi pi-objects-column" />
-                  <span>{multiSelectedButtons.length} {(t as any).formlayoutdesigner_buttons_selected || 'buttons selected — common properties only'}</span>
+                  <span>{multiSelectedButtons.length} {t.formlayoutdesigner_buttons_selected}</span>
                 </div>
               )}
 
@@ -4706,6 +5575,82 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                             <>{selectedPlacement.schema_field?.field_type || '\u2014'}{selectedPlacement.schema_field?.is_primary_key && ' (PK)'}{selectedPlacement.schema_field?.is_nullable && ' \u2022 nullable'}</>
                           )}
                         </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Move Left / Move Right (data_table only) \u2014 placed right
+                      under the field badge so the user spots them immediately
+                      when they pick a column. Blue, prominent: the action is
+                      "swap column order" which used to be a mouse-drag on the
+                      header (removed because it stole focus from the row and
+                      broke the amber selection visual). Arrow buttons keep
+                      focus on the same placement id so the user can chain
+                      \u2190 \u2190 \u2190 without re-clicking. Disabled at the boundaries. */}
+                  {selectedWindowType === 'data_table' && (() => {
+                    const sorted = [...placements].filter(p => p.is_visible).sort((a, b) => a.sort_order - b.sort_order);
+                    const currentKey = String(selectedPlacementId);
+                    const idx = sorted.findIndex(p => String(p.id || p.schema_field_id) === currentKey);
+                    const canLeft = idx > 0;
+                    const canRight = idx >= 0 && idx < sorted.length - 1;
+                    const swap = (newIdx: number) => {
+                      const keys = sorted.map(p => String(p.id || p.schema_field_id));
+                      const [moved] = keys.splice(idx, 1);
+                      keys.splice(newIdx, 0, moved);
+                      setPlacements(prev => {
+                        const reordered = keys.map((key, i) => {
+                          const p = prev.find(pp => String(pp.id || pp.schema_field_id) === key);
+                          return p ? { ...p, sort_order: i } : null;
+                        }).filter(Boolean) as typeof prev;
+                        const nonField = prev.filter(pp => !keys.includes(String(pp.id || pp.schema_field_id)));
+                        return [...nonField, ...reordered];
+                      });
+                      setHasUnsavedChanges(true);
+                    };
+                    // Blue palette mirrors the "Speichern" / primary-action
+                    // colour family elsewhere \u2014 signals "this is the column-
+                    // ordering action" at a glance vs the neutral grey of
+                    // the surrounding inputs.
+                    const BLUE_BG = '#3b82f6';
+                    const BLUE_HOVER = '#2563eb';
+                    return (
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+                        <button
+                          onClick={() => canLeft && swap(idx - 1)}
+                          disabled={!canLeft}
+                          title={t.formlayoutdesigner_move_left || 'Move column left'}
+                          onMouseEnter={(e) => { if (canLeft) (e.currentTarget.style.background = BLUE_HOVER); }}
+                          onMouseLeave={(e) => { if (canLeft) (e.currentTarget.style.background = BLUE_BG); }}
+                          style={{
+                            flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 600,
+                            background: canLeft ? BLUE_BG : 'rgba(59,130,246,0.15)',
+                            color: '#fff',
+                            border: 'none', borderRadius: 4,
+                            cursor: canLeft ? 'pointer' : 'not-allowed',
+                            opacity: canLeft ? 1 : 0.4,
+                            transition: 'background 0.12s',
+                          }}
+                        >
+                          \u2190 {t.formlayoutdesigner_move_left_short || 'Left'}
+                        </button>
+                        <button
+                          onClick={() => canRight && swap(idx + 1)}
+                          disabled={!canRight}
+                          title={t.formlayoutdesigner_move_right || 'Move column right'}
+                          onMouseEnter={(e) => { if (canRight) (e.currentTarget.style.background = BLUE_HOVER); }}
+                          onMouseLeave={(e) => { if (canRight) (e.currentTarget.style.background = BLUE_BG); }}
+                          style={{
+                            flex: 1, padding: '8px 0', fontSize: 12, fontWeight: 600,
+                            background: canRight ? BLUE_BG : 'rgba(59,130,246,0.15)',
+                            color: '#fff',
+                            border: 'none', borderRadius: 4,
+                            cursor: canRight ? 'pointer' : 'not-allowed',
+                            opacity: canRight ? 1 : 0.4,
+                            transition: 'background 0.12s',
+                          }}
+                        >
+                          {t.formlayoutdesigner_move_right_short || 'Right'} \u2192
+                        </button>
                       </div>
                     );
                   })()}
@@ -5180,12 +6125,12 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
                         type="color"
-                        value={(multiEditButtons ? buttonSharedValue('button_background_color') : selectedButton.button_background_color) || BUTTON_DEFAULT_COLORS[selectedButton.button_type] || '#3b82f6'}
+                        value={(multiEditButtons ? buttonSharedValue('button_background_color') : selectedButton.button_background_color) || currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR}
                         onChange={(e) => updateButtonShared('button_background_color', e.target.value)}
                         style={{ width: 32, height: 28, border: 'none', cursor: 'pointer', borderRadius: 3 }}
                       />
                       <span style={{ fontSize: 11, color: colors.textMuted }}>
-                        {(multiEditButtons ? buttonSharedValue('button_background_color') : selectedButton.button_background_color) || BUTTON_DEFAULT_COLORS[selectedButton.button_type] || '#3b82f6'}
+                        {(multiEditButtons ? buttonSharedValue('button_background_color') : selectedButton.button_background_color) || currentFormSet?.default_button_color || BUTTON_FALLBACK_COLOR}
                       </span>
                     </div>
                   </div>
@@ -5225,11 +6170,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       <InputNumber
                         value={liveGeometry?.x ?? selectedButton.x_position}
                         onValueChange={(e) => {
-                          setButtonPlacements((prev) => prev.map((b) =>
-                            `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId ? { ...b, x_position: e.value || 0 } : b
-                          ));
+                          updateButtonShared('x_position', e.value || 0);
                           setLiveGeometry((g) => g ? { ...g, x: e.value || 0 } : null);
-                          setHasUnsavedChanges(true);
                         }}
                         min={0} step={1}
                         inputStyle={{ width: '100%', fontSize: 11, padding: '4px 6px' }}
@@ -5241,11 +6183,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       <InputNumber
                         value={liveGeometry?.y ?? selectedButton.y_position}
                         onValueChange={(e) => {
-                          setButtonPlacements((prev) => prev.map((b) =>
-                            `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId ? { ...b, y_position: e.value || 0 } : b
-                          ));
+                          updateButtonShared('y_position', e.value || 0);
                           setLiveGeometry((g) => g ? { ...g, y: e.value || 0 } : null);
-                          setHasUnsavedChanges(true);
                         }}
                         min={0} step={1}
                         inputStyle={{ width: '100%', fontSize: 11, padding: '4px 6px' }}
@@ -5261,15 +6200,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       <InputNumber
                         value={multiEditButtons ? buttonSharedValue('width') : (liveGeometry?.w ?? selectedButton.width)}
                         onValueChange={(e) => {
-                          if (multiEditButtons) {
-                            updateMultipleButtons({ width: e.value || 120 });
-                          } else {
-                            setButtonPlacements((prev) => prev.map((b) =>
-                              `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId ? { ...b, width: e.value || 120 } : b
-                            ));
-                            setLiveGeometry((g) => g ? { ...g, w: e.value || 120 } : null);
-                            setHasUnsavedChanges(true);
-                          }
+                          updateButtonShared('width', e.value || 120);
+                          if (!multiEditButtons) setLiveGeometry((g) => g ? { ...g, w: e.value || 120 } : null);
                         }}
                         min={40} max={400} step={10}
                         inputStyle={{ width: '100%', fontSize: 11, padding: '4px 6px' }}
@@ -5281,15 +6213,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       <InputNumber
                         value={multiEditButtons ? buttonSharedValue('height') : (liveGeometry?.h ?? selectedButton.height)}
                         onValueChange={(e) => {
-                          if (multiEditButtons) {
-                            updateMultipleButtons({ height: e.value || 36 });
-                          } else {
-                            setButtonPlacements((prev) => prev.map((b) =>
-                              `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId ? { ...b, height: e.value || 36 } : b
-                            ));
-                            setLiveGeometry((g) => g ? { ...g, h: e.value || 36 } : null);
-                            setHasUnsavedChanges(true);
-                          }
+                          updateButtonShared('height', e.value || 36);
+                          if (!multiEditButtons) setLiveGeometry((g) => g ? { ...g, h: e.value || 36 } : null);
                         }}
                         min={20} max={200} step={4}
                         inputStyle={{ width: '100%', fontSize: 11, padding: '4px 6px' }}
@@ -5305,10 +6230,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       value={selectedButton.tab_order ?? 0}
                       onValueChange={(e) => {
                         const v = Math.max(-1, Math.min(999999, e.value ?? 0));
-                        setButtonPlacements((prev) => prev.map((b) =>
-                          `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId ? { ...b, tab_order: v } : b
-                        ));
-                        setHasUnsavedChanges(true);
+                        updateButtonShared('tab_order', v);
                       }}
                       min={-1} max={999999} step={1}
                       inputStyle={{ width: '100%', fontSize: 11, padding: '4px 6px' }}
@@ -5330,15 +6252,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       anchor_height: (selectedButton as any).anchor_height ?? null,
                     }}
                     onChange={(updates) => {
-                      if (multiEditButtons) {
-                        updateMultipleButtons(updates as any);
-                        return;
-                      }
-                      setButtonPlacements(prev => prev.map(b => {
-                        if (`button-${b.id || b.button_type}-${b.sort_order}` !== selectedButtonNodeId) return b;
-                        return { ...b, ...updates } as any;
-                      }));
-                      setHasUnsavedChanges(true);
+                      updateButtonProps(updates as any);
                     }}
                     colors={colors}
                   />
@@ -5608,6 +6522,80 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                   />
                 </>
               )}
+
+              {/* ---- TAB PROPERTIES ---- */}
+              {selectedTabId != null && !selectedPlacement && !selectedButton && !selectedMenuItem && (() => {
+                const tab = layoutTabs.find((tb) => tb.id === selectedTabId);
+                if (!tab) return null;
+                return (
+                  <>
+                    <div style={{
+                      padding: '8px 10px', marginBottom: 8,
+                      backgroundColor: 'rgba(79,70,229,0.08)',
+                      border: '1px solid rgba(79,70,229,0.25)',
+                      borderRadius: 4,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: colors.textPrimary }}>
+                        <i className="pi pi-folder" style={{ fontSize: 12 }} />
+                        {(tab.tab_labels && selectedLanguage ? tab.tab_labels[selectedLanguage] : null) || tab.tab_label || `Tab ${tab.sort_order + 1}`}
+                      </div>
+                      <div style={{ fontSize: 9, color: colors.textMuted, marginTop: 2 }}>
+                        {t.formlayoutdesigner_tab || 'Tab'} #{tab.sort_order + 1}
+                      </div>
+                    </div>
+
+                    {/* Default label (fallback when no per-language entry) */}
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 10, color: colors.textMuted, display: 'block', marginBottom: 2 }}>
+                        {t.formlayoutdesigner_tab_default_label || 'Default Label'}
+                      </label>
+                      <InputText
+                        value={tab.tab_label || ''}
+                        onChange={(e) => handleUpdateTab(tab.id, { tab_label: e.target.value })}
+                        className="p-inputtext-sm"
+                        style={{ width: '100%', fontSize: 12 }}
+                        placeholder={`Tab ${tab.sort_order + 1}`}
+                      />
+                    </div>
+
+                    {/* Per-language label */}
+                    {selectedLanguage && (
+                      <div style={{ marginBottom: 8 }}>
+                        <label style={{ fontSize: 10, color: colors.textMuted, display: 'block', marginBottom: 2 }}>
+                          {t.formlayoutdesigner_caption || 'Caption'} ({selectedLanguage.toUpperCase()})
+                        </label>
+                        <InputText
+                          value={(tab.tab_labels && tab.tab_labels[selectedLanguage]) || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const nextLabels = { ...(tab.tab_labels || {}) };
+                            if (val) nextLabels[selectedLanguage] = val;
+                            else delete nextLabels[selectedLanguage];
+                            handleUpdateTab(tab.id, {
+                              tab_labels: Object.keys(nextLabels).length > 0 ? nextLabels : null,
+                            });
+                          }}
+                          className="p-inputtext-sm"
+                          style={{ width: '100%', fontSize: 12 }}
+                          placeholder={tab.tab_label || `Tab ${tab.sort_order + 1}`}
+                        />
+                      </div>
+                    )}
+
+                    {/* Delete tab — danger zone, kept at the bottom and full-width
+                        so the user has to consciously go past everything else. */}
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${colors.borderPrimary}` }}>
+                      <Button
+                        icon="pi pi-trash"
+                        label={t.formlayoutdesigner_delete_tab || 'Delete Tab'}
+                        onClick={() => handleDeleteTab(tab.id)}
+                        className="p-button-sm p-button-danger p-button-outlined"
+                        style={{ width: '100%', fontSize: 11 }}
+                      />
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -5626,7 +6614,11 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
           schemaFields={currentFields as any[]}
           selectedLanguage={selectedLanguage}
           enabledLanguages={enabledLanguages}
+          layoutTabs={layoutTabs as any[]}
+          allTables={tables as any[]}
           tableName={tables.find(t => Number(t.id) === Number(selectedTableId))?.table_name}
+          fileKeyName={tables.find(t => Number(t.id) === Number(selectedTableId))?.filekeyname}
+          primaryKeyField={tables.find(t => Number(t.id) === Number(selectedTableId))?.primarykeyfield}
           projectId={selectedProject?.id}
           projectDbSettings={selectedProject ? {
             database_type: selectedProject.database_type,

@@ -1,0 +1,57 @@
+================================================================================
+TEST 12: DATEINAME PRO TABELLE × SPRACHE (%1 × %2)
+================================================================================
+File-Type: db_table_file_languages
+Filename-Pattern: 12_filename_per_table_lang_%1_%2.txt
+Expected Output: (Tabellen × Sprachen)× generiert.
+
+WICHTIG: Im Template-Editor diesen GENAUEN Dateinamen eintragen:
+    12_filename_per_table_lang_%1_%2.txt
+
+Bei 2 Tabellen + 2 Sprachen (de, en):
+    12_filename_per_table_lang_users_de.txt
+    12_filename_per_table_lang_users_en.txt
+    12_filename_per_table_lang_user_groups_de.txt
+    12_filename_per_table_lang_user_groups_en.txt
+================================================================================
+
+Diese Datei: Tabelle '{:tablename:}', Sprache '{:selectedlanguage:}'
+
+================================================================================
+LOKALISIERTE CAPTIONS PRO FELD
+================================================================================
+
+{:for nmaxitems:}
+  {:item.name:} → "{:item.caption:}"
+                  (typ: {:item.type:}, Default: {:item.default:})
+{:endfor:}
+
+================================================================================
+LOKALISIERUNG-VARIABLEN (sollten je Sprache wechseln):
+================================================================================
+
+selectedlanguage   = {:selectedlanguage:}
+dateformat         = {:dateformat:}      (z.B. d.m.Y bei de, Y-m-d bei en)
+timeformat         = {:timeformat:}
+decimalsep         = "{:decimalsep:}"    (z.B. ',' bei de, '.' bei en)
+thousandsep        = "{:thousandsep:}"
+currencysym        = {:currencysym:}     (z.B. '€' bei de, '$' bei en)
+timezone           = {:timezone:}
+
+================================================================================
+EXPECTED bei users × {de, en}:
+  Output-Files:
+    12_filename_per_table_lang_users_de.txt          (Captions auf Deutsch)
+    12_filename_per_table_lang_users_en.txt          (Captions auf Englisch)
+    12_filename_per_table_lang_user_groups_de.txt
+    12_filename_per_table_lang_user_groups_en.txt
+
+  Innerhalb der DE-Datei:
+    selectedlanguage = de
+    decimalsep = ","
+    Captions z.B. "User ID" → "Benutzer-ID" (wenn übersetzt)
+
+  Innerhalb der EN-Datei:
+    selectedlanguage = en
+    decimalsep = "."
+================================================================================

@@ -3715,7 +3715,10 @@ export default function CodeGenerationPanel() {
                                 }}
                                 onClick={(e) => e.stopPropagation()}
                                 className="text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary, maxWidth: '180px' }}
+                                /* 280px fits "No migration (current version)" without truncation;
+                                 * min keeps the dropdown a stable width across schemas so the
+                                 * list looks tidy when several rows are visible at once. */
+                                style={{ backgroundColor: colors.bgSecondary, borderColor: colors.borderPrimary, borderWidth: '1px', borderStyle: 'solid', color: colors.textPrimary, minWidth: '280px', maxWidth: '320px' }}
                               >
                                 <option value="">{t.codegenerationpanel3033}</option>
                                 {migrationOptions.map(opt => (

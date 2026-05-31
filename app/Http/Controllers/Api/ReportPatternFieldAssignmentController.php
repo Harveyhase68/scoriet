@@ -40,7 +40,7 @@ class ReportPatternFieldAssignmentController extends Controller
         $tableId = $request->get('table_id');
 
         $project = Project::find($projectId);
-        if (!$project || !$project->visibleTo($user)->exists()) {
+        if (!$project || !$project->isVisibleTo($user)) {
             return response()->json(['error' => 'Project not found or access denied'], 404);
         }
 
@@ -134,31 +134,76 @@ class ReportPatternFieldAssignmentController extends Controller
             'assignments.*.sort_order' => 'nullable|integer',
         ]);
 
-        $userId = auth()->id();
+        // BOLA guard: validator only verifies report_pattern_id EXISTS, not
+        // that the user owns it. Without this loop, any user could mass-
+        // overwrite another user's report-pattern assignment matrix.
+        $userId   = auth()->id();
+        $patternIds = collect($validated['assignments'])->pluck('report_pattern_id')->unique();
+        $patterns = ReportPattern::whereIn('id', $patternIds)->get()->keyBy('id');
+        foreach ($patternIds as $pid) {
+            $owner = (string)($patterns[$pid]->creator_user_id ?? '');
+            if ($owner === '' || $owner !== (string)$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "You do not have permission to edit report_pattern_id={$pid}.",
+                ], 403);
+            }
+        }
 
-        $rows = array_map(function ($assignment) use ($userId) {
-            return [
-                'report_pattern_id' => $assignment['report_pattern_id'],
-                'schema_field_id' => $assignment['schema_field_id'],
-                'visibility_state' => $assignment['visibility_state'],
-                'sort_order' => $assignment['sort_order'] ?? null,
-                'created_by' => $userId,
-                'updated_at' => now(),
-                'created_at' => now(),
-            ];
-        }, $validated['assignments']);
+        // Split: "visible + no sort_order" is the implicit default in the
+        // matrix model — represented in the DB by the ABSENCE of a row.
+        // So a toggle back to Visible means: delete any existing override.
+        // Without this, the frontend's reset never reached storage (the
+        // payload silently dropped default-state entries on its way out).
+        $toDelete = [];
+        $rows = [];
+        foreach ($validated['assignments'] as $assignment) {
+            $isDefault = $assignment['visibility_state'] === 'visible'
+                && empty($assignment['sort_order']);
 
-        ReportPatternFieldAssignment::upsert(
-            $rows,
-            ['report_pattern_id', 'schema_field_id'],
-            ['visibility_state', 'sort_order', 'created_by', 'updated_at']
-        );
+            if ($isDefault) {
+                $toDelete[] = [
+                    'report_pattern_id' => $assignment['report_pattern_id'],
+                    'schema_field_id'   => $assignment['schema_field_id'],
+                ];
+            } else {
+                $rows[] = [
+                    'report_pattern_id' => $assignment['report_pattern_id'],
+                    'schema_field_id'   => $assignment['schema_field_id'],
+                    'visibility_state'  => $assignment['visibility_state'],
+                    'sort_order'        => $assignment['sort_order'] ?? null,
+                    'created_by'        => $userId,
+                    'updated_at'        => now(),
+                    'created_at'        => now(),
+                ];
+            }
+        }
+
+        // Delete the default-state entries, grouped by pattern to batch.
+        $byPattern = [];
+        foreach ($toDelete as $d) {
+            $byPattern[$d['report_pattern_id']][] = $d['schema_field_id'];
+        }
+        foreach ($byPattern as $patternId => $fieldIds) {
+            ReportPatternFieldAssignment::where('report_pattern_id', $patternId)
+                ->whereIn('schema_field_id', $fieldIds)
+                ->delete();
+        }
+
+        if (!empty($rows)) {
+            ReportPatternFieldAssignment::upsert(
+                $rows,
+                ['report_pattern_id', 'schema_field_id'],
+                ['visibility_state', 'sort_order', 'created_by', 'updated_at']
+            );
+        }
 
         $this->invalidateCacheForAssignments($validated['assignments']);
 
         return response()->json([
-            'message' => 'Assignments updated successfully.',
-            'count' => count($rows),
+            'message'      => 'Assignments updated successfully.',
+            'count'        => count($rows),
+            'reset_count'  => count($toDelete),
         ]);
     }
 
@@ -169,7 +214,19 @@ class ReportPatternFieldAssignmentController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
-        $assignment = ReportPatternFieldAssignment::findOrFail($id);
+        $assignment = ReportPatternFieldAssignment::with('reportPattern')->find($id);
+        if (!$assignment) {
+            return response()->json(['message' => 'Assignment not found'], 404);
+        }
+
+        // BOLA guard: only the report pattern's creator may delete its
+        // assignments. Without this, any authenticated user could delete
+        // any assignment row by passing its id.
+        $pattern = $assignment->reportPattern;
+        if (!$pattern || (string)$pattern->creator_user_id !== (string)auth()->id()) {
+            return response()->json(['message' => 'You do not have permission to delete this assignment.'], 403);
+        }
+
         $assignment->delete();
 
         return response()->json(['message' => 'Assignment deleted successfully.']);
@@ -186,6 +243,14 @@ class ReportPatternFieldAssignmentController extends Controller
             'report_pattern_id' => 'required|integer|exists:report_patterns,id',
             'table_id' => 'required|integer|exists:schema_tables,id',
         ]);
+
+        // BOLA guard: only the report pattern's creator may mass-reset its
+        // assignments. Without this, any authenticated user could wipe
+        // another user's report-pattern matrix for any table.
+        $pattern = ReportPattern::find($validated['report_pattern_id']);
+        if (!$pattern || (string)$pattern->creator_user_id !== (string)auth()->id()) {
+            return response()->json(['error' => 'You do not have permission to reset assignments for this report pattern.'], 403);
+        }
 
         $table = SchemaTable::with('fields')->find($validated['table_id']);
         if (!$table) {

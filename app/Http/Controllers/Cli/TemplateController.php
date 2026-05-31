@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cli;
 
+use App\Http\Controllers\Concerns\ValidatesPartialUpdate;
 use App\Http\Controllers\Controller;
 use App\Models\Template;
 use App\Models\Project;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\Validator;
 
 class TemplateController extends Controller
 {
+    use ValidatesPartialUpdate;
+
     /**
      * Check if user has access to project
      */
@@ -153,9 +156,13 @@ class TemplateController extends Controller
     public function clone(int $id, Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'project_id' => 'required|integer|exists:projects,id',
-            'new_name' => 'nullable|string|max:255|regex:/^[a-z0-9_]+$/',
+            'new_name'   => 'nullable|string|max:255|regex:/^[a-z0-9_]+$/',
             'visibility' => 'nullable|in:public,private',
+            // project_id is no longer required for clone — full_name is now
+            // derived from the cloning user's username (not a project name).
+            // It's still accepted (optional) for callers who want to record
+            // a home project on the clone via the legacy project_id column.
+            'project_id' => 'nullable|integer|exists:projects,id',
         ], [
             'new_name.regex' => __('templatecontrollerphp160'),
         ]);
@@ -164,7 +171,7 @@ class TemplateController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('templatecontrollerphp166'),
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -187,22 +194,30 @@ class TemplateController extends Controller
             ], 403);
         }
 
-        $project = Project::find($request->input('project_id'));
-
-        // Check project access
-        if (!$this->userHasProjectAccess($project, $user)) {
-            return response()->json([
-                'success' => false,
-                'message' => __('templatecontrollerphp196'),
-            ], 403);
+        // Optional home-project: if the caller asks to record one, they must
+        // actually have access to it. Without project_id the clone simply
+        // exists under the user; project_template_usage links can be added
+        // later via /templates/{id}/link.
+        $project = null;
+        if ($request->filled('project_id')) {
+            $project = Project::find($request->input('project_id'));
+            if (!$this->userHasProjectAccess($project, $user)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('templatecontrollerphp196'),
+                ], 403);
+            }
         }
 
         try {
-            // Clone the template
-            $clonedTemplate = $template->cloneForProject(
-                $project,
-                $request->input('new_name') ?? null,
-                $request->input('visibility') ?? 'public'
+            // Clone the template — full_name is built from the cloning user's
+            // username inside cloneForUser(), guaranteeing the canonical
+            // "username/template_slug" identity.
+            $clonedTemplate = $template->cloneForUser(
+                $user,
+                $request->input('new_name'),
+                $request->input('visibility', 'public'),
+                $project
             );
 
             // Set template type to 'cloned'
@@ -217,16 +232,16 @@ class TemplateController extends Controller
             $clonedTemplate->update(['history' => $history]);
 
             return response()->json([
-                'success' => true,
-                'message' => 'Template cloned successfully',
+                'success'  => true,
+                'message'  => 'Template cloned successfully',
                 'template' => [
-                    'id' => $clonedTemplate->id,
-                    'name' => $clonedTemplate->name,
-                    'full_name' => $clonedTemplate->full_name,
-                    'description' => $clonedTemplate->description,
-                    'template_type' => $clonedTemplate->template_type,
+                    'id'                   => $clonedTemplate->id,
+                    'name'                 => $clonedTemplate->name,
+                    'full_name'            => $clonedTemplate->full_name,
+                    'description'          => $clonedTemplate->description,
+                    'template_type'        => $clonedTemplate->template_type,
                     'original_template_id' => $clonedTemplate->original_template_id,
-                    'created_at' => $clonedTemplate->created_at->toIso8601String(),
+                    'created_at'           => $clonedTemplate->created_at->toIso8601String(),
                 ],
             ], 201);
 
@@ -425,16 +440,16 @@ class TemplateController extends Controller
 
         try {
             $template = Template::create([
-                'name' => $request->input('name'),
-                'full_name' => $request->input('name'),
-                'description' => $request->input('description'),
-                'category' => $request->input('category', 'general'),
-                'language' => $request->input('language'),
-                'visibility' => $request->input('visibility', 'private'),
-                'creator_user_id' => $user->id,
-                'is_active' => true,
+                'name'               => $request->input('name'),
+                'full_name'          => Template::buildFullName($user->username ?? $user->name, $request->input('name')),
+                'description'        => $request->input('description'),
+                'category'           => $request->input('category', 'general'),
+                'language'           => $request->input('language'),
+                'visibility'         => $request->input('visibility', 'private'),
+                'creator_user_id'    => $user->id,
+                'is_active'          => true,
                 'is_system_template' => false,
-                'file_count' => 0,
+                'file_count'         => 0,
             ]);
 
             return response()->json([
@@ -456,6 +471,169 @@ class TemplateController extends Controller
                 'success' => false,
                 'message' => __('templatecontrollerphp457'),
                 'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update an existing template (partial update — only sent fields change)
+     *
+     * PUT /cli/v1/templates/{id}
+     *
+     * Body (all optional):
+     *   name, description, category, language, tags[], visibility,
+     *   is_active, compatibility_tag, generation_order
+     *
+     * Notes:
+     *   - is_system_template is NOT changeable here (system-admin concern,
+     *     not a normal-user concern, and flipping it affects pricing rules).
+     *   - Changing `name` re-checks the per-user uniqueness constraint that
+     *     create() enforces, so callers can't sneak a duplicate in via rename.
+     *   - System templates are read-only via CLI (same rule as delete()).
+     *
+     * @param int $id
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function update(int $id, Request $request): JsonResponse
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return response()->json([
+                'success' => false,
+                'message' => __('templatecontrollerphp479'),
+            ], 404);
+        }
+
+        $user = $request->user();
+
+        // Ownership: only the creator can update via CLI
+        if ((string)$template->creator_user_id !== (string)$user->id) {
+            return response()->json([
+                'success' => false,
+                'message' => __('templatecontrollerphp489'),
+            ], 403);
+        }
+
+        // System templates are managed in-house only
+        if ($template->is_system_template) {
+            return response()->json([
+                'success' => false,
+                'message' => __('templatecontrollerphp497'),
+            ], 403);
+        }
+
+        $expectedFields = [
+            'name', 'description', 'category', 'language', 'tags',
+            'visibility', 'is_active', 'compatibility_tag', 'generation_order',
+        ];
+
+        // Short-circuit: body present but nothing matches the schema?
+        $fieldCheck = $this->checkBodyFields($request, $expectedFields);
+        if ($fieldCheck['all_unknown']) {
+            return $this->unknownFieldsResponse($expectedFields, $fieldCheck['received']);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name'              => ['sometimes', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/'],
+            'description'       => 'sometimes|nullable|string|max:1000',
+            'category'          => 'sometimes|nullable|string|max:100',
+            'language'          => 'sometimes|string|max:100',
+            'tags'              => 'sometimes|nullable|array',
+            'tags.*'            => 'string|max:50',
+            'visibility'        => 'sometimes|in:public,private',
+            'is_active'         => 'sometimes|boolean',
+            'compatibility_tag' => 'sometimes|nullable|string|max:255',
+            'generation_order'  => 'sometimes|integer|min:0',
+        ], [
+            'name.regex' => __('templatecontrollerphp399'),
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => __('templatecontrollerphp405'),
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // Rename uniqueness check — only when the name actually changes, so
+        // a partial update that leaves the name alone never trips on itself.
+        if ($request->filled('name') && $request->input('name') !== $template->name) {
+            $duplicate = Template::where('name', $request->input('name'))
+                ->where('creator_user_id', $user->id)
+                ->where('is_active', true)
+                ->where('id', '!=', $template->id)
+                ->exists();
+
+            if ($duplicate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('templatecontrollerphp421'),
+                    'error'   => __('templatecontrollerphp422'),
+                ], 409);
+            }
+        }
+
+        try {
+            // Only assign fields the caller actually sent. Using $request->only()
+            // with array_keys keeps us partial-update-safe without touching any
+            // attribute the user didn't mention.
+            $updatable = array_intersect_key(
+                $request->all(),
+                array_flip([
+                    'name', 'description', 'category', 'language', 'tags',
+                    'visibility', 'is_active', 'compatibility_tag', 'generation_order',
+                ])
+            );
+
+            // Re-derive full_name on EVERY update — not just on rename.
+            // This way templates with a stale "projectname/templatename"
+            // identity from older code paths self-heal the next time they
+            // are saved, and the canonical form is always in sync with
+            // {creator.username}/{template.name}. Use the template's actual
+            // creator (not the caller!) because full_name is the template's
+            // permanent identity, independent of who happens to be editing.
+            $owner = $template->creator ?? $user;
+            $finalName = $updatable['name'] ?? $template->name;
+            $updatable['full_name'] = Template::buildFullName(
+                $owner->username ?? $owner->name,
+                $finalName,
+                $template->id
+            );
+
+            $template->fill($updatable);
+            $template->save();
+
+            $response = [
+                'success'        => true,
+                'message'        => __('templatecontrollerphp_updated'),
+                'updated_fields' => array_keys($updatable),
+                'template'       => [
+                    'id'                => $template->id,
+                    'name'              => $template->name,
+                    'description'       => $template->description,
+                    'language'          => $template->language,
+                    'category'          => $template->category,
+                    'visibility'        => $template->visibility,
+                    'is_active'         => (bool)$template->is_active,
+                    'compatibility_tag' => $template->compatibility_tag,
+                    'generation_order'  => $template->generation_order,
+                    'tags'              => $template->tags,
+                    'updated_at'        => $template->updated_at?->toIso8601String(),
+                ],
+            ];
+            if ($warning = $this->unknownFieldsWarning($fieldCheck['unknown'])) {
+                $response['warnings'] = $warning;
+            }
+            return response()->json($response, 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => __('templatecontrollerphp457'),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -530,13 +708,15 @@ class TemplateController extends Controller
     public function import(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'full_name' => 'nullable|string|max:255',
+            'name'        => 'required|string|max:255',
+            // full_name is intentionally NOT accepted from the request — the
+            // canonical "username/template_slug" identity is derived from the
+            // importing user, never user-supplied.
             'description' => 'nullable|string|max:1000',
-            'category' => 'nullable|string|max:100',
-            'language' => 'required|string|max:100',
-            'visibility' => 'in:public,private',
-            'tags' => 'nullable|array',
+            'category'    => 'nullable|string|max:100',
+            'language'    => 'required|string|max:100',
+            'visibility'  => 'in:public,private',
+            'tags'        => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -548,12 +728,13 @@ class TemplateController extends Controller
         }
 
         try {
+            $importer = $request->user();
             // Create template
             $template = Template::create([
-                'name' => $request->input('name'),
-                'full_name' => $request->input('full_name', $request->input('name')),
+                'name'        => $request->input('name'),
+                'full_name'   => Template::buildFullName($importer->username ?? $importer->name, $request->input('name')),
                 'description' => $request->input('description'),
-                'category' => $request->input('category', 'general'),
+                'category'    => $request->input('category', 'general'),
                 'language' => $request->input('language'),
                 'visibility' => $request->input('visibility', 'private'),
                 'tags' => $request->input('tags') ? json_encode($request->input('tags')) : null,

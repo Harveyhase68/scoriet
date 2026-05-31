@@ -195,9 +195,40 @@ class GeneratedProjectUploadController extends Controller
      * Download a previously uploaded generated project
      *
      * GET /api/generated-projects/download/{filename}
+     *
+     * BOLA guard: filenames follow a predictable pattern
+     * (`project_{id}_{name}_gen{n}_{date}.zip`) and ProjectGeneration ids are
+     * sequential, so we cannot treat the filename as an unguessable token.
+     * We resolve the ProjectGeneration row, then check the caller has
+     * generation permission on the owning project. Path-traversal is also
+     * neutralised by rejecting any filename with directory separators.
      */
     public function download(string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
+        // Path-traversal guard: filename comes straight from the URL.
+        if (str_contains($filename, '/') || str_contains($filename, '\\') || str_contains($filename, '..')) {
+            abort(400, 'Invalid filename');
+        }
+
+        $user = Auth::user();
+
+        // Authorise via the ProjectGeneration row that owns this filename.
+        // The old public-storage fallback below is read-only legacy data; we
+        // still try to find a generation row for those too — if none exists
+        // we treat the file as orphaned and refuse rather than serving blind.
+        $generation = ProjectGeneration::where('filename', $filename)->first();
+        if (!$generation) {
+            abort(404, 'Archive not found');
+        }
+
+        $project = Project::find($generation->project_id);
+        if (!$project) {
+            abort(404, 'Archive not found');
+        }
+        if (!$project->isVisibleTo($user) || !$project->userCanGenerate($user)) {
+            abort(403, 'You do not have permission to download this archive.');
+        }
+
         // Check in new permanent storage location first
         $storagePath = storage_path('app/generated-projects');
         $fullPath = $storagePath . '/' . $filename;

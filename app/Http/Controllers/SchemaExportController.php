@@ -6,12 +6,20 @@ use App\Models\FloatingSchema;
 use App\Models\SchemaTable;
 use App\Models\SchemaField;
 use App\Models\SchemaConstraint;
+use App\Services\CommentMetadataCodec;
+use App\Services\Concerns\NormalizesSQLTypeName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class SchemaExportController extends Controller
 {
+    use NormalizesSQLTypeName;
+
+    public function __construct(private readonly CommentMetadataCodec $codec)
+    {
+    }
+
     /**
      * Export schema tables with complete structure information
      * Returns proper table data from schema_tables + schema_fields + schema_constraints
@@ -57,23 +65,27 @@ class SchemaExportController extends Controller
                 ], 404);
             }
 
-            // Get all tables for this schema version with their complete structure
-            // Use DISTINCT to avoid duplicate tables when both schema_id and schema_version_id match
+            // Get all tables for THIS schema version only. The previous
+            // `schema_id OR schema_version_id` clause matched rows from
+            // every historical version of the schema and then relied on
+            // `unique('table_name')` to dedupe — which silently kept the
+            // FIRST match (often an older version) and dropped the current
+            // one, taking its lookup config (form_set_id, report_pattern_id,
+            // version, comment) with it. Pinning to schema_version_id is
+            // the single source of truth.
             $tables = SchemaTable::with([
                 'fields' => function($query) {
                     $query->orderBy('field_order');
                 },
                 'constraints.constraintColumns.field',
                 'constraints.foreignKeyReference.referencedTable', // Load the referenced table for FK
-                'constraints.foreignKeyReference.referenceColumns.referencedField'
+                'constraints.foreignKeyReference.referenceColumns.referencedField',
+                'formSet',         // Eager-load so the codec can read formSet?->name without an N+1.
+                'reportPattern',   // Same — Codec::encodeForTable reads reportPattern?->name.
             ])
-            ->where(function($query) use ($schemaId, $schemaVersion) {
-                $query->where('schema_id', $schemaId)
-                      ->orWhere('schema_version_id', $schemaVersion->id);
-            })
+            ->where('schema_version_id', $schemaVersion->id)
             ->orderBy('table_name')
-            ->get()
-            ->unique('table_name'); // Remove duplicates by table_name
+            ->get();
 
             // Transform to a more export-friendly format
             $exportData = $tables->map(function ($table) {
@@ -84,10 +96,17 @@ class SchemaExportController extends Controller
                         return [
                             'field_name' => $field->field_name,
                             'field_type' => strtolower($field->field_type),
+                            'field_length' => $field->field_length,
+                            'field_precision' => $field->field_precision,
+                            'field_scale' => $field->field_scale,
+                            'field_enum_values' => $field->field_enum_values, // Eloquent JSON cast → array
                             'is_nullable' => $field->is_nullable,
                             'is_unsigned' => $field->is_unsigned,
                             'is_auto_increment' => $field->is_auto_increment,
                             'default_value' => $field->default_value,
+                            'is_generated' => (bool) $field->is_generated,
+                            'generation_expression' => $field->generation_expression,
+                            'generation_storage' => $field->generation_storage,
                             'field_order' => $field->field_order,
                             'comment' => $field->comment,
                         ];
@@ -170,23 +189,23 @@ class SchemaExportController extends Controller
                 ], 404);
             }
 
-            // Get all tables for this schema version with their complete structure
-            // Use unique() to avoid duplicate tables when both schema_id and schema_version_id match
+            // Get all tables for THIS schema version only. See the MySQL
+            // exporter above for why the historical `schema_id OR
+            // schema_version_id` clause silently dropped the current
+            // table's lookup config.
             $tables = SchemaTable::with([
                 'fields' => function($query) {
                     $query->orderBy('field_order');
                 },
                 'constraints.constraintColumns.field',
                 'constraints.foreignKeyReference.referencedTable', // Load the referenced table for FK
-                'constraints.foreignKeyReference.referenceColumns.referencedField'
+                'constraints.foreignKeyReference.referenceColumns.referencedField',
+                'formSet',
+                'reportPattern',
             ])
-            ->where(function($query) use ($schemaId, $schemaVersion) {
-                $query->where('schema_id', $schemaId)
-                      ->orWhere('schema_version_id', $schemaVersion->id);
-            })
+            ->where('schema_version_id', $schemaVersion->id)
             ->orderBy('table_name')
-            ->get()
-            ->unique('table_name'); // Remove duplicates by table_name
+            ->get();
 
             if ($tables->isEmpty()) {
                 return response()->json([
@@ -221,11 +240,20 @@ class SchemaExportController extends Controller
      */
     private function generateMySQLScript(FloatingSchema $schema, $tables, $version)
     {
+        // Per-schema MySQL defaults. The user configures these on the schema
+        // record; nothing in the dump is hardcoded any more. Fallback chain:
+        // schema column → migration default → 'utf8mb4' / 'utf8mb4_unicode_ci'.
+        // The fallback is purely defensive — both columns are NOT NULL with a
+        // default at the DB level.
+        $charset = $schema->default_charset ?: 'utf8mb4';
+        $collation = $schema->default_collation ?: 'utf8mb4_unicode_ci';
+
         $lines = [];
         $lines[] = '-- MySQL Database Export';
         $lines[] = '-- Schema: ' . $schema->name;
         $lines[] = '-- Description: ' . ($schema->description ?: 'No description');
         $lines[] = '-- Version: ' . $version;
+        $lines[] = '-- Charset: ' . $charset . ' / Collation: ' . $collation;
         $lines[] = '-- Generated: ' . now()->toDateTimeString();
         $lines[] = '-- Table count: ' . $tables->count();
         $lines[] = '';
@@ -251,28 +279,52 @@ class SchemaExportController extends Controller
             // Generate field definitions
             $fieldLines = [];
             foreach ($table->fields as $field) {
-                $fieldDef = '  `' . $field->field_name . '` ' . strtoupper($field->field_type);
+                $fieldDef = '  `' . $field->field_name . '` ' . $this->renderFieldTypeForMySQL($field);
 
                 if ($field->is_unsigned) {
                     $fieldDef .= ' UNSIGNED';
                 }
 
-                if (!$field->is_nullable) {
-                    $fieldDef .= ' NOT NULL';
+                // Generated columns reproduce the original GENERATED ALWAYS AS (expr) STORED|VIRTUAL
+                // clause. MySQL forbids DEFAULT and AUTO_INCREMENT on generated columns, so we
+                // route around those modifiers when is_generated is set.
+                if ($field->is_generated && !empty($field->generation_expression)) {
+                    $storage = strtoupper($field->generation_storage ?? 'virtual');
+                    // generation_expression already contains the outer parens, e.g. "(concat(...))"
+                    $fieldDef .= ' GENERATED ALWAYS AS ' . $field->generation_expression . ' ' . $storage;
+
+                    if (!$field->is_nullable) {
+                        $fieldDef .= ' NOT NULL';
+                    }
+                } else {
+                    if (!$field->is_nullable) {
+                        $fieldDef .= ' NOT NULL';
+                    }
+
+                    if ($field->is_auto_increment) {
+                        $fieldDef .= ' AUTO_INCREMENT';
+                    }
+
+                    if ($field->default_value !== null) {
+                        $defaultValue = $this->convertDefaultValueToMySQL($field->default_value, $field->field_type);
+                        $fieldDef .= ' DEFAULT ' . $defaultValue;
+                    } elseif ($field->is_nullable && !$field->is_auto_increment) {
+                        // Explicit DEFAULT NULL for nullable, non-AI columns —
+                        // matches phpMyAdmin's export style. The import path stores
+                        // both "no DEFAULT clause" and "DEFAULT NULL" as null in
+                        // default_value, so for nullable columns we always emit
+                        // the explicit form on round-trip (MySQL treats them as
+                        // equivalent anyway). AUTO_INCREMENT and NOT NULL columns
+                        // are excluded — they get no DEFAULT at all.
+                        $fieldDef .= ' DEFAULT NULL';
+                    }
                 }
 
-                if ($field->is_auto_increment) {
-                    $fieldDef .= ' AUTO_INCREMENT';
-                }
-
-                if ($field->default_value !== null) {
-                    $defaultValue = $this->convertDefaultValueToMySQL($field->default_value, $field->field_type);
-                    $fieldDef .= ' DEFAULT ' . $defaultValue;
-                }
-
-                if ($field->comment) {
-                    $fieldDef .= ' COMMENT \'' . addslashes($field->comment) . '\'';
-                }
+                // Every field gets a COMMENT — even with empty user comment,
+                // we still embed audit + version + lookup metadata so the
+                // round-trip preserves everything. 1024-byte MySQL cap is
+                // honoured by the codec.
+                $fieldDef .= ' COMMENT \'' . addslashes($this->codec->encodeForField($field, 1024)) . '\'';
 
                 $fieldLines[] = $fieldDef;
             }
@@ -347,11 +399,11 @@ class SchemaExportController extends Controller
             // Combine fields and constraints
             $allLines = array_merge($fieldLines, $constraintLines);
             $lines[] = implode(",\n", $allLines);
-            $lines[] = ') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+            $lines[] = ') ENGINE=InnoDB DEFAULT CHARSET=' . $charset . ' COLLATE=' . $collation;
 
-            if ($table->comment) {
-                $lines[count($lines)-1] .= ' COMMENT=\'' . addslashes($table->comment) . '\'';
-            }
+            // Always emit table COMMENT — codec embeds audit/version even
+            // when the user comment is empty. 2048-byte MySQL cap honoured.
+            $lines[count($lines)-1] .= ' COMMENT=\'' . addslashes($this->codec->encodeForTable($table, 2048)) . '\'';
 
             $lines[count($lines)-1] .= ';';
             $lines[] = '';
@@ -408,23 +460,21 @@ class SchemaExportController extends Controller
                 ], 404);
             }
 
-            // Get all tables for this schema version with their complete structure
-            // Use unique() to avoid duplicate tables when both schema_id and schema_version_id match
+            // Get all tables for THIS schema version only — see MySQL exporter
+            // above for why the historical clause was wrong.
             $tables = SchemaTable::with([
                 'fields' => function ($query) {
                     $query->orderBy('field_order');
                 },
                 'constraints.constraintColumns.field',
                 'constraints.foreignKeyReference.referencedTable', // Load the referenced table for FK
-                'constraints.foreignKeyReference.referenceColumns.referencedField'
+                'constraints.foreignKeyReference.referenceColumns.referencedField',
+                'formSet',
+                'reportPattern',
             ])
-            ->where(function ($query) use ($schemaId, $schemaVersion) {
-                $query->where('schema_id', $schemaId)
-                      ->orWhere('schema_version_id', $schemaVersion->id);
-            })
+            ->where('schema_version_id', $schemaVersion->id)
             ->orderBy('table_name')
-            ->get()
-            ->unique('table_name'); // Remove duplicates by table_name
+            ->get();
 
             if ($tables->isEmpty()) {
                 return response()->json([
@@ -504,15 +554,29 @@ class SchemaExportController extends Controller
                     $fieldDef = '    "' . $field->field_name . '" ' . $pgType;
                 }
 
-                // NOT NULL constraint (SERIAL types are automatically NOT NULL)
-                if (!$field->is_nullable && !$field->is_auto_increment) {
-                    $fieldDef .= ' NOT NULL';
-                }
+                // Generated columns: PostgreSQL 12+ supports STORED only (no VIRTUAL yet).
+                // If the MySQL source declared VIRTUAL we fall back to STORED — the semantic
+                // closest PG can express. DEFAULT is mutually exclusive with GENERATED in PG.
+                // NOTE: the expression is reproduced verbatim from the MySQL source, so
+                // MySQL-only constructs like `_utf8mb4'...'` literals will fail at apply time.
+                // This is a fundamental dialect difference, not something the exporter can fix.
+                if ($field->is_generated && !empty($field->generation_expression)) {
+                    $fieldDef .= ' GENERATED ALWAYS AS ' . $field->generation_expression . ' STORED';
 
-                // Default value (not for SERIAL types)
-                if ($field->default_value !== null && !$field->is_auto_increment) {
-                    $defaultValue = $this->convertDefaultValueToPostgreSQL($field->default_value, $pgType);
-                    $fieldDef .= ' DEFAULT ' . $defaultValue;
+                    if (!$field->is_nullable) {
+                        $fieldDef .= ' NOT NULL';
+                    }
+                } else {
+                    // NOT NULL constraint (SERIAL types are automatically NOT NULL)
+                    if (!$field->is_nullable && !$field->is_auto_increment) {
+                        $fieldDef .= ' NOT NULL';
+                    }
+
+                    // Default value (not for SERIAL types)
+                    if ($field->default_value !== null && !$field->is_auto_increment) {
+                        $defaultValue = $this->convertDefaultValueToPostgreSQL($field->default_value, $pgType);
+                        $fieldDef .= ' DEFAULT ' . $defaultValue;
+                    }
                 }
 
                 $fieldLines[] = $fieldDef;
@@ -580,16 +644,14 @@ class SchemaExportController extends Controller
             $lines[] = implode(",\n", $allLines);
             $lines[] = ');';
 
-            // Add table comment separately in PostgreSQL
-            if ($table->comment) {
-                $lines[] = 'COMMENT ON TABLE "' . $tableName . '" IS \'' . str_replace("'", "''", $table->comment) . '\';';
-            }
+            // Always emit COMMENT ON TABLE — codec embeds the audit/version
+            // payload even when no user comment exists. PG has no native cap,
+            // pass a generous budget so truncation never kicks in.
+            $lines[] = 'COMMENT ON TABLE "' . $tableName . '" IS \'' . str_replace("'", "''", $this->codec->encodeForTable($table, 65535)) . '\';';
 
-            // Add column comments
+            // Same for every column — survives round-trip even when comment is blank.
             foreach ($table->fields as $field) {
-                if ($field->comment) {
-                    $lines[] = 'COMMENT ON COLUMN "' . $tableName . '"."' . $field->field_name . '" IS \'' . str_replace("'", "''", $field->comment) . '\';';
-                }
+                $lines[] = 'COMMENT ON COLUMN "' . $tableName . '"."' . $field->field_name . '" IS \'' . str_replace("'", "''", $this->codec->encodeForField($field, 65535)) . '\';';
             }
 
             $lines[] = '';
@@ -748,10 +810,15 @@ class SchemaExportController extends Controller
             'json' => 'JSONB',         // Use JSONB for better performance
         ];
 
-        // Check for TINYINT(1) which is typically BOOLEAN in MySQL
+        // Check for TINYINT(1) which is typically BOOLEAN in MySQL.
+        // Prefer the structured field_length column; fall back to parsing the
+        // type string for legacy rows where length is still embedded.
         if ($baseType === 'tinyint') {
-            // Check if it's used as boolean (length 1)
-            if (preg_match('/tinyint\s*\(\s*1\s*\)/i', $mysqlType)) {
+            $effectiveLength = $field->field_length ?? null;
+            if ($effectiveLength === null && preg_match('/tinyint\s*\(\s*(\d+)\s*\)/i', $mysqlType, $m)) {
+                $effectiveLength = (int) $m[1];
+            }
+            if ((int) $effectiveLength === 1) {
                 return 'BOOLEAN';
             }
         }
@@ -759,17 +826,26 @@ class SchemaExportController extends Controller
         // Get the mapped type
         $pgType = $typeMap[$baseType] ?? 'TEXT';
 
-        // Handle types that need length specification
+        // Handle types that need length specification — prefer field_length column
         if (in_array($baseType, ['char', 'varchar'])) {
-            // Extract length from original type
-            if (preg_match('/\((\d+)\)/', $mysqlType, $matches)) {
-                $pgType = strtoupper($baseType) . '(' . $matches[1] . ')';
+            $length = $field->field_length;
+            if ($length === null && preg_match('/\((\d+)\)/', $mysqlType, $matches)) {
+                $length = (int) $matches[1];
+            }
+            if ($length !== null && $length > 0) {
+                $pgType = strtoupper($baseType) . '(' . $length . ')';
             }
         }
 
-        // Handle DECIMAL/NUMERIC with precision and scale
+        // Handle DECIMAL/NUMERIC with precision and scale — prefer structured columns
         if (in_array($baseType, ['decimal', 'numeric'])) {
-            if (preg_match('/\((\d+)(?:,\s*(\d+))?\)/', $mysqlType, $matches)) {
+            if ($field->field_precision !== null) {
+                $args = (string) $field->field_precision;
+                if ($field->field_scale !== null) {
+                    $args .= ',' . $field->field_scale;
+                }
+                $pgType = 'NUMERIC(' . $args . ')';
+            } elseif (preg_match('/\((\d+)(?:,\s*(\d+))?\)/', $mysqlType, $matches)) {
                 $precision = $matches[1];
                 $scale = $matches[2] ?? '0';
                 $pgType = 'NUMERIC(' . $precision . ',' . $scale . ')';
@@ -828,6 +904,59 @@ class SchemaExportController extends Controller
 
         // Handle string values - use single quotes and escape properly
         return "'" . str_replace("'", "''", $value) . "'";
+    }
+
+    /**
+     * Reassemble a MySQL column type from the structured columns:
+     *   field_type='enum' + field_enum_values=['a','b'] → ENUM('a','b')
+     *   field_type='decimal' + field_precision=10 + field_scale=2 → DECIMAL(10,2)
+     *   field_type='varchar' + field_length=50 → VARCHAR(50)
+     *
+     * ENUM/SET values are written with single quotes and escaped (' → '').
+     * Legacy rows (where field_type still carries an embedded payload from
+     * pre-split data) are passed through via upperTypeName() — the migration
+     * should have backfilled them, but the fallback keeps export robust.
+     */
+    private function renderFieldTypeForMySQL($field): string
+    {
+        $baseType = strtoupper((string) $field->field_type);
+
+        // Legacy row whose field_type still has a payload baked in
+        if (strpos($baseType, '(') !== false) {
+            return $this->upperTypeName($field->field_type);
+        }
+
+        if ($baseType === 'ENUM' || $baseType === 'SET') {
+            $values = $field->field_enum_values;
+            if (is_string($values)) {
+                $values = json_decode($values, true) ?: [];
+            }
+            if (!is_array($values) || empty($values)) {
+                return $baseType; // MySQL would reject this, but we render what we have
+            }
+            $quoted = array_map(
+                fn($v) => "'" . str_replace("'", "''", (string) $v) . "'",
+                $values
+            );
+            return $baseType . '(' . implode(',', $quoted) . ')';
+        }
+
+        if (in_array($baseType, ['DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE'], true)) {
+            if ($field->field_precision !== null) {
+                $args = (string) $field->field_precision;
+                if ($field->field_scale !== null) {
+                    $args .= ',' . $field->field_scale;
+                }
+                return $baseType . '(' . $args . ')';
+            }
+            return $baseType;
+        }
+
+        // Single-integer-length types: VARCHAR(50), TINYINT(1), CHAR(10), ...
+        if ($field->field_length !== null && $field->field_length > 0) {
+            return $baseType . '(' . $field->field_length . ')';
+        }
+        return $baseType;
     }
 
     /**
@@ -904,92 +1033,4 @@ class SchemaExportController extends Controller
         }
     }
 
-    /**
-     * Debug endpoint to test data loading (no auth required)
-     */
-    public function debug($schemaId)
-    {
-        try {
-            // Get the floating schema
-            $schema = FloatingSchema::find($schemaId);
-
-            if (!$schema) {
-                return response()->json([
-                    'error' => 'Schema not found',
-                    'schema_id' => $schemaId
-                ], 404);
-            }
-
-            // Get current version from schema
-            $version = $schema->last_version ?? 0;
-
-            // Check database models and relationships
-            $allSchemas = FloatingSchema::select('id', 'name')->get()->toArray();
-
-            // Find the correct schema version
-            $schemaVersion = DB::table('schema_versions')
-                ->where('schema_id', $schemaId)
-                ->orderBy('version_number', 'desc')
-                ->first();
-
-            if (!$schemaVersion) {
-                return response()->json([
-                    'error' => 'No version found for this schema',
-                    'schema_id' => $schemaId
-                ], 404);
-            }
-
-            // Get tables using the correct schema_version_id
-            // Use unique() to avoid duplicate tables
-            $tables = SchemaTable::with([
-                'fields' => function($query) {
-                    $query->orderBy('field_order');
-                },
-                'constraints.constraintColumns.field',
-                'constraints.foreignKeyReference.referencedTable', // Load the referenced table for FK
-                'constraints.foreignKeyReference.referenceColumns.referencedField'
-            ])
-            ->where(function($query) use ($schemaId, $schemaVersion) {
-                $query->where('schema_id', $schemaId)
-                      ->orWhere('schema_version_id', $schemaVersion->id);
-            })
-            ->orderBy('table_name')
-            ->get()
-            ->unique('table_name'); // Remove duplicates by table_name
-
-            // Let's examine the actual relationship structure
-            $allSchemaVersions = DB::table('schema_versions')->get()->toArray();
-            $sampleTables = DB::table('schema_tables')->select('id', 'schema_id', 'schema_version_id', 'table_name')->limit(10)->get()->toArray();
-
-            // Check how many tables belong to different schema_version_ids
-            $tablesPerVersion = DB::table('schema_tables')
-                ->select('schema_version_id', DB::raw('count(*) as table_count'))
-                ->groupBy('schema_version_id')
-                ->get()
-                ->toArray();
-
-            return response()->json([
-                'debug' => 'Schema relationship investigation - DEEP DIVE',
-                'schema_id' => $schemaId,
-                'schema_info' => $schema,
-                'schema_version' => $schemaVersion,
-                'correct_schema_version_id' => $schemaVersion->id,
-                'found_tables_count' => $tables->count(),
-                'table_names' => $tables->pluck('table_name')->toArray(),
-                'relationship_analysis' => [
-                    'all_schema_versions' => $allSchemaVersions,
-                    'sample_tables_with_ids' => $sampleTables,
-                    'tables_per_schema_version' => $tablesPerVersion
-                ],
-                'key_insight' => 'Schema → schema_versions → schema_tables (via schema_version_id)',
-                'schema_id_in_tables' => 'NULL (not used in this system)'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Debug failed: ' . $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ], 500);
-        }
-    }
 }

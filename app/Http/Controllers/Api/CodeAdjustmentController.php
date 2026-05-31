@@ -68,7 +68,13 @@ class CodeAdjustmentController extends Controller
         $this->authorizeProject($project);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            // Per-project uniqueness: same project can't have two adjustments
+            // with the same name. Different projects may reuse names.
+            'name' => [
+                'required', 'string', 'max:255',
+                \Illuminate\Validation\Rule::unique('code_adjustments', 'name')
+                    ->where(fn ($q) => $q->where('project_id', $projectId)),
+            ],
             'description' => 'nullable|string',
             'file_pattern' => 'required|string|max:500',
             'min_confidence' => 'nullable|numeric|min:0|max:1',
@@ -107,7 +113,12 @@ class CodeAdjustmentController extends Controller
         $adjustment = CodeAdjustment::where('project_id', $projectId)->findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
+            'name' => [
+                'sometimes', 'required', 'string', 'max:255',
+                \Illuminate\Validation\Rule::unique('code_adjustments', 'name')
+                    ->ignore($adjustment->id)
+                    ->where(fn ($q) => $q->where('project_id', $projectId)),
+            ],
             'description' => 'nullable|string',
             'file_pattern' => 'sometimes|required|string|max:500',
             'min_confidence' => 'nullable|numeric|min:0|max:1',

@@ -78,6 +78,65 @@ export function setStoredLanguage(language: SupportedLanguage): void {
   localStorage.setItem('scoriet_language', language);
 }
 
+/**
+ * Sync the UI language from a user profile (typically called right after a
+ * successful login or after the profile API echoes back the user's settings).
+ *
+ * Writes the user's language to localStorage and returns `true` if it
+ * actually differs from what was stored. The caller is responsible for
+ * deciding what to do with that signal — usually a page reload, but if
+ * a redirect is already queued (e.g. "Goto App" → /app), the navigation
+ * will pick up the new language naturally and the caller can skip the
+ * extra reload. See `triggerLanguageReloadIfPending` for the standard
+ * caller pattern.
+ *
+ * Why this matters: 86+ components hold their language in
+ * `useState(getStoredLanguage())` — a snapshot taken at mount time.
+ * Updating localStorage alone doesn't reach any of them; only a full page
+ * reload (or a hard navigation) does.
+ *
+ * @returns true when the stored language was changed, false otherwise.
+ */
+export function syncLanguageFromUser(userLanguage: string | null | undefined): boolean {
+  if (!userLanguage) return false;
+  const target = userLanguage.toLowerCase() as SupportedLanguage;
+  if (!supportedLanguages.some(l => l.code === target)) return false;
+
+  const current = localStorage.getItem('scoriet_language');
+  if (current === target) return false;
+
+  setStoredLanguage(target);
+  return true;
+}
+
+/**
+ * Companion to syncLanguageFromUser — call this AFTER your post-login
+ * callback (e.g. onLoginSuccess) has run.
+ *
+ * IMPORTANT: take a snapshot of redirect_after_login BEFORE calling the
+ * success callback, because the LandingPage's handleLoginSuccess() removes
+ * the key as part of processing it. By the time we get here, the key is
+ * already gone and we'd wrongly think no redirect was queued — triggering
+ * a needless reload that races the redirect.
+ *
+ * The small delay (200ms) gives the success callback's
+ * `window.location.href = ...` assignment a chance to start the navigation.
+ * Even if our reload fires, the navigation wins; it's harmless either way.
+ *
+ * @param languageChanged    return value of syncLanguageFromUser()
+ * @param redirectWasPending snapshot of redirect_after_login from BEFORE
+ *                           the success callback ran
+ */
+export function triggerLanguageReloadIfPending(languageChanged: boolean, redirectWasPending: boolean = false): void {
+  if (!languageChanged) return;
+  if (redirectWasPending) {
+    // The redirect handler will do a full navigation; that reloads the
+    // app with the new language as a side-effect. No second reload needed.
+    return;
+  }
+  setTimeout(() => window.location.reload(), 200);
+}
+
 // Get translations for a specific language (async)
 export async function getTranslations(language: SupportedLanguage): Promise<Translations> {
   try {

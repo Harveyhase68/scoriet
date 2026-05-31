@@ -107,6 +107,14 @@ class SchemaTranslationController extends Controller
 
     public function update(Request $request, SchemaTranslation $schemaTranslation): JsonResponse
     {
+        // BOLA guard: only the user who created the translation may edit it.
+        // Schema translations are scoped to the creating user — letting any
+        // authenticated user overwrite anyone's translation would corrupt
+        // the global registry.
+        if ((string)$schemaTranslation->created_by !== (string)auth()->id()) {
+            return response()->json(['error' => 'You do not have permission to edit this translation.'], 403);
+        }
+
         $validated = $request->validate([
             'item_name' => 'required|string|max:255',
             'code' => 'required|string|max:5|exists:languages,code',
@@ -135,12 +143,23 @@ class SchemaTranslationController extends Controller
 
     public function destroy(SchemaTranslation $schemaTranslation): JsonResponse
     {
+        // BOLA guard: only the creator may delete.
+        if ((string)$schemaTranslation->created_by !== (string)auth()->id()) {
+            return response()->json(['error' => 'You do not have permission to delete this translation.'], 403);
+        }
+
         $schemaTranslation->delete();
         return response()->json(['message' => 'Translation deleted successfully.']);
     }
 
     public function toggleActive(SchemaTranslation $schemaTranslation): JsonResponse
     {
+        // BOLA guard: toggling is_active is a state change, restricted to
+        // the creator — same rule as update/destroy above.
+        if ((string)$schemaTranslation->created_by !== (string)auth()->id()) {
+            return response()->json(['error' => 'You do not have permission to toggle this translation.'], 403);
+        }
+
         $schemaTranslation->update(['is_active' => !$schemaTranslation->is_active]);
         $schemaTranslation->load(['creator', 'language']);
 
@@ -163,7 +182,7 @@ class SchemaTranslationController extends Controller
 
         // Get the project and check user access
         $project = Project::find($projectId);
-        if (!$project || !$project->visibleTo($user)->exists()) {
+        if (!$project || !$project->isVisibleTo($user)) {
             return response()->json([
                 'error' => 'Project not found or access denied'
             ], 404);

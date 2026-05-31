@@ -1,0 +1,135 @@
+================================================================================
+TEST MIG-01: MIGRATION BASICS (dual: ohne UND mit Migration-Daten)
+================================================================================
+File-Type: project_file
+Expected Output: 1× generiert.
+
+WICHTIG: Dieselbe Vorlage wird in zwei Konfigurationen ausgeführt:
+
+  PROFIL A — Projekt OHNE Migration (kein Diff zwischen Versionen):
+      `migration.enabled` = false, alle nmaxmigration_* = 0
+      → for-nmaxmigration_tables / fields / indexes / foreignkeys laufen 0×
+      → migration.sql_complete = ''
+
+  PROFIL B — Projekt MIT Migration (Diff zwischen v1 → v2):
+      `migration.enabled` = true, `from_version` / `to_version` gesetzt
+      → Echte Migrations-Operationen werden iteriert
+      → nmaxmigration_total > 0
+================================================================================
+
+Projekt: {:projectname:}
+
+================================================================================
+[A] MIGRATION-HEADER (project-global, NICHT in einer Schleife)
+================================================================================
+
+migration.enabled         = {:migration.enabled:}
+migration.from_version    = {:migration.from_version:}
+migration.to_version      = {:migration.to_version:}
+migration.dialect         = {:migration.dialect:}
+
+nmaxmigration_tables      = {:nmaxmigration_tables:}
+nmaxmigration_fields      = {:nmaxmigration_fields:}
+nmaxmigration_indexes     = {:nmaxmigration_indexes:}
+nmaxmigration_foreignkeys = {:nmaxmigration_foreignkeys:}
+nmaxmigration_total       = {:nmaxmigration_total:}
+
+EXPECTED Profil A:
+  migration.enabled      = false
+  nmaxmigration_total    = 0
+  alle nmaxmigration_*   = 0
+
+EXPECTED Profil B:
+  migration.enabled      = true
+  migration.from_version = 1
+  migration.to_version   = 2
+  migration.dialect      = "mysql"     (oder pgsql / sqlite)
+  nmaxmigration_total    = Summe der einzelnen Änderungen
+
+
+================================================================================
+[B] MIGRATION TABLES — for-nmaxmigration_tables
+================================================================================
+Iteriert über CREATE/DROP/RENAME TABLE-Operationen.
+{:for nmaxmigration_tables:}
+  Table-Op #{:i:}:
+    migration.action    = {:migration.action:}      (z.B. "CREATE_TABLE" / "DROP_TABLE")
+    migration.name      = {:migration.name:}        (Tabellenname)
+    migration.type      = {:migration.type:}        ("table")
+    migration.priority  = {:migration.priority:}    (Reihenfolge: Tabellen vor FKs)
+    migration.sql       = {:migration.sql:}
+{:endfor:}
+
+================================================================================
+[C] MIGRATION FIELDS — for-nmaxmigration_fields
+================================================================================
+Iteriert über ADD/DROP/MODIFY COLUMN-Operationen.
+{:for nmaxmigration_fields:}
+  Field-Op #{:i:}:
+    migration.action    = {:migration.action:}      ("ADD_COLUMN" / "DROP_COLUMN" / "MODIFY_COLUMN")
+    migration.name      = {:migration.name:}        ("table.column")
+    migration.sql       = {:migration.sql:}
+{:endfor:}
+
+================================================================================
+[D] MIGRATION INDEXES — for-nmaxmigration_indexes
+================================================================================
+Iteriert über CREATE/DROP INDEX-Operationen.
+{:for nmaxmigration_indexes:}
+  Index-Op #{:i:}:
+    migration.action    = {:migration.action:}      ("CREATE_INDEX" / "DROP_INDEX")
+    migration.name      = {:migration.name:}
+    migration.sql       = {:migration.sql:}
+{:endfor:}
+
+================================================================================
+[E] MIGRATION FOREIGN KEYS — for-nmaxmigration_foreignkeys
+================================================================================
+Iteriert über ADD/DROP FOREIGN KEY-Operationen.
+Diese laufen mit höchster Priorität (zuletzt nach Tables und Fields).
+{:for nmaxmigration_foreignkeys:}
+  FK-Op #{:i:}:
+    migration.action    = {:migration.action:}      ("ADD_FK" / "DROP_FK")
+    migration.name      = {:migration.name:}
+    migration.sql       = {:migration.sql:}
+{:endfor:}
+
+================================================================================
+[F] CONDITIONAL — Migration nur generieren wenn aktiviert
+================================================================================
+{:if migration.enabled:}
+  ✓ Migration ist aktiviert (v{:migration.from_version:} → v{:migration.to_version:}).
+  Gesamt-Operationen: {:nmaxmigration_total:}
+  Dialect: {:migration.dialect:}
+{:else:}
+  ✗ Keine Migration aktiviert — vollständige Schema-Generierung statt Diff.
+    Tipp: Im DatabaseManagementPanel die Migration zwischen zwei Schema-Versionen
+    aktivieren, um inkrementelle SQL-Updates zu erhalten.
+{:endif:}
+
+================================================================================
+[G] KOMPLETTES SQL — als einzelner String (Alternative zum Loop-Building)
+================================================================================
+Falls die Engine das gesamt-aggregierte SQL bereitstellt, kann man es direkt
+einsetzen statt selbst über die einzelnen Operationen zu loopen:
+
+migration.sql_complete = {:migration.sql_complete:}
+
+================================================================================
+EXPECTED:
+  Profil A (ohne Migration):
+    - Sektionen [B]-[E] sind LEER (Loops laufen 0×)
+    - Sektion [F] zeigt den ELSE-Zweig
+    - Counter alle 0
+
+  Profil B (mit Migration):
+    - Mindestens eine Sektion [B]-[E] enthält Operationen
+    - Sektion [F] zeigt den IF-Zweig mit Versions-Nummern
+    - nmaxmigration_total = Summe([B].count + [C].count + [D].count + [E].count)
+    - Sektion [G] enthält den aggregierten SQL-Text
+
+  Bug-Indikator: bleibt `migration.action` als Platzhalter im Loop-Body stehen,
+  prüfe currentLoopContext-basierte Resolver in processVariable() — die
+  migrationXxxMappings sind context-gated auf 'migration_tables' / 'migration_fields'
+  / 'migration_indexes' / 'migration_foreignkeys'.
+================================================================================

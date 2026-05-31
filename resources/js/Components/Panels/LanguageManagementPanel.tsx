@@ -182,7 +182,19 @@ export default function LanguageManagementPanel() {
       setModalVisible(false);
       fetchLanguages();
     } catch (error: any) {
-      toast.showError(t.languagemanagementpanel184 + (error.response?.data?.message || error.message));
+      // Translate Laravel's generic "The code has already been taken." into
+      // a user-friendly message before falling back to the raw server
+      // message. The previous prefix used languagemanagementpanel184 which
+      // is the 🇬🇧 United Kingdom flag label — pure copy-paste accident.
+      const raw = error.response?.data?.message || error.message || '';
+      const errors = error.response?.data?.errors || {};
+      let message: string;
+      if (errors.code && Array.isArray(errors.code) && errors.code[0]?.includes('already been taken')) {
+        message = t.languagemanagementpanel_code_taken;
+      } else {
+        message = t.languagemanagementpanel_save_failed + raw;
+      }
+      toast.showError(message);
     }
   };
 

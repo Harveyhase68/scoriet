@@ -17,6 +17,7 @@ use App\Models\TemplateFile;
 use App\Models\CodeAdjustment;
 use App\Models\CodeAdjustmentInsertion;
 use App\Models\FormSet;
+use App\Models\ReportPattern;
 use App\Models\FormWindow;
 use App\Models\FormElement;
 use App\Models\ProjectFormSet;
@@ -26,6 +27,7 @@ use App\Models\SchemaDesignerLayout;
 use App\Models\SchemaTranslation;
 use App\Models\ProjectTranslation;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -42,6 +44,16 @@ class ProjectImportService
     protected array $schemaMapping = [];
     protected array $templateMapping = [];
     protected array $formSetMapping = [];
+
+    /**
+     * Tables that referenced a FormSet/ReportPattern by NAME during import
+     * but couldn't be linked yet because the FormSet/ReportPattern hadn't
+     * been imported at that point. Resolved in a second pass after
+     * importFormSets() runs (see resolveTableFormReferences()).
+     *
+     * Shape: [['table_id' => 42, 'form_set_name' => 'X', 'report_pattern_name' => 'Y'], ...]
+     */
+    protected array $pendingTableFormReferences = [];
 
     /**
      * Analyze a ZIP file and return conflict information
@@ -107,6 +119,12 @@ class ProjectImportService
 
                 // 3. Import FormSets
                 $this->importFormSets($result);
+
+                // 3b. Now that FormSets exist (and any ReportPatterns the
+                // user has in their account are reachable by name), wire up
+                // the table → form_set / report_pattern links that we
+                // captured during schema import.
+                $this->resolveTableFormReferences($result);
 
                 // 4. Create/Update Project
                 $project = $this->importProject($result);
@@ -414,8 +432,23 @@ class ProjectImportService
                     'description' => $schemaData['description'] ?? '',
                     'database_type' => $schemaData['database_type'] ?? 'mysql',
                     'owner_id' => $this->user->id,
+                    // Visibility is forced to 'private' on imported schemas
+                    // regardless of the source value — sharing a freshly
+                    // pulled-in schema with other users is an explicit act,
+                    // never a side-effect of an import.
                     'visibility' => 'private',
                     'last_version' => $schemaData['last_version'] ?? 1,
+                    // Schema-level defaults — restore the source values so
+                    // a re-export produces byte-identical SQL.
+                    'default_charset' => $schemaData['default_charset'] ?? null,
+                    'default_collation' => $schemaData['default_collation'] ?? null,
+                    // is_system_schema is only honoured when the importing
+                    // user can actually own one — non-system users keep the
+                    // default (false). System flag carries through for
+                    // platform/admin restores.
+                    'is_system_schema' => ($this->user->user_type ?? null) === 'system'
+                        ? (bool) ($schemaData['is_system_schema'] ?? false)
+                        : false,
                 ]);
 
                 $this->schemaMapping[$originalName] = $schema->id;
@@ -446,23 +479,67 @@ class ProjectImportService
             'imported_at' => now(),
         ]);
 
+        // Audit handling for project import mirrors the SQL round-trip:
+        //   - JSON contains audit/version → preserve created_* verbatim,
+        //     refresh updated_* to (now, importing user) so we know who
+        //     pulled the snapshot in.
+        //   - JSON omits them (legacy backups from before this feature) →
+        //     stamp everything fresh.
+        // Observer suppression is mandatory because both Create paths below
+        // would otherwise overwrite our explicit values via the trait's
+        // applyAuditOnCreate hook.
+        $now = Carbon::now();
+        $currentUser = SchemaTable::currentUsername();
+
         // Import tables
         foreach ($versionData['tables'] ?? [] as $tableData) {
-            $table = SchemaTable::create([
+            $tableAudit = $this->buildAuditAttributes($tableData, $now, $currentUser);
+
+            // forceFill + save (not create) because created_at/updated_at
+            // aren't in $fillable; mass-assignment would silently drop them
+            // and Eloquent's auto-timestamp logic would re-stamp NOW(),
+            // losing the imported history.
+            $tableAttrs = array_merge([
                 'schema_version_id' => $version->id,
                 'schema_id' => $schema->id,
                 'table_name' => $tableData['table_name'] ?? '',
+                'singular_name' => $tableData['singular_name'] ?? null,
                 'primarykeyfield' => $tableData['primarykeyfield'] ?? null,
                 'filekeyname' => $tableData['filekeyname'] ?? null,
                 'file_name_renamed' => $tableData['file_name_renamed'] ?? '',
                 'file_name_short' => $tableData['file_name_short'] ?? '',
+                'comment' => $tableData['table_comment'] ?? null,
                 'display_state' => $tableData['display_state'] ?? 'enabled',
                 'generation_mode' => $tableData['generation_mode'] ?? 'full',
-            ]);
+                // form_set_id / report_pattern_id stay null at this stage —
+                // FormSets and ReportPatterns are imported AFTER schemas, so
+                // their ids don't exist yet. We capture the names below and
+                // resolve them in resolveTableFormReferences() (step 4b).
+            ], $tableAudit);
+            $table = SchemaTable::withAuditSuppressed(function () use ($tableAttrs) {
+                $t = new SchemaTable();
+                $t->forceFill($tableAttrs);
+                $t->save();
+                return $t;
+            });
+
+            // Stash the name references for the post-FormSet-import pass.
+            $formSetName = $tableData['form_set_name'] ?? null;
+            $reportPatternName = $tableData['report_pattern_name'] ?? null;
+            if ($formSetName !== null || $reportPatternName !== null) {
+                $this->pendingTableFormReferences[] = [
+                    'table_id' => $table->id,
+                    'form_set_name' => $formSetName,
+                    'report_pattern_name' => $reportPatternName,
+                ];
+            }
 
             // Import fields
             foreach ($tableData['fields'] ?? [] as $fieldData) {
-                SchemaField::create([
+                $fieldAudit = $this->buildAuditAttributes($fieldData, $now, $currentUser);
+
+                // Same forceFill rationale as the table block above.
+                $fieldAttrs = array_merge([
                     'table_id' => $table->id,
                     'field_name' => $fieldData['field_name'] ?? '',
                     'field_type' => $fieldData['field_type'] ?? 'VARCHAR',
@@ -475,7 +552,7 @@ class ProjectImportService
                     'is_unique' => $fieldData['is_unique'] ?? false,
                     'comment' => $fieldData['field_comment'] ?? $fieldData['comment'] ?? '',
                     'field_order' => $fieldData['field_order'] ?? 0,
-                    'control_type' => $fieldData['control_type'] ?? null,
+                    'control_type' => $fieldData['control_type'] ?? 'TEXT',
                     'link_table' => $fieldData['link_table'] ?? null,
                     'link_field' => $fieldData['link_field'] ?? null,
                     'link_display_field' => $fieldData['link_display_field'] ?? null,
@@ -484,7 +561,12 @@ class ProjectImportService
                     'editmask' => $fieldData['editmask'] ?? null,
                     'display_state' => $fieldData['display_state'] ?? 'enabled',
                     'generation_mode' => $fieldData['generation_mode'] ?? 'full',
-                ]);
+                ], $fieldAudit);
+                SchemaField::withAuditSuppressed(function () use ($fieldAttrs) {
+                    $f = new SchemaField();
+                    $f->forceFill($fieldAttrs);
+                    $f->save();
+                });
             }
 
             // Import constraints - need to find field_id by field_name
@@ -586,8 +668,8 @@ class ProjectImportService
                 $newName = $option['name'] ?? $originalName;
 
                 $template = Template::create([
-                    'name' => $newName,
-                    'full_name' => $this->user->username . '/' . $newName,
+                    'name'        => $newName,
+                    'full_name'   => Template::buildFullName($this->user->username ?? $this->user->name, $newName),
                     'description' => $templateData['description'] ?? '',
                     'creator_user_id' => $this->user->id,
                     'visibility' => 'private',
@@ -1132,5 +1214,129 @@ class ProjectImportService
         }
 
         rmdir($dir);
+    }
+
+    /**
+     * Second-pass resolver: link freshly-imported tables to FormSet and
+     * ReportPattern rows that became reachable after step 3 finished.
+     *
+     * Names rather than ids cross the import boundary, because the source
+     * ids are meaningless in the destination DB. We look the names up in
+     * the importing user's accessible set:
+     *   - FormSet: prefer one owned by the importing user; fall back to any
+     *     name match (handles the case where the FormSet came in via the
+     *     same ZIP and is now owned by the user).
+     *   - ReportPattern: the project export doesn't currently ship report
+     *     patterns, so we look for an existing one accessible to the user.
+     *     If nothing matches we log a warning and leave the column NULL —
+     *     the table still loads, just without its default form layout.
+     */
+    protected function resolveTableFormReferences(array &$result): void
+    {
+        if (empty($this->pendingTableFormReferences)) {
+            return;
+        }
+
+        foreach ($this->pendingTableFormReferences as $pending) {
+            $table = SchemaTable::find($pending['table_id']);
+            if (!$table) {
+                continue;
+            }
+
+            $updates = [];
+
+            if ($pending['form_set_name']) {
+                $formSetId = $this->lookupFormSetIdByName($pending['form_set_name']);
+                if ($formSetId) {
+                    $updates['form_set_id'] = $formSetId;
+                } else {
+                    $result['warnings'][] = "Table '{$table->table_name}': FormSet '{$pending['form_set_name']}' not found in your account — link skipped.";
+                }
+            }
+
+            if ($pending['report_pattern_name']) {
+                $reportPatternId = $this->lookupReportPatternIdByName($pending['report_pattern_name']);
+                if ($reportPatternId) {
+                    $updates['report_pattern_id'] = $reportPatternId;
+                } else {
+                    $result['warnings'][] = "Table '{$table->table_name}': ReportPattern '{$pending['report_pattern_name']}' not found in your account — link skipped.";
+                }
+            }
+
+            if (!empty($updates)) {
+                // Suppress the version bump — this is restoring an existing
+                // relationship, not a user edit.
+                SchemaTable::withAuditSuppressed(function () use ($table, $updates) {
+                    $table->forceFill($updates)->saveQuietly();
+                });
+            }
+        }
+    }
+
+    /**
+     * Look up a FormSet id by name, preferring one owned by the importing
+     * user. Returns null if nothing matches.
+     */
+    private function lookupFormSetIdByName(string $name): ?int
+    {
+        $own = FormSet::where('name', $name)
+            ->where('creator_user_id', $this->user->id)
+            ->value('id');
+        if ($own) {
+            return (int) $own;
+        }
+        // Fall back to any visible FormSet with that name. The user already
+        // has read access via the FormSet listing scope rules; we only need
+        // it for the FK to be valid.
+        return FormSet::where('name', $name)->value('id') ?: null;
+    }
+
+    private function lookupReportPatternIdByName(string $name): ?int
+    {
+        $own = ReportPattern::where('name', $name)
+            ->where('creator_user_id', $this->user->id)
+            ->value('id');
+        if ($own) {
+            return (int) $own;
+        }
+        return ReportPattern::where('name', $name)->value('id') ?: null;
+    }
+
+    /**
+     * Build the audit-and-version slice for a table/field create call.
+     *
+     * Rule (mirrors the SQL round-trip in SchemaStorageService):
+     *   - If the JSON snapshot carries `version` + `created_by_username` it
+     *     came from a backup that already tracked audit history → preserve
+     *     `created_*` verbatim, refresh `updated_*` to "(now, importing
+     *     user)" so the trail records who pulled the snapshot in.
+     *   - Otherwise (legacy backup from before this feature, or a missing
+     *     field) stamp everything fresh.
+     *
+     * Username/timestamp are NEVER NULL — the migration enforces it via
+     * column DEFAULT, and we mirror that defence here so a malformed JSON
+     * can't crash the insert.
+     */
+    private function buildAuditAttributes(array $data, Carbon $now, string $currentUser): array
+    {
+        $hasSnapshot = isset($data['version']) && isset($data['created_by_username']);
+
+        if ($hasSnapshot) {
+            return [
+                'version' => (int) $data['version'],
+                'created_by_username' => $data['created_by_username'] ?: 'system',
+                'created_at' => isset($data['created_at']) ? Carbon::parse($data['created_at']) : $now,
+                'updated_by_username' => $currentUser,
+                'updated_at' => $now,
+            ];
+        }
+
+        return [
+            'version' => 1,
+            'created_by_username' => $currentUser,
+            'created_at' => $now,
+            'updated_by_username' => $currentUser,
+            'updated_at' => $now,
+        ];
     }
 }

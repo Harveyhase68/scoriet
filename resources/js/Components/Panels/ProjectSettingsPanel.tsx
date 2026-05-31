@@ -283,9 +283,9 @@ export default function ProjectSettingsPanel() {
                 await apiClient.post(`/projects/${selectedProject.id}/form-set`, { form_set_id: newId });
             }
             setDefaultFormSetId(newId);
-            toast.showSuccess?.((t as unknown as Record<string, string>).projectsettings_default_saved || 'Default saved');
+            toast.showSuccess?.(t.projectsettings_default_saved);
         } catch {
-            toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
+            toast.showError?.(t.projectsettings_default_save_failed);
         }
     };
 
@@ -298,9 +298,9 @@ export default function ProjectSettingsPanel() {
                 await apiClient.post(`/projects/${selectedProject.id}/report-pattern`, { report_pattern_id: newId });
             }
             setDefaultReportPatternId(newId);
-            toast.showSuccess?.((t as unknown as Record<string, string>).projectsettings_default_saved || 'Default saved');
+            toast.showSuccess?.(t.projectsettings_default_saved);
         } catch {
-            toast.showError?.((t as unknown as Record<string, string>).projectsettings_default_save_failed || 'Failed to save default');
+            toast.showError?.(t.projectsettings_default_save_failed);
         }
     };
 
@@ -841,8 +841,7 @@ export default function ProjectSettingsPanel() {
         if (!formData.name || !formData.name.trim()) {
             applyValidationError(
                 'name',
-                (t as unknown as Record<string, string>).projectsettings_err_name_required
-                    || 'Project name is required.',
+                t.projectsettings_err_name_required,
             );
             return;
         }
@@ -1582,12 +1581,11 @@ export default function ProjectSettingsPanel() {
                 </TabPanel>
 
                 {/* Forms & Reports Tab — defaults + designer settings */}
-                <TabPanel header={<span><i className="pi pi-bookmark mr-2"></i>{(t as unknown as Record<string, string>).projectsettings_forms_reports || 'Forms & Reports'}</span>}>
+                <TabPanel header={<span><i className="pi pi-bookmark mr-2"></i>{t.projectsettings_forms_reports}</span>}>
                     <div className="space-y-6 max-w-3xl p-4">
                         <div className="mb-2 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             <i className="pi pi-info-circle mr-2"></i>
-                            {(t as unknown as Record<string, string>).projectsettings_defaults_intro
-                              || 'Pick the default Form Set and Report Pattern for tables that do not specify their own. Without a default, the code generator will not produce forms / reports for those tables.'}
+                            {t.projectsettings_defaults_intro}
                         </div>
 
                         {/* Default Form Set
@@ -1600,12 +1598,12 @@ export default function ProjectSettingsPanel() {
                             translate it back to null at save time. */}
                         <div>
                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                {(t as unknown as Record<string, string>).projectsettings_default_form_set || 'Default Form Set'}
+                                {t.projectsettings_default_form_set}
                             </label>
                             <Dropdown
                                 value={defaultFormSetId ?? -1}
                                 options={[
-                                    { label: '— ' + ((t as unknown as Record<string, string>).projectsettings_no_default || 'No default') + ' —', value: -1 },
+                                    { label: '— ' + (t.projectsettings_no_default) + ' —', value: -1 },
                                     ...availableFormSets.map(fs => ({ label: fs.name, value: fs.id })),
                                 ]}
                                 onChange={(e) => saveDefaultFormSet(e.value === -1 ? null : e.value)}
@@ -1613,8 +1611,7 @@ export default function ProjectSettingsPanel() {
                                 className="w-full"
                             />
                             <p className="text-xs theme-text-muted mt-1">
-                                {(t as unknown as Record<string, string>).projectsettings_default_form_set_hint
-                                  || 'Used by tables without their own form set selection.'}
+                                {t.projectsettings_default_form_set_hint}
                             </p>
                         </div>
 
@@ -1656,12 +1653,12 @@ export default function ProjectSettingsPanel() {
                         {/* Default Report Pattern — same sentinel-value pattern as Default Form Set above */}
                         <div className="pt-4 border-t theme-border-secondary">
                             <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                {(t as unknown as Record<string, string>).projectsettings_default_report_pattern || 'Default Report Pattern'}
+                                {t.projectsettings_default_report_pattern}
                             </label>
                             <Dropdown
                                 value={defaultReportPatternId ?? -1}
                                 options={[
-                                    { label: '— ' + ((t as unknown as Record<string, string>).projectsettings_no_default || 'No default') + ' —', value: -1 },
+                                    { label: '— ' + (t.projectsettings_no_default) + ' —', value: -1 },
                                     ...availableReportPatterns.map(rp => ({ label: rp.name, value: rp.id })),
                                 ]}
                                 onChange={(e) => saveDefaultReportPattern(e.value === -1 ? null : e.value)}
@@ -1669,8 +1666,7 @@ export default function ProjectSettingsPanel() {
                                 className="w-full"
                             />
                             <p className="text-xs theme-text-muted mt-1">
-                                {(t as unknown as Record<string, string>).projectsettings_default_report_pattern_hint
-                                  || 'Used by tables without their own report pattern selection.'}
+                                {t.projectsettings_default_report_pattern_hint}
                             </p>
                         </div>
 

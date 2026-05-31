@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\FormItemPlacement;
+use App\Models\FormLayoutTab;
 use App\Models\FormWindow;
 use App\Models\FormElement;
 use App\Models\SchemaTable;
@@ -14,6 +15,13 @@ use Illuminate\Support\Facades\DB;
 
 class FormLayoutController extends Controller
 {
+    /**
+     * Vertical offset reserved at the top of a tab_container before the first
+     * field starts. The visible tab strip itself is 32 px (see designer &
+     * preview CSS); the extra 10 px is intentional breathing room so the
+     * first row of controls doesn't kiss the strip's underside.
+     */
+    private const TAB_HEADER_HEIGHT = 42;
     /**
      * Authorize access to a form window
      */
@@ -178,45 +186,68 @@ class FormLayoutController extends Controller
             return response()->json(['success' => false, 'error' => 'Table not found'], 404);
         }
 
+        // Only true layout containers are candidates. tab_panel rows belong to
+        // form_layout_tabs in the new design; the elements list never carries
+        // them anymore. Plain `container` and `tab_container` are the two
+        // legitimate placement targets at the template level.
         $containers = $window->elements
-            ->whereIn('element_type', ['container', 'tab_container', 'tab_panel'])
+            ->whereIn('element_type', ['container', 'tab_container'])
             ->values();
 
         if ($containers->isEmpty()) {
             return response()->json(['success' => false, 'error' => 'No containers found in this window'], 400);
         }
 
-        // Delete existing field placements for this window+table
+        // Wipe the previous layout for this window+table — both field
+        // placements AND any auto-generated tabs. We always rebuild from
+        // scratch so the field count → tab count relationship stays tight.
         FormItemPlacement::fields()->forWindowAndTable($window->id, $tableId)->delete();
+        FormLayoutTab::where('form_window_id', $window->id)
+            ->where('schema_table_id', $tableId)
+            ->delete();
 
+        // Pre-resolve geometry for the first container and (if applicable)
+        // create the first tab record for a tab_container. The state machine
+        // below advances either a tab counter (tab_container) or a container
+        // counter (plain container) when max_fields is exceeded.
         $placements = [];
         $containerIdx = 0;
         $fieldCount = 0;
         $currentContainer = $containers[$containerIdx];
-        $columns = $currentContainer->container_columns ?? 1;
-        $maxFields = $currentContainer->max_fields;
-        $fieldWidth = $columns > 1 ? intval(($currentContainer->width - 20) / $columns) : ($currentContainer->width - 20);
-        $fieldHeight = 40;
-        $gap = $currentContainer->container_gap ?? 8;
+        $currentTab = $this->ensureFirstTab($currentContainer, $window->id, $tableId);
+        [$columns, $maxFields, $fieldWidth, $fieldHeight, $gap, $yOffset] = $this->resolveContainerGeometry($currentContainer);
 
         foreach ($table->fields as $index => $field) {
             if ($field->is_auto_increment) continue;
             if (in_array($field->field_name, ['created_at', 'updated_at', 'deleted_at'])) continue;
 
             if ($maxFields && $fieldCount >= $maxFields) {
-                $containerIdx++;
-                if ($containerIdx >= $containers->count()) break;
-                $currentContainer = $containers[$containerIdx];
-                $columns = $currentContainer->container_columns ?? 1;
-                $maxFields = $currentContainer->max_fields;
-                $fieldWidth = $columns > 1 ? intval(($currentContainer->width - 20) / $columns) : ($currentContainer->width - 20);
-                $fieldCount = 0;
+                // tab_container: stay on the same container, spawn a fresh tab.
+                // plain container: hop to the next container in the template.
+                if ($currentContainer->element_type === 'tab_container') {
+                    $nextSort = ($currentTab?->sort_order ?? -1) + 1;
+                    $currentTab = FormLayoutTab::create([
+                        'form_window_id' => $window->id,
+                        'schema_table_id' => $tableId,
+                        'tab_container_element_id' => $currentContainer->id,
+                        'sort_order' => $nextSort,
+                        'tab_label' => 'Tab ' . ($nextSort + 1),
+                    ]);
+                    $fieldCount = 0;
+                } else {
+                    $containerIdx++;
+                    if ($containerIdx >= $containers->count()) break;
+                    $currentContainer = $containers[$containerIdx];
+                    $currentTab = $this->ensureFirstTab($currentContainer, $window->id, $tableId);
+                    [$columns, $maxFields, $fieldWidth, $fieldHeight, $gap, $yOffset] = $this->resolveContainerGeometry($currentContainer);
+                    $fieldCount = 0;
+                }
             }
 
             $col = $fieldCount % $columns;
             $row = intval($fieldCount / $columns);
             $x = $col * ($fieldWidth + $gap);
-            $y = $row * ($fieldHeight + $gap);
+            $y = $yOffset + $row * ($fieldHeight + $gap);
 
             $placements[] = FormItemPlacement::create([
                 'form_window_id' => $window->id,
@@ -224,6 +255,7 @@ class FormLayoutController extends Controller
                 'schema_table_id' => $tableId,
                 'schema_field_id' => $field->id,
                 'container_element_id' => $currentContainer->id,
+                'tab_panel_id' => $currentTab?->id,
                 'x_position' => $x,
                 'y_position' => $y,
                 'width' => $fieldWidth,
@@ -243,7 +275,52 @@ class FormLayoutController extends Controller
                 ->with(['schemaField', 'containerElement'])
                 ->orderBy('sort_order')
                 ->get(),
+            'tabs' => FormLayoutTab::where('form_window_id', $window->id)
+                ->where('schema_table_id', $tableId)
+                ->orderBy('sort_order')
+                ->get(),
         ]);
+    }
+
+    /**
+     * If the given container is a tab_container, ensure a first tab record
+     * exists for (window × table × this container) and return it. For plain
+     * containers (no tabs), returns null.
+     */
+    private function ensureFirstTab(FormElement $container, int $windowId, int $tableId): ?FormLayoutTab
+    {
+        if ($container->element_type !== 'tab_container') {
+            return null;
+        }
+        return FormLayoutTab::create([
+            'form_window_id' => $windowId,
+            'schema_table_id' => $tableId,
+            'tab_container_element_id' => $container->id,
+            'sort_order' => 0,
+            'tab_label' => 'Tab 1',
+        ]);
+    }
+
+    /**
+     * Resolve the per-container layout numbers used by auto-place:
+     * [columns, maxFields, fieldWidth, fieldHeight, gap, yOffset].
+     *
+     * yOffset is non-zero for tab_container so fields don't render on top
+     * of the tab strip.
+     *
+     * @return array{0:int,1:?int,2:int,3:int,4:int,5:int}
+     */
+    private function resolveContainerGeometry(FormElement $container): array
+    {
+        $columns = $container->container_columns ?? 1;
+        $maxFields = $container->max_fields;
+        $gap = $container->container_gap ?? 8;
+        $fieldHeight = $container->default_control_height ?? 40;
+        $usableWidth = max(0, $container->width - 20);
+        $fieldWidth = $columns > 1 ? intval($usableWidth / $columns) : $usableWidth;
+        $yOffset = $container->element_type === 'tab_container' ? self::TAB_HEADER_HEIGHT : 0;
+
+        return [$columns, $maxFields, $fieldWidth, $fieldHeight, $gap, $yOffset];
     }
 
     /**
@@ -623,6 +700,140 @@ class FormLayoutController extends Controller
                 ->with(['schemaTable', 'childItems'])
                 ->orderBy('sort_order')
                 ->get(),
+        ]);
+    }
+
+    // ========== FORM LAYOUT TABS ==========
+
+    /**
+     * List tabs for a (window × table) combination.
+     * GET /api/form-windows/{windowId}/tables/{tableId}/tabs
+     */
+    public function listTabs(int $windowId, int $tableId): JsonResponse
+    {
+        $window = $this->authorizeWindow($windowId);
+        if (!$window) {
+            return response()->json(['success' => false, 'error' => 'Window not found or unauthorized'], 404);
+        }
+
+        $tabs = FormLayoutTab::where('form_window_id', $windowId)
+            ->where('schema_table_id', $tableId)
+            ->orderBy('tab_container_element_id')
+            ->orderBy('sort_order')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $tabs,
+        ]);
+    }
+
+    /**
+     * Add a tab to a tab_container at the Layout level. The new tab is
+     * appended (sort_order = current max + 1) so it lands at the right
+     * end of the strip.
+     * POST /api/form-windows/{windowId}/tables/{tableId}/tabs
+     */
+    public function addTab(Request $request, int $windowId, int $tableId): JsonResponse
+    {
+        $window = $this->authorizeWindow($windowId);
+        if (!$window) {
+            return response()->json(['success' => false, 'error' => 'Window not found or unauthorized'], 404);
+        }
+
+        $data = $request->validate([
+            'tab_container_element_id' => 'required|integer|exists:form_elements,id',
+            'tab_label' => 'nullable|string|max:100',
+            'tab_labels' => 'nullable|array',
+        ]);
+
+        // Sanity: the supplied element must belong to this window and be a
+        // tab_container. Otherwise a user could attach a tab record to a
+        // foreign window's element.
+        $container = FormElement::where('id', $data['tab_container_element_id'])
+            ->where('form_window_id', $windowId)
+            ->where('element_type', 'tab_container')
+            ->first();
+        if (!$container) {
+            return response()->json(['success' => false, 'error' => 'tab_container not found in this window'], 400);
+        }
+
+        // sort_order is 0-based. When there are no tabs yet, max() returns
+        // null and we start at 0; otherwise we append after the current max.
+        $currentMax = FormLayoutTab::where('form_window_id', $windowId)
+            ->where('schema_table_id', $tableId)
+            ->where('tab_container_element_id', $container->id)
+            ->max('sort_order');
+        $nextSort = $currentMax === null ? 0 : ((int) $currentMax + 1);
+
+        $tab = FormLayoutTab::create([
+            'form_window_id' => $windowId,
+            'schema_table_id' => $tableId,
+            'tab_container_element_id' => $container->id,
+            'sort_order' => $nextSort,
+            'tab_label' => $data['tab_label'] ?? ('Tab ' . ($nextSort + 1)),
+            'tab_labels' => $data['tab_labels'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $tab,
+        ]);
+    }
+
+    /**
+     * Update a tab's label (single string + per-language map) and/or its
+     * sort_order. Field assignments are not touched here.
+     * PATCH /api/form-layout-tabs/{id}
+     */
+    public function updateTab(Request $request, int $id): JsonResponse
+    {
+        $user = Auth::user();
+        $tab = FormLayoutTab::with('formWindow.formSet')->find($id);
+        if (!$tab) {
+            return response()->json(['success' => false, 'error' => 'Tab not found'], 404);
+        }
+        if ($tab->formWindow->formSet->creator_user_id !== $user->id && !$user->isAdmin()) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+
+        $data = $request->validate([
+            'tab_label' => 'nullable|string|max:100',
+            'tab_labels' => 'nullable|array',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $tab->update(array_filter($data, fn($v) => $v !== null));
+
+        return response()->json([
+            'success' => true,
+            'data' => $tab->fresh(),
+        ]);
+    }
+
+    /**
+     * Delete a tab. Field placements that referenced it get their
+     * tab_panel_id set to NULL via the foreign-key onDelete=set null —
+     * the fields aren't deleted, they just become "no tab" until the user
+     * moves them or re-runs auto-place.
+     * DELETE /api/form-layout-tabs/{id}
+     */
+    public function deleteTab(int $id): JsonResponse
+    {
+        $user = Auth::user();
+        $tab = FormLayoutTab::with('formWindow.formSet')->find($id);
+        if (!$tab) {
+            return response()->json(['success' => false, 'error' => 'Tab not found'], 404);
+        }
+        if ($tab->formWindow->formSet->creator_user_id !== $user->id && !$user->isAdmin()) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+
+        $tab->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tab deleted',
         ]);
     }
 }

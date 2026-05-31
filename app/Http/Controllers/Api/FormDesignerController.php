@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\FormSet;
 use App\Models\FormWindow;
 use App\Models\FormElement;
+use App\Models\FormTableLayout;
+use App\Models\Project;
 use App\Models\ProjectFormSet;
 use App\Models\Subscription;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +17,19 @@ use Illuminate\Support\Facades\DB;
 
 class FormDesignerController extends Controller
 {
+    /**
+     * Mirror of FormSet::scopeAccessibleBy as a boolean. Used by the
+     * read-only endpoints (windows / elements) so a user can't enumerate
+     * other users' form designs.
+     */
+    private function canReadFormSet(FormSet $formSet, $user): bool
+    {
+        if ($formSet->visibility === 'public') {
+            return true;
+        }
+        return $user && (int) $formSet->creator_user_id === (int) $user->id;
+    }
+
     // ========== ACCESS CONTROL ==========
 
     /**
@@ -154,7 +169,13 @@ class FormDesignerController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:100',
+            // Per-creator uniqueness: a single user can't have two FormSets
+            // with the same name. Mirrors the contract templates use.
+            'name' => [
+                'required', 'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('form_sets', 'name')
+                    ->where(fn ($q) => $q->where('creator_user_id', $user->id)),
+            ],
             'description' => 'nullable|string',
             'visibility' => 'in:private,team,public',
             'default_background_color' => 'nullable|string|max:7',
@@ -204,7 +225,12 @@ class FormDesignerController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'string|max:100',
+            'name' => [
+                'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('form_sets', 'name')
+                    ->ignore($formSet->id)
+                    ->where(fn ($q) => $q->where('creator_user_id', $user->id)),
+            ],
             'description' => 'nullable|string',
             'visibility' => 'in:private,team,public',
             'default_background_color' => 'nullable|string|max:7',
@@ -314,6 +340,12 @@ class FormDesignerController extends Controller
             return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp291')], 404);
         }
 
+        // BOLA guard: windows + elements describe the full UI layout of a
+        // form set. Restrict to creator + public.
+        if (!$this->canReadFormSet($formSet, Auth::user())) {
+            return response()->json(['success' => false, 'error' => 'You do not have permission to view this form set.'], 403);
+        }
+
         return response()->json([
             'success' => true,
             'data' => $formSet->windows,
@@ -374,10 +406,16 @@ class FormDesignerController extends Controller
      */
     public function elements(int $id): JsonResponse
     {
-        $window = FormWindow::with('elements')->find($id);
+        $window = FormWindow::with(['elements', 'formSet'])->find($id);
 
         if (!$window) {
             return response()->json(['success' => false, 'error' => __('formdesignercontrollerphp349')], 404);
+        }
+
+        // BOLA guard: window elements describe the full UI tree of a form
+        // window — restrict via the parent FormSet's visibility rule.
+        if (!$window->formSet || !$this->canReadFormSet($window->formSet, Auth::user())) {
+            return response()->json(['success' => false, 'error' => 'You do not have permission to view this form window.'], 403);
         }
 
         return response()->json([
@@ -537,6 +575,18 @@ class FormDesignerController extends Controller
      */
     public function activateForProject(Request $request, int $projectId): JsonResponse
     {
+        // BOLA guard: without this, any authenticated user could flip ANY
+        // project's active FormSet by passing its projectId. We require
+        // edit-settings permission on the project before touching its
+        // FormSet pivot.
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->userCanEditProject(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to edit this project.'], 403);
+        }
+
         $validated = $request->validate([
             'form_set_id' => 'required|exists:form_sets,id',
         ]);
@@ -556,6 +606,16 @@ class FormDesignerController extends Controller
      */
     public function getProjectFormSet(int $projectId): JsonResponse
     {
+        // BOLA guard: leaks which FormSet a foreign project uses. Require
+        // visibility on the project itself — public projects stay readable.
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->isVisibleTo(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to view this project.'], 403);
+        }
+
         $formSet = ProjectFormSet::getActiveForProject($projectId);
 
         return response()->json([
@@ -570,6 +630,16 @@ class FormDesignerController extends Controller
      */
     public function deactivateForProject(int $projectId): JsonResponse
     {
+        // BOLA guard — same reason as activateForProject above. Without it,
+        // any authenticated user could clear another project's FormSet pivot.
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found'], 404);
+        }
+        if (!$project->userCanEditProject(Auth::user())) {
+            return response()->json(['success' => false, 'message' => 'You do not have permission to edit this project.'], 403);
+        }
+
         ProjectFormSet::forProject($projectId)->update(['is_active' => false]);
         return response()->json([
             'success' => true,
@@ -638,6 +708,71 @@ class FormDesignerController extends Controller
         return response()->json([
             'success' => true,
             'data' => $linkedProjectIds,
+        ]);
+    }
+
+    // ========== PER-TABLE LAYOUT DIMENSION OVERRIDES ==========
+    //
+    // The FormWindow carries the TEMPLATE width/height (default_width /
+    // default_height). Those apply across all tables that use the same window
+    // template. The Layout Designer (per-table) needs to override the size
+    // independently per (window × schema_table) pair — e.g. give the `users`
+    // form 1200px height because of its 16 fields, without changing the
+    // template that `user_groups` also uses.
+    //
+    // Stored in `form_table_layouts` table, keyed by (form_window_id, schema_table_id).
+
+    /**
+     * GET /api/form-windows/{windowId}/table-layouts/{tableId}
+     * Returns the per-table dimension override, or 200 with nulls if none exists.
+     */
+    public function getTableLayout(int $windowId, int $tableId): JsonResponse
+    {
+        $row = FormTableLayout::where('form_window_id', $windowId)
+            ->where('schema_table_id', $tableId)
+            ->first();
+
+        return response()->json([
+            'form_window_id'  => $windowId,
+            'schema_table_id' => $tableId,
+            'width'           => $row->width  ?? null,
+            'height'          => $row->height ?? null,
+        ]);
+    }
+
+    /**
+     * PUT /api/form-windows/{windowId}/table-layouts/{tableId}
+     * Upserts the per-table override. Passing null for width/height clears that axis.
+     */
+    public function saveTableLayout(Request $request, int $windowId, int $tableId): JsonResponse
+    {
+        $user = Auth::user();
+        $window = FormWindow::with('formSet')->find($windowId);
+        if (!$window) {
+            return response()->json(['success' => false, 'error' => 'Window not found'], 404);
+        }
+        // Same permission model as updateWindow(): only the FormSet creator may edit.
+        // Per-table overrides are still "designer state" so we keep the gate.
+        if ($window->formSet->creator_user_id !== $user->id) {
+            return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'width'  => 'nullable|integer|min:100|max:8000',
+            'height' => 'nullable|integer|min:100|max:8000',
+        ]);
+
+        $row = FormTableLayout::updateOrCreate(
+            ['form_window_id' => $windowId, 'schema_table_id' => $tableId],
+            ['width' => $validated['width'] ?? null, 'height' => $validated['height'] ?? null],
+        );
+
+        return response()->json([
+            'success'         => true,
+            'form_window_id'  => $row->form_window_id,
+            'schema_table_id' => $row->schema_table_id,
+            'width'           => $row->width,
+            'height'          => $row->height,
         ]);
     }
 }

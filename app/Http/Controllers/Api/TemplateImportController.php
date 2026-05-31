@@ -1293,21 +1293,13 @@ class TemplateImportController extends Controller
     }
 
     /**
-     * Generate a unique full_name: username/slug
-     * Appends _2, _3, etc. if already taken.
+     * Generate a unique full_name: username/slug.
+     * Thin wrapper around Template::buildFullName() — the canonical
+     * implementation lives on the model so every code path stays in sync.
      */
     private function generateFullName(string $username, string $templateName): string
     {
-        $base = strtolower($username) . '/' . Str::slug($templateName, '_');
-        $fullName = $base;
-        $counter = 2;
-
-        while (Template::where('full_name', $fullName)->exists()) {
-            $fullName = $base . '_' . $counter;
-            $counter++;
-        }
-
-        return $fullName;
+        return Template::buildFullName($username, $templateName);
     }
 
     /**

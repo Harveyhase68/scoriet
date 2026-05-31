@@ -13,8 +13,20 @@ class SQLParser
     private $tables;
 
     private $table_map;
-    
+
     private $sql_text;
+
+    /**
+     * Schema-wide MySQL defaults discovered while parsing. Filled from the
+     * first match of either `CREATE DATABASE ... CHARACTER SET=... COLLATE=...`
+     * (preferred — unambiguous) or the trailer of the first `CREATE TABLE`.
+     * `null` means "not specified in dump"; the storage layer applies its
+     * own fallbacks (typically utf8mb4 / utf8mb4_unicode_ci).
+     */
+    private $schemaDefaults = [
+        'charset' => null,
+        'collation' => null,
+    ];
 
     public function __construct($tokens, $sql_text = null)
     {
@@ -23,6 +35,15 @@ class SQLParser
         $this->position = 0;
         $this->tables = [];
         $this->table_map = [];
+    }
+
+    /**
+     * Schema-level CHARSET/COLLATION discovered during parsing.
+     * Keys: 'charset', 'collation'. Either or both may be null.
+     */
+    public function getSchemaDefaults(): array
+    {
+        return $this->schemaDefaults;
     }
 
     public function parse()
@@ -146,6 +167,17 @@ class SQLParser
         // Check what comes after CREATE
         $nextToken = $this->currentToken();
 
+        // CREATE DATABASE [IF NOT EXISTS] `name` [DEFAULT] CHARACTER SET ... COLLATE ...
+        // We don't model databases as entities, but we DO want to capture the
+        // schema-wide defaults from the dump because they're the most reliable
+        // source (more so than guessing from the first CREATE TABLE).
+        // MySQL accepts CREATE DATABASE and CREATE SCHEMA interchangeably.
+        if ($nextToken && $nextToken->type === 'IDENTIFIER'
+            && in_array(strtoupper($nextToken->value), ['DATABASE', 'SCHEMA'], true)) {
+            $this->parseCreateDatabaseStatement();
+            return;
+        }
+
         // We only care about CREATE TABLE - skip everything else
         if (!$nextToken || !$this->currentTokenMatches('KEYWORD', 'TABLE')) {
             // Skip this statement (PROCEDURE, TRIGGER, VIEW, FUNCTION, etc.)
@@ -177,17 +209,24 @@ class SQLParser
         [$fields, $constraints] = $this->parseTableDefinition();
         $this->consumeToken('RPAREN');
 
-        // Skip ENGINE and other options
-        $this->skipToSemicolonOrEnd();
+        // Walk the trailing table options (ENGINE, CHARSET, COMMENT='...', AUTO_INCREMENT=...)
+        // to pull out the COMMENT — everything else is metadata the schema editor doesn't
+        // need to round-trip. The walk stops at the statement terminator.
+        $table_comment = $this->parseTableOptions();
 
         $table = [
             'table_name' => $table_name,
             'fields' => $fields,
             'constraints' => $constraints,
+            'comment' => $table_comment,
         ];
 
         // Check if table already exists - merge instead of duplicate
         if (isset($this->table_map[$table_name])) {
+            // Preserve comment from this CREATE TABLE if the existing record didn't have one
+            if (!empty($table['comment']) && empty($this->table_map[$table_name]['comment'])) {
+                $this->table_map[$table_name]['comment'] = $table['comment'];
+            }
             // Merge fields and constraints with existing table (avoid duplicates)
             $existingTable = &$this->table_map[$table_name];
 
@@ -268,26 +307,51 @@ class SQLParser
         $data_type_token = $this->consumeToken();
         $data_type = $data_type_token->value;
 
-        // Handle data type with size (e.g., VARCHAR(255))
+        // Handle data type with size/value list. We split the payload into
+        // structured fields up-front so storage doesn't have to keep stuffing
+        // a complex literal into a single varchar(100) field_type column:
+        //
+        //   VARCHAR(255)        → field_length = 255         (data_type stays "VARCHAR")
+        //   TINYINT(1)          → field_length = 1           (data_type stays "TINYINT")
+        //   DECIMAL(10,2)       → precision=10, scale=2      (data_type stays "DECIMAL")
+        //   ENUM('a','b','c')   → enum_values=['a','b','c']  (data_type stays "ENUM")
+        //   SET('x','y')        → enum_values=['x','y']      (data_type stays "SET")
+        //
+        // Quoted strings keep their value verbatim — case matters for ENUM/SET.
+        $field_length = null;
+        $field_precision = null;
+        $field_scale = null;
+        $enum_values = null;
+
         if ($this->currentTokenMatches('LPAREN')) {
             $this->consumeToken('LPAREN');
-            $size_parts = [];
-
-            // Handle size parameters (can be multiple, e.g., DECIMAL(10,2))
+            // Collect each comma-separated argument with its token type
+            $args = [];
             while (! $this->currentTokenMatches('RPAREN')) {
-                $size_token = $this->consumeToken();
-                $size_parts[] = $size_token->value;
-
+                $token = $this->consumeToken();
+                $args[] = ['type' => $token->type, 'value' => $token->value];
                 if ($this->currentTokenMatches('COMMA')) {
                     $this->consumeToken('COMMA');
-                    $size_parts[] = ',';
-                } elseif (! $this->currentTokenMatches('RPAREN')) {
-                    break;
                 }
             }
-
-            $data_type .= '('.implode('', $size_parts).')';
             $this->consumeToken('RPAREN');
+
+            $baseTypeUpper = strtoupper($data_type);
+            if ($baseTypeUpper === 'ENUM' || $baseTypeUpper === 'SET') {
+                $enum_values = array_map(fn($a) => $a['value'], $args);
+            } elseif (in_array($baseTypeUpper, ['DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE'], true)) {
+                if (isset($args[0]) && is_numeric($args[0]['value'])) {
+                    $field_precision = (int) $args[0]['value'];
+                }
+                if (isset($args[1]) && is_numeric($args[1]['value'])) {
+                    $field_scale = (int) $args[1]['value'];
+                }
+            } else {
+                // VARCHAR/CHAR/TINYINT/... — single integer length
+                if (isset($args[0]) && is_numeric($args[0]['value'])) {
+                    $field_length = (int) $args[0]['value'];
+                }
+            }
         }
 
         // Parse field attributes
@@ -295,6 +359,10 @@ class SQLParser
         $auto_increment = false;
         $nullable = true;
         $default_value = null;
+        $comment = null;
+        $is_generated = false;
+        $generation_expression = null;
+        $generation_storage = null;
 
         while ($this->currentToken() &&
                ! $this->currentTokenMatches('COMMA') &&
@@ -325,15 +393,36 @@ class SQLParser
                         break;
                     case 'DEFAULT':
                         $this->consumeToken('KEYWORD', 'DEFAULT');
-                        $default_token = $this->consumeToken();
-                        if ($default_token->type === 'QUOTED_STRING') {
-                            $default_value = $default_token->value;
-                        } elseif ($default_token->type === 'NUMBER') {
-                            $default_value = $default_token->value;
-                        } elseif ($default_token->type === 'KEYWORD' && $default_token->value === 'NULL') {
-                            $default_value = 'NULL'; // Explicit NULL as default
-                        } elseif ($default_token->type === 'IDENTIFIER') {
-                            $default_value = $default_token->value;
+                        $default_value = $this->parseDefaultValue();
+                        break;
+                    case 'COMMENT':
+                        $this->consumeToken('KEYWORD', 'COMMENT');
+                        $comment_token = $this->consumeToken();
+                        if ($comment_token->type === 'QUOTED_STRING') {
+                            $comment = $comment_token->value;
+                        }
+                        break;
+                    case 'GENERATED':
+                        $is_generated = true;
+                        $this->consumeToken('KEYWORD', 'GENERATED');
+                        // Optional 'ALWAYS' and 'AS' before the expression
+                        if ($this->currentTokenMatches('KEYWORD', 'ALWAYS')) {
+                            $this->consumeToken();
+                        }
+                        if ($this->currentTokenMatches('KEYWORD', 'AS')) {
+                            $this->consumeToken();
+                        }
+                        // Expression in parentheses — extract verbatim from sql_text
+                        $generation_expression = $this->collectParenthesizedExpression();
+                        // Optional storage modifier: STORED (default in MySQL = VIRTUAL)
+                        if ($this->currentTokenMatches('KEYWORD', 'STORED')) {
+                            $generation_storage = 'stored';
+                            $this->consumeToken();
+                        } elseif ($this->currentTokenMatches('KEYWORD', 'VIRTUAL')) {
+                            $generation_storage = 'virtual';
+                            $this->consumeToken();
+                        } else {
+                            $generation_storage = 'virtual';
                         }
                         break;
                     default:
@@ -348,11 +437,99 @@ class SQLParser
         return [
             'name' => $field_name,
             'type' => $data_type,
+            'length' => $field_length,
+            'precision' => $field_precision,
+            'scale' => $field_scale,
+            'enum_values' => $enum_values,
             'unsigned' => $unsigned,
             'nullable' => $nullable,
             'default' => $default_value,
             'auto_increment' => $auto_increment,
+            'comment' => $comment,
+            'is_generated' => $is_generated,
+            'generation_expression' => $generation_expression,
+            'generation_storage' => $generation_storage,
         ];
+    }
+
+    /**
+     * Parse a DEFAULT clause value. Accepts string literals, numbers, NULL,
+     * function calls (CURRENT_TIMESTAMP, NOW(), UUID(), ...) and identifiers.
+     * Function-call argument lists are consumed via depth-tracked extraction
+     * so that DEFAULT CURRENT_TIMESTAMP(6) or DEFAULT (UNIX_TIMESTAMP()) works.
+     */
+    private function parseDefaultValue()
+    {
+        // Some MySQL dialects wrap the default in parentheses: DEFAULT (expr)
+        if ($this->currentTokenMatches('LPAREN')) {
+            return $this->collectParenthesizedExpression();
+        }
+
+        $token = $this->consumeToken();
+        $value = $token->value;
+
+        // For functions like CURRENT_TIMESTAMP(6) or UUID() consume the args
+        if ($this->currentTokenMatches('LPAREN')) {
+            $value .= $this->collectParenthesizedExpression();
+        }
+
+        if ($token->type === 'QUOTED_STRING') {
+            return $value;
+        }
+        if ($token->type === 'NUMBER') {
+            return $value;
+        }
+        if ($token->type === 'KEYWORD') {
+            // CURRENT_TIMESTAMP, NULL, TRUE, FALSE, etc.
+            return $value;
+        }
+        if ($token->type === 'IDENTIFIER') {
+            return $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * Collect a parenthesized expression verbatim from the source SQL text.
+     * Tracks paren depth so nested parens (e.g. CONCAT(LPAD(...))) are not
+     * mistaken for a column boundary. Returns the text INCLUDING the outer
+     * parens, e.g. "(trim(concat(...)))".
+     *
+     * Requires that the current token is an LPAREN. Returns empty string
+     * if no source text is available (e.g. parser used without sql_text).
+     */
+    private function collectParenthesizedExpression(): string
+    {
+        if (! $this->currentTokenMatches('LPAREN')) {
+            return '';
+        }
+
+        $startToken = $this->currentToken();
+        $startPos = $startToken->position;
+        $depth = 0;
+
+        while ($this->currentToken()) {
+            $token = $this->currentToken();
+            $this->consumeToken();
+
+            if ($token->type === 'LPAREN') {
+                $depth++;
+            } elseif ($token->type === 'RPAREN') {
+                $depth--;
+                if ($depth === 0) {
+                    if ($this->sql_text !== null) {
+                        // Slice INCLUDING the closing paren
+                        $endPos = $token->position + 1;
+                        return substr($this->sql_text, $startPos, $endPos - $startPos);
+                    }
+                    return '';
+                }
+            }
+        }
+
+        // Unbalanced — return what we have rather than crash
+        return '';
     }
 
     private function parsePrimaryKey()
@@ -911,6 +1088,159 @@ class SQLParser
     {
         while ($this->position < count($this->tokens) &&
                ! $this->currentTokenMatches('SEMICOLON')) {
+            $this->position++;
+        }
+
+        if ($this->currentTokenMatches('SEMICOLON')) {
+            $this->consumeToken('SEMICOLON');
+        }
+    }
+
+    /**
+     * Walk the trailing CREATE TABLE options up to the statement terminator.
+     *
+     * Extracts:
+     *   - COMMENT='...' or COMMENT 'x'             → table-level comment
+     *   - DEFAULT CHARSET=utf8mb4                  → schema_defaults['charset']  (first table wins)
+     *   - COLLATE=utf8mb4_unicode_ci               → schema_defaults['collation'] (first table wins)
+     *
+     * Everything else (ENGINE, AUTO_INCREMENT, ROW_FORMAT, ...) is skipped.
+     * The CHARSET/COLLATE values only update schemaDefaults if not yet set,
+     * so a preceding `CREATE DATABASE` (which is the authoritative source)
+     * takes precedence over subsequent `CREATE TABLE` trailers.
+     */
+    private function parseTableOptions(): ?string
+    {
+        $comment = null;
+
+        while ($this->position < count($this->tokens) &&
+               ! $this->currentTokenMatches('SEMICOLON')) {
+
+            $token = $this->currentToken();
+
+            if ($token->type === 'KEYWORD' && $token->value === 'COMMENT') {
+                $this->consumeToken();
+                if ($this->currentTokenMatches('EQUALS')) {
+                    $this->consumeToken();
+                }
+                $valueToken = $this->currentToken();
+                if ($valueToken && $valueToken->type === 'QUOTED_STRING') {
+                    $comment = $valueToken->value;
+                    $this->consumeToken();
+                }
+                continue;
+            }
+
+            // DEFAULT CHARSET=utf8mb4   (DEFAULT is optional)
+            // CHARSET=utf8mb4
+            // CHARACTER SET = utf8mb4
+            if ($token->type === 'KEYWORD' && in_array($token->value, ['CHARSET', 'CHARACTER'], true)) {
+                $this->consumeToken();
+                if ($this->currentTokenMatches('KEYWORD', 'SET')) {
+                    $this->consumeToken();
+                }
+                if ($this->currentTokenMatches('EQUALS')) {
+                    $this->consumeToken();
+                }
+                $valueToken = $this->currentToken();
+                if ($valueToken && in_array($valueToken->type, ['IDENTIFIER', 'KEYWORD', 'QUOTED_STRING'], true)) {
+                    if ($this->schemaDefaults['charset'] === null) {
+                        $this->schemaDefaults['charset'] = strtolower($valueToken->value);
+                    }
+                    $this->consumeToken();
+                }
+                continue;
+            }
+
+            if ($token->type === 'KEYWORD' && $token->value === 'COLLATE') {
+                $this->consumeToken();
+                if ($this->currentTokenMatches('EQUALS')) {
+                    $this->consumeToken();
+                }
+                $valueToken = $this->currentToken();
+                if ($valueToken && in_array($valueToken->type, ['IDENTIFIER', 'KEYWORD', 'QUOTED_STRING'], true)) {
+                    if ($this->schemaDefaults['collation'] === null) {
+                        $this->schemaDefaults['collation'] = strtolower($valueToken->value);
+                    }
+                    $this->consumeToken();
+                }
+                continue;
+            }
+
+            // DEFAULT is just a modifier — consume and keep going
+            if ($token->type === 'KEYWORD' && $token->value === 'DEFAULT') {
+                $this->consumeToken();
+                continue;
+            }
+
+            $this->position++;
+        }
+
+        if ($this->currentTokenMatches('SEMICOLON')) {
+            $this->consumeToken('SEMICOLON');
+        }
+
+        return $comment;
+    }
+
+    /**
+     * Parse `CREATE DATABASE [IF NOT EXISTS] name [DEFAULT] CHARACTER SET = ...
+     * [DEFAULT] COLLATE = ...;`
+     *
+     * Updates schemaDefaults unconditionally because CREATE DATABASE is the
+     * authoritative source for schema-wide encoding (more reliable than
+     * inferring from the first CREATE TABLE which may have a per-table
+     * override). The database name itself is discarded — we don't model it.
+     */
+    private function parseCreateDatabaseStatement(): void
+    {
+        // Consume "DATABASE" (tokenized as IDENTIFIER since it's not in the keyword list)
+        $this->consumeToken();
+
+        if ($this->currentTokenMatches('KEYWORD', 'IF')) {
+            $this->consumeToken();
+            if ($this->currentTokenMatches('KEYWORD', 'NOT')) $this->consumeToken();
+            if ($this->currentTokenMatches('KEYWORD', 'EXISTS')) $this->consumeToken();
+        }
+
+        // Database name — could be identifier or backtick-quoted string
+        if ($this->currentToken()) {
+            $this->consumeToken();
+        }
+
+        while ($this->position < count($this->tokens) &&
+               ! $this->currentTokenMatches('SEMICOLON')) {
+            $token = $this->currentToken();
+
+            if ($token->type === 'KEYWORD' && in_array($token->value, ['CHARSET', 'CHARACTER'], true)) {
+                $this->consumeToken();
+                if ($this->currentTokenMatches('KEYWORD', 'SET')) $this->consumeToken();
+                if ($this->currentTokenMatches('EQUALS')) $this->consumeToken();
+                $valueToken = $this->currentToken();
+                if ($valueToken && in_array($valueToken->type, ['IDENTIFIER', 'KEYWORD', 'QUOTED_STRING'], true)) {
+                    // CREATE DATABASE wins over any subsequent CREATE TABLE trailer
+                    $this->schemaDefaults['charset'] = strtolower($valueToken->value);
+                    $this->consumeToken();
+                }
+                continue;
+            }
+
+            if ($token->type === 'KEYWORD' && $token->value === 'COLLATE') {
+                $this->consumeToken();
+                if ($this->currentTokenMatches('EQUALS')) $this->consumeToken();
+                $valueToken = $this->currentToken();
+                if ($valueToken && in_array($valueToken->type, ['IDENTIFIER', 'KEYWORD', 'QUOTED_STRING'], true)) {
+                    $this->schemaDefaults['collation'] = strtolower($valueToken->value);
+                    $this->consumeToken();
+                }
+                continue;
+            }
+
+            if ($token->type === 'KEYWORD' && $token->value === 'DEFAULT') {
+                $this->consumeToken();
+                continue;
+            }
+
             $this->position++;
         }
 

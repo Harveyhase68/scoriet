@@ -78,8 +78,6 @@ export default function ReportFieldAssignmentPanel() {
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
 
-  const i18nExtra = t as unknown as Record<string, string>;
-
   const visibilityOptions = [
     { label: t.fieldassignmentpanel_vis_visible, value: 'visible' },
     { label: t.fieldassignmentpanel_vis_grayed, value: 'grayed' },
@@ -217,25 +215,22 @@ export default function ReportFieldAssignmentPanel() {
     const newId = setTimeout(async () => {
       setSaving(true);
       try {
-        const allAssignments = { ...assignments, [key]: updated };
-        const toSave = Object.entries(allAssignments)
-          .filter(([, a]) => a.visibility_state !== 'visible' || a.sort_order !== null)
-          .map(([k, a]) => {
-            const [rpid, sid] = k.split('_').map(Number);
-            return {
-              report_pattern_id: rpid,
-              schema_field_id: sid,
-              visibility_state: a.visibility_state,
-              sort_order: a.sort_order,
-            };
-          });
+        // Send only the ONE assignment that just changed. The backend reads
+        // "visible + no sort_order" as a reset and deletes the row, so a
+        // toggle back to Visible reaches the DB even though it looks like
+        // the default state (no need to filter it out client-side).
+        const [rpid, sid] = key.split('_').map(Number);
+        const toSave = [{
+          report_pattern_id: rpid,
+          schema_field_id:   sid,
+          visibility_state:  updated.visibility_state,
+          sort_order:        updated.sort_order,
+        }];
 
-        if (toSave.length > 0) {
-          await api.request('/report-pattern-field-assignments/bulk-update', {
-            method: 'POST',
-            body: JSON.stringify({ assignments: toSave }),
-          });
-        }
+        await api.request('/report-pattern-field-assignments/bulk-update', {
+          method: 'POST',
+          body: JSON.stringify({ assignments: toSave }),
+        });
       } catch (error: unknown) {
         const err = error as { response?: { data?: { message?: string } }; message?: string };
         toast.showError(t.fieldassignmentpanel_error_save + (err.response?.data?.message || err.message || ''));
@@ -272,9 +267,11 @@ export default function ReportFieldAssignmentPanel() {
     const source = getAssignment(firstRpId, fieldId);
 
     const newAssignments = { ...assignments };
+    const changedKeys: string[] = [];
     for (let i = 1; i < reportPatterns.length; i++) {
       const key = `${reportPatterns[i].id}_${fieldId}`;
       newAssignments[key] = { ...source };
+      changedKeys.push(key);
     }
     setAssignments(newAssignments);
 
@@ -282,17 +279,19 @@ export default function ReportFieldAssignmentPanel() {
     const newId = setTimeout(async () => {
       setSaving(true);
       try {
-        const toSave = Object.entries(newAssignments)
-          .filter(([, a]) => a.visibility_state !== 'visible' || a.sort_order !== null)
-          .map(([k, a]) => {
-            const [rpid, sid] = k.split('_').map(Number);
-            return {
-              report_pattern_id: rpid,
-              schema_field_id: sid,
-              visibility_state: a.visibility_state,
-              sort_order: a.sort_order,
-            };
-          });
+        // Send only the keys we touched. No filter on "visible default":
+        // the backend treats visible+no-sort_order as reset → DELETE row,
+        // so a copy-to-all can propagate a reset just as well as an override.
+        const toSave = changedKeys.map(k => {
+          const a = newAssignments[k];
+          const [rpid, sid] = k.split('_').map(Number);
+          return {
+            report_pattern_id: rpid,
+            schema_field_id:   sid,
+            visibility_state:  a.visibility_state,
+            sort_order:        a.sort_order,
+          };
+        });
         if (toSave.length > 0) {
           await api.request('/report-pattern-field-assignments/bulk-update', {
             method: 'POST',
@@ -316,10 +315,10 @@ export default function ReportFieldAssignmentPanel() {
         <div className="flex justify-between items-center">
           <div>
             <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>
-              {i18nExtra.reportfieldassignmentpanel_title || 'Report Field Assignments'}
+              {t.reportfieldassignmentpanel_title}
             </h3>
             <p className="text-sm" style={{ color: colors.textSecondary }}>
-              {i18nExtra.reportfieldassignmentpanel_subtitle || 'Configure visibility and sort order per report pattern'}
+              {t.reportfieldassignmentpanel_subtitle}
             </p>
           </div>
           {saving && (
@@ -437,8 +436,8 @@ export default function ReportFieldAssignmentPanel() {
             <div className="flex-1 flex items-center justify-center p-8" style={{ color: colors.textMuted }}>
               <div className="text-center">
                 <div className="text-4xl mb-3">📄</div>
-                <p className="font-medium mb-2">{i18nExtra.reportfieldassignmentpanel_no_patterns || 'No report patterns linked to this project'}</p>
-                <p className="text-sm">{i18nExtra.reportfieldassignmentpanel_no_patterns_hint || 'Link a report pattern to the project first, then come back here.'}</p>
+                <p className="font-medium mb-2">{t.reportfieldassignmentpanel_no_patterns}</p>
+                <p className="text-sm">{t.reportfieldassignmentpanel_no_patterns_hint}</p>
               </div>
             </div>
           ) : (
@@ -492,14 +491,14 @@ export default function ReportFieldAssignmentPanel() {
                             <Tag
                               value={`display: ${field.schema_display_state}`}
                               severity="info"
-                              title={i18nExtra.fieldassignmentpanel_schema_display_hint || 'Global schema display_state — per-pattern assignment overrides this'}
+                              title={t.fieldassignmentpanel_schema_display_hint}
                             />
                           )}
                           {field.schema_generation_mode && field.schema_generation_mode !== 'full' && (
                             <Tag
                               value={`gen: ${field.schema_generation_mode}`}
                               severity="danger"
-                              title={i18nExtra.fieldassignmentpanel_schema_gen_hint || 'Global schema generation_mode — affects whether this field generates'}
+                              title={t.fieldassignmentpanel_schema_gen_hint}
                             />
                           )}
                           {reportPatterns.length >= 2 && (

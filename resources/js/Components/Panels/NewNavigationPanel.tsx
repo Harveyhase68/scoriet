@@ -528,11 +528,6 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                 },
               ],
             },
-            {
-              label: (t as unknown as Record<string, string>).reportfieldassignmentpanel_title || 'Report Field Assignments',
-              icon: 'pi pi-sliders-h',
-              command: () => onOpenPanel('report-field-assignments'),
-            },
           ],
         },
       ],
@@ -561,6 +556,11 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           label: t.fieldassignmentpanel_title,
           icon: 'pi pi-sliders-h',
           command: () => onOpenPanel('field-assignments')
+        },
+        {
+          label: t.reportfieldassignmentpanel_title,
+          icon: 'pi pi-sliders-h',
+          command: () => onOpenPanel('report-field-assignments')
         },
         {
           label: t.newnavigationpanel472,
@@ -1092,6 +1092,10 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   <button onClick={blurAndRun(() => onOpenPanel('field-assignments'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sliders-h"></i>
                     <span>{t.fieldassignmentpanel_title}</span>
+                  </button>
+                  <button onClick={blurAndRun(() => onOpenPanel('report-field-assignments'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
+                    <i className="pi pi-sliders-h"></i>
+                    <span>{t.reportfieldassignmentpanel_title}</span>
                   </button>
                   <button onClick={blurAndRun(() => onOpenPanel('query-builder'))} className="w-full flex items-center space-x-2 px-3 py-2 text-sm nav-icon-color hover:text-white nav-hover-btn rounded">
                     <i className="pi pi-sync"></i>
