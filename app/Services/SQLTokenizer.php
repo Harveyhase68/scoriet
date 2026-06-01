@@ -201,9 +201,20 @@ class SQLTokenizer
             $this->position++;
         }
 
+        // KEYWORDS get uppercase-normalized so the parser can match them
+        // case-insensitively via simple `=== 'CREATE'` comparisons.
+        // IDENTIFIERS (table/column names) MUST keep their original case —
+        // otherwise `count_id` becomes `COUNT_ID` in the schema, and every
+        // downstream artifact (gtree, generated PHP, captions) inherits the
+        // wrong case. MySQL is case-preserving for unquoted identifiers on
+        // Linux, and case-folded by default on Windows — but either way the
+        // SOURCE case is what the user wrote and what the import should keep.
         $upper_value = strtoupper($value);
-        $token_type = in_array($upper_value, $this->keywords) ? 'KEYWORD' : 'IDENTIFIER';
-        $this->tokens[] = new SQLToken($token_type, $upper_value, $start_pos);
+        if (in_array($upper_value, $this->keywords)) {
+            $this->tokens[] = new SQLToken('KEYWORD', $upper_value, $start_pos);
+        } else {
+            $this->tokens[] = new SQLToken('IDENTIFIER', $value, $start_pos);
+        }
     }
 
     private function readNumber()

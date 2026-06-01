@@ -308,9 +308,22 @@ class PostgreSQLTokenizer
             $this->position++;
         }
 
+        // KEYWORDS get uppercase-normalized for case-insensitive matching.
+        // IDENTIFIERS (table/column names) keep their original case.
+        //
+        // PostgreSQL technically folds unquoted identifiers to lowercase per
+        // SQL standard, but for an *import* we keep the source case — the user
+        // probably wrote `count_id` because they want `count_id`, not because
+        // they expect PG's identifier-folding to silently rewrite it.
+        // Quoted identifiers (`"COUNT_ID"`) take a different tokenizer path
+        // and were already case-preserving — this fix just makes the unquoted
+        // path consistent with that.
         $upper_value = strtoupper($value);
-        $token_type = in_array($upper_value, $this->keywords) ? 'KEYWORD' : 'IDENTIFIER';
-        $this->tokens[] = new SQLToken($token_type, $upper_value, $start_pos);
+        if (in_array($upper_value, $this->keywords)) {
+            $this->tokens[] = new SQLToken('KEYWORD', $upper_value, $start_pos);
+        } else {
+            $this->tokens[] = new SQLToken('IDENTIFIER', $value, $start_pos);
+        }
     }
 
     private function readNumber()
