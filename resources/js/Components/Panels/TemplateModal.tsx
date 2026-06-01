@@ -1179,7 +1179,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                         <tr key={variable.id || index} className="transition-colors" style={{ borderTop: `1px solid ${colors.borderPrimary}` }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.bgHover} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                             <td className="px-3 py-2">
                                                 <div className="flex items-center" style={{ color: colors.textPrimary }}>
-                                                    <span className="font-mono text-yellow-300">{'{' + variable.variable_name + '}'}</span>
+                                                    <span className="font-mono text-yellow-300">{'{:' + variable.variable_name + ':}'}</span>
                                                 </div>
                                             </td>
                                             <td className="px-3 py-2" style={{ color: colors.textPrimary }}>

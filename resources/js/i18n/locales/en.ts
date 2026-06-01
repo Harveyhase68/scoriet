@@ -6775,7 +6775,7 @@ export const en: Translations = {
   variablemodal143: 'Standard value',
   variablemodal152: 'Z.B. \'© 2026 My Company',
   variablemodal158: 'Used when the user does not enter a value.',
-  variablemodal175: 'A variable is required',
+  variablemodal175: 'Variable is required',
   variablemodal181: 'When enabled, users must specify a value for this variable.',
   variablemodal187: 'Cancel',
   variablemodal190: 'Update',

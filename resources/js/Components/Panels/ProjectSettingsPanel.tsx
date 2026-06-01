@@ -2014,7 +2014,7 @@ export default function ProjectSettingsPanel() {
                                                             <div className="flex-1">
                                                                 <div className="flex items-center gap-2 mb-2">
                                                                     <span className="font-mono theme-accent font-semibold">
-                                                                        {`{${variable.variable_name}}`}
+                                                                        {`{:${variable.variable_name}:}`}
                                                                     </span>
                                                                     {variable.is_required && (
                                                                         <span className="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">

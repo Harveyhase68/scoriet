@@ -304,8 +304,14 @@ class MSSQLTokenizer
             return;
         }
 
-        $token_type = in_array($upper_value, $this->keywords) ? 'KEYWORD' : 'IDENTIFIER';
-        $this->tokens[] = new SQLToken($token_type, $upper_value, $start_pos);
+        // KEYWORDS get uppercase-normalized so the parser can match them
+        // case-insensitively. IDENTIFIERS (table/column names) keep their
+        // original case — see SQLTokenizer for the full rationale.
+        if (in_array($upper_value, $this->keywords)) {
+            $this->tokens[] = new SQLToken('KEYWORD', $upper_value, $start_pos);
+        } else {
+            $this->tokens[] = new SQLToken('IDENTIFIER', $value, $start_pos);
+        }
     }
 
     private function readNumber()

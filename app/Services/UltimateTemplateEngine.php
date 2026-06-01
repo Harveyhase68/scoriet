@@ -1192,11 +1192,27 @@ class UltimateTemplateEngine
     private function processCondition(string $condition, ?int $tableIndex): string
     {
         // Replace loop counter variables (longest names first to avoid substring matches)
-        // e.g. 'nCountItemsNoKey' must be replaced before 'nCountItems' or 'nCount'
+        // e.g. 'nCountItemsNoKey' must be replaced before 'nCountItems' or 'nCount'.
+        //
+        // ORDER MATTERS — every name MUST come before any other name that is a
+        // prefix of it. The "all" variants and the "NoBinaryBlob*" variants are
+        // the long ones; if 'nCountItems' fires first it greedily eats the prefix
+        // of 'nCountItemsNoBlob' and leaves 'iNoBlob' as a fake JS identifier.
+        // That was the 2026-06-01 update_%1.php crash — a {:if nCountItemsNoBlob<…:}
+        // condition became `if (iNoBlob < …)`, undefined → false → no comma →
+        // SQL "UPDATE … set  WHERE …" + array(,$id) → PHP fatal.
+        $condition = str_replace('nCountItemsNoBinaryBlobAll', 'i', $condition);
+        $condition = str_replace('nCountItemsNoBinaryBlob', 'i', $condition);
+        $condition = str_replace('nCountItemsMasterDetailNoKeys', 'i', $condition);
+        $condition = str_replace('nCountItemsMasterDetail', 'i', $condition);
+        $condition = str_replace('nCountItemsNoBlobAll', 'i', $condition);
+        $condition = str_replace('nCountItemsNoBlob', 'i', $condition);
         $condition = str_replace('nCountItemsNoKeyAll', 'i', $condition);
         $condition = str_replace('nCountItemsNoKey', 'i', $condition);
         $condition = str_replace('nCountSearchkeys', 'i', $condition);
         $condition = str_replace('nCountConstraints', 'i', $condition);
+        $condition = str_replace('nCountForeignKeysUnique', '_fkuI', $condition);
+        $condition = str_replace('nCountForeignKeys', '_fkI', $condition);
         $condition = str_replace('nCountItems', 'i', $condition);
         $condition = str_replace('nCountKeys', 'i', $condition);
         $condition = str_replace('nCountTables', 'tableIdx', $condition);
@@ -1788,6 +1804,38 @@ class UltimateTemplateEngine
                 // 🎯 LANGUAGES loop - through project lang array
                 $this->pushLoopContext('languages');
                 return "  for (let i = 0; i < gtree[0].project[0].nmaxlanguages; i++) {\n";
+            } elseif ($loopVar === 'nmaxitemsnoblob') {
+                // 🎯 FIELDS WITHOUT BLOB/TEXT loop — through fieldsnoblob array (index-based).
+                // Parallel to processLoopStart() line 854; was missing here so inline
+                // {:for nmaxitemsnoblob:} fell through to the generic fallback and
+                // emitted gtree[0].project[0].nmaxitemsnoblob (project-level, undefined)
+                // instead of gtree[0].project[0].tables[tableIdx].nmaxitemsnoblob — the
+                // loop ran 0 times and {update_X.php} SQL came out as
+                // "UPDATE … set  WHERE …" with no columns and an empty array element.
+                $this->pushLoopContext('fieldsnoblob');
+                if ($tableIndex !== null) {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnoblob; i++) {\n";
+                } else {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitemsnoblob; i++) {\n";
+                }
+            } elseif ($loopVar === 'nmaxitemsnobloball') {
+                // 🎯 ALL FIELDS WITHOUT BLOB/TEXT loop (ignores assignments) — parallel
+                // to processLoopStart() line 860; same fix as nmaxitemsnoblob above.
+                $this->pushLoopContext('fieldsnobloball');
+                if ($tableIndex !== null) {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnobloball; i++) {\n";
+                } else {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitemsnobloball; i++) {\n";
+                }
+            } elseif ($loopVar === 'nmaxitemsnokeyall') {
+                // 🎯 FIELDS WITHOUT KEY AND SEARCH KEY loop — parallel to
+                // processLoopStart() line 848; same fix as nmaxitemsnoblob above.
+                $this->pushLoopContext('fieldsnokeyall');
+                if ($tableIndex !== null) {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[{$tableIndex}].nmaxitemsnokeyall; i++) {\n";
+                } else {
+                    return "  for (let i = 0; i < gtree[0].project[0].tables[tableIdx].nmaxitemsnokeyall; i++) {\n";
+                }
             } elseif ($loopVar === 'nmaxitemsnobinaryblob') {
                 // 🎯 FIELDS WITHOUT BINARY BLOB loop
                 $this->pushLoopContext('fieldsnobinaryblob');
