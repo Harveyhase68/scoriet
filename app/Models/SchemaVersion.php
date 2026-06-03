@@ -72,10 +72,27 @@ class SchemaVersion extends Model
         ini_set('max_execution_time', 600); // 10 minutes
         set_time_limit(600);
         
-        // Increase MySQL timeouts and prevent connection drops
-        \DB::statement('SET SESSION wait_timeout = 1800'); // 30 minutes
-        \DB::statement('SET SESSION interactive_timeout = 1800'); // 30 minutes
-        \DB::statement('SET SESSION max_execution_time = 1800000'); // 30 minutes in ms
+        // Increase MySQL/MariaDB timeouts and prevent connection drops.
+        // These are tuning knobs — if any aren't supported on this server,
+        // ignore the failure and proceed. The version-copy will still work
+        // (it'll just rely on the PHP-level limits set above).
+        //
+        // `max_execution_time` is MySQL-only (5.7.4+, milliseconds).
+        // MariaDB has `max_statement_time` (seconds, same intent, different unit).
+        // Try MySQL first, fall back to MariaDB, give up silently if neither works.
+        foreach ([
+            'SET SESSION wait_timeout = 1800',          // 30 minutes
+            'SET SESSION interactive_timeout = 1800',   // 30 minutes
+        ] as $tuning) {
+            try { \DB::statement($tuning); } catch (\Throwable $e) { /* unsupported — ignore */ }
+        }
+        try {
+            \DB::statement('SET SESSION max_execution_time = 1800000'); // MySQL: ms
+        } catch (\Throwable $e) {
+            try {
+                \DB::statement('SET SESSION max_statement_time = 1800'); // MariaDB: seconds
+            } catch (\Throwable $e2) { /* neither variant supported — ignore */ }
+        }
         \DB::reconnect(); // Ensure fresh connection
 
         // Create the new empty version
