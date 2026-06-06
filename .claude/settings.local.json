@@ -252,12 +252,33 @@
       "Read(//c/wamp/www/scoriet/\\(/\\(t as unknown as Record<string, string>/\\)|i18nExtra\\)/**)",
       "Bash(ls \"C:/My Projects/Rust_Temp/scoriet-cli\" 2>&1 | head -20)",
       "Read(//c/My Projects/Rust_Temp/scoriet-cli/**)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(mysqldump -h 127.0.0.1 -u root -padmin scoriet oauth_clients oauth_personal_access_clients)",
+      "Bash(DB_DATABASE=scoriet_migtest php artisan migrate --force --database=mysql)",
+      "Bash(DB_DATABASE=scoriet_migtest php artisan migrate --force)",
+      "Bash(DB_DATABASE=scoriet_migtest php artisan passport:client --password --name=\"Fresh Install Test Client\" --no-interaction)",
+      "Bash(echo \"=== templates table columns \\(type? category?\\) ===\"; sed -n \"/Schema::create\\('templates'/,/}\\);/p\" database/migrations/*create_templates_table.php 2>/dev/null | grep -iE \"string|integer|enum|->|type|category\" | head -40; echo \"\"; echo \"=== file_type distinct values used ===\"; grep -rhoE \"file_type'\\\\s*=>\\\\s*'[a-z_]+'\" app/Http/Controllers/Api/TemplateController.php 2>/dev/null | sort -u | head)",
+      "Bash(mysqldump -h 127.0.0.1 -u root -padmin scoriet template_files)",
+      "Bash(sed -n '/public function formElement/,/}/p' app/Models/FormItemPlacement.php)",
+      "Bash(sed -n '215,235p' app/Models/FormItemPlacement.php)",
+      "Bash(awk '/public function autoPlaceButtons/,/^    }$/' app/Http/Controllers/Api/FormLayoutController.php)",
+      "Bash(awk '/public function destroy/,/^ }$/' app/Http/Controllers/Api/FormDesignerController.php)",
+      "Bash(ls -d /c/wamp/www/*/ 2>/dev/null | head -30; echo \"=== search for scoriet-svc ===\"; ls -d /c/wamp/www/scoriet-svc* /c/scoriet-svc* /c/Users/messe/scoriet-svc* 2>/dev/null; echo \"=== grep column_types provider in repo ===\"; grep -rln \"column_types\\\\|scoriet-svc\\\\|scoriet_svc\" --include=*.go --include=*.py --include=*.js --include=*.php . 2>/dev/null | grep -iv node_modules | grep -iv \"resources/js\" | head)",
+      "Read(//c/wamp/www/**)",
+      "Bash(awk -F: '$1>800 && $1<920')",
+      "Bash(sed -n '85,125p' app/Models/CodeAdjustment.php)",
+      "Bash(sed -n '4190,4212p' app/Http/Controllers/Api/UltimateTemplateController.php)",
+      "Bash(awk -F: '$1>2780 && $1<3035')",
+      "Bash(awk -F: '$1>640 && $1<1100')",
+      "Bash(awk -F: '$1>1700')",
+      "Bash(perl -0pi -e 's/getInsertionTypeTag\\\\\\(\\(row: CodeAdjustmentInsertion\\)\\\\\\) => getInsertionTypeTag\\\\\\(row\\\\.insertion_type\\\\\\)/XX/g' resources/js/Components/Panels/CodeAdjustmentsPanel.tsx)",
+      "Bash(awk -F: '$1>1330 && $1<1530')"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
-      "\\tmp"
+      "\\tmp",
+      "c:\\wamp\\www\\scoriet\\database\\migrations"
     ]
   },
   "outputStyle": "default"

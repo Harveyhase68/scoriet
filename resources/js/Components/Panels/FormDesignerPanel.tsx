@@ -9,6 +9,7 @@ import { Button } from 'primereact/button';
 import { Menu } from 'primereact/menu';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
+import { AutoComplete } from 'primereact/autocomplete';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 // ColorPicker, TabView, TabPanel - reserved for future use
@@ -136,6 +137,12 @@ const DEFAULT_ICONS: Record<string, string> = {
 // Stable reference for ReactFlow's multiSelectionKeyCode prop — must NOT be
 // recreated each render, otherwise the internal store loops on updates.
 const MULTI_SELECTION_KEYS = ['Control', 'Shift', 'Meta'];
+
+// Suggested actions for user-defined (button_custom) buttons. The field is an
+// editable combobox: these are only SUGGESTIONS — the user may type any free
+// value (e.g. "print-form1"). Templates branch on it via {:layoutsingle.action:}
+// / {:layoutbutton.action:}. Standard buttons (save/cancel/…) don't use it.
+const BUTTON_ACTION_PRESETS = ['print', 'bulk_modify', 'recycle', 'export', 'duplicate', 'archive', 'refresh'];
 
 // Marquee-selection mouse routing:
 //   - LEFT button (0) → lasso (selectionOnDrag)
@@ -510,6 +517,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   // State - FormSets
   const [formSets, setFormSets] = useState<FormSet[]>([]);
   const [selectedFormSet, setSelectedFormSet] = useState<FormSet | null>(null);
+  // Always-current selection, so loadFormSets() (a stable useCallback) can tell
+  // whether the open Form Set was deleted elsewhere without a stale closure.
+  const selectedFormSetRef = useRef<FormSet | null>(null);
+  selectedFormSetRef.current = selectedFormSet;
   const [loadingFormSets, setLoadingFormSets] = useState(false);
 
   // State - Windows
@@ -525,8 +536,13 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const [edges, _setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedElement, setSelectedElement] = useState<FormElement | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  // Tab Order: ordered multi-selection of element ids in the order they were clicked
-  const [orderedSelection, setOrderedSelection] = useState<number[]>([]);
+  // Filtered suggestions for the editable button-action combobox.
+  const [actionSuggestions, setActionSuggestions] = useState<string[]>(BUTTON_ACTION_PRESETS);
+  // Ordered multi-selection of ReactFlow NODE ids, in click order. We key on
+  // node id (not element.id) so controls freshly dragged from the stash — which
+  // have no DB id until saved — are first-class members of the selection and
+  // therefore obey multi-edit (width/anchor/…) just like persisted controls.
+  const [orderedSelection, setOrderedSelection] = useState<string[]>([]);
   const [tabOrderModalVisible, setTabOrderModalVisible] = useState(false);
   const tabOrderMenuRef = useRef<Menu>(null);
 
@@ -550,25 +566,18 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   const gridSize = selectedProject?.form_designer_grid_size ?? 20;
 
   // ── Multi-select edit support ──
-  // Every property handler used to compare `n.id === selectedNodeId`, which
-  // meant only ONE node ever got the new value even when the user had multiple
-  // controls marquee- or shift-selected. selectedNodeIds is the set of ALL
-  // ReactFlow node ids whose underlying element.id is in orderedSelection
-  // (the click-ordered list). In single-select this collapses to the one
-  // selectedNodeId, so existing call sites keep working.
+  // The set of ALL ReactFlow node ids the user has selected, so property
+  // handlers can patch every selected control (not just one). orderedSelection
+  // already holds node ids, so this is a direct lift — and because it's keyed
+  // on node id (not element.id) it works for unsaved stash controls too. In
+  // single-select it collapses to the one selectedNodeId, so existing call
+  // sites keep working unchanged.
   const selectedNodeIds = useMemo<Set<string>>(() => {
-    if (orderedSelection.length <= 1) {
-      return new Set(selectedNodeId ? [selectedNodeId] : []);
+    if (orderedSelection.length > 0) {
+      return new Set(orderedSelection);
     }
-    const ids = new Set<string>();
-    for (const n of nodes) {
-      const elId = (n.data?.element as FormElement | undefined)?.id;
-      if (typeof elId === 'number' && orderedSelection.includes(elId)) {
-        ids.add(n.id);
-      }
-    }
-    return ids;
-  }, [orderedSelection, selectedNodeId, nodes]);
+    return new Set(selectedNodeId ? [selectedNodeId] : []);
+  }, [orderedSelection, selectedNodeId]);
 
   // Apply a property patch to every node in selectedNodeIds (or just the
   // single selected node, depending on the selection). The element patch is
@@ -678,13 +687,28 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       const formSetList = data.data || [];
       setFormSets(formSetList);
 
+      // If the Form Set currently open in the editor no longer exists (it was
+      // deleted here or in another panel), drop the stale selection so the
+      // canvas doesn't keep editing a ghost and save/load can't 404.
+      const cur = selectedFormSetRef.current;
+      if (cur && !formSetList.some((fs: FormSet) => Number(fs.id) === Number(cur.id))) {
+        setSelectedFormSet(null);
+        setSelectedWindow(null);
+        localStorage.removeItem(STORAGE_KEY_FORMSET);
+        localStorage.removeItem(STORAGE_KEY_WINDOW);
+        return; // nothing left to restore
+      }
+
       // Determine which FormSet to select (priority: prop > localStorage > none)
       const storedFormSetId = localStorage.getItem(STORAGE_KEY_FORMSET);
       const storedWindowId = localStorage.getItem(STORAGE_KEY_WINDOW);
-      const targetFormSetId = initialFormSetId || (storedFormSetId ? parseInt(storedFormSetId, 10) : null);
+      const targetFormSetId = initialFormSetId ?? (storedFormSetId ? parseInt(storedFormSetId, 10) : null);
 
-      if (targetFormSetId && formSetList.length > 0) {
-        const found = formSetList.find((fs: FormSet) => fs.id === targetFormSetId);
+      if (targetFormSetId != null && formSetList.length > 0) {
+        // Coerce both sides: API may serialise ids as strings while the prop
+        // is a number (or vice-versa). Strict === silently missed the match,
+        // leaving selectedFormSet null → blank combobox + unloaded canvas.
+        const found = formSetList.find((fs: FormSet) => Number(fs.id) === Number(targetFormSetId));
         if (found) {
           // Load full details for this FormSet
           try {
@@ -712,6 +736,17 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
     }
   }, [initialFormSetId, showToast, STORAGE_KEY_FORMSET, STORAGE_KEY_WINDOW]);
 
+  // Refresh the Form Set list when another panel (Form Template - Management)
+  // reports a change, so a blueprint created there appears here too. A ref keeps
+  // the once-registered listener pointing at the latest loader.
+  const loadFormSetsRef = useRef(loadFormSets);
+  loadFormSetsRef.current = loadFormSets;
+  useEffect(() => {
+    const handler = () => loadFormSetsRef.current();
+    window.addEventListener('formSetsChanged', handler);
+    return () => window.removeEventListener('formSetsChanged', handler);
+  }, []);
+
   const loadFormSetDetails = useCallback(async (formSetId: number) => {
     try {
       const data = await apiClient.get(`/form-sets/${formSetId}`);
@@ -731,6 +766,23 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       showToast('error', t.messageError, t.formdesignerpanel670);
     }
   }, [showToast, STORAGE_KEY_FORMSET, STORAGE_KEY_WINDOW]);
+
+  // Targeted open from the Form Template Management "Edit in Blueprint Designer"
+  // button. When this panel is ALREADY open, openPanel only re-activates the
+  // tab — the new formSetId never reaches us as a prop (that's why the editor
+  // stayed empty). The button also fires this event, which we always catch (a
+  // ref keeps it pointing at the latest loader) and load the requested Form
+  // Set. The fresh-create case is covered by the formSetId prop on mount.
+  const loadFormSetDetailsRef = useRef(loadFormSetDetails);
+  loadFormSetDetailsRef.current = loadFormSetDetails;
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail?.formSetId;
+      if (id != null) loadFormSetDetailsRef.current(Number(id));
+    };
+    window.addEventListener('formDesigner:open', handler);
+    return () => window.removeEventListener('formDesigner:open', handler);
+  }, []);
 
   const createFormSet = useCallback(async () => {
     if (!newFormSetName.trim()) {
@@ -771,6 +823,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
 
         // Reload list after setting localStorage
         await loadFormSets();
+
+        // Notify other panels (e.g. Form Template - Management) to refresh
+        // their list so the newly created blueprint appears there too.
+        window.dispatchEvent(new CustomEvent('formSetsChanged'));
 
         // Offer to set the new FormSet as project default — but only if no
         // default is currently set, so we don't pester the user on every create.
@@ -1006,10 +1062,16 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
         'Please Ctrl/Shift+Click at least two elements first.');
       return;
     }
+    // orderedSelection holds node ids; resolve each to its element id for the
+    // tab-order map. Unsaved controls (no element id yet) are skipped — tab
+    // order is a persisted property, so it only applies once an element exists.
     const map = new Map<number, number>();
-    orderedSelection.forEach((id, idx) => map.set(id, idx + 1));
+    orderedSelection.forEach((nodeId, idx) => {
+      const el = nodes.find(n => n.id === nodeId)?.data?.element as FormElement | undefined;
+      if (typeof el?.id === 'number') map.set(el.id, idx + 1);
+    });
     applyTabOrderMap(map);
-  }, [orderedSelection, applyTabOrderMap, showToast, t]);
+  }, [orderedSelection, nodes, applyTabOrderMap, showToast, t]);
 
   // Assign tab order automatically by visual order: top→bottom (row buckets), then left→right.
   // Elements with tab_order === -1 (no tab stop) are skipped and stay at -1.
@@ -1204,7 +1266,10 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
   }, [selectedWindow, selectedFormSet, nodes, setNodes, showToast]);
 
   const deleteSelectedElement = useCallback(() => {
-    if (!selectedElement || !selectedNodeId) return;
+    // Delete EVERY selected control, not just the representative one. Same
+    // node-id-based selection as the property handlers, so it also covers
+    // unsaved stash controls (which have no DB id yet).
+    if (selectedNodeIds.size === 0) return;
 
     confirmDialog({
       group: 'form-designer',
@@ -1213,14 +1278,15 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
       icon: 'pi pi-exclamation-triangle',
       acceptClassName: 'p-button-danger',
       accept: () => {
-        setNodes(prev => prev.filter(n => n.id !== selectedNodeId));
+        setNodes(prev => prev.filter(n => !selectedNodeIds.has(n.id)));
         setSelectedElement(null);
         setSelectedNodeId(null);
+        setOrderedSelection([]);
         setHasUnsavedChanges(true);
         showToast('info', t.formdesignerpanel1030, t.formdesignerpanel1030_2);
       },
     });
-  }, [selectedElement, selectedNodeId, setNodes, showToast]);
+  }, [selectedNodeIds, setNodes, showToast, t]);
 
   // Keyboard shortcut: Delete key to remove selected element
   useEffect(() => {
@@ -1800,9 +1866,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                   // Sync orderedSelection from the authoritative ReactFlow selection.
                   // Keep elements already in our list (preserving click order),
                   // append newly-selected elements at the end, drop removed ones.
-                  const currentlySelectedIds = elementNodes
-                    .map(n => (n.data?.element as FormElement | undefined)?.id)
-                    .filter((id): id is number => typeof id === 'number');
+                  // Track by ReactFlow node id — present on every node, saved or
+                  // not — so unsaved stash controls join the ordered selection.
+                  const currentlySelectedIds = elementNodes.map(n => n.id);
                   // Compute the new order OUTSIDE the setter so the rest of this
                   // handler can use it to find the LAST-clicked element — that's
                   // the one that should drive the properties panel (matches user
@@ -1829,7 +1895,7 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                     // That's why the user saw "manchmal vorletzte". orderedSelection
                     // has authoritative click order; the tail is the most recent.
                     const lastId = nextOrdered[nextOrdered.length - 1];
-                    const lastNode = elementNodes.find(n => (n.data?.element as FormElement | undefined)?.id === lastId) ?? elementNodes[0];
+                    const lastNode = elementNodes.find(n => n.id === lastId) ?? elementNodes[0];
                     if (lastNode.id !== selectedNodeId) {
                       setSelectedElement(lastNode.data.element);
                       setSelectedNodeId(lastNode.id);
@@ -1978,6 +2044,42 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                               placeholder={DEFAULT_ICONS[selectedElement.element_type] || 'pi-cog'}
                             />
                           </div>
+                          {/* Action — only for user-defined buttons. Editable
+                              combobox: pick a preset or type any free value. */}
+                          {selectedElement.element_type === 'button_custom' && (
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.textMuted }}>Action</label>
+                              <AutoComplete
+                                value={selectedElement.button_action || ''}
+                                suggestions={actionSuggestions}
+                                completeMethod={(e) =>
+                                  setActionSuggestions(
+                                    BUTTON_ACTION_PRESETS.filter(a => a.toLowerCase().includes(e.query.toLowerCase()))
+                                  )
+                                }
+                                onChange={(e) => {
+                                  const newElement = { ...selectedElement, button_action: (e.value as string) || undefined };
+                                  setSelectedElement(newElement);
+                                  if (selectedNodeId) {
+                                    setNodes(prev => prev.map(n =>
+                                      n.id === selectedNodeId
+                                        ? { ...n, data: { ...n.data, element: newElement } }
+                                        : n
+                                    ));
+                                  }
+                                  setHasUnsavedChanges(true);
+                                }}
+                                dropdown
+                                forceSelection={false}
+                                placeholder="z.B. print, bulk_modify, print-form1 …"
+                                className="w-full p-inputtext-sm"
+                                inputClassName="w-full"
+                              />
+                              <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                Frei wählbar — im Template via {'{:layoutsingle.action:}'}
+                              </div>
+                            </div>
+                          )}
                           {/* Button-Farben - kompaktes Layout mit Reset */}
                           <div className="flex gap-3">
                             <div>
@@ -2933,6 +3035,9 @@ export default function FormDesignerPanel({ formSetId: initialFormSetId, onOpenP
                         localStorage.removeItem(STORAGE_KEY_FORMSET);
                         localStorage.removeItem(STORAGE_KEY_WINDOW);
                         loadFormSets();
+                        // Tell other panels (Management, Layout editor) to refresh
+                        // and drop the now-deleted Form Set.
+                        window.dispatchEvent(new CustomEvent('formSetsChanged'));
                       } catch {
                         showToast('error', t.messageError, t.formdesignerpanel2546);
                       }

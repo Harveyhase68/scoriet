@@ -58,7 +58,6 @@ interface TemplateFileData {
   content_type?: string;
   file_content?: string;
   file_order?: number;
-  form_window_type?: number;
   is_include_only?: boolean;
   inject_target?: string;
   inject_tag?: string;
@@ -82,9 +81,6 @@ function getAuthHeaders(): Record<string, string> {
 
 const esc = (s: string | undefined | null) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-const FORM_WINDOW_NAMES: Record<number, string> = {
-  0: 'None', 1: 'Main Menu', 2: 'Create/Edit', 3: 'Data Table', 4: 'Report Single', 5: 'Report List',
-};
 
 // Map file extensions to Prism language keys
 function getPrismLanguage(fileName: string, _templateLang?: string): string | null {
@@ -156,11 +152,10 @@ function generateTemplatePrintHtml(
     let metaHtml = '';
     if (options.showFileMetadata) {
       const fileExt = file.file_type || file.file_name.split('.').pop() || '';
-      const formName = FORM_WINDOW_NAMES[file.form_window_type || 0] || 'None';
       const metaRows: string[] = [];
       metaRows.push(`<tr><td class="meta-label">Path</td><td><code>${esc(file.output_path || '/')}</code></td><td class="meta-label">Type</td><td>${esc(fileExt)}</td></tr>`);
-      metaRows.push(`<tr><td class="meta-label">Form Window</td><td>${formName}</td><td class="meta-label">Order</td><td>${file.file_order || 0}</td></tr>`);
-      metaRows.push(`<tr><td class="meta-label">Include Only</td><td>${file.is_include_only ? 'Yes' : 'No'}</td><td class="meta-label">Lang Override</td><td>${esc(file.language_override) || '-'}</td></tr>`);
+      metaRows.push(`<tr><td class="meta-label">Order</td><td>${file.file_order || 0}</td><td class="meta-label">Include Only</td><td>${file.is_include_only ? 'Yes' : 'No'}</td></tr>`);
+      metaRows.push(`<tr><td class="meta-label">Lang Override</td><td>${esc(file.language_override) || '-'}</td><td class="meta-label"></td><td></td></tr>`);
       if (file.inject_target || file.inject_tag) {
         metaRows.push(`<tr><td class="meta-label">Inject Target</td><td>${esc(file.inject_target) || '-'}</td><td class="meta-label">Inject Tag</td><td><code>${esc(file.inject_tag) || '-'}</code></td></tr>`);
       }

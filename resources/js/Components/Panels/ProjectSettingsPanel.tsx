@@ -933,6 +933,25 @@ export default function ProjectSettingsPanel() {
                 }
             }
 
+            // ✅ Also persist FTP/SSH deployment settings, so clicking "Save all
+            // changes" no longer silently drops edits made in the deployment tab
+            // (previously the post-save reload re-fetched the stored values and
+            // wiped any unsaved field). Only attempt it when the form is in the
+            // same saveable state the dedicated "Save FTP/SSH settings" button
+            // requires (a deployment type plus host and username) — an empty form
+            // would fail backend validation. Non-fatal: a failure is surfaced as
+            // a warning since the rest of the project is already saved. The
+            // backend ignores a masked '********' password, so re-saving never
+            // clobbers stored credentials.
+            let ftpSaveWarning: string | null = null;
+            if (ftpSettings.deployment_type && ftpSettings.ftp_host && ftpSettings.ftp_username) {
+                try {
+                    await apiClient.put(`/projects/${selectedProject.id}/ftp-settings`, ftpSettings);
+                } catch (ftpError) {
+                    ftpSaveWarning = ftpError instanceof Error ? ftpError.message : String(ftpError);
+                }
+            }
+
             // Success message includes template variables if they exist
             const hasTemplateVars = templatesWithVariables.length > 0;
             const successMsg = hasTemplateVars
@@ -944,6 +963,9 @@ export default function ProjectSettingsPanel() {
             // user knows their project was saved but variable values weren't.
             if (variableSaveWarning) {
                 toast.showWarn(variableSaveWarning);
+            }
+            if (ftpSaveWarning) {
+                toast.showWarn(ftpSaveWarning);
             }
 
             // Refresh projects to update the UI

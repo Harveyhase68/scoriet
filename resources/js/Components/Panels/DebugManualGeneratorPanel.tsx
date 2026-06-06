@@ -1453,7 +1453,6 @@ export default function DebugManualGeneratorPanel({
         file_type: file.file_type || 'template',
         file_order: file.file_order ?? 0,
         output_path: file.output_path ?? '/',
-        form_window_type: file.form_window_type ?? 0,
         language_override: file.language_override ?? null,
       });
       setRawTemplateOriginal(rawTemplate); // mark clean

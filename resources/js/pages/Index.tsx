@@ -1082,6 +1082,7 @@ const loadTab = (
         content: (
           <Suspense fallback={<PanelLoader />}>
             <FormLayoutDesignerPanel
+              formSetId={data.formSetId as number | undefined}
               onOpenPanel={openPanelFn}
             />
           </Suspense>
@@ -1346,6 +1347,13 @@ interface IndexProps {
 export default function Index(props: IndexProps = {}) {
   const { resetToken, resetEmail, demoLogin, demoUser, demoMessage, demoSystemLogin } = props;
   const ref = useRef<any>(null);
+  // Per-tab open-data keyed by tab id. rc-dock's saved layout only keeps
+  // {id, title}; when it re-materialises a tab's content via the DockLayout
+  // loadTab prop it has no access to the data openPanel was called with. We
+  // stash that data here so loadTab can merge it back in — this is how a tab
+  // created with e.g. {formSetId} actually opens ON that form set instead of
+  // empty. Keyed by tab id so each open overwrites the previous payload.
+  const panelOpenDataRef = useRef<Record<string, any>>({});
   const toast = useRef<Toast>(null);
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
@@ -2234,6 +2242,12 @@ export default function Index(props: IndexProps = {}) {
         }
       }
 
+      // Stash this open's data so the DockLayout loadTab (which rc-dock calls
+      // with only the saved {id, title}) can rebuild the panel WITH its data.
+      // Without this a brand-new tab loses everything but id+title and the
+      // panel opens empty (e.g. Form Designer with no Form Set selected).
+      panelOpenDataRef.current[uniqueTabId] = data || {};
+
       const existingTab = ref.current.find(uniqueTabId);
 
       // If forceNew is set, remove existing tab and reopen after a short delay
@@ -2801,7 +2815,7 @@ useHotkeys('alt+m', () => {
                   ref={ref}
                   layout={layout as any}
                   onLayoutChange={onLayoutChange}
-                  loadTab={(data: any) => loadTab(data, t, handleOpenDesigner, openPanel, undefined)}
+                  loadTab={(data: any) => loadTab({ ...(panelOpenDataRef.current[data?.id] || {}), ...data }, t, handleOpenDesigner, openPanel, undefined)}
                   groups={groups}
                   style={{
                     position: 'absolute',

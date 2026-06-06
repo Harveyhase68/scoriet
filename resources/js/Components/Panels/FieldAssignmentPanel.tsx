@@ -30,7 +30,7 @@ interface TemplateFileInfo {
   id: number;
   file_name: string;
   file_path?: string;
-  form_window_type: number;
+  file_type?: string;
   template_name: string;
   template_id: number;
 }
@@ -59,12 +59,12 @@ interface Assignment {
   sort_order: number | null;
 }
 
-const FORM_WINDOW_LABELS: Record<number, string> = {
-  1: 'Main Menu',
-  2: 'Create/Edit',
-  3: 'Data Table',
-  4: 'Report Single',
-  5: 'Report List',
+// The matrix now lists per-table file types (field assignment only makes sense
+// for files that render a single table's fields). Short, friendly labels for
+// the column badge.
+const FILE_TYPE_LABELS: Record<string, string> = {
+  db_table_file: 'Per-Table',
+  db_table_file_languages: 'Per-Table (i18n)',
 };
 
 export default function FieldAssignmentPanel() {
@@ -487,8 +487,8 @@ export default function FieldAssignmentPanel() {
                         <div className="flex flex-col items-center gap-1">
                           <span className="font-mono text-xs truncate max-w-full" title={tf.file_name}>{tf.file_name}</span>
                           <Tag value={tf.template_name} severity="info" />
-                          {tf.form_window_type > 0 && (
-                            <Tag value={FORM_WINDOW_LABELS[tf.form_window_type] || String(tf.form_window_type)} severity="success" />
+                          {tf.file_type && (
+                            <Tag value={FILE_TYPE_LABELS[tf.file_type] || tf.file_type} severity="success" />
                           )}
                         </div>
                       </th>

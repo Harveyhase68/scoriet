@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { DataTable } from 'primereact/datatable';
 import { confirmDialog } from 'primereact/confirmdialog';
@@ -71,7 +71,6 @@ interface TemplateFile {
     file_content: string;
     file_type: string;
     file_order: number;
-    form_window_type?: number;
     content_type?: string;
     zip_filename?: string;
     is_include_only?: boolean;
@@ -236,6 +235,20 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         })();
         return () => { cancelled = true; };
     }, []);
+
+    // Default project assignment for a brand-new template: the project the user
+    // is currently working in, but only if it's in their own project list (the
+    // assignment options). A convenience default the user can remove — never a
+    // hard dependency. Empty when no project is active or it isn't theirs.
+    const defaultLinkedProjectIds = useMemo<number[]>(() => {
+        // Prefer an explicitly forced project (project-scoped view) over the
+        // globally selected one.
+        const currentId = forceProjectId ?? selectedProject?.id;
+        if (!currentId) return [];
+        return allProjects.some(p => Number(p.id) === Number(currentId))
+            ? [Number(currentId)]
+            : [];
+    }, [forceProjectId, selectedProject, allProjects]);
 
     // Load project languages for FileModal language_override dropdown
     useEffect(() => {
@@ -989,7 +1002,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     output_path: file.output_path || '/',
                     content_type: file.content_type || 'text',
                     zip_filename: file.zip_filename || null,
-                    form_window_type: file.form_window_type || 0,
                     is_include_only: file.is_include_only || false,
                     inject_target: file.inject_target || null,
                     inject_tag: file.inject_tag || null,
@@ -1336,7 +1348,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                     output_path: f.output_path || '/',
                     content_type: f.content_type || 'text',
                     zip_filename: f.zip_filename || null,
-                    form_window_type: f.form_window_type || 0,
                     is_include_only: f.is_include_only || false,
                     inject_target: f.inject_target || null,
                     inject_tag: f.inject_tag || null,
@@ -1418,7 +1429,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
             content_type: contentType,
             zip_filename: zipFilename,
             managed_files: managedFilesList, // 🆕 List of individual files
-            form_window_type: values.form_window_type || 0,
             is_include_only: values.is_include_only || false,
             inject_target: values.inject_target || null,
             inject_tag: values.inject_tag || null,
@@ -1448,7 +1458,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                                 output_path: f.output_path || '/',
                                 content_type: f.content_type || 'text',
                                 zip_filename: f.zip_filename || null,
-                                form_window_type: f.form_window_type || 0,
                                 is_include_only: f.is_include_only || false,
                                 inject_target: f.inject_target || null,
                                 inject_tag: f.inject_tag || null,
@@ -1463,7 +1472,6 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         output_path: f.output_path || '/',
                         content_type: f.content_type || 'text',
                         zip_filename: f.zip_filename || null,
-                        form_window_type: f.form_window_type || 0,
                         is_include_only: f.is_include_only || false,
                         inject_target: f.inject_target || null,
                         inject_tag: f.inject_tag || null,
@@ -2350,6 +2358,7 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                 onEditVariable={handleEditVariable}
                 onDeleteVariable={handleDeleteVariable}
                 availableProjects={allProjects.map(p => ({ id: Number(p.id), name: p.name }))}
+                defaultProjectIds={defaultLinkedProjectIds}
             />
 
             {/* File Create/Edit Modal */}

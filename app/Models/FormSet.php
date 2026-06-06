@@ -237,28 +237,100 @@ class FormSet extends Model
      */
     public function cloneForUser(int $userId, ?string $newName = null): FormSet
     {
-        $clone = $this->replicate();
-        $clone->name = $newName ?? static::suggestCopyName($this->name, $userId);
-        $clone->creator_user_id = $userId;
-        $clone->cloned_from_id = $this->id;
-        $clone->visibility = 'private';
-        $clone->save();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($userId, $newName) {
+            $clone = $this->replicate();
+            $clone->name = $newName ?? static::suggestCopyName($this->name, $userId);
+            $clone->creator_user_id = $userId;
+            $clone->cloned_from_id = $this->id;
+            $clone->visibility = 'private';
+            $clone->save();
 
-        // Fenster klonen (ohne automatische Erstellung durch boot)
-        foreach ($this->windows as $window) {
-            $windowClone = $window->replicate();
-            $windowClone->form_set_id = $clone->id;
-            $windowClone->save();
-
-            // Elemente klonen
-            foreach ($window->elements as $element) {
-                $elementClone = $element->replicate();
-                $elementClone->form_window_id = $windowClone->id;
-                $elementClone->save();
+            // The FormSet::created hook (boot) auto-seeds the default windows
+            // (main_menu / create_edit / data_table). We must drop those BEFORE
+            // copying the source's windows — otherwise the source's own
+            // main_menu collides with the seeded one on the unique
+            // (form_set_id, window_type) key (the 500 this clone used to throw).
+            // Delete child elements first (FK), then the seeded windows.
+            $seededWindowIds = $clone->windows()->pluck('id')->all();
+            if (!empty($seededWindowIds)) {
+                FormElement::whereIn('form_window_id', $seededWindowIds)->delete();
+                FormWindow::whereIn('id', $seededWindowIds)->delete();
             }
-        }
 
-        return $clone;
+            // Copy windows + elements, recording old→new element ids so we can
+            // rewire element self-references afterwards. replicate() copies
+            // parent_tab_container_id verbatim, i.e. it still points at the
+            // ORIGINAL form set's elements until we remap it below.
+            $elementIdMap = [];
+            $windowIdMap = [];
+            foreach ($this->windows as $window) {
+                $windowClone = $window->replicate();
+                $windowClone->form_set_id = $clone->id;
+                $windowClone->save();
+                $windowIdMap[$window->id] = $windowClone->id;
+
+                foreach ($window->elements as $element) {
+                    $elementClone = $element->replicate();
+                    $elementClone->form_window_id = $windowClone->id;
+                    $elementClone->save();
+                    $elementIdMap[$element->id] = $elementClone->id;
+                }
+            }
+
+            // Second pass: re-point each cloned tab panel's parent_tab_container_id
+            // at the CLONED container (the copied value is still the original id).
+            foreach ($elementIdMap as $newId) {
+                $newElement = FormElement::find($newId);
+                if ($newElement
+                    && $newElement->parent_tab_container_id
+                    && isset($elementIdMap[$newElement->parent_tab_container_id])) {
+                    $newElement->parent_tab_container_id = $elementIdMap[$newElement->parent_tab_container_id];
+                    $newElement->save();
+                }
+            }
+
+            // Copy the per-table layout placements (field / button / menu rows
+            // shown in the Form Layout Editor). They live on form_item_placements
+            // keyed by form_window_id (+ schema_table_id). Within the SAME DB the
+            // schema_* FKs stay valid, so we only remap window + element refs;
+            // the placement self-FK (parent_placement_id — menu hierarchy) is
+            // remapped in a second pass. Without this the clone kept the blueprint
+            // but the Layout Editor was empty.
+            $oldWindowIds = array_keys($windowIdMap);
+            if (!empty($oldWindowIds)) {
+                $placementIdMap = [];
+                $placements = FormItemPlacement::whereIn('form_window_id', $oldWindowIds)->get();
+                foreach ($placements as $placement) {
+                    $pClone = $placement->replicate();
+                    $pClone->form_window_id = $windowIdMap[$placement->form_window_id] ?? $placement->form_window_id;
+                    if ($placement->container_element_id && isset($elementIdMap[$placement->container_element_id])) {
+                        $pClone->container_element_id = $elementIdMap[$placement->container_element_id];
+                    }
+                    if ($placement->tab_panel_id && isset($elementIdMap[$placement->tab_panel_id])) {
+                        $pClone->tab_panel_id = $elementIdMap[$placement->tab_panel_id];
+                    }
+                    if ($placement->form_element_id && isset($elementIdMap[$placement->form_element_id])) {
+                        $pClone->form_element_id = $elementIdMap[$placement->form_element_id];
+                    }
+                    // parent_placement_id stays the OLD id here; remapped below.
+                    $pClone->save();
+                    $placementIdMap[$placement->id] = $pClone->id;
+                }
+
+                // Second pass: rewire the placement hierarchy (sub-menu → parent).
+                foreach ($placementIdMap as $newPid) {
+                    $p = FormItemPlacement::find($newPid);
+                    if ($p
+                        && $p->parent_placement_id
+                        && isset($placementIdMap[$p->parent_placement_id])) {
+                        $p->parent_placement_id = $placementIdMap[$p->parent_placement_id];
+                        $p->save();
+                    }
+                }
+            }
+
+            return $clone->load('windows.elements');
+        });
     }
 
     /**

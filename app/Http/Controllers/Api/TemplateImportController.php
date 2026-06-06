@@ -165,7 +165,6 @@ class TemplateImportController extends Controller
                         'zip_filename' => $meta['zip_filename'] ?? null,
                         'output_path' => $meta['output_path'] ?? null,
                         'file_order' => $meta['file_order'] ?? null,
-                        'form_window_type' => $meta['form_window_type'] ?? 0,
                         'is_include_only' => $meta['is_include_only'] ?? false,
                         'inject_target' => $meta['inject_target'] ?? null,
                         'inject_tag' => $meta['inject_tag'] ?? null,
@@ -280,7 +279,6 @@ class TemplateImportController extends Controller
                     'zip_filename' => $meta['zip_filename'] ?? null,
                     'output_path' => $meta['output_path'] ?? null,
                     'file_order' => $meta['file_order'] ?? null,
-                    'form_window_type' => $meta['form_window_type'] ?? 0,
                     'is_include_only' => $meta['is_include_only'] ?? false,
                     'inject_target' => $meta['inject_target'] ?? null,
                     'inject_tag' => $meta['inject_tag'] ?? null,
@@ -623,7 +621,6 @@ class TemplateImportController extends Controller
                     $fileType = $fileMeta['file_type'] ?? 'db_table_file';
                     $outputPath = $fileMeta['output_path'] ?? (($dir = dirname($filePath)) === '.' ? '/' : $dir);
                     $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
-                    $formWindowType = $fileMeta['form_window_type'] ?? 0;
                     $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
                     $injectTarget = $fileMeta['inject_target'] ?? null;
                     $injectTag = $fileMeta['inject_tag'] ?? null;
@@ -658,7 +655,6 @@ class TemplateImportController extends Controller
                         'output_path' => $outputPath,
                         'content_type' => $contentType,
                         'zip_filename' => $zipFilename,
-                        'form_window_type' => $formWindowType,
                         'is_include_only' => $isIncludeOnly,
                         'inject_target' => $injectTarget,
                         'inject_tag' => $injectTag,
@@ -708,7 +704,6 @@ class TemplateImportController extends Controller
                         $fileType = $fileMeta['file_type'] ?? 'static_file';
                         $outputPath = $fileMeta['output_path'] ?? (($dir = dirname($filePath)) === '.' ? '/' : $dir);
                         $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
-                        $formWindowType = $fileMeta['form_window_type'] ?? 0;
                         $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
                         $injectTarget = $fileMeta['inject_target'] ?? null;
                         $injectTag = $fileMeta['inject_tag'] ?? null;
@@ -739,7 +734,6 @@ class TemplateImportController extends Controller
                             'output_path' => $outputPath,
                             'content_type' => $contentType,
                             'zip_filename' => $zipFilename,
-                            'form_window_type' => $formWindowType,
                             'is_include_only' => $isIncludeOnly,
                             'inject_target' => $injectTarget,
                             'inject_tag' => $injectTag,

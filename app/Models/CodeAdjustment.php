@@ -13,6 +13,7 @@ class CodeAdjustment extends Model
 
     protected $fillable = [
         'project_id',
+        'template_id',
         'name',
         'description',
         'file_pattern',
@@ -26,6 +27,7 @@ class CodeAdjustment extends Model
         'min_confidence' => 'decimal:2',
         'is_active' => 'boolean',
         'execution_order' => 'integer',
+        'template_id' => 'integer',
     ];
 
     // ========== RELATIONSHIPS ==========
@@ -36,6 +38,14 @@ class CodeAdjustment extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * Optional template this adjustment is narrowed to (null = whole project).
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class);
     }
 
     /**
@@ -74,6 +84,23 @@ class CodeAdjustment extends Model
     }
 
     /**
+     * Narrow to adjustments that apply when generating a given template.
+     *   template_id IS NULL → project-wide (applies to every template)
+     *   template_id = $templateId → only that template
+     * When $templateId is null (no specific template context) only the
+     * project-wide adjustments apply.
+     */
+    public function scopeForTemplate($query, ?int $templateId)
+    {
+        return $query->where(function ($q) use ($templateId) {
+            $q->whereNull('template_id');
+            if ($templateId !== null) {
+                $q->orWhere('template_id', $templateId);
+            }
+        });
+    }
+
+    /**
      * Order by execution order
      */
     public function scopeOrdered($query)
@@ -84,8 +111,14 @@ class CodeAdjustment extends Model
     // ========== METHODS ==========
 
     /**
-     * Check if this adjustment's file pattern matches a given filename
-     * Handles %1, %2, etc. placeholders
+     * Check if this adjustment's file pattern matches a given file path.
+     * Handles %1, %2, etc. placeholders (each matches any run of characters).
+     *
+     * The caller passes the file's RELATIVE PATH (output_path + filename), so a
+     * pattern can restrict by directory: `data/tables_customers.php` matches
+     * only inside /data/, while a bare `tables_customers.php` matches anywhere
+     * (it is a substring of any path ending in that file). Matching is
+     * substring-in-order, so leading "/" is optional.
      */
     public function matchesFilename(string $filename): bool
     {
@@ -124,6 +157,7 @@ class CodeAdjustment extends Model
         return [
             'id' => $this->id,
             'project_id' => $this->project_id,
+            'template_id' => $this->template_id,
             'name' => $this->name,
             'description' => $this->description,
             'file_pattern' => $this->file_pattern,

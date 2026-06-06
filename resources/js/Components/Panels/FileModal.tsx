@@ -361,7 +361,6 @@ const FileModal: React.FC<FileModalProps> = ({
             file_content: '',
             file_type: 'project_file',
             file_order: 0,
-            form_window_type: 0,
             is_include_only: false,
             inject_target: '',
             inject_tag: '',
@@ -369,15 +368,6 @@ const FileModal: React.FC<FileModalProps> = ({
         }
     });
 
-    // Form Window Type Options
-    // Values 4 (report_single) and 5 (report_list) are legacy and have been
-    // removed — reports are now handled by ReportPattern, not FormWindow.
-    const formWindowTypeOptions = [
-        { label: t.filemodal369, value: 0 },
-        { label: t.filemodal370, value: 1 },
-        { label: t.filemodal371, value: 2 },
-        { label: t.filemodal372, value: 3 },
-    ];
     const [uploadedFile, setUploadedFile] = useState<any>(null);
     const [zipFileList, setZipFileList] = useState<Array<{ name: string; size: number }>>([]);
     const [isLoadingZipList, setIsLoadingZipList] = useState(false);
@@ -439,7 +429,6 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_content: editingFile.file_content,
                         file_type: editingFile.file_type,
                         file_order: editingFile.file_order,
-                        form_window_type: editingFile.form_window_type || 0,
                         is_include_only: editingFile.is_include_only || false,
                         inject_target: editingFile.inject_target || '',
                         inject_tag: editingFile.inject_tag || '',
@@ -464,7 +453,6 @@ const FileModal: React.FC<FileModalProps> = ({
                         file_content: '',
                         file_type: 'project_file',
                         file_order: templateFiles.length,
-                        form_window_type: 0,
                         is_include_only: false,
                         inject_target: '',
                         inject_tag: '',
@@ -1077,32 +1065,8 @@ const FileModal: React.FC<FileModalProps> = ({
                     </div>
                 </div>
 
-                {/* Form Window Type + Include-Only */}
+                {/* Include-Only + Generation Order */}
                 <div className="flex gap-4">
-                    {/* Form Window Type */}
-                    <div className="flex-1">
-                        <label htmlFor="form_window_type" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                            {t.filemodal1010}
-                            <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
-                                {t.filemodal1012}
-                            </span>
-                        </label>
-                        <Controller
-                            name="form_window_type"
-                            control={control}
-                            render={({ field }) => (
-                                <Dropdown
-                                    id="form_window_type"
-                                    value={field.value}
-                                    onChange={(e) => field.onChange(e.value)}
-                                    options={formWindowTypeOptions}
-                                    placeholder={t.filemodal1024}
-                                    className="w-full"
-                                />
-                            )}
-                        />
-                    </div>
-
                     {/* Include-Only Checkbox */}
                     <div className="flex-shrink-0" style={{ minWidth: '200px' }}>
                         <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>

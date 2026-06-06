@@ -87,15 +87,15 @@ EXPECTED Profil B:
 {:endfor:}
 
 ================================================================================
-[F] DIREKTER FORM-ZUGRIFF (über form.x.y syntax)
+[F] DIREKTER FORM-ZUGRIFF (über formedit.x.y — Create/Edit-Fenster der Tabelle)
 ================================================================================
 
-form.button_save.label    = {:form.button_save.label:}
-form.button_cancel.label  = {:form.button_cancel.label:}
-form.container.width      = {:form.container.width:}
+formedit.button_save.label    = {:formedit.button_save.label:}
+formedit.button_cancel.label  = {:formedit.button_cancel.label:}
+formedit.container.width       = {:formedit.container.width:}
 
-EXPECTED Profil A: alle leer (formset.windows ist null)
-EXPECTED Profil B: tatsächliche Werte aus dem Create-Edit-Fenster
+EXPECTED Profil A: alle leer (Tabelle hat kein Create/Edit-Fenster)
+EXPECTED Profil B: tatsächliche Werte aus dem Create-Edit-Fenster der Tabelle
 
 ================================================================================
 [G] CONDITIONAL — Layout nur ausgeben wenn FormSet vorhanden

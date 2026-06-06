@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Steps } from 'primereact/steps';
@@ -19,6 +20,7 @@ import { TreeNode } from 'primereact/treenode';
 import { usePage } from '@inertiajs/react';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useProject } from '@/contexts/ProjectContext';
 import { useTranslation, SupportedLanguage, getStoredLanguage, tpl } from '@/i18n';
 import { apiClient } from '@/lib/api';
 
@@ -28,7 +30,6 @@ interface TemplateMeta {
     zip_filename: string | null;
     output_path: string | null;
     file_order: number | null;
-    form_window_type: number;
     is_include_only: boolean;
 }
 
@@ -156,6 +157,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const templateCategories = props.templateCategories || [];
     const templateLanguages = props.templateLanguages || [];
     const { colors } = useTheme();
+    const { selectedProject } = useProject();
     const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
     const { t } = useTranslation(currentLanguage);
 
@@ -201,6 +203,14 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const [filteredCategories, setFilteredCategories] = useState<string[]>([]);
     const [filteredLanguages, setFilteredLanguages] = useState<string[]>([]);
 
+    // Project assignment — same optional multi-select as the create/edit
+    // dialog (TemplateModal). The imported template is linked to the chosen
+    // projects right after it is persisted, so it shows up during generation
+    // without a separate manual linking step. No template is ever made
+    // dependent on a project; an empty selection links nothing.
+    const [allProjects, setAllProjects] = useState<Array<{ id: number; name: string }>>([]);
+    const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
+
     // Template extra metadata from Scoriet export (custom variables, protected files, scripts)
     const [importedCustomVariables, setImportedCustomVariables] = useState<CustomVariable[] | null>(null);
     const [importedProtectedFiles, setImportedProtectedFiles] = useState<string[] | null>(null);
@@ -230,6 +240,33 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const [serviceStatus, setServiceStatus] = useState<string>('');
     const [serviceLogs, setServiceLogs] = useState<string>('');
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Load the user's projects whenever the wizard opens, so the optional
+    // project-assignment multiselect is populated by the time the user reaches
+    // the metadata step. Cheap call (small list); failure degrades silently to
+    // "no projects available" rather than blocking the import.
+    useEffect(() => {
+        if (!visible) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const response = await apiClient.get('/user/projects');
+                const list = response?.projects || [];
+                if (cancelled) return;
+                setAllProjects(list);
+                // Pre-select the currently active project as a convenience
+                // default (only if it's in the user's own list). Read at open
+                // time — selectedProject is intentionally not an effect dep so a
+                // later global project switch can't wipe the user's selection.
+                if (selectedProject && list.some((p: { id: number }) => Number(p.id) === Number(selectedProject.id))) {
+                    setLinkedProjectIds([Number(selectedProject.id)]);
+                }
+            } catch {
+                if (!cancelled) setAllProjects([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [visible]);
 
 
     // Steps configuration
@@ -511,6 +548,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         setTemplateTags([]);
         setTemplateVisibility('public');
         setIsSystemTemplate(false);
+        setLinkedProjectIds([]);
         setError(null);
         setShowExtensionPanel(false);
         setSelectedPreset(null);
@@ -805,6 +843,20 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     return;
                 }
                 throw new Error(errData.message || t.templateimportwizardpanel761);
+            }
+
+            // Link the freshly-imported template to the chosen projects (if
+            // any). Non-blocking: the template already exists at this point, so
+            // a linking failure must not surface the whole import as failed —
+            // the user can still link it manually from the template list.
+            if (data?.template?.id && linkedProjectIds.length > 0) {
+                try {
+                    await apiClient.put(`/templates/${data.template.id}/linked-projects`, {
+                        project_ids: linkedProjectIds,
+                    });
+                } catch (linkErr) {
+                    console.error('Template imported, but project linking failed:', linkErr);
+                }
             }
 
             onSuccess?.(data.template);
@@ -1964,8 +2016,44 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                 </p>
                             </div>
 
-                            {/* Visibility */}
-                            <div className="col-span-2">
+                            {/* Project assignment (optional) — link the imported
+                              * template to one or more projects right away, so it
+                              * is available during generation. Same pattern as the
+                              * create/edit dialog; persisted after the template is
+                              * created via the linked-projects endpoint. Shares a
+                              * row with Visibility to keep the dialog compact. */}
+                            <div>
+                                <label htmlFor="import_linked_projects" className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
+                                    {t.templatemodal_project_assignment} <span className="text-xs" style={{ color: colors.textMuted }}>(optional)</span>
+                                </label>
+                                {allProjects.length > 0 ? (
+                                    <MultiSelect
+                                        inputId="import_linked_projects"
+                                        value={linkedProjectIds}
+                                        options={allProjects.map(p => ({ id: Number(p.id), name: p.name }))}
+                                        optionLabel="name"
+                                        optionValue="id"
+                                        onChange={(e) => setLinkedProjectIds((e.value as number[]) || [])}
+                                        placeholder={t.templatemodal_project_assignment_placeholder}
+                                        className="w-full"
+                                        display="chip"
+                                        filter
+                                        showClear
+                                        maxSelectedLabels={3}
+                                        panelClassName="template-import-multiselect-panel"
+                                    />
+                                ) : (
+                                    <div className="text-sm italic" style={{ color: colors.textMuted }}>
+                                        {t.templatemodal_project_assignment_empty}
+                                    </div>
+                                )}
+                                <p className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                    {t.templatemodal_project_assignment_help}
+                                </p>
+                            </div>
+
+                            {/* Visibility — shares a row with Project assignment */}
+                            <div>
                                 <label className="block text-sm font-medium mb-1" style={{ color: colors.textSecondary }}>
                                     {t.templateimportwizardpanel1761}
                                 </label>
@@ -2425,6 +2513,43 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                 .template-import-wizard .p-checkbox .p-checkbox-box.p-highlight {
                     background-color: var(--theme-accent) !important;
                     border-color: var(--theme-accent) !important;
+                }
+                /* MultiSelect (project assignment) — in-dialog control */
+                .template-import-wizard .p-multiselect {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-wizard .p-multiselect .p-multiselect-label {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-wizard .p-multiselect .p-multiselect-token {
+                    background-color: var(--theme-accent) !important;
+                    color: white !important;
+                }
+                /* MultiSelect panel renders as a portal outside the dialog — needs global selectors */
+                .template-import-multiselect-panel {
+                    background-color: var(--theme-bg-secondary) !important;
+                    border: 1px solid var(--theme-border-primary) !important;
+                }
+                .template-import-multiselect-panel .p-multiselect-header {
+                    background-color: var(--theme-bg-tertiary) !important;
+                    border-color: var(--theme-border-primary) !important;
+                }
+                .template-import-multiselect-panel .p-multiselect-items .p-multiselect-item {
+                    color: var(--theme-text-primary) !important;
+                }
+                .template-import-multiselect-panel .p-multiselect-items .p-multiselect-item:hover {
+                    background-color: var(--theme-bg-hover) !important;
+                }
+                .template-import-multiselect-panel .p-multiselect-items .p-multiselect-item.p-highlight {
+                    background-color: var(--theme-accent) !important;
+                    color: #fff !important;
+                }
+                .template-import-multiselect-panel .p-multiselect-filter-container .p-inputtext {
+                    background-color: var(--theme-bg-secondary) !important;
+                    color: var(--theme-text-primary) !important;
+                    border-color: var(--theme-border-primary) !important;
                 }
             `}</style>
         </>

@@ -9,6 +9,7 @@ import { Menu } from 'primereact/menu';
 import TabOrderModal from '../Modals/TabOrderModal';
 import { Dropdown } from 'primereact/dropdown';
 import { InputText } from 'primereact/inputtext';
+import { AutoComplete } from 'primereact/autocomplete';
 import { InputNumber } from 'primereact/inputnumber';
 import { Checkbox } from 'primereact/checkbox';
 import { Toast } from 'primereact/toast';
@@ -333,6 +334,11 @@ const WINDOW_TYPE_OPTIONS = [
   // Reports removed — now handled by Report Pattern/Layout Designers
 ];
 
+// Suggested actions for user-defined (button_custom) buttons — editable
+// combobox (presets + free text). Per-table override of the element-level
+// action; templates read it via {:layoutsingle.action:}/{:layoutbutton.action:}.
+const BUTTON_ACTION_PRESETS = ['print', 'bulk_modify', 'recycle', 'export', 'duplicate', 'archive', 'refresh'];
+
 const BUTTON_DEFAULT_ICONS: Record<string, string> = {
   button_nav_first: 'pi-angle-double-left',
   button_nav_prev: 'pi-angle-left',
@@ -456,6 +462,18 @@ const CONTROL_TYPE_OPTIONS = [
   { label: 'Hidden', value: 'hidden' },
   { label: 'Read Only', value: 'readonly' },
 ];
+
+// Map a raw schema control_type (the DB Designer stores it UPPERCASE, e.g.
+// 'COMBOBOX') to its friendly dropdown label. Used as the Control-Type
+// placeholder so that CLEARING the per-field override (the "x") shows the
+// inherited schema default as "Combobox / Dropdown" instead of a raw,
+// out-of-place "COMBOBOX". Falls back to 'Auto' when the field has no
+// schema-level control type configured.
+const schemaControlTypePlaceholder = (raw?: string | null): string => {
+  if (!raw) return 'Auto';
+  const match = CONTROL_TYPE_OPTIONS.find((o) => o.value.toLowerCase() === raw.toLowerCase());
+  return match ? `Auto (${match.label})` : 'Auto';
+};
 
 // ========== CUSTOM NODES (outside component for React memo stability) ==========
 
@@ -1149,11 +1167,15 @@ const FieldTypeIcon: React.FC<{ fieldType: string; isPK?: boolean }> = ({ fieldT
 
 interface FormLayoutDesignerPanelProps {
   onOpenPanel?: (panelId: string, data?: Record<string, unknown>) => void;
+  // Form Set to pre-select when opened from the Form Template Management
+  // "Open in Layout Designer" button. Takes priority over the legacy
+  // localStorage handoff (which the Form Blueprint Designer still uses).
+  formSetId?: number;
 }
 
 // ========== INNER COMPONENT (needs ReactFlowProvider wrapper) ==========
 
-const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpenPanel: _onOpenPanel }) => {
+const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpenPanel: _onOpenPanel, formSetId: propFormSetId }) => {
   const [currentLanguage] = useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
@@ -1179,7 +1201,19 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
   // ---- Toolbar state ----
   const [formSets, setFormSets] = useState<FormSet[]>([]);
-  const [selectedFormSetId, setSelectedFormSetId] = useState<number | null>(formPreselect?.formSetId || null);
+  // Priority: explicit prop (Management "Open in Layout Designer") > legacy
+  // localStorage handoff (Form Blueprint Designer) > none. The prop is the
+  // reliable channel — no 5s-timestamp race, fresh on every forceNew remount.
+  // Coerce to Number so the scalar matches the option values (built as
+  // Number(fs.id) below) even when the API serialises ids as strings.
+  const initialSelectedFormSetId = propFormSetId ?? formPreselect?.formSetId;
+  const [selectedFormSetId, setSelectedFormSetId] = useState<number | null>(
+    initialSelectedFormSetId != null ? Number(initialSelectedFormSetId) : null
+  );
+  // Always-current selection so loadFormSets() can detect (without a stale
+  // closure) that the Form Set being laid out was deleted elsewhere.
+  const selectedFormSetIdRef = useRef<number | null>(selectedFormSetId);
+  selectedFormSetIdRef.current = selectedFormSetId;
   const [selectedWindowType, setSelectedWindowType] = useState<string | null>(formPreselect?.windowType || null);
   const [schemas, setSchemas] = useState<FloatingSchema[]>([]);
   const [selectedSchemaId, setSelectedSchemaId] = useState<number | null>(null);
@@ -1196,6 +1230,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
   const [menuPlacements, setMenuPlacements] = useState<MenuItemPlacementData[]>([]);
   const [selectedPlacementId, setSelectedPlacementId] = useState<number | null>(null);
   const [selectedButtonNodeId, setSelectedButtonNodeId] = useState<string | null>(null);
+  // Filtered suggestions for the editable button-action combobox.
+  const [actionSuggestions, setActionSuggestions] = useState<string[]>(BUTTON_ACTION_PRESETS);
   const [selectedMenuNodeId, setSelectedMenuNodeId] = useState<string | null>(null);
   // Tab state: persistent tabs for current (window × table), keyed by container
   // element id → active tab id. selectedTabId controls the properties panel.
@@ -1379,10 +1415,46 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       const data = await apiClient.get('/form-sets');
       const list = Array.isArray(data) ? data : (data.data || []);
       setFormSets(list);
+
+      // If the Form Set currently being laid out was deleted elsewhere, reset
+      // the editor: drop the selection and clear the canvas so it can't 404 on
+      // the next Load and doesn't show a ghost layout.
+      const curId = selectedFormSetIdRef.current;
+      if (curId != null && !list.some((fs: any) => Number(fs.id) === Number(curId))) {
+        setSelectedFormSetId(null);
+        setCurrentFormSet(null);
+        setCurrentWindow(null);
+        setPlacements([]);
+        setButtonPlacements([]);
+        setMenuPlacements([]);
+        setNodes([]);
+        setHasUnsavedChanges(false);
+      }
     } catch {
       // silent
     }
+  }, [setNodes]);
+
+  // Targeted open from the Form Template Management "Open in Layout Designer"
+  // button. An already-open panel is only re-activated by openPanel (the prop
+  // doesn't change), so the button also fires this event — we always catch it
+  // and switch the Form Set selection. Fresh-open is covered by the prop.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const id = (e as CustomEvent).detail?.formSetId;
+      if (id != null) setSelectedFormSetId(Number(id));
+    };
+    window.addEventListener('formLayout:open', handler);
+    return () => window.removeEventListener('formLayout:open', handler);
   }, []);
+
+  // Cross-panel refresh: when a Form Set is created/deleted in another panel
+  // (Form Template Editor / Management), reload the list and reconcile (above).
+  useEffect(() => {
+    const handler = () => loadFormSets();
+    window.addEventListener('formSetsChanged', handler);
+    return () => window.removeEventListener('formSetsChanged', handler);
+  }, [loadFormSets]);
 
   // ========== LOAD SCHEMAS ==========
 
@@ -2952,7 +3024,10 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         form_element_id: el.id,
         button_type: el.element_type,
         button_label: el.button_label,
-        button_labels: null,
+        // Pull per-language labels from the template element (they live in
+        // custom_style.button_labels) so Auto-Place re-syncs translations too —
+        // not just the default label. Mirrors the backend seeding.
+        button_labels: el.custom_style?.button_labels ?? null,
         button_icon: el.button_icon || BUTTON_DEFAULT_ICONS[el.element_type] || null,
         button_action: el.button_action,
         button_background_color: el.button_background_color || defaultBtnBg,
@@ -3566,7 +3641,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         {/* FormSet dropdown */}
         <Dropdown
           value={selectedFormSetId}
-          options={formSets.map((fs) => ({ label: fs.name, value: fs.id }))}
+          options={formSets.map((fs) => ({ label: fs.name, value: Number(fs.id) }))}
           onChange={(e) => setSelectedFormSetId(e.value)}
           placeholder={t.formlayoutdesigner_select_formset || 'Form Set'}
           style={{ width: 160, fontSize: 12 }}
@@ -5631,7 +5706,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                             transition: 'background 0.12s',
                           }}
                         >
-                          \u2190 {t.formlayoutdesigner_move_left_short || 'Left'}
+                          <i className="pi pi-angle-left" style={{ fontSize: 12, marginRight: 4 }} />{t.formlayoutdesigner_move_left_short || 'Left'}
                         </button>
                         <button
                           onClick={() => canRight && swap(idx + 1)}
@@ -5649,7 +5724,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                             transition: 'background 0.12s',
                           }}
                         >
-                          {t.formlayoutdesigner_move_right_short || 'Right'} \u2192
+                          {t.formlayoutdesigner_move_right_short || 'Right'}<i className="pi pi-angle-right" style={{ fontSize: 12, marginLeft: 4 }} />
                         </button>
                       </div>
                     );
@@ -5882,7 +5957,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                           updatePlacementProp('control_type_override', e.value || null);
                         }
                       }}
-                      placeholder={selectedPlacement.schema_field?.control_type || 'Auto'}
+                      placeholder={schemaControlTypePlaceholder(selectedPlacement.schema_field?.control_type)}
                       style={{ width: '100%', fontSize: 12 }}
                       className="p-inputtext-sm"
                       showClear
@@ -6118,6 +6193,39 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
                       className="p-inputtext-sm"
                     />
                   </div>
+
+                  {/* Action — only for user-defined buttons. Editable combobox
+                      (presets + free text); per-table override of the action. */}
+                  {selectedButton.button_type === 'button_custom' && !multiEditButtons && (
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ fontSize: 11, color: colors.textSecondary, display: 'block', marginBottom: 3 }}>Action</label>
+                      <AutoComplete
+                        value={selectedButton.button_action || ''}
+                        suggestions={actionSuggestions}
+                        completeMethod={(e) =>
+                          setActionSuggestions(
+                            BUTTON_ACTION_PRESETS.filter(a => a.toLowerCase().includes(e.query.toLowerCase()))
+                          )
+                        }
+                        onChange={(e) => {
+                          const val = (e.value as string) || null;
+                          setButtonPlacements((prev) => prev.map((b) =>
+                            `button-${b.id || b.button_type}-${b.sort_order}` === selectedButtonNodeId ? { ...b, button_action: val } : b
+                          ));
+                          setHasUnsavedChanges(true);
+                        }}
+                        dropdown
+                        forceSelection={false}
+                        placeholder="z.B. print, bulk_modify, print-form1 …"
+                        style={{ width: '100%' }}
+                        inputStyle={{ width: '100%', fontSize: 12 }}
+                        className="p-inputtext-sm"
+                      />
+                      <div style={{ fontSize: 10, color: colors.textMuted, marginTop: 3 }}>
+                        Frei wählbar — Template: {'{:layoutsingle.action:}'}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Background Color (shared in multi-edit) */}
                   <div style={{ marginBottom: 10 }}>

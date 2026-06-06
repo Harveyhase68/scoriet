@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog } from 'primereact/dialog';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { DataTable } from 'primereact/datatable';
 import { useToast } from '@/contexts/ToastContext';
 import { Column } from 'primereact/column';
@@ -37,6 +38,23 @@ interface FormSetManagementPanelProps {
     onOpenPanel?: (panelType: string, data: any) => void;
 }
 
+// A Form Blueprint name becomes part of generated file paths / template keys,
+// so it must be a machine-safe identifier: lowercase letters, digits and
+// underscore only. We sanitise AS THE USER TYPES (auto-lowercasing instead of
+// rejecting, so uppercase input isn't silently lost) — no regex, an explicit
+// char-class scan that reads clearly and can't surprise us in five years.
+const sanitizeBlueprintName = (raw: string): string => {
+    let out = '';
+    for (const ch of raw.toLowerCase()) {
+        const isLower = ch >= 'a' && ch <= 'z';
+        const isDigit = ch >= '0' && ch <= '9';
+        if (isLower || isDigit || ch === '_') {
+            out += ch;
+        }
+    }
+    return out;
+};
+
 const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenPanel }) => {
     const { selectedProject } = useProject();
     const toast = useToast();
@@ -65,6 +83,11 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const [formSetToLink, setFormSetToLink] = useState<FormSet | null>(null);
     const [allProjects, setAllProjects] = useState<any[]>([]);
     const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
+    // Snapshot of the links as they were when the modal opened. We diff the
+    // current selection against this on save (additions → activate, removals →
+    // deactivate) and use it to enable the Link button only when something
+    // actually changed — including a change down to zero links (unlinking).
+    const [originalLinkedIds, setOriginalLinkedIds] = useState<number[]>([]);
     const [loadingProjects, setLoadingProjects] = useState(false);
     const [savingLink, setSavingLink] = useState(false);
 
@@ -165,6 +188,100 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         }
     };
 
+    // Cross-panel refresh: the Form Template Editor (and our own create) emit a
+    // 'formSetsChanged' event after creating a Form Set. Reload the list so a
+    // newly created blueprint shows up here without a manual refresh. A ref
+    // keeps the (once-registered) listener calling the latest loader, so the
+    // active search/visibility filters are always respected.
+    const loadMyFormSetsRef = useRef(loadMyFormSets);
+    loadMyFormSetsRef.current = loadMyFormSets;
+    useEffect(() => {
+        const handler = () => loadMyFormSetsRef.current();
+        window.addEventListener('formSetsChanged', handler);
+        return () => window.removeEventListener('formSetsChanged', handler);
+    }, []);
+
+    // ── Export / Import (portable JSON blueprint) ──────────────────────────
+    const importInputRef = useRef<HTMLInputElement>(null);
+
+    // Download a Form Set as a .json blueprint.
+    const handleExport = async (formSet: FormSet) => {
+        try {
+            const envelope = await apiClient.get(`/form-sets/${formSet.id}/export`);
+            const blob = new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const safeName = (formSet.name || 'form_set').replace(/[^a-z0-9_-]+/gi, '_');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `formset_${safeName}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        } catch (err: any) {
+            toast.showError(err?.response?.data?.error || t.formsetmanagementpanel_export_failed || 'Export failed');
+        }
+    };
+
+    // Run the actual import (blueprint + optionally the per-table layouts).
+    const doFormSetImport = async (envelope: any, applyLayouts: boolean) => {
+        try {
+            const res: any = await apiClient.post('/form-sets/import', { ...envelope, apply_layouts: applyLayouts });
+            const applied = res?.layout_stats?.applied || 0;
+            let msg = t.formsetmanagementpanel_import_success || 'Form Set imported';
+            if (applied > 0) {
+                msg += ` — ${applied} ${t.formsetmanagementpanel_layouts_applied || 'layout placements applied'}`;
+            }
+            toast.showSuccess(msg);
+            loadMyFormSets();
+            window.dispatchEvent(new CustomEvent('formSetsChanged'));
+        } catch (err: any) {
+            toast.showError(err?.response?.data?.error || err?.response?.data?.message || t.formsetmanagementpanel_import_failed || 'Import failed');
+        }
+    };
+
+    // Read a chosen .json file → (if it carries layouts for tables we have)
+    // propose importing those too → import as a new (private) Form Set.
+    const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (e.target) e.target.value = ''; // reset so the same file can be picked again
+        if (!file) return;
+
+        let envelope: any;
+        try {
+            envelope = JSON.parse(await file.text());
+        } catch {
+            toast.showError(t.formsetmanagementpanel_import_invalid || 'Invalid JSON file');
+            return;
+        }
+
+        // Does the file contain field layouts for schemas/tables we actually
+        // have (matched by name)? If so, offer to bring them along.
+        let matched: Array<{ table_name: string }> = [];
+        try {
+            const preview: any = await apiClient.post('/form-sets/import/preview-layouts', envelope);
+            matched = preview?.matched || [];
+        } catch {
+            // Preview is best-effort — fall through to a plain blueprint import.
+        }
+
+        if (matched.length > 0) {
+            const names = matched.map(m => m.table_name).join(', ');
+            confirmDialog({
+                group: 'form-set-management',
+                header: t.formsetmanagementpanel_layouts_prompt_title || 'Import layouts too?',
+                message: `${t.formsetmanagementpanel_layouts_prompt || 'This file contains field layouts for tables you have:'} ${names}`,
+                icon: 'pi pi-question-circle',
+                acceptLabel: t.formdesignerpanel_yes || 'Yes',
+                rejectLabel: t.formdesignerpanel_no || 'No',
+                accept: () => doFormSetImport(envelope, true),
+                reject: () => doFormSetImport(envelope, false),
+            });
+        } else {
+            doFormSetImport(envelope, false);
+        }
+    };
+
     // Load projects for linking
     const loadProjects = async () => {
         setLoadingProjects(true);
@@ -205,6 +322,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     const handleOpenLinkModal = async (formSet: FormSet) => {
         setFormSetToLink(formSet);
         setLinkedProjectIds([]); // Reset first
+        setOriginalLinkedIds([]);
         setLinkModalVisible(true);
 
         // Load projects and linked projects in parallel
@@ -214,6 +332,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         ]);
 
         setLinkedProjectIds(linkedIds);
+        setOriginalLinkedIds(linkedIds);
     };
 
     // Save project links
@@ -222,9 +341,20 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
 
         setSavingLink(true);
         try {
-            // For each selected project, activate the formset
-            for (const projectId of linkedProjectIds) {
+            // Diff against the snapshot taken when the modal opened:
+            //   added   = now selected but weren't before → activate this formset
+            //   removed = were linked but now de-selected → deactivate (unlink)
+            // Without the removal pass, de-selecting a project here had no effect
+            // (the old code only re-activated the survivors), forcing the user to
+            // go to Project Settings → "no form template" just to unlink.
+            const toAdd = linkedProjectIds.filter(id => !originalLinkedIds.includes(id));
+            const toRemove = originalLinkedIds.filter(id => !linkedProjectIds.includes(id));
+
+            for (const projectId of toAdd) {
                 await apiClient.post(`/projects/${projectId}/form-set`, { form_set_id: formSetToLink.id });
+            }
+            for (const projectId of toRemove) {
+                await apiClient.delete(`/projects/${projectId}/form-set`);
             }
 
             toast.showSuccess(t.formsetmanagementpanel249);
@@ -239,6 +369,31 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         }
     };
 
+    // Clone a Form Blueprint into a fresh private copy. Mirrors the Report
+    // panel's Clone, but gated behind a confirm dialog (per request) so a
+    // mis-click can't spawn stray copies. The backend's clone endpoint picks a
+    // non-colliding name and deep-copies the windows/elements; we just refresh.
+    const handleClone = (formSet: FormSet) => {
+        confirmDialog({
+            group: 'form-set-management',
+            header: t.formsetmanagementpanel_clone_title || 'Clone Form Blueprint',
+            message: `${t.formsetmanagementpanel_clone_confirm || 'Create a copy of:'} "${formSet.name}"`,
+            icon: 'pi pi-copy',
+            acceptLabel: t.formdesignerpanel_yes || 'Yes',
+            rejectLabel: t.formdesignerpanel_no || 'No',
+            accept: async () => {
+                try {
+                    await apiClient.post(`/form-sets/${formSet.id}/clone`, {});
+                    toast.showSuccess(t.formsetmanagementpanel_cloned || 'Form Blueprint cloned');
+                    loadMyFormSets();
+                } catch (error) {
+                    console.error('Clone error:', error);
+                    toast.showError(t.formsetmanagementpanel_clone_failed || 'Error cloning form blueprint');
+                }
+            },
+        });
+    };
+
     // Create a new Form Blueprint via the modal. The backend's POST handler
     // auto-creates the default windows via FormSet::boot(), so we just need
     // name/description/visibility. After success we reload the "My Form Sets"
@@ -247,7 +402,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
         if (!newName.trim()) return;
         setCreating(true);
         try {
-            await apiClient.post('/form-sets', {
+            const resp: any = await apiClient.post('/form-sets', {
                 name: newName,
                 description: newDescription || null,
                 visibility: newVisibility,
@@ -258,6 +413,39 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
             setNewDescription('');
             setNewVisibility('private');
             loadMyFormSets();
+            // Notify other panels (e.g. the Form Template Editor) to refresh.
+            window.dispatchEvent(new CustomEvent('formSetsChanged'));
+
+            // Offer to set the new Form Set as the project default — but only if
+            // the project has none yet (mirrors the Form Template Editor, so the
+            // behaviour is identical wherever you create a blueprint).
+            const newId = resp?.data?.id;
+            if (newId && selectedProject?.id) {
+                const projectId = selectedProject.id;
+                try {
+                    const checkData: any = await apiClient.get(`/projects/${projectId}/form-set`);
+                    if (!checkData?.data?.id) {
+                        confirmDialog({
+                            group: 'form-set-management',
+                            header: t.formsetdefault_prompt_title,
+                            message: t.formsetdefault_prompt_message,
+                            icon: 'pi pi-question-circle',
+                            acceptLabel: t.formdesignerpanel_yes,
+                            rejectLabel: t.formdesignerpanel_no,
+                            accept: async () => {
+                                try {
+                                    await apiClient.post(`/projects/${projectId}/form-set`, { form_set_id: newId });
+                                    loadMyFormSets();
+                                } catch {
+                                    // ignore — user can set it manually in project settings
+                                }
+                            },
+                        });
+                    }
+                } catch {
+                    // ignore — fallback: user sets default manually in project settings
+                }
+            }
         } catch (err: any) {
             const data = err?.response?.data || {};
             // Surface field-level validation errors (esp. "name has already
@@ -311,20 +499,29 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     };
 
     // Open Form Designer for editing
+    // Open the Form Blueprint Designer ON the clicked Form Set. Two cases:
+    //   • Panel already open → openPanel only re-activates the tab, the new
+    //     formSetId never reaches it as a prop. The event below is caught by
+    //     the open panel and switches its selection.
+    //   • Panel not open yet → openPanel creates it with the formSetId prop
+    //     (the event fires before mount and is harmlessly missed).
+    // This replaces the racy forceNew remove→recreate dance.
     const handleOpenDesigner = (formSet: FormSet) => {
-        onOpenPanel?.('form-designer', { formSetId: formSet.id, title: `${t.formsetmanagementpanel263}${formSet.name}` });
+        window.dispatchEvent(new CustomEvent('formDesigner:open', { detail: { formSetId: formSet.id } }));
+        onOpenPanel?.('form-designer', {
+            formSetId: formSet.id,
+            title: `${t.formsetmanagementpanel263}${formSet.name}`,
+        });
     };
 
-    // Open Form Layout Designer with pre-selection via localStorage
+    // Open the Form Layout Designer ON the clicked Form Set. Same dual contract
+    // as handleOpenDesigner: event for an already-open panel, prop for a fresh
+    // one. No localStorage handoff, no forceNew.
     const handleOpenLayoutDesigner = (formSet: FormSet) => {
-        localStorage.setItem('form_layout_preselect', JSON.stringify({
-            formSetId: formSet.id,
-            formSetName: formSet.name,
-            timestamp: Date.now(),
-        }));
+        window.dispatchEvent(new CustomEvent('formLayout:open', { detail: { formSetId: formSet.id } }));
         onOpenPanel?.('form-layout-designer', {
+            formSetId: formSet.id,
             title: `${t.formsetmanagementpanel_layout || 'Form Layout'}: ${formSet.name}`,
-            forceNew: true,
         });
     };
 
@@ -376,8 +573,28 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 setFormSetToDelete(null);
                 setDeleteConfirmText('');
                 loadMyFormSets();
-            } catch {
-                toast.showError(t.formsetmanagementpanel295);
+                // Tell open editors (Form Template / Layout) to refresh and drop
+                // the now-deleted Form Set so they don't operate on a ghost.
+                window.dispatchEvent(new CustomEvent('formSetsChanged'));
+            } catch (err: any) {
+                // 409 = still in use (e.g. a link was added between the pre-check
+                // and the confirmed delete). Show EXACTLY what blocks it instead
+                // of a generic message: reuse the rich "in use by" dialog (tables
+                // + projects, by name) plus a concrete toast.
+                if (err?.response?.status === 409) {
+                    const d = err.response?.data || {};
+                    const tables = Array.isArray(d.tables) ? d.tables : [];
+                    const projects = Array.isArray(d.projects) ? d.projects : [];
+                    setInUseInfo({ formSetName: formSetToDelete.name, tables, projects });
+                    setDeleteModalVisible(false);
+                    setInUseModalVisible(true);
+                    const parts: string[] = [];
+                    if (tables.length) parts.push(`${t.formsetmanagementpanel_in_use_tables} ${tables.map((x: any) => x.table_name).join(', ')}`);
+                    if (projects.length) parts.push(`${t.formsetmanagementpanel_in_use_projects} ${projects.map((x: any) => x.name || `#${x.id}`).join(', ')}`);
+                    toast.showError(parts.length ? parts.join(' · ') : t.formsetmanagementpanel295);
+                } else {
+                    toast.showError(t.formsetmanagementpanel295);
+                }
             }
         } catch (error) {
             console.error(t.formsetmanagementpanel298, error);
@@ -459,6 +676,9 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
     return (
         <div className="formset-management-panel p-4 h-full overflow-auto" style={{ backgroundColor: colors.bgPrimary, color: colors.textPrimary }}>
 
+            {/* Scoped confirm dialog for the "set as project default?" prompt */}
+            <ConfirmDialog group="form-set-management" />
+
             {/* MY FORMSETS TABLE */}
             <Card title={t.formsetmanagementpanel382} className="mb-4" style={{ backgroundColor: colors.bgSecondary, border: `1px solid ${colors.borderPrimary}` }}>
                 <div className="flex justify-between items-center mb-4">
@@ -483,6 +703,20 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             className="w-64"
                         />
                     </div>
+                    <input
+                        ref={importInputRef}
+                        type="file"
+                        accept="application/json,.json"
+                        style={{ display: 'none' }}
+                        onChange={handleImportFile}
+                    />
+                    <Button
+                        label={t.formsetmanagementpanel_import || 'Import'}
+                        icon="pi pi-upload"
+                        className="p-button-secondary mr-2"
+                        onClick={() => importInputRef.current?.click()}
+                        tooltip={t.formsetmanagementpanel_import_tooltip || 'Import a Form Set blueprint (.json)'}
+                    />
                     <Button
                         label={t.formsetmanagementpanel406}
                         icon="pi pi-plus"
@@ -553,6 +787,18 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                                         onClick={() => handleOpenLayoutDesigner(formSet)}
                                         tooltip={t.formsetmanagementpanel_open_layout || 'Open in Layout Designer'}
                                     />
+                                    <Button
+                                        icon="pi pi-download"
+                                        className="p-button-text p-button-secondary p-button-sm"
+                                        onClick={() => handleExport(formSet)}
+                                        tooltip={t.formsetmanagementpanel_export || 'Export blueprint (.json)'}
+                                    />
+                                    <Button
+                                        icon="pi pi-copy"
+                                        className="p-button-text p-button-warning p-button-sm"
+                                        onClick={() => handleClone(formSet)}
+                                        tooltip={t.formsetmanagementpanel_clone || 'Clone'}
+                                    />
                                     {isOwner && (
                                         <Button
                                             icon="pi pi-trash"
@@ -616,6 +862,12 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                                     tooltip={selectedProject ? tpl(t.formsetmanagementpanel510, { name: selectedProject.name }) : t.formsetmanagementpanel510_2}
                                     disabled={!selectedProject}
                                 />
+                                <Button
+                                    icon="pi pi-copy"
+                                    className="p-button-text p-button-warning p-button-sm"
+                                    onClick={() => handleClone(formSet)}
+                                    tooltip={t.formsetmanagementpanel_clone || 'Clone'}
+                                />
                             </div>
                         )}
                     />
@@ -637,9 +889,9 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                         <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_name || 'Name'}</label>
                         <InputText
                             value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                            onChange={(e) => setNewName(sanitizeBlueprintName(e.target.value))}
                             className="w-full"
-                            placeholder={t.formsetmanagementpanel_name_placeholder || 'e.g. Standard Form Set'}
+                            placeholder={t.formsetmanagementpanel_name_placeholder || 'e.g. standard_form_set'}
                             autoFocus
                         />
                     </div>
@@ -697,7 +949,7 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_name || 'Name'}</label>
-                        <InputText value={editFsName} onChange={(e) => setEditFsName(e.target.value)} className="w-full" />
+                        <InputText value={editFsName} onChange={(e) => setEditFsName(sanitizeBlueprintName(e.target.value))} className="w-full" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">{t.formsetmanagementpanel_description || 'Description'}</label>
@@ -770,7 +1022,14 @@ const FormSetManagementPanel: React.FC<FormSetManagementPanelProps> = ({ onOpenP
                             className="p-button-success"
                             onClick={handleSaveLinks}
                             loading={savingLink}
-                            disabled={linkedProjectIds.length === 0}
+                            disabled={
+                                // Enabled only when the selection differs from
+                                // the snapshot — additions OR removals (incl.
+                                // removing the last link). Disabled when nothing
+                                // changed, so the button can't no-op.
+                                linkedProjectIds.length === originalLinkedIds.length &&
+                                linkedProjectIds.every(id => originalLinkedIds.includes(id))
+                            }
                         />
                     </div>
                 </div>

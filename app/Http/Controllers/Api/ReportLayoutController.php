@@ -200,10 +200,15 @@ class ReportLayoutController extends Controller
             return response()->json(['success' => false, 'error' => 'Table not found'], 404);
         }
 
-        // Delete ALL existing field placements first (not just for this table) to prevent
-        // ghost columns lingering from previous auto-place runs.
+        // Clear only THIS table's existing field placements before re-placing.
+        // A report form is shared across tables (distinguished by
+        // schema_table_id), so deleting every table's fields here would wipe the
+        // layouts the user already built for OTHER tables — exactly the data loss
+        // seen when switching tables and running "Build automatically" again.
+        // Scoping to $tableId still clears this table's own stale/ghost columns.
         ReportLayoutElement::where('report_pattern_form_id', $form->id)
             ->where('element_type', 'field')
+            ->where('schema_table_id', $tableId)
             ->delete();
 
         // Compute the placement layout via the shared pure helper. This is the

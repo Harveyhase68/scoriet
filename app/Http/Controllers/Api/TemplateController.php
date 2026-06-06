@@ -527,7 +527,6 @@ class TemplateController extends Controller
             'files.*.output_path' => 'nullable|string',
             'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
             'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
-            'files.*.form_window_type' => 'nullable|integer|min:0|max:5', // 🎨 Form window type (0-5)
             'files.*.is_include_only' => 'nullable|boolean',
             'files.*.inject_target' => 'nullable|string|max:255',
             'files.*.inject_tag' => 'nullable|string|max:255',
@@ -675,7 +674,6 @@ class TemplateController extends Controller
                     'output_path' => $fileData['output_path'] ?? '/',
                     'content_type' => $processedContent['content_type'],
                     'zip_filename' => $processedContent['zip_filename'],
-                    'form_window_type' => $fileData['form_window_type'] ?? 0,
                     'language_override' => $fileData['language_override'] ?? null,
                 ]);
             }
@@ -782,7 +780,6 @@ class TemplateController extends Controller
             'files.*.output_path' => 'nullable|string',
             'files.*.content_type' => 'nullable|string|in:text,zip', // 🎯 text or zip
             'files.*.zip_filename' => 'nullable|string', // 🎯 Original ZIP filename
-            'files.*.form_window_type' => 'nullable|integer|min:0|max:5', // 🎨 Form window type (0-5)
             'files.*.is_include_only' => 'nullable|boolean',
             'files.*.inject_target' => 'nullable|string|max:255',
             'files.*.inject_tag' => 'nullable|string|max:255',
@@ -1019,7 +1016,6 @@ class TemplateController extends Controller
                     'output_path' => $fileData['output_path'] ?? '/',
                     'content_type' => $processedContent['content_type'],
                     'zip_filename' => $processedContent['zip_filename'],
-                    'form_window_type' => $fileData['form_window_type'] ?? 0,
                     'is_include_only' => $fileData['is_include_only'] ?? false,
                     'inject_target' => $fileData['inject_target'] ?? null,
                     'inject_tag' => $fileData['inject_tag'] ?? null,
@@ -1306,7 +1302,6 @@ class TemplateController extends Controller
                 'output_path' => $file->output_path,
                 'content_type' => $file->content_type,
                 'zip_filename' => $file->zip_filename,
-                'form_window_type' => $file->form_window_type ?? 0,
                 'is_include_only' => $file->is_include_only ?? false,
                 'inject_target' => $file->inject_target,
                 'inject_tag' => $file->inject_tag,
@@ -1561,7 +1556,6 @@ class TemplateController extends Controller
             'file_type' => 'required|string',
             'file_order' => 'nullable|integer',
             'output_path' => 'nullable|string',
-            'form_window_type' => 'nullable|integer|min:0|max:5',
         ]);
 
         // Only normalize line endings for text content, not for ZIP/binary Base64 content
@@ -1580,7 +1574,6 @@ class TemplateController extends Controller
             'output_path' => $validated['output_path'] ?? '/',
             'content_type' => $contentType,
             'zip_filename' => $request->input('zip_filename'),
-            'form_window_type' => $validated['form_window_type'] ?? 0,
             'language_override' => $request->input('language_override'),
         ]);
 
@@ -1611,7 +1604,6 @@ class TemplateController extends Controller
             'file_type' => 'required|string',
             'file_order' => 'nullable|integer',
             'output_path' => 'nullable|string',
-            'form_window_type' => 'nullable|integer|min:0|max:5',
             'language_override' => 'nullable|string|max:10',
         ]);
 
@@ -1631,7 +1623,6 @@ class TemplateController extends Controller
             'output_path' => $validated['output_path'] ?? $file->output_path,
             'content_type' => $contentType,
             'zip_filename' => $request->input('zip_filename', $file->zip_filename),
-            'form_window_type' => $validated['form_window_type'] ?? $file->form_window_type ?? 0,
             'language_override' => $request->input('language_override', $file->language_override),
         ]);
 
@@ -1808,7 +1799,6 @@ class TemplateController extends Controller
                     'file_order' => $file->file_order,
                     'content_type' => $file->content_type ?? 'text',
                     'zip_filename' => $file->zip_filename,
-                    'form_window_type' => $file->form_window_type ?? 0,
                     'is_include_only' => $file->is_include_only ?? false,
                     'inject_target' => $file->inject_target,
                     'inject_tag' => $file->inject_tag,
@@ -1980,7 +1970,6 @@ class TemplateController extends Controller
                         'file_order' => $file->file_order,
                         'content_type' => $file->content_type ?? 'text',
                         'zip_filename' => $file->zip_filename,
-                        'form_window_type' => $file->form_window_type ?? 0,
                         'is_include_only' => $file->is_include_only ?? false,
                         'inject_target' => $file->inject_target,
                         'inject_tag' => $file->inject_tag,
@@ -1996,7 +1985,6 @@ class TemplateController extends Controller
                         'file_order' => $file->file_order,
                         'content_type' => $file->content_type ?? 'text',
                         'zip_filename' => $file->zip_filename,
-                        'form_window_type' => $file->form_window_type ?? 0,
                         'is_include_only' => $file->is_include_only ?? false,
                         'inject_target' => $file->inject_target,
                         'inject_tag' => $file->inject_tag,
@@ -2194,7 +2182,6 @@ class TemplateController extends Controller
                 'template_data.files.*.content_type' => 'nullable|string|in:text,zip',
                 'template_data.files.*.zip_filename' => 'nullable|string',
                 'template_data.files.*.output_path' => 'nullable|string',
-                'template_data.files.*.form_window_type' => 'nullable|integer|min:0|max:5',
                 'template_data.files.*.is_include_only' => 'nullable|boolean',
                 'template_data.files.*.inject_target' => 'nullable|string|max:255',
                 'template_data.files.*.inject_tag' => 'nullable|string|max:255',
@@ -2264,7 +2251,6 @@ class TemplateController extends Controller
                     'content_type' => $fileData['content_type'] ?? 'text',
                     'zip_filename' => $fileData['zip_filename'] ?? null,
                     'output_path' => $fileData['output_path'] ?? '/',
-                    'form_window_type' => $fileData['form_window_type'] ?? 0,
                     'is_include_only' => $fileData['is_include_only'] ?? false,
                     'inject_target' => $fileData['inject_target'] ?? null,
                     'inject_tag' => $fileData['inject_tag'] ?? null,
@@ -2449,8 +2435,7 @@ class TemplateController extends Controller
                         'file_order' => $fileData['file_order'] ?? $index,
                         'content_type' => $contentType,
                         'zip_filename' => $zipFilename,
-                        'form_window_type' => $fileData['form_window_type'] ?? 0,
-                        'is_include_only' => $fileData['is_include_only'] ?? false,
+                            'is_include_only' => $fileData['is_include_only'] ?? false,
                         'inject_target' => $fileData['inject_target'] ?? null,
                         'inject_tag' => $fileData['inject_tag'] ?? null,
                         'language_override' => $fileData['language_override'] ?? null,

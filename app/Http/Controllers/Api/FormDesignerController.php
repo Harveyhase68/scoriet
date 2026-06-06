@@ -271,19 +271,37 @@ class FormDesignerController extends Controller
         // Refuse deletion if any schema_table or project still references this
         // FormSet — silently nulling user choices via ON DELETE SET NULL would
         // be lossy and unexpected.
-        $inUseByTables = \App\Models\SchemaTable::where('form_set_id', $id)
-            ->get(['id', 'table_name', 'schema_id']);
-        $inUseByProjects = \App\Models\ProjectFormSet::where('form_set_id', $id)->count();
+        //
+        // Only ACTIVE project links count as "in use": deactivateForProject()
+        // unlinks by setting is_active=false (it keeps the row, never deletes
+        // it), so a leftover inactive row means the user already removed the
+        // dependency and must NOT block deletion. This mirrors getLinkedProjects
+        // / linkedProjectIds, which also filter on is_active.
+        // Same shape as usage() so the frontend can render the rich "in use by"
+        // dialog (table + project names) straight from the 409 body.
+        $tables = \App\Models\SchemaTable::where('form_set_id', $id)
+            ->get(['id', 'table_name', 'schema_id'])
+            ->map(fn($t) => [
+                'id' => $t->id,
+                'table_name' => $t->table_name,
+                'schema_id' => $t->schema_id,
+            ])->values();
 
-        if ($inUseByTables->isNotEmpty() || $inUseByProjects > 0) {
+        $projects = \App\Models\ProjectFormSet::where('form_set_id', $id)
+            ->where('is_active', true)
+            ->with('project:id,name')
+            ->get()
+            ->map(fn($l) => [
+                'id' => $l->project_id,
+                'name' => $l->project?->name,
+            ])->values();
+
+        if ($tables->isNotEmpty() || $projects->isNotEmpty()) {
             return response()->json([
                 'success' => false,
                 'error' => __('formdesignercontrollerphp_in_use'),
-                'in_use_by_tables' => $inUseByTables->map(fn($t) => [
-                    'table_id' => $t->id,
-                    'table_name' => $t->table_name,
-                ])->values(),
-                'in_use_by_projects' => $inUseByProjects,
+                'tables' => $tables,
+                'projects' => $projects,
             ], 409);
         }
 
@@ -773,6 +791,440 @@ class FormDesignerController extends Controller
             'schema_table_id' => $row->schema_table_id,
             'width'           => $row->width,
             'height'          => $row->height,
+        ]);
+    }
+
+    // ========== EXPORT / IMPORT (portable JSON blueprint) ==========
+
+    /**
+     * Export a Form Set as a portable JSON blueprint: the FormSet, its windows,
+     * each window's elements, AND the per-table field layouts. The layouts are
+     * stored NAME-based (schema name + table name + field name) so they survive
+     * a move to another Scoriet instance with the same schema — IDs are never
+     * exported. On import they are matched by name (different schema → ignored).
+     * The frontend saves the returned envelope as a .json file.
+     *
+     * GET /api/form-sets/{id}/export
+     */
+    public function exportFormSet(int $id): JsonResponse
+    {
+        $user = Auth::user();
+        $formSet = FormSet::with('windows.elements')->find($id);
+        if (!$formSet) {
+            return response()->json(['success' => false, 'error' => 'Form Set not found'], 404);
+        }
+        // Export is allowed for the owner, for public sets, or for admins.
+        if ($formSet->creator_user_id !== $user->id && $formSet->visibility !== 'public' && !$user->isAdmin()) {
+            return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
+        }
+
+        $windowFields  = array_diff((new FormWindow)->getFillable(), ['form_set_id']);
+        $elementFields = (new FormElement)->getFillable(); // keep parent_tab_container_id (orig id) for re-wiring on import
+
+        $data = [
+            'name'                      => $formSet->name,
+            'description'               => $formSet->description,
+            'default_background_color'  => $formSet->default_background_color,
+            'default_window_color'      => $formSet->default_window_color,
+            'default_text_color'        => $formSet->default_text_color,
+            'default_button_color'      => $formSet->default_button_color,
+            'default_button_text_color' => $formSet->default_button_text_color,
+            'windows' => $formSet->windows->map(function (FormWindow $w) use ($windowFields, $elementFields) {
+                $win = \Illuminate\Support\Arr::only($w->toArray(), $windowFields);
+                $win['elements'] = $w->elements->map(function (FormElement $e) use ($elementFields) {
+                    $el = \Illuminate\Support\Arr::only($e->toArray(), $elementFields);
+                    $el['_ref'] = $e->id; // original id — used to re-wire parent_tab_container_id on import
+                    return $el;
+                })->values();
+                $layoutData = $this->buildWindowLayouts($w);
+                $win['layouts'] = $layoutData['tables'];
+                $win['window_placements'] = $layoutData['window'];
+                return $win;
+            })->values(),
+        ];
+
+        return response()->json([
+            'scoriet_type' => 'form_set',
+            'version'      => 1,
+            'exported_at'  => now()->toIso8601String(),
+            'data'         => $data,
+        ]);
+    }
+
+    /**
+     * Build the NAME-based layouts for one window. Returns TWO collections:
+     *   - 'tables': per-table field layouts, grouped by schema+table NAME (the
+     *     placements bound to a schema table — fields, per-table menu items).
+     *   - 'window': window-level placements that are NOT tied to a table —
+     *     menu GROUPS, SEPARATORS and buttons. These carry the menu hierarchy
+     *     (a per-table menu item's parent is usually a window-level group), so
+     *     they must travel too, otherwise the hierarchy collapses on import.
+     * FK ids are replaced with names (schema/table/field/lookup-table); template
+     * element references (container/form_element/tab) and the placement
+     * self-reference (parent_placement_id) are kept as original ids and re-wired
+     * via the id maps when the layout is applied on import.
+     */
+    private function buildWindowLayouts(FormWindow $window): array
+    {
+        $placements = \App\Models\FormItemPlacement::where('form_window_id', $window->id)
+            ->orderBy('sort_order')
+            ->get();
+        if ($placements->isEmpty()) {
+            return ['tables' => [], 'window' => []];
+        }
+
+        $tableIds = $placements->pluck('schema_table_id')
+            ->merge($placements->pluck('lookup_table_id'))
+            ->filter()->unique()->all();
+        $tables = \App\Models\SchemaTable::with('floatingSchema:id,name')
+            ->whereIn('id', $tableIds)->get()->keyBy('id');
+        $fields = \App\Models\SchemaField::whereIn('id', $placements->pluck('schema_field_id')->filter()->unique()->all())
+            ->get()->keyBy('id');
+
+        $placementFields = array_diff(
+            (new \App\Models\FormItemPlacement)->getFillable(),
+            ['form_window_id', 'schema_table_id', 'schema_field_id', 'lookup_table_id',
+             'container_element_id', 'form_element_id', 'tab_panel_id', 'parent_placement_id']
+        );
+
+        // Serialise one placement into a portable, name-based row.
+        $serialize = function (\App\Models\FormItemPlacement $p) use ($placementFields, $tables, $fields): array {
+            $row = \Illuminate\Support\Arr::only($p->toArray(), $placementFields);
+            $row['_pref']                 = $p->id; // original placement id → re-wire parent_placement_id on apply
+            $row['schema_field_name']     = $p->schema_field_id ? ($fields[$p->schema_field_id]->field_name ?? null) : null;
+            $row['lookup_table_name']     = $p->lookup_table_id ? ($tables[$p->lookup_table_id]->table_name ?? null) : null;
+            $row['container_element_ref'] = $p->container_element_id; // original element id → remapped on apply
+            $row['form_element_ref']      = $p->form_element_id;
+            $row['tab_panel_ref']         = $p->tab_panel_id;
+            $row['parent_placement_ref']  = $p->parent_placement_id; // original placement id → remapped on apply
+            return $row;
+        };
+
+        $groups = [];
+        $windowLevel = [];
+        foreach ($placements as $p) {
+            if ($p->schema_table_id) {
+                $tbl = $tables[$p->schema_table_id] ?? null;
+                $schemaName = $tbl?->floatingSchema?->name;
+                $tableName  = $tbl?->table_name;
+                if (!$schemaName || !$tableName) {
+                    continue; // can't make this portable without both names
+                }
+                $key = $schemaName . "\0" . $tableName;
+                if (!isset($groups[$key])) {
+                    $groups[$key] = ['schema_name' => $schemaName, 'table_name' => $tableName, 'placements' => []];
+                }
+                $groups[$key]['placements'][] = $serialize($p);
+            } else {
+                // Window-level (menu group / separator / button) — no table.
+                $windowLevel[] = $serialize($p);
+            }
+        }
+        return ['tables' => array_values($groups), 'window' => $windowLevel];
+    }
+
+    /**
+     * Import a Form Set from a JSON blueprint (see exportFormSet). ALWAYS
+     * creates a new private Form Set owned by the current user — never
+     * overwrites — and appends a numbered suffix on a name clash. Element
+     * self-references (parent_tab_container_id, for tab containers) are
+     * re-wired to the freshly created ids in a second pass.
+     *
+     * When `apply_layouts` is true, the per-table field layouts in the envelope
+     * are also imported, best-effort: each layout's schema+table is matched by
+     * NAME against the importing user's schemas; unmatched tables are skipped
+     * (different schema), and within a matched table any placement whose field
+     * can't be resolved by name is skipped. Element references are re-wired via
+     * the element id map built above (same transaction).
+     *
+     * POST /api/form-sets/import   (body: the exported envelope)
+     */
+    public function importFormSet(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $validated = $request->validate([
+            'scoriet_type' => 'required|string',
+            'data'         => 'required|array',
+            'data.name'    => 'nullable|string|max:100',
+        ]);
+        if ($validated['scoriet_type'] !== 'form_set') {
+            return response()->json(['success' => false, 'error' => 'This file is not a Form Set export.'], 422);
+        }
+        // Read the FULL data array from the request — $validated['data'] would
+        // only contain the explicitly-ruled sub-keys (data.name), dropping
+        // windows/colors.
+        $d = $request->input('data', []);
+        $applyLayouts = (bool) $request->input('apply_layouts', false);
+
+        $windowFields  = array_diff((new FormWindow)->getFillable(), ['form_set_id']);
+        $elementFields = array_diff((new FormElement)->getFillable(), ['form_window_id', 'parent_tab_container_id']);
+
+        $result = DB::transaction(function () use ($user, $d, $windowFields, $elementFields, $applyLayouts) {
+            $setData = [
+                'name'            => FormSet::suggestCopyName($d['name'] ?? 'Imported Form Set', $user->id),
+                'description'     => $d['description'] ?? null,
+                'creator_user_id' => $user->id,
+                'visibility'      => 'private',
+                'is_active'       => true,
+            ];
+            // Only carry over colours that are actually set; null/missing lets
+            // the NOT NULL columns fall back to their DB defaults.
+            foreach ([
+                'default_background_color', 'default_window_color', 'default_text_color',
+                'default_button_color', 'default_button_text_color',
+            ] as $colorField) {
+                if (!empty($d[$colorField])) {
+                    $setData[$colorField] = $d[$colorField];
+                }
+            }
+            $set = FormSet::create($setData);
+
+            // FormSet::created auto-seeds 3 default windows — drop them (and any
+            // of their elements) before importing the blueprint's own windows.
+            $defaultWindowIds = $set->windows()->pluck('id')->all();
+            if (!empty($defaultWindowIds)) {
+                FormElement::whereIn('form_window_id', $defaultWindowIds)->delete();
+                FormWindow::whereIn('id', $defaultWindowIds)->delete();
+            }
+
+            $idMap = [];            // original element _ref => new element id
+            $pendingParents = [];   // new element id => original parent _ref
+            $windowTypeToId = [];   // window_type => new window id (for layout apply)
+
+            foreach (($d['windows'] ?? []) as $w) {
+                $window = FormWindow::create(array_merge(
+                    \Illuminate\Support\Arr::only($w, $windowFields),
+                    ['form_set_id' => $set->id]
+                ));
+                if (!empty($w['window_type'])) {
+                    $windowTypeToId[$w['window_type']] = $window->id;
+                }
+                foreach (($w['elements'] ?? []) as $e) {
+                    $element = FormElement::create(array_merge(
+                        \Illuminate\Support\Arr::only($e, $elementFields),
+                        ['form_window_id' => $window->id]
+                    ));
+                    if (isset($e['_ref'])) {
+                        $idMap[$e['_ref']] = $element->id;
+                    }
+                    if (!empty($e['parent_tab_container_id'])) {
+                        $pendingParents[$element->id] = $e['parent_tab_container_id'];
+                    }
+                }
+            }
+
+            // Second pass: re-wire tab-container parents to the new ids.
+            foreach ($pendingParents as $newElId => $oldParentRef) {
+                if (isset($idMap[$oldParentRef])) {
+                    FormElement::where('id', $newElId)->update(['parent_tab_container_id' => $idMap[$oldParentRef]]);
+                }
+            }
+
+            // Optionally apply the per-table field layouts (name-matched).
+            $layoutStats = $applyLayouts
+                ? $this->applyImportedLayouts($d['windows'] ?? [], $windowTypeToId, $idMap, $user->id)
+                : null;
+
+            return ['set' => $set, 'layoutStats' => $layoutStats];
+        });
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Form Set imported',
+            'data'         => $result['set']->load('windows.elements'),
+            'layout_stats' => $result['layoutStats'],
+        ], 201);
+    }
+
+    /**
+     * Apply imported per-table field layouts, best-effort & name-matched.
+     * Returns stats: applied count + which "schema / table" labels matched vs
+     * were skipped (no matching schema/table for the importing user).
+     */
+    private function applyImportedLayouts(array $windows, array $windowTypeToId, array $idMap, int $userId): array
+    {
+        $placementFillable = (new \App\Models\FormItemPlacement)->getFillable();
+        $applied = 0;
+        $matched = [];
+        $skipped = [];
+        $placementIdMap = []; // original placement _pref => new placement id
+        $pendingParents = []; // new placement id => original parent_placement_ref
+
+        foreach ($windows as $w) {
+            $windowType  = $w['window_type'] ?? null;
+            $newWindowId = $windowType ? ($windowTypeToId[$windowType] ?? null) : null;
+            if (!$newWindowId) {
+                continue;
+            }
+
+            // Window-level placements (menu GROUPS, separators, buttons) — not
+            // tied to a table, so they're applied unconditionally and provide the
+            // parent targets the per-table menu items hang off of.
+            \App\Models\FormItemPlacement::where('form_window_id', $newWindowId)
+                ->whereNull('schema_table_id')->delete(); // idempotent
+            foreach (($w['window_placements'] ?? []) as $row) {
+                $createData = \Illuminate\Support\Arr::only($row, $placementFillable);
+                $createData['form_window_id']  = $newWindowId;
+                $createData['schema_table_id'] = null;
+                $createData['schema_field_id'] = null;
+                $createData['lookup_table_id'] = null;
+                if (!empty($row['lookup_table_name'])) {
+                    $lt = \App\Models\SchemaTable::where('table_name', $row['lookup_table_name'])
+                        ->whereHas('floatingSchema', fn ($q) => $q->where('owner_id', $userId))->first();
+                    $createData['lookup_table_id'] = $lt?->id;
+                }
+                $createData['container_element_id'] = isset($row['container_element_ref']) ? ($idMap[$row['container_element_ref']] ?? null) : null;
+                $createData['form_element_id']      = isset($row['form_element_ref']) ? ($idMap[$row['form_element_ref']] ?? null) : null;
+                $createData['tab_panel_id']         = isset($row['tab_panel_ref']) ? ($idMap[$row['tab_panel_ref']] ?? null) : null;
+                $createData['parent_placement_id']  = null; // 2nd pass
+
+                $placement = \App\Models\FormItemPlacement::create($createData);
+                if (isset($row['_pref'])) {
+                    $placementIdMap[$row['_pref']] = $placement->id;
+                }
+                if (!empty($row['parent_placement_ref'])) {
+                    $pendingParents[$placement->id] = $row['parent_placement_ref'];
+                }
+                $applied++;
+            }
+
+            foreach (($w['layouts'] ?? []) as $layout) {
+                $schemaName = $layout['schema_name'] ?? null;
+                $tableName  = $layout['table_name'] ?? null;
+                if (!$schemaName || !$tableName) {
+                    continue;
+                }
+                $label = $schemaName . ' / ' . $tableName;
+
+                // Match by NAME against the importing user's own schemas.
+                $table = \App\Models\SchemaTable::where('table_name', $tableName)
+                    ->whereHas('floatingSchema', function ($q) use ($schemaName, $userId) {
+                        $q->where('name', $schemaName)->where('owner_id', $userId);
+                    })->first();
+
+                if (!$table) {
+                    $skipped[$label] = true;
+                    continue;
+                }
+                $matched[$label] = true;
+
+                $fieldMap = \App\Models\SchemaField::where('table_id', $table->id)
+                    ->pluck('id', 'field_name');
+
+                // Idempotent: clear existing placements for this (window, table).
+                \App\Models\FormItemPlacement::where('form_window_id', $newWindowId)
+                    ->where('schema_table_id', $table->id)->delete();
+
+                foreach (($layout['placements'] ?? []) as $row) {
+                    $createData = \Illuminate\Support\Arr::only($row, $placementFillable);
+                    $createData['form_window_id']  = $newWindowId;
+                    $createData['schema_table_id'] = $table->id;
+
+                    if (!empty($row['schema_field_name'])) {
+                        $fid = $fieldMap[$row['schema_field_name']] ?? null;
+                        if (!$fid) {
+                            continue; // field missing in target table -> skip this placement
+                        }
+                        $createData['schema_field_id'] = $fid;
+                    } else {
+                        $createData['schema_field_id'] = null;
+                    }
+
+                    $createData['lookup_table_id'] = null;
+                    if (!empty($row['lookup_table_name'])) {
+                        $lt = \App\Models\SchemaTable::where('table_name', $row['lookup_table_name'])
+                            ->whereHas('floatingSchema', fn ($q) => $q->where('owner_id', $userId))->first();
+                        $createData['lookup_table_id'] = $lt?->id;
+                    }
+
+                    // Re-wire template element references via the element id map.
+                    $createData['container_element_id'] = isset($row['container_element_ref']) ? ($idMap[$row['container_element_ref']] ?? null) : null;
+                    $createData['form_element_id']      = isset($row['form_element_ref']) ? ($idMap[$row['form_element_ref']] ?? null) : null;
+                    $createData['tab_panel_id']         = isset($row['tab_panel_ref']) ? ($idMap[$row['tab_panel_ref']] ?? null) : null;
+                    // Placement self-reference (menu hierarchy) is re-wired in a
+                    // second pass once every placement has a new id.
+                    $createData['parent_placement_id']  = null;
+
+                    $placement = \App\Models\FormItemPlacement::create($createData);
+                    if (isset($row['_pref'])) {
+                        $placementIdMap[$row['_pref']] = $placement->id;
+                    }
+                    if (!empty($row['parent_placement_ref'])) {
+                        $pendingParents[$placement->id] = $row['parent_placement_ref'];
+                    }
+                    $applied++;
+                }
+            }
+        }
+
+        // Second pass: re-wire menu-item parents to the new placement ids
+        // (unresolvable parents — e.g. a window-level container not part of the
+        // exported per-table layouts — stay null, i.e. the item becomes top-level).
+        foreach ($pendingParents as $newId => $oldParentRef) {
+            if (isset($placementIdMap[$oldParentRef])) {
+                \App\Models\FormItemPlacement::where('id', $newId)
+                    ->update(['parent_placement_id' => $placementIdMap[$oldParentRef]]);
+            }
+        }
+
+        return [
+            'applied'        => $applied,
+            'tables_matched' => array_keys($matched),
+            'tables_skipped' => array_keys($skipped),
+        ];
+    }
+
+    /**
+     * Read-only pre-flight for the import "also bring the layouts?" prompt.
+     * Reports which of the envelope's per-table layouts have a matching
+     * schema+table (by NAME) for the importing user — so the frontend can
+     * propose applying them. Makes NO changes.
+     *
+     * POST /api/form-sets/import/preview-layouts   (body: the exported envelope)
+     */
+    public function previewImportLayouts(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $d = $request->input('data', []);
+
+        $matched = [];
+        $unmatched = [];
+        $seen = [];
+        foreach (($d['windows'] ?? []) as $w) {
+            foreach (($w['layouts'] ?? []) as $layout) {
+                $schemaName = $layout['schema_name'] ?? null;
+                $tableName  = $layout['table_name'] ?? null;
+                if (!$schemaName || !$tableName) {
+                    continue;
+                }
+                $label = $schemaName . ' / ' . $tableName;
+                if (isset($seen[$label])) {
+                    continue;
+                }
+                $seen[$label] = true;
+
+                $exists = \App\Models\SchemaTable::where('table_name', $tableName)
+                    ->whereHas('floatingSchema', fn ($q) => $q->where('name', $schemaName)->where('owner_id', $user->id))
+                    ->exists();
+
+                $entry = [
+                    'schema_name' => $schemaName,
+                    'table_name'  => $tableName,
+                    'placements'  => count($layout['placements'] ?? []),
+                ];
+                if ($exists) {
+                    $matched[] = $entry;
+                } else {
+                    $unmatched[] = $entry;
+                }
+            }
+        }
+
+        return response()->json([
+            'success'     => true,
+            'has_layouts' => !empty($matched) || !empty($unmatched),
+            'matched'     => $matched,
+            'unmatched'   => $unmatched,
         ]);
     }
 }

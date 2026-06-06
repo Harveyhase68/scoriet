@@ -27,6 +27,7 @@ import { apiClient } from '@/lib/api';
 interface CodeAdjustment {
   id: number;
   project_id: number;
+  template_id: number | null;
   name: string;
   description: string | null;
   file_pattern: string;
@@ -42,6 +43,7 @@ interface CodeAdjustment {
 interface CodeAdjustmentInsertion {
   id: number;
   code_adjustment_id: number;
+  operation: 'insert' | 'delete' | 'replace';
   insertion_type: 'beginning' | 'end' | 'middle';
   anchor_text: string;
   insertion_content: string;
@@ -53,6 +55,7 @@ interface CodeAdjustmentInsertion {
 }
 
 interface AnalysisInsertion {
+  operation?: 'insert' | 'delete' | 'replace';
   insertion_type: 'beginning' | 'end' | 'middle';
   anchor_text: string;
   insertion_content: string;
@@ -107,6 +110,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
   // State
   const [loading, setLoading] = useState(false);
   const [adjustments, setAdjustments] = useState<CodeAdjustment[]>([]);
+  // Templates linked to the current project — feed the optional per-template
+  // scope dropdown in the adjustment editor. Loaded alongside the adjustments.
+  const [projectTemplates, setProjectTemplates] = useState<Array<{ id: number; name: string }>>([]);
   const [selectedAdjustment, setSelectedAdjustment] = useState<CodeAdjustment | null>(null);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
 
@@ -260,6 +266,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
 
       if (data.success) {
         setAdjustments(data.data);
+        setProjectTemplates(Array.isArray(data.templates) ? data.templates : []);
       } else {
         toast.current?.show({
           severity: 'error',
@@ -597,8 +604,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
           // Reload failed - non-fatal, save itself succeeded
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(t.codeadjustmentspanel651, error);
+      const data = error?.response?.data || {};
+      const fieldError = data?.errors ? (Object.values(data.errors)[0] as string[])?.[0] : null;
+      toast.current?.show({
+        severity: 'error',
+        summary: t.codeadjustmentspanel651,
+        detail: fieldError || data.message || 'Error saving insertion',
+      });
     }
   };
 
@@ -966,6 +980,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
           description: newAdjustmentData.description,
           file_pattern: newAdjustmentData.file_pattern,
           insertions: editableInsertions.map(ins => ({
+            operation: ins.operation || 'insert',
             insertion_type: ins.insertion_type,
             anchor_text: ins.anchor_text,
             insertion_content: ins.insertion_content,
@@ -1061,6 +1076,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
               description: t.codeadjustmentspanel1148,
               file_pattern: file.path,
               insertions: insertions.map((ins: AnalysisInsertion) => ({
+                operation: ins.operation || 'insert',
                 insertion_type: ins.insertion_type,
                 anchor_text: ins.anchor_text,
                 insertion_content: ins.insertion_content,
@@ -1260,6 +1276,19 @@ const CodeAdjustmentsPanel: React.FC = () => {
   const getInsertionTypeTag = (type: string) => {
     const severity = type === 'beginning' ? 'info' : type === 'end' ? 'success' : 'warning';
     return <Tag value={type} severity={severity} />;
+  };
+
+  // A delete entry shows a distinct red "Delete" tag; inserts keep the
+  // position tag. Used in every insertions list (saved + analysis preview).
+  const getOpOrTypeTag = (row: { operation?: string; insertion_type: string }) => {
+    const op = row.operation ?? 'insert';
+    if (op === 'delete') {
+      return <Tag value={t.codeadjustmentspanel_op_delete || 'Delete'} severity="danger" icon="pi pi-minus" />;
+    }
+    if (op === 'replace') {
+      return <Tag value={t.codeadjustmentspanel_op_replace || 'Replace'} severity="warning" icon="pi pi-sync" />;
+    }
+    return getInsertionTypeTag(row.insertion_type);
   };
 
   // ========== NO PROJECT SELECTED ==========
@@ -1591,14 +1620,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
                         <Column
                           field="insertion_type"
                           header={t.codeadjustmentspanel1693}
-                          body={(row: CodeAdjustmentInsertion) => getInsertionTypeTag(row.insertion_type)}
+                          body={(row: CodeAdjustmentInsertion) => getOpOrTypeTag(row)}
                           style={{ width: '100px' }}
                         />
                         <Column
                           field="anchor_text"
                           header={t.codeadjustmentspanel1699}
+                          style={{ maxWidth: "240px" }}
                           body={(row: CodeAdjustmentInsertion) => (
-                            <pre className="text-xs p-1 rounded max-h-16 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
+                            <pre className="text-xs p-1 rounded max-h-16 overflow-auto whitespace-pre-wrap break-words" style={{ backgroundColor: colors.bgTertiary }}>
                               {row.anchor_text.substring(0, 100)}
                               {row.anchor_text.length > 100 && '...'}
                             </pre>
@@ -1607,8 +1637,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
                         <Column
                           field="insertion_content"
                           header={t.codeadjustmentspanel1709}
+                          style={{ maxWidth: "240px" }}
                           body={(row: CodeAdjustmentInsertion) => (
-                            <pre className="text-xs p-1 rounded max-h-16 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
+                            <pre className="text-xs p-1 rounded max-h-16 overflow-auto whitespace-pre-wrap break-words" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                               {row.insertion_content.substring(0, 100)}
                               {row.insertion_content.length > 100 && '...'}
                             </pre>
@@ -1854,14 +1885,15 @@ const CodeAdjustmentsPanel: React.FC = () => {
                     <Column
                       field="insertion_type"
                       header={t.codeadjustmentspanel1958}
-                      body={(row) => getInsertionTypeTag(row.insertion_type)}
+                      body={(row) => getOpOrTypeTag(row)}
                       style={{ width: '100px' }}
                     />
                     <Column
                       field="anchor_text"
                       header={t.codeadjustmentspanel1964}
+                      style={{ maxWidth: "260px" }}
                       body={(row) => (
-                        <pre className="text-xs p-1 rounded max-h-12 overflow-auto" style={{ backgroundColor: colors.bgTertiary }}>
+                        <pre className="text-xs p-1 rounded max-h-16 overflow-auto whitespace-pre-wrap break-words" style={{ backgroundColor: colors.bgTertiary }}>
                           {row.anchor_text.substring(0, 80)}
                           {row.anchor_text.length > 80 && '...'}
                         </pre>
@@ -1870,8 +1902,9 @@ const CodeAdjustmentsPanel: React.FC = () => {
                     <Column
                       field="insertion_content"
                       header={t.codeadjustmentspanel1974}
+                      style={{ maxWidth: "260px" }}
                       body={(row) => (
-                        <pre className="text-xs p-1 rounded max-h-12 overflow-auto" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
+                        <pre className="text-xs p-1 rounded max-h-16 overflow-auto whitespace-pre-wrap break-words" style={{ backgroundColor: colors.bgTertiary, color: colors.successText }}>
                           {row.insertion_content.substring(0, 100)}
                           {row.insertion_content.length > 100 && '...'}
                         </pre>
@@ -2240,6 +2273,32 @@ const CodeAdjustmentsPanel: React.FC = () => {
               {t.codeadjustmentspanel2341}
             </small>
           </div>
+          {/* Scope: project (fixed, always this project) + optional template.
+              Making the scope explicit prevents the "why did this adjustment
+              touch the wrong project/template" debugging trap. */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel_scope_project || 'Project'}</label>
+              <InputText value={selectedProject?.name || ''} disabled className="w-full" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel_scope_template || 'Template (optional)'}</label>
+              <Dropdown
+                value={editingAdjustment.template_id ?? null}
+                options={[
+                  { label: t.codeadjustmentspanel_all_templates || 'All templates', value: null },
+                  ...projectTemplates.map(tpl => ({ label: tpl.name, value: tpl.id })),
+                ]}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => setEditingAdjustment({ ...editingAdjustment, template_id: e.value ?? null })}
+                className="w-full"
+              />
+              <small className="mt-1 block" style={{ color: colors.textMuted }}>
+                {t.codeadjustmentspanel_template_hint || 'Restrict to one template, or apply to all in the project.'}
+              </small>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium mb-1">
               Datei-Pattern
@@ -2304,27 +2363,47 @@ const CodeAdjustmentsPanel: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2406}</label>
+              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel_operation || 'Operation'}</label>
               <Dropdown
-                value={editingInsertion.insertion_type}
-                options={insertionTypeOptions}
-                onChange={(e) => setEditingInsertion({
-                  ...editingInsertion,
-                  insertion_type: e.value,
-                  // Clear anchor_text when switching to 'beginning' type
-                  anchor_text: e.value === 'beginning' ? '' : editingInsertion.anchor_text
-                })}
+                value={editingInsertion.operation || 'insert'}
+                options={[
+                  { label: t.codeadjustmentspanel_op_insert || 'Insert', value: 'insert' },
+                  { label: t.codeadjustmentspanel_op_delete || 'Delete', value: 'delete' },
+                  { label: t.codeadjustmentspanel_op_replace || 'Replace', value: 'replace' },
+                ]}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => setEditingInsertion({ ...editingInsertion, operation: e.value })}
                 className="w-full"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2420}</label>
-              <InputNumber
-                value={editingInsertion.line_offset || 0}
-                onValueChange={(e) => setEditingInsertion({ ...editingInsertion, line_offset: e.value || 0 })}
-                className="w-full"
-              />
-            </div>
+            {/* insertion_type + line_offset only apply to a plain insert */}
+            {(editingInsertion.operation || 'insert') === 'insert' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2406}</label>
+                <Dropdown
+                  value={editingInsertion.insertion_type}
+                  options={insertionTypeOptions}
+                  onChange={(e) => setEditingInsertion({
+                    ...editingInsertion,
+                    insertion_type: e.value,
+                    // Clear anchor_text when switching to 'beginning' type
+                    anchor_text: e.value === 'beginning' ? '' : editingInsertion.anchor_text
+                  })}
+                  className="w-full"
+                />
+              </div>
+            )}
+            {(editingInsertion.operation || 'insert') === 'insert' && (
+              <div>
+                <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2420}</label>
+                <InputNumber
+                  value={editingInsertion.line_offset || 0}
+                  onValueChange={(e) => setEditingInsertion({ ...editingInsertion, line_offset: e.value || 0 })}
+                  className="w-full"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2428}</label>
               <InputNumber
@@ -2335,41 +2414,59 @@ const CodeAdjustmentsPanel: React.FC = () => {
               />
             </div>
           </div>
+          {/* Anchor / Block-to-remove / Original(before) */}
           <div>
             <label className="block text-sm font-medium mb-1">
-              {t.codeadjustmentspanel2441}
+              {editingInsertion.operation === 'delete'
+                ? (t.codeadjustmentspanel_block_to_remove || 'Block to remove')
+                : editingInsertion.operation === 'replace'
+                  ? (t.codeadjustmentspanel_block_before || 'Original (before)')
+                  : t.codeadjustmentspanel2441}
               <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
-                {editingInsertion.insertion_type === 'beginning'
-                  ? t.codeadjustmentspanel2444
-                  : t.codeadjustmentspanel2445}
+                {editingInsertion.operation === 'delete'
+                  ? (t.codeadjustmentspanel_block_to_remove_hint || 'These exact lines are located in the generated file and removed.')
+                  : editingInsertion.operation === 'replace'
+                    ? (t.codeadjustmentspanel_block_before_hint || 'The original block incl. surrounding context — include enough lines to be unique.')
+                    : (editingInsertion.insertion_type === 'beginning'
+                        ? t.codeadjustmentspanel2444
+                        : t.codeadjustmentspanel2445)}
               </span>
             </label>
             <InputTextarea
               value={editingInsertion.anchor_text || ''}
               onChange={(e) => setEditingInsertion({ ...editingInsertion, anchor_text: e.target.value })}
-              rows={4}
+              rows={(editingInsertion.operation || 'insert') === 'insert' ? 4 : 6}
               className="w-full font-mono text-sm"
-              placeholder={editingInsertion.insertion_type === 'beginning'
-                ? t.codeadjustmentspanel2454
-                : t.codeadjustmentspanel2455}
-              disabled={editingInsertion.insertion_type === 'beginning'}
+              placeholder={editingInsertion.operation === 'delete'
+                ? (t.codeadjustmentspanel_block_to_remove || 'Block to remove')
+                : editingInsertion.operation === 'replace'
+                  ? (t.codeadjustmentspanel_block_before || 'Original (before)')
+                  : (editingInsertion.insertion_type === 'beginning'
+                      ? t.codeadjustmentspanel2454
+                      : t.codeadjustmentspanel2455)}
+              disabled={(editingInsertion.operation || 'insert') === 'insert' && editingInsertion.insertion_type === 'beginning'}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              {t.codeadjustmentspanel2461}
-              <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
-                (Variablen: {Object.keys(availableVariables).join(', ')})
-              </span>
-            </label>
-            <InputTextarea
-              value={editingInsertion.insertion_content || ''}
-              onChange={(e) => setEditingInsertion({ ...editingInsertion, insertion_content: e.target.value })}
-              rows={6}
-              className="w-full font-mono text-sm"
-              placeholder={t.codeadjustmentspanel2471}
-            />
-          </div>
+          {/* Content / New(after) — hidden for delete */}
+          {editingInsertion.operation !== 'delete' && (
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {editingInsertion.operation === 'replace'
+                  ? (t.codeadjustmentspanel_block_after || 'New (after)')
+                  : t.codeadjustmentspanel2461}
+                <span className="text-xs ml-2" style={{ color: colors.textMuted }}>
+                  (Variablen: {Object.keys(availableVariables).join(', ')})
+                </span>
+              </label>
+              <InputTextarea
+                value={editingInsertion.insertion_content || ''}
+                onChange={(e) => setEditingInsertion({ ...editingInsertion, insertion_content: e.target.value })}
+                rows={6}
+                className="w-full font-mono text-sm"
+                placeholder={t.codeadjustmentspanel2471}
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium mb-1">{t.codeadjustmentspanel2475}</label>
             <InputText
@@ -2474,7 +2571,7 @@ const CodeAdjustmentsPanel: React.FC = () => {
                 <Column
                   field="insertion_type"
                   header={t.codeadjustmentspanel2577}
-                  body={(row) => getInsertionTypeTag(row.insertion_type)}
+                  body={(row) => getOpOrTypeTag(row)}
                   style={{ width: '100px' }}
                 />
                 <Column

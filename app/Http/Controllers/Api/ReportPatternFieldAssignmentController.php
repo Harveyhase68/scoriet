@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Mirrors TemplateFileFieldAssignmentController but matrix columns are the
  * ReportPatterns linked to the project (via project_report_patterns pivot)
- * instead of template files filtered by form_window_type.
+ * instead of the per-table template files.
  */
 class ReportPatternFieldAssignmentController extends Controller
 {
