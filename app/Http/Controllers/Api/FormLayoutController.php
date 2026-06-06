@@ -366,6 +366,20 @@ class FormLayoutController extends Controller
             ->orderBy('sort_order')
             ->get();
 
+        // First time this window is opened: no button placements yet → seed them
+        // from the template (with geometry, action AND per-language labels) so the
+        // layout editor shows the buttons immediately and in the correct language.
+        // NON-DESTRUCTIVE: only runs when nothing exists, so a subsequent Load
+        // never overwrites positions/labels the user has changed. To force a full
+        // re-sync from the template, the user uses Auto-Place.
+        if ($buttons->isEmpty()) {
+            $this->seedButtonPlacementsFromTemplate($window);
+            $buttons = FormItemPlacement::buttons()
+                ->forWindow($windowId)
+                ->orderBy('sort_order')
+                ->get();
+        }
+
         return response()->json([
             'success' => true,
             'data' => $buttons,
@@ -458,8 +472,39 @@ class FormLayoutController extends Controller
             return response()->json(['success' => false, 'error' => 'Unauthorized'], 403);
         }
 
-        // Delete existing button placements
+        // Hard re-sync: drop the existing button placements and recreate them
+        // from the template's button elements. Auto-Place is the explicit "pull
+        // everything from the template again" action, so it re-reads geometry,
+        // anchors, action, colors AND per-language labels — picking up template
+        // translations the user added after the buttons were first placed.
         FormItemPlacement::buttons()->forWindow($window->id)->delete();
+        $count = $this->seedButtonPlacementsFromTemplate($window);
+
+        return response()->json([
+            'success' => true,
+            'message' => $count . ' buttons placed',
+            'data' => FormItemPlacement::buttons()
+                ->forWindow($window->id)
+                ->orderBy('sort_order')
+                ->get(),
+        ]);
+    }
+
+    /**
+     * Create button placements for a window from its template button elements.
+     *
+     * Single source of truth used by BOTH auto-place (hard re-sync) and the
+     * first-time load (create-if-missing). Each placement is seeded with the
+     * element's geometry, anchors, action, icon, colors AND its per-language
+     * labels (FormElement.custom_style['button_labels']) — so the layout editor
+     * and the generator render the correct language without a separate sync.
+     * The caller is responsible for clearing any rows that should be replaced.
+     *
+     * @return int number of button placements created
+     */
+    private function seedButtonPlacementsFromTemplate(FormWindow $window): int
+    {
+        $window->loadMissing('elements');
 
         $buttonElements = $window->elements->filter(function ($el) {
             return in_array($el->element_type, [
@@ -468,14 +513,16 @@ class FormLayoutController extends Controller
             ]);
         })->values();
 
-        $placements = [];
         foreach ($buttonElements as $index => $el) {
-            $placements[] = FormItemPlacement::create([
+            FormItemPlacement::create([
                 'form_window_id' => $window->id,
                 'item_type' => 'button',
                 'form_element_id' => $el->id,
                 'button_type' => $el->element_type,
                 'button_label' => $el->button_label,
+                // Per-language labels live on the element's custom_style.
+                // data_get is null-safe (custom_style may be null/absent).
+                'button_labels' => data_get($el->custom_style, 'button_labels'),
                 'button_icon' => $el->effective_icon,
                 'button_action' => $el->button_action,
                 'button_background_color' => $el->button_background_color,
@@ -494,14 +541,7 @@ class FormLayoutController extends Controller
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => count($placements) . ' buttons placed',
-            'data' => FormItemPlacement::buttons()
-                ->forWindow($window->id)
-                ->orderBy('sort_order')
-                ->get(),
-        ]);
+        return $buttonElements->count();
     }
 
     // ========== MENU ITEM PLACEMENTS ==========

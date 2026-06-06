@@ -12,6 +12,7 @@ class CodeAdjustmentInsertion extends Model
 
     protected $fillable = [
         'code_adjustment_id',
+        'operation',
         'insertion_type',
         'anchor_text',
         'insertion_content',
@@ -29,6 +30,15 @@ class CodeAdjustmentInsertion extends Model
      * Valid insertion types
      */
     public const INSERTION_TYPES = ['beginning', 'end', 'middle'];
+
+    /**
+     * Operation discriminator.
+     *   'insert'  = add content at the anchor (default)
+     *   'delete'  = find the anchor block and REMOVE it
+     *   'replace' = find the BEFORE block (anchor_text, incl. context so it is
+     *               unique) and swap it for the AFTER block (insertion_content)
+     */
+    public const OPERATIONS = ['insert', 'delete', 'replace'];
 
     // ========== RELATIONSHIPS ==========
 
@@ -66,6 +76,7 @@ class CodeAdjustmentInsertion extends Model
         return [
             'id' => $this->id,
             'code_adjustment_id' => $this->code_adjustment_id,
+            'operation' => $this->operation ?? 'insert',
             'insertion_type' => $this->insertion_type,
             'anchor_text' => $this->anchor_text,
             'insertion_content' => $this->insertion_content,

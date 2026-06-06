@@ -954,7 +954,15 @@ const FormLivePreviewModal: React.FC<FormLivePreviewModalProps> = ({
         // Match the current value to one of the option values by loose
         // equality (val could be a string from form state while option
         // values are numbers from the FK column).
-        const matched = lookup
+        //
+        // CRITICAL: an empty FK (null/undefined/'') must NEVER resolve to a
+        // matched option. Otherwise String(null) === String(o.value) can be
+        // true when a lookup row's value-field is itself null/empty (e.g. a
+        // single company whose PK arrived as null) — every record without a
+        // link would then falsely display that one option's label. Treat an
+        // empty FK as "no selection".
+        const valIsEmpty = val === null || val === undefined || val === '';
+        const matched = lookup && !valIsEmpty
           ? lookup.find((o) => String(o.value) === String(val))
           : null;
         const dropdownValue = matched ? matched.value : (lookup ? null : String(val || ''));
@@ -962,11 +970,19 @@ const FormLivePreviewModal: React.FC<FormLivePreviewModalProps> = ({
           <Dropdown
             value={dropdownValue}
             options={options}
+            optionLabel="label"
+            optionValue="value"
             onChange={e => updateField(fn, e.value)}
+            // `live-preview-combo` (styled in the <style> block below) tightens
+            // the inner `.p-dropdown-label`: PrimeReact's default ~12px vertical
+            // padding + 1rem font pushed the selected value out of the 34px box
+            // so only its top edge showed. The class zeroes the vertical padding,
+            // sets fontSize:12 (matching the InputText fields) and vertically
+            // centers the text.
+            className="live-preview-combo"
             style={{
               width: '100%',
               height: Math.min(ctrlH, 34),
-              fontSize: 12,
               // `outline` is layout-neutral so the red ring doesn't shift
               // the dropdown's content; offset:-2 keeps it INSIDE the
               // box so it lines up with PrimeReact's own border radius.
@@ -1488,6 +1504,22 @@ const FormLivePreviewModal: React.FC<FormLivePreviewModalProps> = ({
         .live-preview-table-container .p-datatable { display: flex !important; flex-direction: column !important; flex: 1 !important; }
         .live-preview-table-container .p-datatable-wrapper { flex: 1 !important; }
         .live-preview-table-container .p-paginator { margin-top: auto !important; }
+        /* Combobox: make the collapsed control read like the InputText fields —
+           full-height, vertically-centered value, small font, tight padding. */
+        .live-preview-combo.p-dropdown { display: flex; align-items: center; }
+        /* border:none → the inner label counts as a .p-inputtext and otherwise
+           inherits the global input border, doubling up with the .p-dropdown's
+           own field border. The outer field border stays; only the inner one
+           is removed. background:transparent so the label doesn't paint its own
+           input fill over the dropdown box either. */
+        .live-preview-combo .p-dropdown-label { padding: 0 8px !important; font-size: 12px !important; line-height: 1.1 !important; display: flex !important; align-items: center !important; border: none !important; background: transparent !important; box-shadow: none !important; }
+        .live-preview-combo .p-dropdown-trigger { width: 26px !important; }
+        /* Kill the focus ring (box-shadow/outline) that PrimeReact draws on the
+           focused dropdown — in this preview mock it reads as an extra inner
+           border around the value. The outer field border stays. */
+        .live-preview-combo.p-dropdown:focus,
+        .live-preview-combo.p-dropdown.p-focus { outline: none !important; box-shadow: none !important; }
+        .live-preview-combo .p-dropdown-label:focus { outline: none !important; box-shadow: none !important; }
       `}</style>
         {/* Window titlebar */}
         <div style={{

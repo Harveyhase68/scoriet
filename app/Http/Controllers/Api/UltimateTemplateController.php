@@ -679,6 +679,7 @@ class UltimateTemplateController extends Controller
 
             $createEditWindow = $tableFormSet?->windows->firstWhere('window_type', 'create_edit');
             $dataTableWindow = $tableFormSet?->windows->firstWhere('window_type', 'data_table');
+            $mainMenuWindow  = $tableFormSet?->windows->firstWhere('window_type', 'main_menu');
 
             // Expose FormSet provenance in a way the template can branch on,
             // WITHOUT lying about the id when the value is inherited.
@@ -750,6 +751,29 @@ class UltimateTemplateController extends Controller
                 unset($l);
                 $tableData['layoutcolumns'] = $layouts;
                 $tableData['nmaxlayoutcolumns'] = count($layouts);
+            }
+
+            // ── Per-table FORM WINDOW DESIGNS ──────────────────────────────
+            // Mirror the ReportPattern shape: emit each window's design template
+            // (the Vorlage — container, named buttons, colors, dimensions) per
+            // table, from the table's EFFECTIVE FormSet. Accessed via the
+            // self-describing constructs {:formmenu.*:} / {:formedit.*:} /
+            // {:formtable.*:} (analogous to {:reportsingle.*:}/{:reportlist.*:}).
+            // The per-table field/button PLACEMENTS stay in layoutsingles/
+            // layoutcolumns (above). This replaces the old global, file-marker-
+            // driven formset.windows[form_window_type-1] access.
+            // Each window object already carries .nmaxelements + .elements +
+            // direct-access-by-type (button_save, container, …) from
+            // FormWindow::toGTreeArray(), so {:formedit.nmaxelements:},
+            // {:formedit.button_save.label:} etc. work without extra fields.
+            if ($mainMenuWindow) {
+                $tableData['formmenu'] = $mainMenuWindow->toGTreeArray();
+            }
+            if ($createEditWindow) {
+                $tableData['formedit'] = $createEditWindow->toGTreeArray();
+            }
+            if ($dataTableWindow) {
+                $tableData['formtable'] = $dataTableWindow->toGTreeArray();
             }
 
             // ── ReportPattern integration ──────────────────────────────────
@@ -2228,21 +2252,6 @@ class UltimateTemplateController extends Controller
         $gtreeData['gtree'][0]['project'][0]['templatefilepath'] = $file->file_path ?? '';
         $gtreeData['gtree'][0]['project'][0]['templateoutputpath'] = $outputPath;
 
-        // 🎨 Set current form window index based on template file's form_window_type
-        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table
-        // Legacy: 4=report_single, 5=report_list — these used to map to dead
-        // formset.windows[3]/[4] rows. The new report system uses dedicated
-        // {:reportsingle.X:} / {:reportlist.X:} tags resolved via the per-table
-        // node, see buildUltimateProjectData(). Coerce legacy values to 0 to
-        // avoid garbage paths if a template still has the old metadata.
-        $formWindowType = $file->form_window_type ?? 0;
-        if ($formWindowType >= 4) {
-            $formWindowType = 0;
-        }
-        $currentFormWindowIdx = $formWindowType > 0 ? $formWindowType - 1 : 0;
-        $gtreeData['gtree'][0]['project'][0]['currentFormWindowIdx'] = $currentFormWindowIdx;
-        $gtreeData['gtree'][0]['project'][0]['currentFormWindowType'] = $formWindowType;
-
         // 🌐 Language Override: if this template file has a language_override, switch selectedlanguageindex
         if (!empty($file->language_override) && isset($gtreeData['gtree'][0]['project'][0]['lang'])) {
             $languages = $gtreeData['gtree'][0]['project'][0]['lang'];
@@ -2342,7 +2351,7 @@ class UltimateTemplateController extends Controller
         if ($compile) {
             // Use the Ultimate Template Engine to compile template to JavaScript
             $functionName = 'generate_' . preg_replace('/[^a-zA-Z0-9]/', '_', $processedFileName);
-            $compiledContent = $engine->processTemplate($content, $functionName, $tableIndex, $includeSource, $formWindowType);
+            $compiledContent = $engine->processTemplate($content, $functionName, $tableIndex, $includeSource);
         } else {
             // Simple variable replacement for backward compatibility
             $compiledContent = $content;
@@ -2907,7 +2916,9 @@ class UltimateTemplateController extends Controller
                                         $projectId,
                                         $tableName,
                                         $languageCode,
-                                        $adjustmentWarnings
+                                        $adjustmentWarnings,
+                                        $template->id,
+                                        $result['output_path'] ?? null
                                     );
 
                                     $generatedFiles[] = [
@@ -2965,7 +2976,9 @@ class UltimateTemplateController extends Controller
                                     $projectId,
                                     null,
                                     $languageCode,
-                                    $adjustmentWarnings
+                                    $adjustmentWarnings,
+                                    $template->id,
+                                    $result['output_path'] ?? null
                                 );
 
                                 $generatedFiles[] = [
@@ -3018,7 +3031,9 @@ class UltimateTemplateController extends Controller
                                 $projectId,
                                 null,
                                 null,
-                                $adjustmentWarnings
+                                $adjustmentWarnings,
+                                $template->id,
+                                $result['output_path'] ?? null
                             );
 
                             $generatedFiles[] = [
@@ -4180,7 +4195,9 @@ JS;
         int $projectId,
         ?string $tableName = null,
         ?string $languageCode = null,
-        array &$adjustmentWarnings = []
+        array &$adjustmentWarnings = [],
+        ?int $templateId = null,
+        ?string $outputPath = null
     ): string {
         try {
             $service = app(\App\Services\CodeAdjustmentService::class);
@@ -4197,7 +4214,13 @@ JS;
                 $context['projectname'] = $project->name;
             }
 
-            $result = $service->apply($output, $filename, $projectId, $context);
+            // Full relative path so directory-restricted patterns
+            // (e.g. `data/tables_customers.php`) only match in that folder.
+            $relPath = ($outputPath !== null && $outputPath !== '')
+                ? rtrim($outputPath, '/') . '/' . ltrim($filename, '/')
+                : $filename;
+
+            $result = $service->apply($output, $filename, $projectId, $context, $templateId, $relPath);
 
             // Collect warnings
             if (!empty($result['warnings'])) {

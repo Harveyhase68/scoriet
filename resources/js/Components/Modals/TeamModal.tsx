@@ -74,7 +74,7 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
   const { t } = useTranslation(currentLanguage);
   const { colors } = useTheme();
 
-  const { projects } = useProject();
+  const { projects, selectedProject } = useProject();
   const [formData, setFormData] = useState<{
     name: string;
     description: string;
@@ -227,11 +227,20 @@ export default function TeamModal({ visible, onHide, team, onSave }: TeamModalPr
       setNeedsUnlock(false);
       setUnlockConfirmed(false);
     } else if (visible && !team) {
-      // Creating new team - check if unlock is needed
+      // Creating new team - check if unlock is needed.
+      // Pre-select the currently active project as a convenience default (only
+      // if it's in the user's project list). A removable default — never a hard
+      // dependency. `projects`/`selectedProject` are read at open time only and
+      // intentionally kept out of the effect deps so a later context change
+      // can't reset the form the user is filling in.
+      const currentId = selectedProject?.id;
+      const defaultProjectIds = currentId && projects.some(p => Number(p.id) === Number(currentId))
+        ? [Number(currentId)]
+        : [];
       setFormData({
         name: '',
         description: '',
-        project_ids: [],
+        project_ids: defaultProjectIds,
         is_active: true
       });
       setUnlockConfirmed(false);

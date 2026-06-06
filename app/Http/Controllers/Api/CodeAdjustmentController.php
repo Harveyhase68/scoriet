@@ -35,9 +35,19 @@ class CodeAdjustmentController extends Controller
             ->ordered()
             ->get();
 
+        // The project's templates feed the optional per-template scope dropdown
+        // in the panel. Only templates actually linked to THIS project are
+        // offered, so an adjustment can't be scoped to a template that would
+        // never generate here (the silent "why doesn't it apply" trap).
+        $templates = $project->templates()
+            ->select('templates.id', 'templates.name')
+            ->orderBy('templates.name')
+            ->get();
+
         return response()->json([
             'success' => true,
             'data' => $adjustments->map(fn($a) => $a->toApiArray()),
+            'templates' => $templates,
         ]);
     }
 
@@ -80,10 +90,18 @@ class CodeAdjustmentController extends Controller
             'min_confidence' => 'nullable|numeric|min:0|max:1',
             'execution_order' => 'nullable|integer|min:0',
             'is_active' => 'nullable|boolean',
+            // Optional per-template scope. Must be a template LINKED to this
+            // project (via project_template_usage) — null = applies to all.
+            'template_id' => [
+                'nullable', 'integer',
+                \Illuminate\Validation\Rule::exists('project_template_usage', 'template_id')
+                    ->where(fn ($q) => $q->where('project_id', $projectId)),
+            ],
         ]);
 
         $adjustment = CodeAdjustment::create([
             'project_id' => $projectId,
+            'template_id' => $validated['template_id'] ?? null,
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'file_pattern' => $validated['file_pattern'],
@@ -124,6 +142,11 @@ class CodeAdjustmentController extends Controller
             'min_confidence' => 'nullable|numeric|min:0|max:1',
             'execution_order' => 'nullable|integer|min:0',
             'is_active' => 'nullable|boolean',
+            'template_id' => [
+                'nullable', 'integer',
+                \Illuminate\Validation\Rule::exists('project_template_usage', 'template_id')
+                    ->where(fn ($q) => $q->where('project_id', $projectId)),
+            ],
         ]);
 
         $adjustment->update($validated);
@@ -234,9 +257,15 @@ class CodeAdjustmentController extends Controller
         $adjustment = CodeAdjustment::where('project_id', $projectId)->findOrFail($adjustmentId);
 
         $validated = $request->validate([
+            'operation' => 'nullable|in:insert,delete,replace',
             'insertion_type' => 'required|in:beginning,end,middle',
-            'anchor_text' => 'required_unless:insertion_type,beginning|nullable|string',
-            'insertion_content' => 'required|string',
+            // anchor_text = the block to locate. Required for delete (block to
+            // remove) and replace (BEFORE block); for insert, required except a
+            // 'beginning' insert.
+            'anchor_text' => 'required_if:operation,delete|required_if:operation,replace|required_unless:insertion_type,beginning|nullable|string',
+            // insertion_content = what to add (insert) / the AFTER block
+            // (replace); irrelevant for delete.
+            'insertion_content' => 'required_unless:operation,delete|nullable|string',
             'line_offset' => 'nullable|integer',
             'insertion_order' => 'nullable|integer|min:0',
             'description' => 'nullable|string|max:500',
@@ -244,9 +273,10 @@ class CodeAdjustmentController extends Controller
 
         $insertion = CodeAdjustmentInsertion::create([
             'code_adjustment_id' => $adjustmentId,
+            'operation' => $validated['operation'] ?? 'insert',
             'insertion_type' => $validated['insertion_type'],
             'anchor_text' => $validated['anchor_text'] ?? '',
-            'insertion_content' => $validated['insertion_content'],
+            'insertion_content' => $validated['insertion_content'] ?? '',
             'line_offset' => $validated['line_offset'] ?? 0,
             'insertion_order' => $validated['insertion_order'] ?? 0,
             'description' => $validated['description'] ?? null,
@@ -278,9 +308,10 @@ class CodeAdjustmentController extends Controller
             ->findOrFail($insertionId);
 
         $validated = $request->validate([
+            'operation' => 'sometimes|in:insert,delete,replace',
             'insertion_type' => 'sometimes|required|in:beginning,end,middle',
             'anchor_text' => 'nullable|string',
-            'insertion_content' => 'sometimes|required|string',
+            'insertion_content' => 'nullable|string',
             'line_offset' => 'nullable|integer',
             'insertion_order' => 'nullable|integer|min:0',
             'description' => 'nullable|string|max:500',
@@ -399,9 +430,12 @@ class CodeAdjustmentController extends Controller
             'description' => 'nullable|string',
             'file_pattern' => 'required|string|max:500',
             'insertions' => 'required|array|min:1',
+            'insertions.*.operation' => 'nullable|in:insert,delete,replace',
             'insertions.*.insertion_type' => 'required|in:beginning,end,middle',
             'insertions.*.anchor_text' => 'nullable|string',
-            'insertions.*.insertion_content' => 'required|string',
+            // Content may be empty for delete entries (the anchor is the block
+            // to remove); the analysis frontend sends correct per-item data.
+            'insertions.*.insertion_content' => 'nullable|string',
             'insertions.*.line_offset' => 'nullable|integer',
             'insertions.*.description' => 'nullable|string|max:500',
         ]);
@@ -422,9 +456,10 @@ class CodeAdjustmentController extends Controller
         foreach ($validated['insertions'] as $index => $insertionData) {
             CodeAdjustmentInsertion::create([
                 'code_adjustment_id' => $adjustment->id,
+                'operation' => $insertionData['operation'] ?? 'insert',
                 'insertion_type' => $insertionData['insertion_type'],
                 'anchor_text' => $insertionData['anchor_text'] ?? '',
-                'insertion_content' => $insertionData['insertion_content'],
+                'insertion_content' => $insertionData['insertion_content'] ?? '',
                 'line_offset' => $insertionData['line_offset'] ?? 0,
                 'insertion_order' => $index,
                 'description' => $insertionData['description'] ?? null,
@@ -680,6 +715,7 @@ class CodeAdjustmentController extends Controller
                     'is_active' => $adjustment->is_active,
                     'insertions' => $adjustment->insertions->map(function ($insertion) {
                         return [
+                            'operation' => $insertion->operation ?? 'insert',
                             'insertion_type' => $insertion->insertion_type,
                             'anchor_text' => $insertion->anchor_text,
                             'insertion_content' => $insertion->insertion_content,
@@ -717,9 +753,10 @@ class CodeAdjustmentController extends Controller
             'data.adjustments.*.execution_order' => 'nullable|integer|min:0',
             'data.adjustments.*.is_active' => 'nullable|boolean',
             'data.adjustments.*.insertions' => 'required|array',
+            'data.adjustments.*.insertions.*.operation' => 'nullable|in:insert,delete,replace',
             'data.adjustments.*.insertions.*.insertion_type' => 'required|in:beginning,end,middle',
             'data.adjustments.*.insertions.*.anchor_text' => 'nullable|string',
-            'data.adjustments.*.insertions.*.insertion_content' => 'required|string',
+            'data.adjustments.*.insertions.*.insertion_content' => 'nullable|string',
             'data.adjustments.*.insertions.*.line_offset' => 'nullable|integer',
             'data.adjustments.*.insertions.*.insertion_order' => 'nullable|integer|min:0',
             'data.adjustments.*.insertions.*.description' => 'nullable|string|max:500',
@@ -767,9 +804,10 @@ class CodeAdjustmentController extends Controller
             foreach ($adjustmentData['insertions'] as $index => $insertionData) {
                 CodeAdjustmentInsertion::create([
                     'code_adjustment_id' => $adjustment->id,
+                    'operation' => $insertionData['operation'] ?? 'insert',
                     'insertion_type' => $insertionData['insertion_type'],
                     'anchor_text' => $insertionData['anchor_text'] ?? '',
-                    'insertion_content' => $insertionData['insertion_content'],
+                    'insertion_content' => $insertionData['insertion_content'] ?? '',
                     'line_offset' => $insertionData['line_offset'] ?? 0,
                     'insertion_order' => $insertionData['insertion_order'] ?? $index,
                     'description' => $insertionData['description'] ?? null,

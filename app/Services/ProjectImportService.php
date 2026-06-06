@@ -707,7 +707,6 @@ class ProjectImportService
                         'content_type' => $fileData['content_type'] ?? 'text/plain',
                         'zip_filename' => $fileData['zip_filename'] ?? null,
                         'file_order' => $fileData['file_order'] ?? $fileData['sort_order'] ?? 0,
-                        'form_window_type' => $fileData['form_window_type'] ?? 0,
                     ]);
                 }
 

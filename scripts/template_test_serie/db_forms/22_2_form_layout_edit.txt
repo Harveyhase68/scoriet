@@ -1,0 +1,73 @@
+================================================================================
+TEST FORM-22.2: FORM-LAYOUT — CREATE/EDIT (formedit.*)
+================================================================================
+File-Type: db_table_file. Expected Output: 1× pro Tabelle.
+
+Exerziert das CREATE/EDIT-Fenster des effektiven FormSets der Tabelle:
+  - die Feld-Platzierungen   (for-nmaxlayoutsingles)
+  - die Button-Platzierungen (for-nmaxlayoutbuttons)
+  - den direkten Fenster-Zugriff (formedit.*)
+
+Dieselbe Vorlage läuft in zwei Projekt-Konfigurationen:
+
+  PROFIL A — Projekt OHNE FormSet (oder Tabelle ohne Create/Edit-Fenster):
+      nmaxformsets = 0 / kein formedit → Loops laufen 0×, formedit.* = '' (optional chaining)
+
+  PROFIL B — Projekt MIT FormSet (Tabelle hat ein Create/Edit-Fenster):
+      echte Feld-/Button-Elemente + Werte aus formedit.*
+================================================================================
+
+Tabelle: {:tablename:}
+
+================================================================================
+[A] FORMSET-LEVEL VARIABLEN (project-global, NICHT in einer Schleife)
+================================================================================
+
+nmaxformsets        = {:nmaxformsets:}
+nmaxwindows         = {:nmaxwindows:}
+formset.name        = {:formset.name:}
+
+================================================================================
+[B] SINGLE-FIELDS LAYOUT — for-nmaxlayoutsingles
+================================================================================
+{:for nmaxlayoutsingles:}
+  Single #{:i:}:
+    layoutsingle.field_name      = {:layoutsingle.field_name:}
+    layoutsingle.label           = {:layoutsingle.label:}
+    layoutsingle.control_type    = {:layoutsingle.control_type:}
+    layoutsingle.row             = {:layoutsingle.row:}
+    layoutsingle.col             = {:layoutsingle.col:}
+{:endfor:}
+
+================================================================================
+[C] BUTTONS — for-nmaxlayoutbuttons
+================================================================================
+{:for nmaxlayoutbuttons:}
+  Button #{:i:}:
+    layoutbutton.name     = {:layoutbutton.name:}
+    layoutbutton.label    = {:layoutbutton.label:}
+    layoutbutton.action   = {:layoutbutton.action:}
+    layoutbutton.color    = {:layoutbutton.color:}
+{:endfor:}
+
+================================================================================
+[D] DIREKTER FENSTER-ZUGRIFF (formedit.* — Create/Edit-Fenster der Tabelle)
+================================================================================
+
+formedit.name                 = {:formedit.name:}
+formedit.nmaxelements         = {:formedit.nmaxelements:}
+formedit.button_save.label    = {:formedit.button_save.label:}
+formedit.button_cancel.label  = {:formedit.button_cancel.label:}
+formedit.container.width      = {:formedit.container.width:}
+
+EXPECTED Profil A: alle leer (Tabelle hat kein Create/Edit-Fenster)
+EXPECTED Profil B: tatsächliche Werte aus dem Create/Edit-Fenster der Tabelle
+
+================================================================================
+[E] CONDITIONAL — nur ausgeben wenn FormSet vorhanden
+================================================================================
+{:if nmaxformsets:}
+  ✓ FormSet "{:formset.name:}" ist konfiguriert. Aktive Fenster: {:nmaxwindows:}
+{:else:}
+  ✗ Kein FormSet aktiv — Create/Edit-Layout wird geskippt.
+{:endif:}

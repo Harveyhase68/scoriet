@@ -536,6 +536,18 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
   };
 
   // Pre-check before opening create schema modal
+  // Convenience default: pre-select the currently active project (only if the
+  // user owns it — the create dialog lists owned projects only) so a new
+  // database is linked to the project the user is working in without an extra
+  // click. Purely a default; the user can deselect it before saving.
+  const currentProjectDefaultIds = (): number[] => {
+    if (!contextSelectedProject) return [];
+    const owned = contextProjects.some(
+      p => Number(p.id) === Number(contextSelectedProject.id) && Number(p.owner_id) === Number(currentUserId)
+    );
+    return owned ? [Number(contextSelectedProject.id)] : [];
+  };
+
   const handleCreateSchemaClick = async () => {
     if (!currentUser) {
       setError(t.databasemanagementpanel521);
@@ -564,6 +576,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     }
 
     // User is not Free, or has available slots -> show create modal directly
+    setCreateForm(prev => ({ ...prev, project_ids: currentProjectDefaultIds() }));
     setShowCreateModal(true);
   };
 
@@ -571,6 +584,7 @@ export default function DatabaseManagementPanel({ isActive, onOpenDesigner, filt
     // User confirmed they want to spend 50 credits
     // Close unlock modal and open create modal
     setShowSchemaUnlockModal(false);
+    setCreateForm(prev => ({ ...prev, project_ids: currentProjectDefaultIds() }));
     setShowCreateModal(true);
   };
 

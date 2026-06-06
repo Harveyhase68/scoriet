@@ -141,9 +141,15 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
      *                   30/h still allows a CI pipeline that regenerates
      *                   on every commit to keep working.
      *
-     * Polling endpoints (progress, svc/queue, etc.) deliberately don't
-     * get their own tighter limit because they're designed to be polled
-     * every second — the cli-default ceiling is the right level for them.
+     * The scoriet-svc daemon endpoints (/svc/*) are the exception: they are a
+     * CONTINUOUS HEARTBEAT, not discrete calls. The daemon polls /svc/queue
+     * every few seconds and appends task logs in bursts. At a 2s cadence that
+     * is ~1800 queue req/h — it would blow the 1000/h cli-default ceiling
+     * inside the hour and then 429 for the rest of it (exactly the bug we hit).
+     * A poller needs a PER-MINUTE bucket so a transient burst recovers within
+     * a minute instead of locking the daemon out for a full hour. These routes
+     * are already gated behind auth:api + service.access (a trusted, device-
+     * registered daemon), so a generous per-minute ceiling is safe.
      */
     private function registerApiRateLimiters(): void
     {
@@ -155,6 +161,17 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         };
 
         RateLimiter::for('cli-default', function (Request $request) use ($bucketFor) {
+            // scoriet-svc heartbeat (queue poll + log/submit bursts): a
+            // continuously-polling daemon, not discrete CLI traffic. Give it a
+            // per-minute bucket (recovers every minute) sized well above the
+            // poll cadence so legitimate polling never trips it, while still
+            // capping a runaway loop at 120/min.
+            if ($request->is('cli/v1/svc/*')) {
+                $token = $request->user()?->token();
+                return $token
+                    ? Limit::perMinute(120)->by('svc-token:' . $token->id)
+                    : Limit::perMinute(20)->by($request->ip());
+            }
             return $bucketFor($request, 1000, 60);
         });
 

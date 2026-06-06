@@ -1,0 +1,59 @@
+================================================================================
+TEST FORM-22.3: FORM-LAYOUT — DATA TABLE (formtable.*)
+================================================================================
+File-Type: db_table_file. Expected Output: 1× pro Tabelle.
+
+Exerziert das DATA-TABLE-Fenster des effektiven FormSets der Tabelle:
+  - die Spalten-Platzierungen (for-nmaxlayoutcolumns)
+  - den direkten Fenster-Zugriff (formtable.*)
+
+Dieselbe Vorlage läuft in zwei Projekt-Konfigurationen:
+
+  PROFIL A — Projekt OHNE FormSet (oder Tabelle ohne Data-Table-Fenster):
+      nmaxformsets = 0 / kein formtable → Loops laufen 0×, formtable.* = '' (optional chaining)
+
+  PROFIL B — Projekt MIT FormSet (Tabelle hat ein Data-Table-Fenster):
+      echte Spalten-Elemente + Werte aus formtable.*
+================================================================================
+
+Tabelle: {:tablename:}
+
+================================================================================
+[A] FORMSET-LEVEL VARIABLEN (project-global, NICHT in einer Schleife)
+================================================================================
+
+nmaxformsets        = {:nmaxformsets:}
+nmaxwindows         = {:nmaxwindows:}
+formset.name        = {:formset.name:}
+
+================================================================================
+[B] COLUMNS LAYOUT (Datentabelle) — for-nmaxlayoutcolumns
+================================================================================
+{:for nmaxlayoutcolumns:}
+  Column #{:i:}:
+    layoutcolumn.field_name = {:layoutcolumn.field_name:}
+    layoutcolumn.header     = {:layoutcolumn.header:}
+    layoutcolumn.width      = {:layoutcolumn.width:}
+    layoutcolumn.align      = {:layoutcolumn.align:}
+{:endfor:}
+
+================================================================================
+[C] DIREKTER FENSTER-ZUGRIFF (formtable.* — Data-Table-Fenster der Tabelle)
+================================================================================
+
+formtable.name                = {:formtable.name:}
+formtable.type                = {:formtable.type:}
+formtable.nmaxelements        = {:formtable.nmaxelements:}
+formtable.container.width     = {:formtable.container.width:}
+
+EXPECTED Profil A: alle leer (Tabelle hat kein Data-Table-Fenster)
+EXPECTED Profil B: tatsächliche Werte aus dem Data-Table-Fenster der Tabelle
+
+================================================================================
+[D] CONDITIONAL — nur ausgeben wenn FormSet vorhanden
+================================================================================
+{:if nmaxformsets:}
+  ✓ FormSet "{:formset.name:}" ist konfiguriert. Aktive Fenster: {:nmaxwindows:}
+{:else:}
+  ✗ Kein FormSet aktiv — Data-Table-Layout wird geskippt.
+{:endif:}

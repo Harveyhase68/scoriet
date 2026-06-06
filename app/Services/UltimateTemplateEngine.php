@@ -267,7 +267,7 @@ class UltimateTemplateEngine
         }
 
         // Check if it has a known prefix
-        if (preg_match('/^(project|file|item|field|form|formset|table|language|keys|foreign|foreignunique|foreignkeys|foreignkeysunique|migration|layoutsingle|layoutbutton|layoutcolumn|layoutmenu|reportpattern|reportsingle|reportlist|reportsingleelement|reportlistelement|layoutreportsingle|layoutreportlist)\./', $variable)) {
+        if (preg_match('/^(project|file|item|field|formset|formmenu|formedit|formtable|table|language|keys|foreign|foreignunique|foreignkeys|foreignkeysunique|migration|layoutsingle|layoutbutton|layoutcolumn|layoutmenu|reportpattern|reportsingle|reportlist|reportsingleelement|reportlistelement|layoutreportsingle|layoutreportlist)\./', $variable)) {
             return true;
         }
 
@@ -388,13 +388,10 @@ class UltimateTemplateEngine
         return false;
     }
 
-    // 🎨 Current form window index for template processing
-    private int $currentFormWindowIdx = 0;
-
     /**
      * 🎯 MAIN TEMPLATE PROCESSING - Convert template to JavaScript function
      */
-    public function processTemplate(string $templateContent, string $functionName = 'generate', ?int $tableIndex = null, bool $includeSource = false, int $formWindowType = 0): string
+    public function processTemplate(string $templateContent, string $functionName = 'generate', ?int $tableIndex = null, bool $includeSource = false): string
     {
         // 🛠️ Detect used functions BEFORE any content transformation
         $originalTemplateContent = $templateContent;
@@ -416,26 +413,8 @@ class UltimateTemplateEngine
         // Store original lines for source comments
         $originalLines = explode("\n", str_replace(["\r\n", "\r"], "\n", $this->restoreTextLiterals($templateContent)));
 
-        // 🎨 Calculate form window index from form_window_type
-        // form_window_type: 0=none, 1=main_menu, 2=create_edit, 3=data_table
-        // NOTE: legacy values 4=report_single, 5=report_list used to map to
-        // formset.windows[3]/[4] (FormWindow rows that are now dead leftovers).
-        // The new report system uses {:reportsingle.X:} / {:reportlist.X:}
-        // which resolve via the per-table node — see
-        // UltimateTemplateController::buildUltimateProjectData(). We coerce
-        // legacy report types to 0 here so any stray template metadata pointing
-        // at the old enum doesn't produce garbage formset.windows[3/4] paths.
-        if ($formWindowType >= 4) {
-            $formWindowType = 0;
-        }
-        $this->currentFormWindowIdx = $formWindowType > 0 ? $formWindowType - 1 : 0;
-
         $jsFunction = "function {$functionName}() {\n";
         $jsFunction .= "  let sContentResult = '';\n";
-        // 🎨 Add form window index as local constant for form.* variables
-        if ($formWindowType > 0) {
-            $jsFunction .= "  const currentFormWindowIdx = {$this->currentFormWindowIdx}; // form_window_type: {$formWindowType}\n";
-        }
 
         // 🛠️ Add only USED built-in functions
         if (!empty($usedFunctions)) {
@@ -2292,19 +2271,6 @@ class UltimateTemplateEngine
             return "' + gtree[0].project[0].{$projectVar} + '";
         }
 
-        // 🎯 FORM ELEMENT VARIABLES (direkter Zugriff auf aktuelles Fenster - basierend auf form_window_type)
-        // z.B. {form.button_nav_first.x}, {form.container.width}, {form.button_save.label}
-        // Nutzt currentFormWindowIdx (0-4 basierend auf Template-Datei form_window_type)
-        if (strpos($variable, 'form.') === 0) {
-            $formPath = substr($variable, 5); // Remove 'form.'
-            // Convert all dots to optional chaining: button_nav_first.x → button_nav_first?.x
-            $safeFormPath = str_replace('.', '?.', $formPath);
-            // form.button_save.label → formset.windows[INDEX].button_save?.label
-            // Use the literal index value for reliable access (not dependent on gtree variable)
-            $windowIdx = $this->currentFormWindowIdx;
-            return "' + (gtree[0].project[0].formset?.windows[{$windowIdx}]?.{$safeFormPath} ?? '') + '";
-        }
-
         // 🎯 FORMSET VARIABLES (direkter Zugriff auf FormSet und Fenster)
         // z.B. {formset.name}, {formset.create_edit.button_save.label}, {formset.default_button_color}
         if (strpos($variable, 'formset.') === 0) {
@@ -2339,6 +2305,27 @@ class UltimateTemplateEngine
         if (strpos($variable, 'layoutmenu.') === 0) {
             $layoutVar = substr($variable, 11);
             return "' + (gtree[0].project[0].{$layoutTableRef}.layoutmenus[loopIndex_layoutmenus].{$layoutVar} ?? '') + '";
+        }
+
+        // 🎯 FORM WINDOW DESIGN VARIABLES — direct, per-table access to the
+        // current table's FormSet windows (the design "Vorlage": named buttons,
+        // container, colors, dimensions). Self-describing per window type, the
+        // exact mirror of {:reportsingle.*:}/{:reportlist.*:}. Replaces the old
+        // {:form.*:} which indexed a GLOBAL formset by the file's form_window_type.
+        //   {:formmenu.button_nav_first.x:}  → tables[i].formmenu.button_nav_first.x
+        //   {:formedit.button_save.label:}   → tables[i].formedit.button_save.label
+        //   {:formtable.container.width:}    → tables[i].formtable.container.width
+        if (strpos($variable, 'formmenu.') === 0) {
+            $safePath = str_replace('.', '?.', substr($variable, strlen('formmenu.')));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.formmenu?.{$safePath} ?? '') + '";
+        }
+        if (strpos($variable, 'formedit.') === 0) {
+            $safePath = str_replace('.', '?.', substr($variable, strlen('formedit.')));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.formedit?.{$safePath} ?? '') + '";
+        }
+        if (strpos($variable, 'formtable.') === 0) {
+            $safePath = str_replace('.', '?.', substr($variable, strlen('formtable.')));
+            return "' + (gtree[0].project[0].{$layoutTableRef}.formtable?.{$safePath} ?? '') + '";
         }
 
         // 🎯 REPORT VARIABLES — IMPORTANT: longer prefixes must be checked BEFORE

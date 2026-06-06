@@ -23,7 +23,9 @@ class CodeAdjustmentService
         string $content,
         string $filename,
         int $projectId,
-        array $context = []
+        array $context = [],
+        ?int $templateId = null,
+        ?string $filePath = null
     ): array {
         $result = [
             'content' => $content,
@@ -31,16 +33,22 @@ class CodeAdjustmentService
             'warnings' => [],
         ];
 
-        // Get all active adjustments for this project
+        // Scope: project (always) + optional template. forTemplate() keeps
+        // project-wide adjustments (template_id IS NULL) AND those bound to the
+        // template currently being generated — never another template's.
         $adjustments = CodeAdjustment::forProject($projectId)
+            ->forTemplate($templateId)
             ->active()
             ->with('insertions')
             ->ordered()
             ->get();
 
-        // Filter to only adjustments matching this filename
-        $matchingAdjustments = $adjustments->filter(function ($adj) use ($filename) {
-            return $adj->matchesFilename($filename);
+        // Match against the file's full RELATIVE PATH (output_path + filename)
+        // when available, so a pattern like `data/tables_customers.php` only
+        // fires inside /data/. Falls back to the bare filename otherwise.
+        $matchPath = $filePath ?? $filename;
+        $matchingAdjustments = $adjustments->filter(function ($adj) use ($matchPath) {
+            return $adj->matchesFilename($matchPath);
         });
 
         foreach ($matchingAdjustments as $adjustment) {
@@ -150,13 +158,64 @@ class CodeAdjustmentService
 
         // Process insertions in order
         foreach ($adjustment->insertions as $insertion) {
-            // Replace variables in insertion content
+            $anchorText = $insertion->getNormalizedAnchorText();
+
+            // DELETE: find the anchor block and remove it. Confidence-gated —
+            // if the block isn't found at min_confidence we SKIP and warn,
+            // never deleting the wrong lines. Each delete re-anchors against the
+            // current $lines, so a prior insert/delete can't misalign it.
+            if (($insertion->operation ?? 'insert') === 'delete') {
+                $deleteResult = $this->deleteAtAnchor(
+                    $lines,
+                    $anchorText,
+                    (float) $adjustment->min_confidence
+                );
+
+                if ($deleteResult['success']) {
+                    $lines = $deleteResult['lines'];
+                    $insertionsApplied++;
+                } else {
+                    $failedInsertions[] = [
+                        'insertion_id' => $insertion->id,
+                        'reason' => $deleteResult['reason'],
+                    ];
+                }
+                continue;
+            }
+
+            // REPLACE: anchor_text = the BEFORE block (incl. context, unique),
+            // insertion_content = the AFTER block. Find before exactly once and
+            // swap it for after. This is the unified op the analyzer produces —
+            // a modification stays in place and can't be split/misanchored.
+            if (($insertion->operation ?? 'insert') === 'replace') {
+                $afterText = $this->replaceVariables(
+                    $insertion->getNormalizedInsertionContent(),
+                    $context
+                );
+                $replaceResult = $this->replaceAtAnchor(
+                    $lines,
+                    $anchorText,
+                    $afterText,
+                    (float) $adjustment->min_confidence
+                );
+
+                if ($replaceResult['success']) {
+                    $lines = $replaceResult['lines'];
+                    $insertionsApplied++;
+                } else {
+                    $failedInsertions[] = [
+                        'insertion_id' => $insertion->id,
+                        'reason' => $replaceResult['reason'],
+                    ];
+                }
+                continue;
+            }
+
+            // INSERT (default): replace variables, then splice content in.
             $insertionContent = $this->replaceVariables(
                 $insertion->getNormalizedInsertionContent(),
                 $context
             );
-
-            $anchorText = $insertion->getNormalizedAnchorText();
 
             $insertResult = $this->insertAtAnchor(
                 $lines,
@@ -204,20 +263,17 @@ class CodeAdjustmentService
         $anchorLines = explode("\n", $anchorText);
         $insertionLines = explode("\n", $insertionContent);
 
-        // Find anchor position using line-by-line matching
-        $anchorPosition = $this->findAnchorPosition(
-            $lines,
-            $anchorLines,
-            $insertionType,
-            $minConfidence
-        );
-
-        if ($anchorPosition === null) {
-            return [
-                'success' => false,
-                'lines' => $lines,
-                'reason' => 'Anchor text not found with sufficient confidence',
-            ];
+        // Empty anchor → 'beginning' inserts at top, anything else at the end.
+        // A real anchor must match EXACTLY ONCE (uniqueness), else inserting at
+        // the first of several matches would land in the wrong place.
+        if (count($anchorLines) === 1 && trim($anchorLines[0]) === '') {
+            $anchorPosition = $insertionType === 'beginning' ? 0 : count($lines);
+        } else {
+            $resolved = $this->resolveUniqueAnchor($lines, $anchorLines, $minConfidence);
+            if (isset($resolved['error'])) {
+                return ['success' => false, 'lines' => $lines, 'reason' => $resolved['error']];
+            }
+            $anchorPosition = $resolved['pos'];
         }
 
         // Calculate insertion position based on type and offset
@@ -239,6 +295,47 @@ class CodeAdjustmentService
             'lines' => $lines,
             'reason' => null,
             'position' => $insertPosition,
+        ];
+    }
+
+    /**
+     * Delete the anchor block from the content.
+     *
+     * The anchor IS the block to remove (the exact lines, as captured at
+     * authoring time). We locate it with the same confidence matching used for
+     * inserts; if it isn't found at min_confidence the delete is SKIPPED (the
+     * caller records a warning) so we never remove unintended lines.
+     */
+    private function deleteAtAnchor(
+        array $lines,
+        string $anchorText,
+        float $minConfidence
+    ): array {
+        $anchorLines = explode("\n", $anchorText);
+
+        // An empty anchor would otherwise hit the "beginning/end" special case
+        // in findAnchorPosition and delete from line 0 — refuse it outright.
+        if (count($anchorLines) === 0 || (count($anchorLines) === 1 && trim($anchorLines[0]) === '')) {
+            return [
+                'success' => false,
+                'lines' => $lines,
+                'reason' => 'Empty deletion anchor — refusing to delete',
+            ];
+        }
+
+        // Must match exactly once, else we'd delete the wrong block.
+        $resolved = $this->resolveUniqueAnchor($lines, $anchorLines, $minConfidence);
+        if (isset($resolved['error'])) {
+            return ['success' => false, 'lines' => $lines, 'reason' => $resolved['error']];
+        }
+
+        array_splice($lines, $resolved['pos'], count($anchorLines));
+
+        return [
+            'success' => true,
+            'lines' => $lines,
+            'reason' => null,
+            'position' => $resolved['pos'],
         ];
     }
 
@@ -275,6 +372,80 @@ class CodeAdjustmentService
         }
 
         return null;
+    }
+
+    /**
+     * ALL start positions where the anchor block matches at >= confidence.
+     * Used to enforce uniqueness: an anchor that matches 0 or >1 times must NOT
+     * be acted on (it would touch the wrong place — the "***** appears 10x"
+     * trap). Callers turn 0 → "not found", >1 → "ambiguous, add more context".
+     */
+    private function findAnchorMatches(array $lines, array $anchorLines, float $minConfidence): array
+    {
+        $positions = [];
+        $anchorLength = count($anchorLines);
+        $linesLength = count($lines);
+        if ($anchorLength === 0 || $linesLength === 0) {
+            return $positions;
+        }
+        for ($i = 0; $i <= $linesLength - $anchorLength; $i++) {
+            $confidence = $this->calculateLineMatchConfidence(
+                array_slice($lines, $i, $anchorLength),
+                $anchorLines
+            );
+            if ($confidence >= $minConfidence) {
+                $positions[] = $i;
+            }
+        }
+        return $positions;
+    }
+
+    /**
+     * Resolve a UNIQUE anchor position. Returns ['pos' => int] on exactly one
+     * match, or ['error' => reason] for none / ambiguous.
+     */
+    private function resolveUniqueAnchor(array $lines, array $anchorLines, float $minConfidence): array
+    {
+        $matches = $this->findAnchorMatches($lines, $anchorLines, $minConfidence);
+        if (count($matches) === 0) {
+            return ['error' => 'Anchor block not found with sufficient confidence'];
+        }
+        if (count($matches) > 1) {
+            return ['error' => 'Anchor block is ambiguous (' . count($matches) . ' matches) — add more surrounding context'];
+        }
+        return ['pos' => $matches[0]];
+    }
+
+    /**
+     * Replace the BEFORE block with the AFTER block.
+     *
+     * anchor_text = the original block INCLUDING enough surrounding context to
+     * be unique; insertion_content = how it should look afterwards. We locate
+     * the before-block (must match exactly once) and splice the after-block in
+     * its place. Modifications stay in position (the unchanged context lines in
+     * before/after hold the spot) and ambiguity is impossible by construction.
+     */
+    private function replaceAtAnchor(
+        array $lines,
+        string $beforeText,
+        string $afterText,
+        float $minConfidence
+    ): array {
+        $beforeLines = explode("\n", $beforeText);
+
+        if (count($beforeLines) === 0 || (count($beforeLines) === 1 && trim($beforeLines[0]) === '')) {
+            return ['success' => false, 'lines' => $lines, 'reason' => 'Empty before-block — refusing to replace'];
+        }
+
+        $resolved = $this->resolveUniqueAnchor($lines, $beforeLines, $minConfidence);
+        if (isset($resolved['error'])) {
+            return ['success' => false, 'lines' => $lines, 'reason' => $resolved['error']];
+        }
+
+        $afterLines = explode("\n", $afterText);
+        array_splice($lines, $resolved['pos'], count($beforeLines), $afterLines);
+
+        return ['success' => true, 'lines' => $lines, 'reason' => null, 'position' => $resolved['pos']];
     }
 
     /**
@@ -371,78 +542,106 @@ class CodeAdjustmentService
     }
 
     /**
-     * Extract insertions from diff operations
+     * Reverse-engineer the diff into context-anchored REPLACE entries.
+     *
+     * Every changed region (a maximal run of add/remove ops between unchanged
+     * lines) becomes ONE 'replace': before-block = the original lines plus
+     * surrounding unchanged context, after-block = the same context with the
+     * new lines. The context is GROWN until the before-block occurs exactly
+     * once in the original, so the edit lands in the right place even when short
+     * anchors repeat (the "***** appears 10x" trap). Inserts (no removals) and
+     * deletions (no additions) are just special cases of the same replace — and
+     * a modification stays in place instead of being split into delete+insert.
      */
     private function extractInsertions(array $diff, array $templateLines, array $modifiedLines): array
     {
-        $insertions = [];
         $operations = $diff['operations'];
 
-        $currentInsertion = null;
-        $lastKeepTemplateLine = -1;
-        $lastKeepContent = '';
-
-        foreach ($operations as $index => $op) {
+        // 1) Group ops into change regions. Each region replaces the original
+        //    span [tStart, tStart+count(removed)) with `added`. tPos tracks the
+        //    next original line index (keep/remove consume one; add does not).
+        $regions = [];
+        $cur = null;
+        $tPos = 0;
+        foreach ($operations as $op) {
             if ($op['type'] === 'keep') {
-                // If we have a pending insertion, finalize it
-                if ($currentInsertion !== null) {
-                    // Find the next keep line as anchor_after
-                    $currentInsertion['anchor_after'] = $op['content'];
-                    $insertions[] = $this->finalizeInsertion($currentInsertion, $templateLines);
-                    $currentInsertion = null;
+                if ($cur !== null) { $regions[] = $cur; $cur = null; }
+                $tPos = $op['template_line'] + 1;
+            } else {
+                if ($cur === null) { $cur = ['tStart' => $tPos, 'removed' => [], 'added' => []]; }
+                if ($op['type'] === 'remove') {
+                    $cur['removed'][] = $op['content'];
+                    $tPos = $op['template_line'] + 1;
+                } else { // add
+                    $cur['added'][] = $op['content'];
                 }
-                $lastKeepTemplateLine = $op['template_line'];
-                $lastKeepContent = $op['content'];
-            } elseif ($op['type'] === 'add') {
-                if ($currentInsertion === null) {
-                    $currentInsertion = [
-                        'type' => $lastKeepTemplateLine === -1 ? 'beginning' : 'middle',
-                        'anchor_before' => $lastKeepContent,
-                        'anchor_before_line' => $lastKeepTemplateLine,
-                        'anchor_after' => '',
-                        'content_lines' => [],
-                    ];
-                }
-                $currentInsertion['content_lines'][] = $op['content'];
             }
-            // We ignore 'remove' operations for insertion extraction
+        }
+        if ($cur !== null) { $regions[] = $cur; }
+
+        // 2) Turn each region into a unique-context replace entry.
+        $entries = [];
+        $total = count($templateLines);
+        foreach ($regions as $region) {
+            $tStart = $region['tStart'];
+            $tEnd = $tStart + count($region['removed']);
+
+            $beforeBlock = [];
+            $afterBlock = [];
+            for ($K = 2; ; $K++) {
+                $ctxStart = max(0, $tStart - $K);
+                $ctxEnd = min($total, $tEnd + $K);
+                $beforeBlock = array_slice($templateLines, $ctxStart, $ctxEnd - $ctxStart);
+                $afterBlock = array_merge(
+                    array_slice($templateLines, $ctxStart, $tStart - $ctxStart),
+                    $region['added'],
+                    array_slice($templateLines, $tEnd, $ctxEnd - $tEnd)
+                );
+                $atFileEdges = ($ctxStart === 0 && $ctxEnd === $total);
+                if ($this->countBlockOccurrences($templateLines, $beforeBlock) <= 1 || $atFileEdges || $K >= 12) {
+                    break;
+                }
+            }
+
+            // Defensive: never emit a no-op replace.
+            if ($beforeBlock === $afterBlock) {
+                continue;
+            }
+
+            $entries[] = [
+                'operation' => 'replace',
+                'insertion_type' => 'middle', // unused for replace; schema NOT NULL
+                'anchor_text' => implode("\n", $beforeBlock),       // BEFORE block
+                'insertion_content' => implode("\n", $afterBlock),  // AFTER block
+                'line_offset' => 0,
+                'line_count' => count($region['added']) + count($region['removed']),
+            ];
         }
 
-        // Handle insertion at end
-        if ($currentInsertion !== null) {
-            $currentInsertion['type'] = 'end';
-            $insertions[] = $this->finalizeInsertion($currentInsertion, $templateLines);
-        }
-
-        return $insertions;
+        return $entries;
     }
 
     /**
-     * Finalize an insertion with proper anchor text
+     * Count how many times a consecutive block occurs in $lines
+     * (whitespace-insensitive per line, mirroring the apply-time matcher).
      */
-    private function finalizeInsertion(array $insertion, array $templateLines): array
+    private function countBlockOccurrences(array $lines, array $block): int
     {
-        // Build anchor text (up to 3 lines for context)
-        $anchorLines = [];
-
-        if ($insertion['type'] === 'beginning') {
-            // For beginning, anchor is what comes after
-            $anchorLines[] = $insertion['anchor_after'];
-        } elseif ($insertion['type'] === 'end') {
-            // For end, anchor is what comes before
-            $anchorLines[] = $insertion['anchor_before'];
-        } else {
-            // For middle, use the line before as anchor
-            $anchorLines[] = $insertion['anchor_before'];
+        $blockLen = count($block);
+        $linesLen = count($lines);
+        if ($blockLen === 0 || $blockLen > $linesLen) {
+            return 0;
         }
-
-        return [
-            'insertion_type' => $insertion['type'],
-            'anchor_text' => implode("\n", $anchorLines),
-            'insertion_content' => implode("\n", $insertion['content_lines']),
-            'line_offset' => 0,
-            'line_count' => count($insertion['content_lines']),
-        ];
+        $normBlock = array_map(fn($l) => trim($l), $block);
+        $count = 0;
+        for ($i = 0; $i <= $linesLen - $blockLen; $i++) {
+            $match = true;
+            for ($k = 0; $k < $blockLen; $k++) {
+                if (trim($lines[$i + $k]) !== $normBlock[$k]) { $match = false; break; }
+            }
+            if ($match) { $count++; }
+        }
+        return $count;
     }
 
     /**

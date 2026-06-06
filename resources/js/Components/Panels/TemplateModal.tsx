@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
@@ -52,6 +52,11 @@ interface TemplateModalProps {
     // template's linked IDs; the modal returns the chosen IDs in onSave/
     // onSubmit values as `linked_project_ids` so the parent can persist them.
     availableProjects?: Array<{ id: number; name: string }>;
+    // For a brand-new template, the project assignment is pre-selected with
+    // these IDs (typically the currently active project) as a convenience
+    // default. Ignored when editing an existing template (which loads its own
+    // linked projects). The user can always deselect — never a hard dependency.
+    defaultProjectIds?: number[];
 }
 
 const TemplateModal: React.FC<TemplateModalProps> = ({
@@ -71,7 +76,8 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     onCreateVariable,
     onEditVariable,
     onDeleteVariable,
-    availableProjects = []
+    availableProjects = [],
+    defaultProjectIds = []
 }) => {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
@@ -219,6 +225,12 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
     // the linked-projects API once the template ID exists.
     const [linkedProjectIds, setLinkedProjectIds] = useState<number[]>([]);
     const [originalLinkedProjectIds, setOriginalLinkedProjectIds] = useState<number[]>([]);
+    // One-shot guard: the parent derives `defaultProjectIds` from an
+    // asynchronously-loaded project list, so it can still be empty at the moment
+    // the modal opens. This ref lets a dedicated effect apply the default as
+    // soon as it arrives — exactly once per fresh "new template" open — without
+    // ever clobbering a selection the user has already started editing.
+    const defaultProjectsAppliedRef = useRef(false);
 
     // Check if private template needs unlock (for free users)
     const checkPrivateTemplateSubscription = useCallback(async () => {
@@ -400,8 +412,13 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
             setProtectedFiles([]);
             setInstallScript([]);
             setUpdateScript([]);
-            setLinkedProjectIds([]);
-            setOriginalLinkedProjectIds([]);
+            // Pre-select the parent-supplied default projects (e.g. the
+            // currently active project) for a brand-new template. If the parent
+            // hasn't resolved its async project list yet, this is empty here and
+            // the dedicated effect below fills it in once it arrives.
+            setLinkedProjectIds(defaultProjectIds);
+            setOriginalLinkedProjectIds(defaultProjectIds);
+            defaultProjectsAppliedRef.current = defaultProjectIds.length > 0;
 
             // Reset originals
             setOriginalProtectedFiles([]);
@@ -416,6 +433,21 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         }
 
     }, [visible, editingTemplate, reset, userType]);
+
+    // Apply the default project pre-selection for a NEW template as soon as the
+    // parent's (asynchronously derived) `defaultProjectIds` becomes available.
+    // The main open-effect above runs only when `visible`/`editingTemplate`
+    // flip, so without this a default that resolves a beat later would never be
+    // applied. One-shot per open via the ref, and only while the selection is
+    // still untouched, so it never overwrites the user's own choice.
+    useEffect(() => {
+        if (!visible || editingTemplate) return;
+        if (defaultProjectsAppliedRef.current) return;
+        if (defaultProjectIds.length === 0) return;
+        setLinkedProjectIds(defaultProjectIds);
+        setOriginalLinkedProjectIds(defaultProjectIds);
+        defaultProjectsAppliedRef.current = true;
+    }, [visible, editingTemplate, defaultProjectIds]);
 
     // Effect to check for changes when protected files, scripts, or linked
     // project assignments change.
@@ -545,7 +577,18 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
         >
             <form className="template-modal-form flex flex-col h-full px-6 py-5">
                 <div className="flex-1 min-h-0">
-                <TabViewSideMenu storageKey="templateModal" defaultWidth={220}>
+                <TabViewSideMenu
+                  storageKey="templateModal"
+                  defaultWidth={220}
+                  /* The form already supplies px-6/py-5 padding; the side-menu's
+                     default 15px/22px inset would double it and push the menu
+                     too far down-right. Zero both so the form padding is the
+                     single source of spacing (same as ProjectSettingsPanel). */
+                  style={{
+                    ['--p-tabview-vertical-pad-left' as string]: '0px',
+                    ['--p-tabview-vertical-pad-top' as string]: '0px',
+                  } as React.CSSProperties}
+                >
                 <TabPanel header={<span><i className="pi pi-cog mr-2" />{t.templatemodal_tab_general}</span>}>
                 <div className="space-y-4">
                 {/* Template Name */}
@@ -796,6 +839,9 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                                 optionLabel="name"
                                 optionValue="id"
                                 onChange={(e) => {
+                                    // User took control of the selection — stop
+                                    // any late-arriving default from overwriting it.
+                                    defaultProjectsAppliedRef.current = true;
                                     setLinkedProjectIds((e.value as number[]) || []);
                                 }}
                                 placeholder={t.templatemodal_project_assignment_placeholder}
@@ -997,7 +1043,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 <TabPanel header={<span><i className="pi pi-file mr-2" />{t.templatemodal_tab_files}</span>}>
                 <div className="space-y-4">
                 {/* Template Files Section */}
-                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                <div>
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-3">
                             <h3 className="text-lg font-semibold" style={{ color: colors.textSecondary }}>{t.templatemodal362}</h3>
@@ -1033,19 +1079,19 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     </div>
 
                    {!isSaved && !editingTemplate && (
-                       <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                       <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                            {t.templatemodal444}
                        </div>
                    )}
 
                    {editingTemplate && (
-                       <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                       <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                            {t.templatemodal450}
                        </div>
                    )}
                     
                     {templateFiles.length > 0 ? (
-                        <div className="max-h-60 overflow-y-auto rounded" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+                        <div className="overflow-y-auto rounded" style={{ maxHeight: 'calc(85vh - 380px)', border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                             <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
                                 <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}`, position: 'sticky', top: 0, zIndex: 1 }}>
                                     <tr>
@@ -1130,7 +1176,7 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                 <TabPanel header={<span><i className="pi pi-list mr-2" />{t.templatemodal_tab_variables}</span>}>
                 <div className="space-y-4">
                 {/* Custom Variables Section */}
-                <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${colors.borderPrimary}` }}>
+                <div>
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-semibold" style={{ color: colors.textSecondary }}>{t.templatemodal521}</h3>
                         <Button
@@ -1151,19 +1197,19 @@ const TemplateModal: React.FC<TemplateModalProps> = ({
                     </div>
 
                     {!isSaved && !editingTemplate && (
-                        <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                        <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             {t.templatemodal541}
                         </div>
                     )}
 
                     {editingTemplate && (
-                        <div className="mb-4 p-3 bg-blue-500 bg-opacity-20 border border-blue-500 rounded text-blue-300 text-sm">
+                        <div className="mb-4 p-3 rounded text-sm" style={{ backgroundColor: colors.infoBg, border: `1px solid ${colors.infoBorder}`, color: colors.infoText }}>
                             {t.templatemodal547}
                         </div>
                     )}
 
                     {templateVariables && templateVariables.length > 0 ? (
-                        <div className="max-h-60 overflow-y-auto rounded" style={{ border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
+                        <div className="overflow-y-auto rounded" style={{ maxHeight: 'calc(85vh - 380px)', border: `1px solid ${colors.borderPrimary}`, backgroundColor: colors.bgSecondary }}>
                             <table className="w-full text-sm" style={{ color: colors.textPrimary }}>
                                 <thead style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
                                     <tr>

@@ -1,0 +1,59 @@
+================================================================================
+TEST FORM-22.1: FORM-LAYOUT — MAIN MENU (formmenu.*)
+================================================================================
+File-Type: db_table_file. Expected Output: 1× pro Tabelle.
+
+Exerziert das MAIN-MENU-Fenster des effektiven FormSets der Tabelle:
+  - die Menü-Platzierungen  (for-nmaxlayoutmenus)
+  - den direkten Fenster-Zugriff  (formmenu.*)
+
+Dieselbe Vorlage läuft in zwei Projekt-Konfigurationen:
+
+  PROFIL A — Projekt OHNE FormSet (oder Tabelle ohne Main-Menu-Fenster):
+      nmaxformsets = 0 / kein formmenu → Loops laufen 0×, formmenu.* = '' (optional chaining)
+
+  PROFIL B — Projekt MIT FormSet (Tabelle hat ein Main-Menu-Fenster):
+      echte Menü-Elemente + Werte aus formmenu.*
+================================================================================
+
+Tabelle: {:tablename:}
+
+================================================================================
+[A] FORMSET-LEVEL VARIABLEN (project-global, NICHT in einer Schleife)
+================================================================================
+
+nmaxformsets        = {:nmaxformsets:}
+nmaxwindows         = {:nmaxwindows:}
+formset.name        = {:formset.name:}
+
+================================================================================
+[B] MENUS — for-nmaxlayoutmenus
+================================================================================
+{:for nmaxlayoutmenus:}
+  Menu #{:i:}:
+    layoutmenu.name       = {:layoutmenu.name:}
+    layoutmenu.label      = {:layoutmenu.label:}
+    layoutmenu.parent     = {:layoutmenu.parent:}
+{:endfor:}
+
+================================================================================
+[C] DIREKTER FENSTER-ZUGRIFF (formmenu.* — Main-Menu-Fenster der Tabelle)
+================================================================================
+
+formmenu.name                 = {:formmenu.name:}
+formmenu.type                 = {:formmenu.type:}
+formmenu.nmaxelements         = {:formmenu.nmaxelements:}
+formmenu.container.width      = {:formmenu.container.width:}
+formmenu.button_nav_first.x   = {:formmenu.button_nav_first.x:}
+
+EXPECTED Profil A: alle leer (Tabelle hat kein Main-Menu-Fenster)
+EXPECTED Profil B: tatsächliche Werte aus dem Main-Menu-Fenster der Tabelle
+
+================================================================================
+[D] CONDITIONAL — nur ausgeben wenn FormSet vorhanden
+================================================================================
+{:if nmaxformsets:}
+  ✓ FormSet "{:formset.name:}" ist konfiguriert. Aktive Fenster: {:nmaxwindows:}
+{:else:}
+  ✗ Kein FormSet aktiv — Menu-Layout wird geskippt.
+{:endif:}

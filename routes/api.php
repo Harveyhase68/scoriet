@@ -1510,6 +1510,9 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/form-sets/{id}', [FormDesignerController::class, 'update']);
     Route::delete('/form-sets/{id}', [FormDesignerController::class, 'destroy']);
     Route::post('/form-sets/{id}/clone', [FormDesignerController::class, 'clone']);
+    Route::post('/form-sets/import/preview-layouts', [FormDesignerController::class, 'previewImportLayouts']); // literal — before /import
+    Route::post('/form-sets/import', [FormDesignerController::class, 'importFormSet']);
+    Route::get('/form-sets/{id}/export', [FormDesignerController::class, 'exportFormSet']);
 
     // FormSet Windows
     Route::get('/form-sets/{id}/windows', [FormDesignerController::class, 'windows']);
@@ -1570,7 +1573,11 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/report-patterns/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'update']);
     Route::delete('/report-patterns/{id}', [\App\Http\Controllers\Api\ReportPatternController::class, 'destroy']);
     Route::get('/report-patterns/{id}/usage', [\App\Http\Controllers\Api\ReportPatternController::class, 'usage']);
+    Route::get('/report-patterns/{id}/linked-projects', [\App\Http\Controllers\Api\ReportPatternController::class, 'getLinkedProjects']);
     Route::post('/report-patterns/{id}/clone', [\App\Http\Controllers\Api\ReportPatternController::class, 'clone']);
+    Route::post('/report-patterns/import/preview-layouts', [\App\Http\Controllers\Api\ReportPatternController::class, 'previewImportLayouts']); // literal — before /import
+    Route::post('/report-patterns/import', [\App\Http\Controllers\Api\ReportPatternController::class, 'importPattern']);
+    Route::get('/report-patterns/{id}/export', [\App\Http\Controllers\Api\ReportPatternController::class, 'exportPattern']);
 
     // Report Pattern Forms
     Route::get('/report-patterns/{id}/forms', [\App\Http\Controllers\Api\ReportPatternController::class, 'forms']);

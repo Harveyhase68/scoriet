@@ -17,7 +17,8 @@ class TemplateFileFieldAssignmentController extends Controller
 {
     /**
      * Get the assignment matrix for a project + table combination.
-     * Returns template files (with form_window_type > 0), fields, and existing assignments.
+     * Returns per-table template files (file_type db_table_file[_languages]),
+     * fields, and existing assignments.
      *
      * GET /api/template-file-field-assignments/matrix?project_id=X&table_id=Y
      */
@@ -50,19 +51,25 @@ class TemplateFileFieldAssignmentController extends Controller
             return response()->json(['error' => 'Table not found'], 404);
         }
 
-        // Get all template files linked to this project (only form-related: form_window_type > 0)
+        // Get all template files linked to this project that render the fields
+        // of a SINGLE table — i.e. the per-table file types. Field-level
+        // visibility/sort assignments only make sense for those, so we gate on
+        // file_type (the file's nature). This used to gate on the per-file
+        // form_window_type marker, which left the matrix empty whenever it
+        // wasn't set; that marker has since been removed entirely.
+        $perTableFileTypes = ['db_table_file', 'db_table_file_languages'];
         $templateFiles = DB::table('project_template_usage as ptu')
             ->join('template_files as tf', 'tf.template_id', '=', 'ptu.template_id')
             ->join('templates as t', 't.id', '=', 'ptu.template_id')
             ->where('ptu.project_id', $projectId)
             ->where('ptu.is_active', true)
-            ->where('tf.form_window_type', '>', 0)
+            ->whereIn('tf.file_type', $perTableFileTypes)
             ->where('tf.is_include_only', false)
             ->select([
                 'tf.id',
                 'tf.file_name',
                 'tf.file_path',
-                'tf.form_window_type',
+                'tf.file_type',
                 'tf.file_order',
                 't.name as template_name',
                 't.id as template_id',
@@ -103,7 +110,7 @@ class TemplateFileFieldAssignmentController extends Controller
                     'id' => $tf->id,
                     'file_name' => $tf->file_name,
                     'file_path' => $tf->file_path,
-                    'form_window_type' => $tf->form_window_type,
+                    'file_type' => $tf->file_type,
                     'template_name' => $tf->template_name,
                     'template_id' => $tf->template_id,
                 ];
