@@ -1,0 +1,71 @@
+{:if form_set_name ne '':}
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Combined create / edit dialog (loaded into #modalContent via htmx). -->
+<form th:fragment="modal" th:object="${form}" hx-post="/{:tablename:}/save" hx-target="#modalContent" novalidate>
+
+    <div class="modal-header">
+        <h5 class="modal-title">
+            <i class="bi me-1" th:classappend="${form.id == null} ? 'bi-plus-circle' : 'bi-pencil-square'"></i>
+            <span th:text="${form.id == null} ? 'New {:filesingularlower:}' : 'Edit {:filesingularlower:}'">New</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+
+    <div class="modal-body">
+        <input type="hidden" th:field="*{id}">
+
+        <div class="row g-3">
+{:for nmaxitems:}
+{:if item.isforeign:}
+{:elseif item.isprimary:}
+{:elseif item.istimestamp:}
+{:else:}
+            <div class="col-md-6">
+                <label class="form-label">{:item.caption:}</label>
+{:if item.javatype eq "String":}
+{:if item.isblob:}
+                <textarea class="form-control" th:field="*{{:item.camelcase:}}" rows="3"
+                          th:classappend="${#fields.hasErrors('{:item.camelcase:}')} ? 'is-invalid'"></textarea>
+{:else:}
+                <input type="text" class="form-control" th:field="*{{:item.camelcase:}}"
+                       th:classappend="${#fields.hasErrors('{:item.camelcase:}')} ? 'is-invalid'">
+{:endif:}
+{:else:}
+                <input type="number" step="any" class="form-control" th:field="*{{:item.camelcase:}}"
+                       th:classappend="${#fields.hasErrors('{:item.camelcase:}')} ? 'is-invalid'">
+{:endif:}
+                <div class="invalid-feedback" th:errors="*{{:item.camelcase:}}">error</div>
+            </div>
+{:endif:}
+{:endfor:}
+{:for nmaxforeignkeys:}
+            <div class="col-md-6">
+                <label class="form-label">{:foreign.referencedtablesingularpascalcase:}</label>
+                <select class="form-select" th:field="*{{:foreign.referencedtablesingularcamelcase:}Id}">
+                    <option value="">&mdash; none &mdash;</option>
+                    <option th:each="opt : ${{:foreign.referencedtablesingularcamelcase:}Options}"
+                            th:value="${opt.id}" th:text="${opt}">option</option>
+                </select>
+            </div>
+{:endfor:}
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <span class="htmx-indicator me-auto text-body-secondary">
+            <span class="spinner-border spinner-border-sm me-1"></span>Saving...
+        </span>
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>
+            <span th:text="${form.id == null} ? 'Create' : 'Save changes'">Save</span>
+        </button>
+    </div>
+</form>
+
+</body>
+</html>
+{:endif:}

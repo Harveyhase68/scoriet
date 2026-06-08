@@ -11,11 +11,15 @@ use App\Models\Language;
 use App\Models\SchemaTable;
 use App\Models\SchemaVersion;
 use App\Support\ProjectNamePlaceholder;
+use App\Support\TableNamePlaceholders;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProjectFileTreeGenerator
 {
+    /** Resolved `packagename` custom variable for the current template (the %20 path code). */
+    protected string $packageName = '';
+
     /**
      * Generate the complete file tree for a project
      */
@@ -166,6 +170,27 @@ class ProjectFileTreeGenerator
     }
 
     /**
+     * Resolve the `packagename` custom variable for the %20 path placeholder.
+     * Mirrors {:packagename:} in file content. Prefers the project-specific value,
+     * falls back to the template variable's default; empty when undefined.
+     */
+    protected function loadPackageName(Project $project, $template): string
+    {
+        $value = \App\Models\ProjectTemplateVariableValue::where('project_id', $project->id)
+            ->where('template_id', $template->id)
+            ->where('variable_name', 'packagename')
+            ->value('value');
+
+        if ($value === null || $value === '') {
+            $value = \App\Models\TemplateVariable::where('template_id', $template->id)
+                ->where('variable_name', 'packagename')
+                ->value('default_value');
+        }
+
+        return $value ?? '';
+    }
+
+    /**
      * Build a template node with all its files
      */
     protected function buildTemplateNode($template, array $tables, array $languages, Project $project): array
@@ -175,6 +200,9 @@ class ProjectFileTreeGenerator
             ->orderBy('file_order')
             ->orderBy('file_name')
             ->get();
+
+        // Resolve the per-template `packagename` custom variable once (used by %20).
+        $this->packageName = $this->loadPackageName($project, $template);
 
         $children = [];
 
@@ -244,6 +272,8 @@ class ProjectFileTreeGenerator
         // %9  -> project name (handled by ProjectNamePlaceholder, supports [u|l|c|p|n])
         // %14 -> project DB version (was %9 pre-refactor; moved because %9 is now the project name)
         $placeholders = [
+            '%20' => $this->packageName,  // custom packagename project variable (before %2)
+            '%19' => '', '%18' => '', '%17' => '', '%16' => '', '%15' => '', // no table context
             '%14' => '',  // No database version for project files
             '%11' => '',  // No table name for project files
             '%10' => '',  // No table name for project files
@@ -320,9 +350,10 @@ class ProjectFileTreeGenerator
         // %14 -> project DB version (was %9 pre-refactor; moved because %9 is now the project name)
         $tableNameLower = strtolower($tableName);
         $placeholders = [
+            '%20' => $this->packageName,              // custom packagename project variable (before %2)
             '%14' => $versionNumber,                  // Database version number
             '%11' => strtoupper($tableName),         // Table name UPPERCASE (e.g. TEAMS)
-            '%10' => ucfirst($tableNameLower),        // Table name Ucfirst (e.g. Teams)
+            '%10' => str_replace('_', '', ucwords($tableNameLower, '_')), // Table name PascalCase (e.g. ContactMethods) — matches actual generation
             '%1' => $tableName,                       // Table name (e.g. teams)
             '%2' => $languageCode,                    // Language code (2 chars)
             '%3' => $languageName,                    // Language name
@@ -336,6 +367,12 @@ class ProjectFileTreeGenerator
         // Use output_path for directory structure, file_path for the actual file
         $outputPath = $templateFile->output_path ?? '';
         $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
+
+        // %15–%19: singular / case variants (before the generic pass so the
+        // two-digit codes are consumed ahead of %1). Honours singular_name.
+        $tableSingular = $tableData['singular_name'] ?? null;
+        $outputPath = TableNamePlaceholders::apply($outputPath, $tableName, $tableSingular);
+        $filePath = TableNamePlaceholders::apply($filePath, $tableName, $tableSingular);
 
         // Resolve placeholders in both paths
         $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders, $project->name ?? '');
@@ -394,9 +431,10 @@ class ProjectFileTreeGenerator
         // %14 -> project DB version (was %9 pre-refactor; moved because %9 is now the project name)
         $tableNameLower = strtolower($tableName);
         $placeholders = [
+            '%20' => $this->packageName,              // custom packagename project variable (before %2)
             '%14' => $versionNumber,                  // Database version number
             '%11' => strtoupper($tableName),         // Table name UPPERCASE (e.g. TEAMS)
-            '%10' => ucfirst($tableNameLower),        // Table name Ucfirst (e.g. Teams)
+            '%10' => str_replace('_', '', ucwords($tableNameLower, '_')), // Table name PascalCase (e.g. ContactMethods) — matches actual generation
             '%1' => $tableName,                       // Table name (e.g. teams)
             '%2' => '',                               // No language code
             '%3' => '',                               // No language name
@@ -410,6 +448,12 @@ class ProjectFileTreeGenerator
         // Use output_path for directory structure, file_path for the actual file
         $outputPath = $templateFile->output_path ?? '';
         $filePath = $templateFile->file_path ?? $templateFile->file_name ?? '';
+
+        // %15–%19: singular / case variants (before the generic pass so the
+        // two-digit codes are consumed ahead of %1). Honours singular_name.
+        $tableSingular = $tableData['singular_name'] ?? null;
+        $outputPath = TableNamePlaceholders::apply($outputPath, $tableName, $tableSingular);
+        $filePath = TableNamePlaceholders::apply($filePath, $tableName, $tableSingular);
 
         // Resolve placeholders in both paths
         $resolvedOutputPath = $this->resolvePlaceholders($outputPath, $placeholders, $project->name ?? '');

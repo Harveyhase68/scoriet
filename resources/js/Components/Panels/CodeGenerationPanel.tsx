@@ -1227,14 +1227,42 @@ export default function CodeGenerationPanel() {
       return normalizedPath === normalizedPattern || normalizedPath.endsWith('/' + normalizedPattern) || normalizedPath.endsWith(normalizedPattern);
     }
 
-    // Convert pattern to regex: %1, %2 become wildcards
+    // Convert pattern to regex: %1, %2 become wildcards.
+    // Two-digit codes (%10–%19) MUST be turned into wildcards BEFORE %1, otherwise
+    // the %1 rule would eat the "%1" prefix of "%15" and leave a stray digit.
     const regexPattern = normalizedPattern
       .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+      .replace(/%1[0-9]/g, '[^/]+') // %10–%19 = any folder/file name segment
+      .replace(/%20/g, '[^/]+') // %20 = packagename segment (before %2)
       .replace(/%1/g, '[^/]+')  // %1 = any folder/file name segment
       .replace(/%2/g, '[^/]+'); // %2 = any folder/file name segment
 
     const regex = new RegExp(`(^|/)${regexPattern}$`);
     return regex.test(normalizedPath);
+  };
+
+  /**
+   * Guess the English singular of a table name — mirror of
+   * App\Support\TableNamePlaceholders::guessEnglishSingular (PHP).
+   * Used only by the output_path safety-net below; the backend already resolves
+   * %15–%19 with the per-table singular_name, this keeps the fallback in sync.
+   */
+  const guessEnglishSingular = (tableName: string): string => {
+    const parts = tableName.split('_');
+    let last = parts.pop() ?? '';
+    if (last.endsWith('ies') && last.length > 4) {
+      last = last.slice(0, -3) + 'y';            // categories -> category
+    } else if (last.endsWith('ses') || last.endsWith('xes') || last.endsWith('zes')
+      || last.endsWith('shes') || last.endsWith('ches')) {
+      last = last.slice(0, -2);                  // addresses -> address, boxes -> box
+    } else if (last.endsWith('ves')) {
+      last = last.slice(0, -3) + 'f';            // wolves -> wolf (approximate)
+    } else if (last.endsWith('s') && !last.endsWith('ss')
+      && !last.endsWith('us') && !last.endsWith('is')) {
+      last = last.slice(0, -1);                  // products -> product
+    }
+    parts.push(last);
+    return parts.join('_');
   };
 
   /**
@@ -1883,10 +1911,22 @@ export default function CodeGenerationPanel() {
             // ✅ REPLACE PLACEHOLDERS in output_path (safety-net, backend does this too)
             // IMPORTANT: %11, %10 MUST be replaced BEFORE %1 to avoid partial match!
             const tn = tableName || '';
-            const tnLower = tn.toLowerCase();
+            // PascalCase across word boundaries (mirror of the PHP resolver).
+            const pascal = (s: string) =>
+              s.toLowerCase().split('_').filter(Boolean)
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+            const sg = guessEnglishSingular(tn);
+            const tnPascal = pascal(tn);
+            const sgPascal = pascal(sg);
+            // Two-digit codes (%11, %19…%15, %10) MUST be replaced BEFORE %1.
             outputPath = outputPath
+              .split('%19').join(tnPascal.charAt(0).toLowerCase() + tnPascal.slice(1)) // plural camelCase
+              .split('%18').join(tnPascal)                                             // plural PascalCase
+              .split('%17').join(sgPascal.charAt(0).toLowerCase() + sgPascal.slice(1)) // singular camelCase
+              .split('%16').join(sgPascal)                                             // singular PascalCase
+              .split('%15').join(sg.toLowerCase().replace(/_/g, ''))                   // singular lower joined
               .split('%11').join(tn.toUpperCase())
-              .split('%10').join(tnLower.charAt(0).toUpperCase() + tnLower.slice(1))
+              .split('%10').join(tnPascal)
               .split('%1').join(tn)
               .split('%2').join(langCode || '');
 

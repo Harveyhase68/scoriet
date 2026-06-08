@@ -44,7 +44,7 @@ export default [
         },
     },
     {
-        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'storage/app/temp/**', 'storage/templates/**', 'tools/**'],
+        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'storage/app/temp/**', 'storage/templates/**', 'tools/**', 'scripts/**'],
     },
     prettier, // Turn off all rules that might conflict with Prettier
 ];

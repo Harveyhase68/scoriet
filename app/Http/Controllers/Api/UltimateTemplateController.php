@@ -22,6 +22,7 @@ use App\Services\CreditService;
 use App\Services\PerformanceTrackingService;
 use App\Models\PerformanceMetric;
 use App\Support\ProjectNamePlaceholder;
+use App\Support\TableNamePlaceholders;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -1194,7 +1195,10 @@ class UltimateTemplateController extends Controller
                 ->toArray();
 
             // Enhanced field mapping
-            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $primaryKeyFieldName, $uniqueFields, $indexFields) {
+            // Detect the common column prefix (e.g. "cust_") so templates can emit
+            // clean, prefix-free identifiers via item.*noprefix.
+            $columnPrefix = $this->detectColumnPrefix($fields->pluck('field_name')->all());
+            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $primaryKeyFieldName, $uniqueFields, $indexFields, $columnPrefix) {
                 $fieldName = $field->field_name;
 
                 return [
@@ -1202,6 +1206,11 @@ class UltimateTemplateController extends Controller
                     'name' => $fieldName,
                     'pascalcase' => str_replace('_', '', ucwords($fieldName, '_')), // PascalCase (e.g. ProdNo)
                     'camelcase' => lcfirst(str_replace('_', '', ucwords($fieldName, '_'))), // camelCase (e.g. prodNo)
+                    // Prefix-free variants (cust_first_name → first_name / firstName / FirstName).
+                    // Falls back to the full name when there is no common prefix.
+                    'namenoprefix' => $this->stripColumnPrefix($fieldName, $columnPrefix),
+                    'camelcasenoprefix' => lcfirst(str_replace('_', '', ucwords($this->stripColumnPrefix($fieldName, $columnPrefix), '_'))),
+                    'pascalcasenoprefix' => str_replace('_', '', ucwords($this->stripColumnPrefix($fieldName, $columnPrefix), '_')),
                     'type' => strtoupper($field->field_type),
                     'schema_field_id' => $field->id, // For per-file assignment lookup
 
@@ -1215,6 +1224,7 @@ class UltimateTemplateController extends Controller
                     'phptype' => $this->getPhpType($field->field_type),
                     'jstype' => $this->getJsType($field->field_type),
                     'laraveltype' => $this->getLaravelType($field->field_type),
+                    'javatype' => $this->getJavaType($field->field_type),
                     'notnull' => !$field->is_nullable,
                     'order' => $field->field_order,
                     'id' => $index + 1,
@@ -1237,7 +1247,7 @@ class UltimateTemplateController extends Controller
                     'isunique' => $field->is_unique ?? false, // 🎯 PRIMARY KEY and UNIQUE constraints
                     'isindex' => $field->is_index ?? false, // 🎯 INDEX/KEY constraints
                     'isforeign' => str_ends_with($fieldName, '_id') && !($field->is_primary_key ?? false),
-                    'istimestamp' => in_array($fieldName, ['created_at', 'updated_at', 'deleted_at']),
+                    'istimestamp' => $this->isTimestampField($fieldName),
                     'autoincrement' => $field->is_auto_increment ?? false, // 🎯 Read from database
                     'isblob' => $this->isBlobType($field->field_type), // 🎯 BLOB/TEXT large field detection
                     'isbinaryblob' => $this->isBinaryBlobType($field->field_type), // 🎯 Binary BLOB only (no TEXT)
@@ -1388,6 +1398,12 @@ class UltimateTemplateController extends Controller
                 // Get foreign key reference information
                 $reference = $constraint->foreignKeyReference;
                 $referencedTableName = $reference ? $reference->referencedTable->table_name : '';
+                // Singular of the referenced table — needed for @ManyToOne type/field
+                // name (PostalCode/postalCode), since the *pascalcase variants above
+                // are plural (PostalCodes). Honours the referenced table's singular_name.
+                $referencedSingular = ($reference && $reference->referencedTable && $reference->referencedTable->singular_name)
+                    ? $reference->referencedTable->singular_name
+                    : TableNamePlaceholders::guessEnglishSingular($referencedTableName);
 
                 // Get referenced column name from referenceColumns → referencedField relation
                 $referencedColumn = '';
@@ -1405,6 +1421,11 @@ class UltimateTemplateController extends Controller
                     'referencedtable' => $referencedTableName, // Referenced table name (e.g., 'prod_group')
                     'referencedtablepascalcase' => str_replace('_', '', ucwords($referencedTableName, '_')), // PascalCase (e.g., 'ProdGroup')
                     'referencedtablecamelcase' => lcfirst(str_replace('_', '', ucwords($referencedTableName, '_'))), // camelCase (e.g., 'prodGroup')
+                    // Singular variants of the referenced table (for @ManyToOne / imports)
+                    'referencedtablesingular' => $referencedSingular, // e.g. 'postal_code'
+                    'referencedtablesingularpascalcase' => str_replace('_', '', ucwords(strtolower($referencedSingular), '_')), // 'PostalCode'
+                    'referencedtablesingularcamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($referencedSingular), '_'))), // 'postalCode'
+                    'referencedtablesingularlower' => str_replace('_', '', strtolower($referencedSingular)), // 'postalcode'
                     'referencedcolumn' => $referencedColumn, // Referenced column (e.g., 'id')
                     'referencedfield' => $referencedColumn,  // Alias — naming parity with `linkfield` on lookup-style fields. Templates may use either.
                     'ondelete' => $reference->on_delete ?? 'NO ACTION', // ON DELETE action
@@ -1439,6 +1460,7 @@ class UltimateTemplateController extends Controller
                 'filesingular' => $table->singular_name ?: $this->guessEnglishSingular($tableName),
                 'filesingularpascalcase' => str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_')),
                 'filesingularcamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_'))),
+                'filesingularlower' => str_replace('_', '', strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName))), // lowercase joined — twin of %15
 
                 // Counts — iteration counts derived from fieldsgen (the index
                 // array of iterable fields). fields[] keeps ALL fields for
@@ -1600,7 +1622,9 @@ class UltimateTemplateController extends Controller
             }
 
             // Enhanced field mapping with translations
-            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields, $contentTranslationsLookup, $reportAssignments) {
+            // Detect the common column prefix (e.g. "cust_") for item.*noprefix.
+            $columnPrefix = $this->detectColumnPrefix($fields->pluck('field_name')->all());
+            $mappedFields = $fields->map(function($field, $index) use ($tableName, $projectId, $languages, $primaryKeyFieldName, $uniqueFields, $indexFields, $contentTranslationsLookup, $reportAssignments, $columnPrefix) {
                 $fieldName = $field->field_name;
                 $fullFieldName = $tableName . '.' . $fieldName;
 
@@ -1613,6 +1637,11 @@ class UltimateTemplateController extends Controller
                     'name' => $fieldName,
                     'pascalcase' => str_replace('_', '', ucwords($fieldName, '_')), // PascalCase (e.g. ProdNo)
                     'camelcase' => lcfirst(str_replace('_', '', ucwords($fieldName, '_'))), // camelCase (e.g. prodNo)
+                    // Prefix-free variants (cust_first_name → first_name / firstName / FirstName).
+                    // Falls back to the full name when there is no common prefix.
+                    'namenoprefix' => $this->stripColumnPrefix($fieldName, $columnPrefix),
+                    'camelcasenoprefix' => lcfirst(str_replace('_', '', ucwords($this->stripColumnPrefix($fieldName, $columnPrefix), '_'))),
+                    'pascalcasenoprefix' => str_replace('_', '', ucwords($this->stripColumnPrefix($fieldName, $columnPrefix), '_')),
                     'type' => strtoupper($field->field_type),
                     'schema_field_id' => $field->id, // For per-file assignment lookup
 
@@ -1622,6 +1651,7 @@ class UltimateTemplateController extends Controller
                     'phptype' => $this->getPhpType($field->field_type),
                     'jstype' => $this->getJsType($field->field_type),
                     'laraveltype' => $this->getLaravelType($field->field_type),
+                    'javatype' => $this->getJavaType($field->field_type),
                     'notnull' => !$field->is_nullable,
                     'order' => $field->field_order,
                     'id' => $index + 1,
@@ -1643,7 +1673,7 @@ class UltimateTemplateController extends Controller
                     'isunique' => $field->is_unique ?? false, // 🎯 PRIMARY KEY and UNIQUE constraints
                     'isindex' => $field->is_index ?? false, // 🎯 INDEX/KEY constraints
                     'isforeign' => str_ends_with($fieldName, '_id') && !($field->is_primary_key ?? false),
-                    'istimestamp' => in_array($fieldName, ['created_at', 'updated_at', 'deleted_at']),
+                    'istimestamp' => $this->isTimestampField($fieldName),
                     'autoincrement' => $field->is_auto_increment ?? false, // 🎯 Read from database
                     'isblob' => $this->isBlobType($field->field_type), // 🎯 BLOB/TEXT large field detection
                     'isbinaryblob' => $this->isBinaryBlobType($field->field_type), // 🎯 Binary BLOB only (no TEXT)
@@ -1820,6 +1850,12 @@ class UltimateTemplateController extends Controller
                 // Get foreign key reference information
                 $reference = $constraint->foreignKeyReference;
                 $referencedTableName = $reference ? $reference->referencedTable->table_name : '';
+                // Singular of the referenced table — needed for @ManyToOne type/field
+                // name (PostalCode/postalCode), since the *pascalcase variants above
+                // are plural (PostalCodes). Honours the referenced table's singular_name.
+                $referencedSingular = ($reference && $reference->referencedTable && $reference->referencedTable->singular_name)
+                    ? $reference->referencedTable->singular_name
+                    : TableNamePlaceholders::guessEnglishSingular($referencedTableName);
 
                 // Get referenced column name from referenceColumns → referencedField relation
                 $referencedColumn = '';
@@ -1837,6 +1873,11 @@ class UltimateTemplateController extends Controller
                     'referencedtable' => $referencedTableName, // Referenced table name (e.g., 'prod_group')
                     'referencedtablepascalcase' => str_replace('_', '', ucwords($referencedTableName, '_')), // PascalCase (e.g., 'ProdGroup')
                     'referencedtablecamelcase' => lcfirst(str_replace('_', '', ucwords($referencedTableName, '_'))), // camelCase (e.g., 'prodGroup')
+                    // Singular variants of the referenced table (for @ManyToOne / imports)
+                    'referencedtablesingular' => $referencedSingular, // e.g. 'postal_code'
+                    'referencedtablesingularpascalcase' => str_replace('_', '', ucwords(strtolower($referencedSingular), '_')), // 'PostalCode'
+                    'referencedtablesingularcamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($referencedSingular), '_'))), // 'postalCode'
+                    'referencedtablesingularlower' => str_replace('_', '', strtolower($referencedSingular)), // 'postalcode'
                     'referencedcolumn' => $referencedColumn, // Referenced column (e.g., 'id')
                     'referencedfield' => $referencedColumn,  // Alias — naming parity with `linkfield` on lookup-style fields. Templates may use either.
                     'ondelete' => $reference->on_delete ?? 'NO ACTION', // ON DELETE action
@@ -1870,6 +1911,7 @@ class UltimateTemplateController extends Controller
                 'filesingular' => $table->singular_name ?: $this->guessEnglishSingular($tableName),
                 'filesingularpascalcase' => str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_')),
                 'filesingularcamelcase' => lcfirst(str_replace('_', '', ucwords(strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName)), '_'))),
+                'filesingularlower' => str_replace('_', '', strtolower($table->singular_name ?: $this->guessEnglishSingular($tableName))), // lowercase joined — twin of %15
 
                 // Counts — iteration counts derived from fieldsgen (the index
                 // array of iterable fields). fields[] keeps ALL fields for
@@ -2126,7 +2168,23 @@ class UltimateTemplateController extends Controller
         $generationType = $file ? $this->determineGenerationType($file) : 'project_file';
         $keepPercent2 = in_array($generationType, ['project_file_languages', 'db_table_file_languages']);
 
+        // %15–%19: singular / case variants. The singular form comes from the
+        // table's gtree row (which already honours the per-table singular_name),
+        // applied BEFORE the generic pass so the two-digit codes are consumed
+        // ahead of %1 (otherwise %1 would eat the "%1" prefix of "%15").
+        $tableSingular = null;
+        foreach ($project['tables'] ?? [] as $gtreeTable) {
+            if (($gtreeTable['filename'] ?? null) === $tableName) {
+                $tableSingular = $gtreeTable['filesingular'] ?? null;
+                break;
+            }
+        }
+        $filename = TableNamePlaceholders::apply($filename, $tableName, $tableSingular);
+
         $replacements = [
+            // %20 — custom `packagename` project variable (mirrors {:packagename:} in
+            // content). MUST precede %2 so the "%2" prefix of "%20" isn't eaten first.
+            '%20' => $project['packagename'] ?? '',
             '%14' => $project['projectdbversion'] ?? '1',              // Project DB Version (was %9 before the refactor)
             '%11' => strtoupper($tableName ?? 'UNKNOWN'),              // DB Table name UPPERCASE (e.g. TEAMS)
             '%10' => str_replace('_', '', ucwords($tableNameLower, '_')), // DB Table name PascalCase (e.g. ContactMethods)
@@ -2490,6 +2548,96 @@ class UltimateTemplateController extends Controller
     }
 
     /**
+     * DB type → Java/JPA type for {:item.javatype:} (Spring Boot, Jakarta Persistence).
+     *
+     * java.lang.* types (Long, Integer, String, Boolean, Float, Double) are returned
+     * as short names (no import needed). Temporal / decimal / uuid / binary types are
+     * returned fully-qualified so the generated entity always compiles without the
+     * template having to manage imports. Mirrors getLaravelType()'s size-suffix and
+     * tinyint(1) handling.
+     */
+    private function getJavaType(string $fieldType): string
+    {
+        $type = strtolower(trim($fieldType));
+        // tinyint(1) is the canonical MySQL boolean representation
+        if ($type === 'tinyint(1)') {
+            return 'Boolean';
+        }
+        // Strip size suffix: VARCHAR(50) → varchar, DECIMAL(10,2) → decimal
+        $baseType = strpos($type, '(') !== false ? substr($type, 0, strpos($type, '(')) : $type;
+        return match($baseType) {
+            'bigint'                                              => 'Long',
+            'int', 'integer', 'smallint', 'mediumint', 'tinyint', 'year' => 'Integer',
+            'boolean', 'bool'                                     => 'Boolean',
+            'float', 'real'                                       => 'Float',
+            'double'                                              => 'Double',
+            'decimal', 'numeric'                                  => 'java.math.BigDecimal',
+            'date'                                                => 'java.time.LocalDate',
+            'time'                                                => 'java.time.LocalTime',
+            'datetime'                                            => 'java.time.LocalDateTime',
+            'timestamp'                                           => 'java.time.Instant',
+            'uuid'                                                => 'java.util.UUID',
+            'blob', 'tinyblob', 'mediumblob', 'longblob', 'image' => 'byte[]',
+            default                                               => 'String',
+        };
+    }
+
+    /**
+     * Detect the common column prefix of a table (e.g. "cust_" for cust_id,
+     * cust_nr, cust_first_name). Used for the item.*noprefix constructs so
+     * generated identifiers can drop the DB prefix. Returns '' when the columns
+     * share no whole-segment prefix (graceful: nothing is stripped then).
+     */
+    private function detectColumnPrefix(array $names): string
+    {
+        $names = array_values(array_filter($names, fn($n) => $n !== null && $n !== ''));
+        if (count($names) < 2) {
+            return '';
+        }
+        $prefix = $names[0];
+        foreach ($names as $n) {
+            while ($prefix !== '' && !str_starts_with($n, $prefix)) {
+                $prefix = substr($prefix, 0, -1);
+            }
+            if ($prefix === '') {
+                return '';
+            }
+        }
+        // Only cut whole underscore-delimited segments: "cust_", never "cu".
+        $pos = strrpos($prefix, '_');
+        return $pos === false ? '' : substr($prefix, 0, $pos + 1);
+    }
+
+    /**
+     * Remove $prefix from $name when present. Falls back to the full name when
+     * stripping would yield an empty or digit-leading (invalid) identifier.
+     */
+    private function stripColumnPrefix(string $name, string $prefix): string
+    {
+        if ($prefix !== '' && str_starts_with($name, $prefix)) {
+            $stripped = substr($name, strlen($prefix));
+            if ($stripped !== '' && !ctype_digit($stripped[0])) {
+                return $stripped;
+            }
+        }
+        return $name;
+    }
+
+    /**
+     * True for timestamp columns regardless of table prefix —
+     * created_at, cust_created_at, updated_at, deleted_at, …
+     */
+    private function isTimestampField(string $fieldName): bool
+    {
+        foreach (['created_at', 'updated_at', 'deleted_at'] as $suffix) {
+            if ($fieldName === $suffix || str_ends_with($fieldName, '_' . $suffix)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 🎯 Check if a field type is a BLOB/TEXT large data type
      * These are excluded from {:for nmaxitemsnoblob:} loops
      */
@@ -2667,27 +2815,9 @@ class UltimateTemplateController extends Controller
      */
     private function guessEnglishSingular(string $tableName): string
     {
-        // Handle compound names: split by underscore, singularize the LAST part
-        $parts = explode('_', $tableName);
-        $lastPart = array_pop($parts);
-
-        // Common English pluralization rules (reversed)
-        if (str_ends_with($lastPart, 'ies') && strlen($lastPart) > 4) {
-            $lastPart = substr($lastPart, 0, -3) . 'y'; // categories → category
-        } elseif (str_ends_with($lastPart, 'sses')) {
-            $lastPart = substr($lastPart, 0, -2); // addresses → address... wait, "addresses" ends in "es"
-        } elseif (str_ends_with($lastPart, 'ses') || str_ends_with($lastPart, 'xes') || str_ends_with($lastPart, 'zes') || str_ends_with($lastPart, 'shes') || str_ends_with($lastPart, 'ches')) {
-            $lastPart = substr($lastPart, 0, -2); // addresses → addresse... hmm
-        } elseif (str_ends_with($lastPart, 'sses')) {
-            $lastPart = substr($lastPart, 0, -2); // classes → class
-        } elseif (str_ends_with($lastPart, 'ves')) {
-            $lastPart = substr($lastPart, 0, -3) . 'f'; // wolves → wolf (approximate)
-        } elseif (str_ends_with($lastPart, 's') && !str_ends_with($lastPart, 'ss') && !str_ends_with($lastPart, 'us') && !str_ends_with($lastPart, 'is')) {
-            $lastPart = substr($lastPart, 0, -1); // products → product
-        }
-
-        $parts[] = $lastPart;
-        return implode('_', $parts);
+        // Single source of truth — shared with the %15–%19 filename codes so the
+        // gtree content constructs ({:filesingular:} …) and the filenames never drift.
+        return TableNamePlaceholders::guessEnglishSingular($tableName);
     }
 
     private function getPrimaryKeyField($fields): string
@@ -3112,9 +3242,22 @@ class UltimateTemplateController extends Controller
                 // not matched as literal text.
                 $outputPath = ProjectNamePlaceholder::resolve($outputPath, (string)($project->name ?? ''));
 
+                // %15–%19: singular / case variants (before the generic %1 pass).
+                // Singular resolved from the gtree row so it honours singular_name.
+                $tableSingular = null;
+                foreach (($gtreeData['gtree'][0]['project'][0]['tables'] ?? []) as $gtreeTable) {
+                    if (($gtreeTable['filename'] ?? null) === $tableName) {
+                        $tableSingular = $gtreeTable['filesingular'] ?? null;
+                        break;
+                    }
+                }
+                $outputPath = TableNamePlaceholders::apply($outputPath, $tableName, $tableSingular);
+
                 // Simple placeholders
                 // %14 carries what was previously named %9 (project DB version).
                 $replacements = [
+                    // %20 — custom `packagename` project variable (before %2).
+                    '%20' => $gtreeData['gtree'][0]['project'][0]['packagename'] ?? '',
                     '%14' => '1',
                     '%11' => strtoupper($tableName ?? 'UNKNOWN'),
                     '%10' => str_replace('_', '', ucwords(strtolower($tableName ?? 'unknown'), '_')),

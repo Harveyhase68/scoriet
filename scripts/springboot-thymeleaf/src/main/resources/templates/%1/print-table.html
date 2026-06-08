@@ -1,0 +1,73 @@
+{:if form_set_name ne '':}
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('{:filesingularpascalcase:} list')}"></head>
+<body class="bg-body">
+
+<main class="container py-4">
+
+    <div class="d-print-none d-flex justify-content-end gap-2 mb-3">
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Print
+        </button>
+        <button type="button" class="btn btn-outline-secondary" onclick="window.close()">Close</button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-end border-bottom border-2 pb-2 mb-3">
+        <div>
+            <div class="fw-semibold text-body-secondary small">{:projectcaption:}</div>
+            <h1 class="h4 mb-0">{:filesingularpascalcase:} List</h1>
+        </div>
+        <div class="text-end small text-body-secondary">
+            <div th:text="${#temporals.format(#temporals.createNow(), 'yyyy-MM-dd HH:mm')}">2026-06-06</div>
+            <div th:if="${!#strings.isEmpty(search)}">Filter: &quot;<span th:text="${search}"></span>&quot;</div>
+            <div th:text="${#lists.size(items)} + ' record(s)'">0 record(s)</div>
+        </div>
+    </div>
+
+    <table class="table table-sm table-striped align-middle">
+        <thead>
+        <tr>
+{:for nmaxitems:}
+{:if item.isforeign:}
+{:elseif item.isprimary:}
+{:elseif item.istimestamp:}
+{:else:}
+            <th>{:item.caption:}</th>
+{:endif:}
+{:endfor:}
+{:for nmaxforeignkeys:}
+            <th>{:foreign.referencedtablesingularpascalcase:}</th>
+{:endfor:}
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="item : ${items}">
+{:for nmaxitems:}
+{:if item.isforeign:}
+{:elseif item.isprimary:}
+{:elseif item.istimestamp:}
+{:else:}
+            <td th:text="${item.{:item.camelcase:}}"></td>
+{:endif:}
+{:endfor:}
+{:for nmaxforeignkeys:}
+            <td th:text="${item.{:foreign.referencedtablesingularcamelcase:}}"></td>
+{:endfor:}
+        </tr>
+        <tr th:if="${#lists.isEmpty(items)}">
+            <td colspan="99" class="text-center text-body-secondary py-4">No records found.</td>
+        </tr>
+        </tbody>
+    </table>
+
+</main>
+
+<script>
+    window.addEventListener('load', function () {
+        window.print();
+    });
+</script>
+</body>
+</html>
+{:endif:}

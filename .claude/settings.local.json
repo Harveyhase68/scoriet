@@ -272,7 +272,11 @@
       "Bash(awk -F: '$1>640 && $1<1100')",
       "Bash(awk -F: '$1>1700')",
       "Bash(perl -0pi -e 's/getInsertionTypeTag\\\\\\(\\(row: CodeAdjustmentInsertion\\)\\\\\\) => getInsertionTypeTag\\\\\\(row\\\\.insertion_type\\\\\\)/XX/g' resources/js/Components/Panels/CodeAdjustmentsPanel.tsx)",
-      "Bash(awk -F: '$1>1330 && $1<1530')"
+      "Bash(awk -F: '$1>1330 && $1<1530')",
+      "Bash(ls -1 \"/c/My Projects/SpringBootTemp\" 2>/dev/null)",
+      "Read(//c/My Projects/SpringBootTemp/**)",
+      "Bash(git add *)",
+      "Bash(git switch *)"
     ],
     "deny": [],
     "ask": [],

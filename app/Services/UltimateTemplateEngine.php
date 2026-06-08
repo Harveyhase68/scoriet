@@ -280,6 +280,11 @@ class UltimateTemplateEngine
         // even though the resolver knows it.
         $legacyMappings = [
             // PROJECT BASICS
+            // packagename: custom project variable used by code-generation templates
+            // (e.g. Spring Boot/.NET base package). Resolved via the custom-variable
+            // injection in buildUltimateProjectData(); whitelisted here so the syntax
+            // checker doesn't flag {:packagename:} as unknown. Pairs with the %20 path code.
+            'packagename',
             'projectname', 'projectcaption', 'projectdescription', 'projectid', 'projectdatabase',
             'projecturl', 'projectdirectory', 'startpage',
             'projectowner', 'projectowneremail', 'projectcreated', 'projectupdated',
@@ -312,7 +317,7 @@ class UltimateTemplateEngine
             // FILE/TABLE INFO
             'tablename', 'tableindex', 'filename', 'filenameshort', 'fileid',
             'filecamelcase', 'filepascalcase', 'filenamerenamed',
-            'filesingular', 'filesingularpascalcase', 'filesingularcamelcase',
+            'filesingular', 'filesingularpascalcase', 'filesingularcamelcase', 'filesingularlower',
             'filecaption', 'filedescription', 'filekeyname', 'fileprimarykey',
             'filegeneratemasterdetail', 'filedetailfileid', 'filedetailfilename',
             'filedetailkey',
@@ -2099,6 +2104,7 @@ class UltimateTemplateEngine
             'filesingular' => "{$tableRef}.filesingular",
             'filesingularpascalcase' => "{$tableRef}.filesingularpascalcase",
             'filesingularcamelcase' => "{$tableRef}.filesingularcamelcase",
+            'filesingularlower' => "{$tableRef}.filesingularlower",
         ];
 
         if (isset($legacyMappings[$variable])) {
@@ -2518,6 +2524,7 @@ class UltimateTemplateEngine
             'filesingular' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingular" : "gtree[0].project[0].tables[tableIdx].filesingular",
             'filesingularpascalcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingularpascalcase" : "gtree[0].project[0].tables[tableIdx].filesingularpascalcase",
             'filesingularcamelcase' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingularcamelcase" : "gtree[0].project[0].tables[tableIdx].filesingularcamelcase",
+            'filesingularlower' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].filesingularlower" : "gtree[0].project[0].tables[tableIdx].filesingularlower",
 
             // TABLE FLAGS (boolean)
             'hastimestamps' => $tableIndex !== null ? "gtree[0].project[0].tables[{$tableIndex}].hastimestamps" : "gtree[0].project[0].tables[tableIdx].hastimestamps",
@@ -2775,6 +2782,7 @@ class UltimateTemplateEngine
             'table.filesingular' => "gtree[0].project[0].tables[tableIdx].filesingular",
             'table.filesingularpascalcase' => "gtree[0].project[0].tables[tableIdx].filesingularpascalcase",
             'table.filesingularcamelcase' => "gtree[0].project[0].tables[tableIdx].filesingularcamelcase",
+            'table.filesingularlower' => "gtree[0].project[0].tables[tableIdx].filesingularlower",
             'table.filenameshort' => "gtree[0].project[0].tables[tableIdx].filenameshort",
             'table.filenamerenamed' => "gtree[0].project[0].tables[tableIdx].filenamerenamed",
             'table.fileid' => "gtree[0].project[0].tables[tableIdx].fileid",
