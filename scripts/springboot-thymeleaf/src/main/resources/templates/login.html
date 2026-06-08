@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sign in')}"></head>
+<body class="bg-body-tertiary d-flex align-items-center" style="min-height: 100vh;">
+
+<main class="container" style="max-width: 420px;">
+    <div class="text-center mb-4">
+        <i class="bi bi-boxes text-primary display-4"></i>
+        <h1 class="h3 mt-2">{:projectcaption:}</h1>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h2 class="h5 mb-3">Sign in</h2>
+
+            <div th:if="${param.error}" class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i> Invalid username or password.
+            </div>
+            <div th:if="${param.logout}" class="alert alert-success d-flex align-items-center" role="alert">
+                <i class="bi bi-check-circle me-2"></i> You have been signed out.
+            </div>
+            <div th:if="${param.setup}" class="alert alert-success" role="alert">
+                <i class="bi bi-check-circle me-2"></i> Setup complete! Sign in with
+                <strong>admin&nbsp;/&nbsp;admin</strong>.
+            </div>
+
+            <form th:action="@{/login}" method="post">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" class="form-control" id="username" name="username"
+                               autocomplete="username" autofocus required>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-key"></i></span>
+                        <input type="password" class="form-control" id="password" name="password"
+                               autocomplete="current-password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Sign in
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <p class="text-center text-body-secondary small mt-3">{:projectcaption:} &middot; Spring Boot + Thymeleaf + htmx</p>
+</main>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

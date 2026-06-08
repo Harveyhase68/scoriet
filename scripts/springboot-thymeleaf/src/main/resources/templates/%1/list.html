@@ -1,0 +1,141 @@
+{:if form_set_name ne '':}
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('{:filesingularpascalcase:}')}"></head>
+<body class="bg-body-tertiary">
+
+<nav th:replace="~{fragments/layout :: navbar('{:tablename:}')}"></nav>
+
+<main class="container py-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h1 class="h3 mb-0">{:filesingularpascalcase:}</h1>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" id="printTableButton" title="Print the list">
+                <i class="bi bi-printer me-1"></i> Print
+            </button>
+            <button type="button" class="btn btn-primary" hx-get="/{:tablename:}/form" hx-target="#modalContent">
+                <i class="bi bi-plus-lg me-1"></i> New
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-body py-3">
+            <div class="input-group" style="max-width: 420px;">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-control" id="search" name="search"
+                       th:value="${search}" placeholder="Search..."
+                       hx-get="/{:tablename:}/table" hx-target="#crudTable"
+                       hx-trigger="input changed delay:300ms, search">
+            </div>
+        </div>
+
+        <!-- refreshed via htmx after every create / update / delete -->
+        <div id="crudTable" hx-get="/{:tablename:}/table" hx-include="#search" hx-trigger="crud-changed from:body">
+
+            <div th:fragment="table">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                        <tr>
+{:for nmaxitems:}
+{:if item.isforeign:}
+{:elseif item.isprimary:}
+{:elseif item.istimestamp:}
+{:else:}
+                            <th>{:item.caption:}</th>
+{:endif:}
+{:endfor:}
+{:for nmaxforeignkeys:}
+                            <th>{:foreign.referencedtablesingularpascalcase:}</th>
+{:endfor:}
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${items}">
+{:for nmaxitems:}
+{:if item.isforeign:}
+{:elseif item.isprimary:}
+{:elseif item.istimestamp:}
+{:else:}
+                            <td th:text="${item.{:item.camelcase:}}"></td>
+{:endif:}
+{:endfor:}
+{:for nmaxforeignkeys:}
+                            <td th:text="${item.{:foreign.referencedtablesingularcamelcase:}}"></td>
+{:endfor:}
+                            <td class="text-end text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Edit"
+                                        th:attr="hx-get=@{/{:tablename:}/{id}/form(id=${item.id})}" hx-target="#modalContent">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <a class="btn btn-sm btn-outline-secondary" title="Print"
+                                   th:href="@{/{:tablename:}/{id}/print(id=${item.id})}" target="_blank">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                                        th:attr="hx-delete=@{/{:tablename:}/{id}(id=${item.id})}"
+                                        hx-confirm="Delete this record? This cannot be undone.">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr th:if="${items.totalElements == 0}">
+                            <td colspan="99" class="text-center py-5 text-body-secondary">
+                                <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                                No records found.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer bg-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="small text-body-secondary" th:text="${items.totalElements} + ' record(s)'">0 record(s)</span>
+                    <nav th:if="${items.totalPages > 1}" aria-label="Pages">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item" th:classappend="${items.first} ? 'disabled'">
+                                <a class="page-link" href="#" aria-label="Previous"
+                                   th:attr="hx-get=@{/{:tablename:}/table(page=${items.number - 1})}"
+                                   hx-target="#crudTable" hx-include="#search">&laquo;</a>
+                            </li>
+                            <li class="page-item"
+                                th:each="p : ${#numbers.sequence(0, items.totalPages - 1)}"
+                                th:classappend="${p == items.number} ? 'active'">
+                                <a class="page-link" href="#" th:text="${p + 1}"
+                                   th:attr="hx-get=@{/{:tablename:}/table(page=${p})}"
+                                   hx-target="#crudTable" hx-include="#search">1</a>
+                            </li>
+                            <li class="page-item" th:classappend="${items.last} ? 'disabled'">
+                                <a class="page-link" href="#" aria-label="Next"
+                                   th:attr="hx-get=@{/{:tablename:}/table(page=${items.number + 1})}"
+                                   hx-target="#crudTable" hx-include="#search">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- combined create / edit dialog, content loaded on demand via htmx -->
+<div class="modal fade" id="crudModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" id="modalContent"></div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    document.getElementById('printTableButton').addEventListener('click', function () {
+        const search = document.getElementById('search').value;
+        window.open('/{:tablename:}/print?search=' + encodeURIComponent(search), '_blank');
+    });
+</script>
+</body>
+</html>
+{:endif:}

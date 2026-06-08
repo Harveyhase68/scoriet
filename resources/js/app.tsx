@@ -3,7 +3,7 @@ import '../css/app.css';
 import './styles/fonts';
 import './Components/Panels/styles.css'; // Global panel theming (DataTables, Splitters, etc.)
 
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, type ResolvedComponent } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import './i18n'; // Initialize i18n
@@ -69,7 +69,11 @@ loadPricingData();
 
 createInertiaApp({
     title: (title) => title ? `${title} - ${appName}` : appName,
-    resolve: (name) => resolvePageComponent(`./pages/${name}.tsx`, import.meta.glob('./pages/**/*.tsx')),
+    resolve: (name) =>
+        resolvePageComponent<{ default: ResolvedComponent }>(
+            `./pages/${name}.tsx`,
+            import.meta.glob<{ default: ResolvedComponent }>('./pages/**/*.tsx'),
+        ).then((module) => module.default),
     setup({ el, App, props }) {
         const root = createRoot(el);
 

@@ -551,7 +551,7 @@ export const en: Translations = {
   // resources/js/Components/Modals/EditProjectModal.tsx
 
   // resources/js\Components\Modals\EditProjectModal.tsx
-  editprojectmodal332: 'A Database Connection',
+  editprojectmodal332: 'Database Connection',
 
   // resources/js/Components/Modals/EditProjectModal.tsx
 

@@ -1,0 +1,38 @@
+/* {:projectcaption:} - small custom styles on top of Bootstrap 5.3 */
+
+main.container {
+    max-width: 1140px;
+}
+
+/* table rows: align action buttons nicely */
+.table td {
+    vertical-align: middle;
+}
+
+/* htmx loading indicator */
+.htmx-indicator {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    opacity: 1;
+}
+
+/* ---------- print views ---------- */
+.print-sheet {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+@media print {
+    body {
+        background: #fff !important;
+    }
+    .print-sheet {
+        max-width: none;
+    }
+    a[href]::after {
+        content: "" !important; /* no URL dump behind links */
+    }
+}

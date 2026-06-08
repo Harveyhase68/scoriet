@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<!-- ======================== head ======================== -->
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · {:projectcaption:}'">{:projectcaption:}</title>
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.7/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/1.13.1/font/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+
+<body>
+
+<!-- ======================== navbar ======================== -->
+<nav th:fragment="navbar(active)" class="navbar navbar-expand-md bg-body shadow-sm border-bottom sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-semibold" th:href="@{/}">
+            <i class="bi bi-boxes text-primary me-1"></i>{:projectcaption:}
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav me-auto">
+{:for nmaxtables:}
+{:if form_set_name ne '':}
+                <li class="nav-item">
+                    <a class="nav-link" th:classappend="${active == '{:filename:}'} ? 'active'"
+                       th:href="@{/{:filename:}}">{:filepascalcase:}</a>
+                </li>
+{:endif:}
+{:endfor:}
+            </ul>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="themeToggle"
+                        title="Toggle light / dark mode">
+                    <i class="bi bi-moon-stars"></i>
+                </button>
+                <div class="dropdown" th:if="${currentUser != null}">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-person-circle me-1"></i><span th:text="${currentUser}">user</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <form th:action="@{/logout}" method="post" class="m-0">
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-box-arrow-right me-1"></i>Sign out
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- ======================== scripts ======================== -->
+<div th:fragment="scripts" th:remove="tag">
+    <script th:src="@{/webjars/bootstrap/5.3.7/js/bootstrap.bundle.min.js}"></script>
+    <script th:src="@{/webjars/htmx.org/2.0.6/dist/htmx.min.js}"></script>
+    <script th:src="@{/js/app.js}"></script>
+</div>
+
+</body>
+</html>

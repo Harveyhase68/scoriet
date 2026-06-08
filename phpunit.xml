@@ -22,9 +22,15 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <!-- DB settings inherited from .env or CI environment -->
-        <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
-        <!-- <env name="DB_DATABASE" value=":memory:"/> -->
+        <!--
+            Dedicated test database — NEVER the dev/prod DB.
+            RefreshDatabase runs migrate:fresh, which would wipe whatever DB
+            this resolves to. phpunit <env> does NOT override variables already
+            present in the real environment (force defaults to false), so CI can
+            still point DB_DATABASE at its own test database via exported env.
+        -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="scoriet_testing"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

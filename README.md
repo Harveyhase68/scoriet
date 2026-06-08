@@ -1,15 +1,15 @@
 <div align="center">
 
-# Scoriet V 1.0.0.4 Latest Changes from 31.5.2026
+# Scoriet V 1.0.0.5 Latest Changes from 7.6.2026
 
 ### Schema-to-Stack Studio with Intelligent Templating
 
 ![Scoriet - Schema-to-Stack Studio](github-social-preview_new.png)
 
-[![Laravel](https://img.shields.io/badge/Laravel-12.x-red.svg?style=flat-square&logo=laravel)](https://laravel.com)
+[![Laravel](https://img.shields.io/badge/Laravel-13.x-red.svg?style=flat-square&logo=laravel)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?style=flat-square&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
-[![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-purple.svg?style=flat-square)](https://inertiajs.com)
+[![Inertia.js](https://img.shields.io/badge/Inertia.js-3.0-purple.svg?style=flat-square)](https://inertiajs.com)
 ![Docker Ready](https://img.shields.io/badge/docker-ready-success?logo=docker)
 ![Self Hosted](https://img.shields.io/badge/self--hosted-supported-blue)
 ![AI Ready](https://img.shields.io/badge/AI-ready-purple)
@@ -249,8 +249,8 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - Vite for lightning-fast builds
 
 **Backend Stack:**
-- Laravel 12 with PHP 8.2+
-- Inertia.js for seamless SPA experience
+- Laravel 13 with PHP 8.2+
+- Inertia.js 3.0 for seamless SPA experience
 - Laravel Passport for API security
 - Multi-database support (MySQL, PostgreSQL, SQLite, SQL Server, Firebird)
 

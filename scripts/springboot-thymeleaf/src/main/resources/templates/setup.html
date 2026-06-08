@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Setup')}"></head>
+<body class="bg-body-tertiary d-flex align-items-center" style="min-height: 100vh;">
+
+<main class="container" style="max-width: 560px;">
+    <div class="text-center mb-4">
+        <i class="bi bi-boxes text-primary display-4"></i>
+        <h1 class="h3 mt-2">{:projectcaption:}</h1>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <h2 class="h5 mb-3"><i class="bi bi-tools me-1"></i> First-time setup</h2>
+
+            <p class="text-body-secondary">
+                The database tables do not exist yet. This wizard creates all tables
+                (<code>customers</code>, <code>postal_codes</code>, <code>companies</code>, <code>users</code>),
+                loads a few sample records and creates the initial login
+                <strong>admin&nbsp;/&nbsp;admin</strong>.
+            </p>
+
+            <div class="mb-3">
+                <span class="form-label fw-semibold d-block">Database connection</span>
+                <code class="small" th:text="${datasourceUrl}">jdbc:mysql://localhost:3306/{:projectdatabase:}</code>
+            </div>
+
+            <div th:if="${connectionError == null}" class="alert alert-success d-flex align-items-center" role="alert">
+                <i class="bi bi-check-circle me-2"></i> Connected to MySQL.
+            </div>
+            <div th:if="${connectionError != null}" class="alert alert-danger" role="alert">
+                <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-exclamation-triangle me-2"></i><strong>Cannot connect to MySQL</strong>
+                </div>
+                <div class="small" th:text="${connectionError}">error</div>
+                <hr>
+                <div class="small">
+                    Please make sure the WampServer MySQL service is running and the credentials in
+                    <code>src/main/resources/application.properties</code> are correct, then reload this page.
+                </div>
+            </div>
+
+            <div th:if="${installError != null}" class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <span th:text="${installError}">install error</span>
+            </div>
+
+            <div class="d-flex gap-2">
+                <form th:action="@{/setup/install}" method="post" class="flex-grow-1">
+                    <button type="submit" class="btn btn-primary w-100" th:disabled="${connectionError != null}">
+                        <i class="bi bi-database-add me-1"></i> Create tables &amp; sample data
+                    </button>
+                </form>
+                <a th:href="@{/setup}" class="btn btn-outline-secondary" title="Re-check connection">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-center text-body-secondary small mt-3">
+        After the setup you will be redirected to the login page.
+    </p>
+</main>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>
