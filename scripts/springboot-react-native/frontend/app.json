@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "{:projectcaption:}",
+    "slug": "{:packagename:}",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "extra": {
+      "_comment": "Base URL of the Spring Boot backend. localhost on a phone means the phone itself, so use your dev machine's address: physical device via Expo Go -> your PC's LAN IP; Android emulator -> http://10.0.2.2:8080; iOS simulator -> http://localhost:8080.",
+      "apiBaseUrl": "http://10.0.0.8:8080"
+    }
+  }
+}

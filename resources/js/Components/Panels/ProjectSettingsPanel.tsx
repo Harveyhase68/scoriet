@@ -653,10 +653,13 @@ export default function ProjectSettingsPanel() {
 
         setLoadingVariables(true);
         try {
-            // Load all templates (or could be filtered by templates used in project)
+            // Only load templates actually linked to this project via
+            // project_template_usage. Passing project_id makes the backend filter
+            // to the project's active templates, so unrelated templates (e.g.
+            // system_php_crud_template) no longer leak into the variables tab.
             let templatesData: any;
             try {
-                templatesData = await apiClient.get('/templates');
+                templatesData = await apiClient.get(`/templates?project_id=${selectedProject.id}`);
             } catch {
                 return;
             }

@@ -54,13 +54,13 @@ export default function App() {
       <Route path="/{:filename:}" element={<RequireAuth><{:filepascalcase:}Page /></RequireAuth>} />
 {:endif:}
 {:endfor:}
-      <Route path="*" element={<Navigate to="/{:code:}
+{:code:}
 var t = gtree[0].project[0].tables;
 var landing = 'login';
 for (var k = 0; k < t.length; k++) { if (t[k].form_set_name) { landing = t[k].filename; break; } }
-sContentResult += landing;
+sContentResult += '      <Route path="*" element={<Navigate to="/' + landing + '" replace />} />';
 return sContentResult;
-{:codeend:}" replace />} />
+{:codeend:}
     </Routes>
   )
 }
