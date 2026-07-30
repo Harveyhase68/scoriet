@@ -191,7 +191,7 @@ class FormWindow extends Model
                   ->orWhereNull('schema_table_id'); // Include buttons/menus without table
             });
         }
-        $placements = $query->with(['schemaField', 'lookupTable'])->get();
+        $placements = $query->with(['schemaField', 'lookupTable', 'schemaTable'])->get();
 
         // Separate by type
         $fields = $placements->where('item_type', 'field')->values();

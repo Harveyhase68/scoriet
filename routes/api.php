@@ -39,6 +39,17 @@ Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook'])->name
 // PayPal Webhook (public - called by PayPal servers)
 Route::post('/paypal/webhook', [PayPalController::class, 'handleWebhook'])->name('api.paypal.webhook');
 
+// Email-gated demo access.
+//   request: MAIN, public, throttled — capture the lead + email the link.
+//   redeem:  MAIN, called server-side by the demo deployment; guarded by the
+//            X-Demo-Redeem-Secret header inside the controller (not auth:api).
+Route::post('/demo-access/request', [\App\Http\Controllers\DemoAccessController::class, 'request'])
+    ->middleware('throttle:5,60')
+    ->name('api.demo-access.request');
+Route::post('/demo-access/redeem', [\App\Http\Controllers\DemoAccessController::class, 'redeem'])
+    ->middleware('throttle:60,1')
+    ->name('api.demo-access.redeem');
+
 // CMS Popups (public - for landing page and app)
 Route::get('/popups/landingpage', [\App\Http\Controllers\PageController::class, 'getLandingPagePopups'])->name('api.popups.landingpage');
 Route::get('/popups/app', [\App\Http\Controllers\PageController::class, 'getAppPopups'])->name('api.popups.app');

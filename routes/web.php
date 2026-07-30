@@ -9,6 +9,17 @@ Route::get('/', function () {
     return Inertia::render('LandingPage');
 })->name('landing');
 
+// Public sitemap (dynamic, generated from DB) — referenced by public/robots.txt
+Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
+
+// Email-gated demo access entry (DEMO deployment). The emailed one-time link
+// points here; it validates the token against the main site, sets the signed
+// `demo_access` gate cookie, then redirects to a clean URL (token stripped).
+// NOT covered by DemoAccessGate — this is how the cookie is obtained.
+Route::get('/demo-access/{token}', [App\Http\Controllers\DemoAccessController::class, 'redeemEntry'])
+    ->where('token', '[A-Za-z0-9]{64}')
+    ->name('demo-access.redeem');
+
 // Protected App
 Route::get('/app', function () {
     return Inertia::render('Index');

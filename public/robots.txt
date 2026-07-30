@@ -1,2 +1,29 @@
 User-agent: *
-Disallow:
+
+# Public, indexable pages
+Allow: /$
+Allow: /project/
+Allow: /help
+Allow: /impressum
+Allow: /contact
+
+# Application & authenticated areas (no value to crawl)
+Disallow: /app
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /admin-settings
+Disallow: /users
+Disallow: /activity
+Disallow: /security
+Disallow: /database
+
+# Auth, payment & one-time token flows (never index)
+Disallow: /auth/
+Disallow: /payment/
+Disallow: /verify-email/
+Disallow: /project-invitations/
+Disallow: /demo-login
+Disallow: /demo-system-access
+
+Sitemap: https://scoriet.dev/sitemap.xml

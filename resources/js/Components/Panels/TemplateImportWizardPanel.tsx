@@ -41,6 +41,15 @@ interface FileInfo {
     extension: string | null;
     file_type?: string;
     template_meta?: TemplateMeta;
+    // Present (has_template_json) archive with no matching template.json entry for this file.
+    is_extra?: boolean;
+}
+
+// A template.json entry with no matching physical file anywhere in the archive.
+interface MissingFile {
+    file_name: string;
+    output_path: string | null;
+    file_type: string | null;
 }
 
 interface CustomVariable {
@@ -170,6 +179,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [originalName, setOriginalName] = useState<string>('');
     const [allFiles, setAllFiles] = useState<FileInfo[]>([]);
+    const [missingFiles, setMissingFiles] = useState<MissingFile[]>([]);
 
     // File selections - use Record<string, boolean> for React compatibility
     const [selectedTemplateFiles, setSelectedTemplateFiles] = useState<SelectionMap>({});
@@ -531,6 +541,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
         setSessionId(null);
         setOriginalName('');
         setAllFiles([]);
+        setMissingFiles([]);
         setSelectedTemplateFiles({});
         setSelectedStaticFiles({});
         setSelectedStaticDirKeys({});
@@ -594,6 +605,7 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
             setSessionId(data.session_id);
             setOriginalName(data.original_name);
             setAllFiles(data.all_files || []);
+            setMissingFiles(data.missing_files || []);
 
             // Initialize all files as DESELECTED (empty objects)
             setSelectedTemplateFiles({});
@@ -1403,6 +1415,26 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
 
                 <p className="text-sm mb-4" style={{ color: colors.textSecondary }}>{stepDescription}</p>
 
+                {tableKey === 'template-files' && missingFiles.length > 0 && (
+                    <Message
+                        severity="error"
+                        className="w-full mb-4"
+                        content={
+                            <div className="p-2">
+                                <div className="font-medium mb-1">{t.templateimportwizardpanelMissingFilesTitle}</div>
+                                <div className="text-sm mb-2">{t.templateimportwizardpanelMissingFilesDescription}</div>
+                                <ul className="text-sm font-mono" style={{ paddingLeft: '1.25rem' }}>
+                                    {missingFiles.map((mf, idx) => (
+                                        <li key={`${mf.output_path ?? ''}${mf.file_name}-${idx}`}>
+                                            {(mf.output_path && mf.output_path !== '/' ? mf.output_path : '') + mf.file_name}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        }
+                    />
+                )}
+
                 {/* Extension panel */}
                 {showFilter && renderExtensionPanel(filesOnly, selection, setSelection)}
 
@@ -1443,8 +1475,19 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                     <Column
                         field="file_type"
                         header={t.templateimportwizardpanel1341}
-                        body={(row: FileInfo) => fileTypeBadge(row.file_type, row.template_meta)}
-                        style={{ width: '100px' }}
+                        body={(row: FileInfo) => (
+                            <span className="flex items-center gap-1">
+                                {fileTypeBadge(row.file_type, row.template_meta)}
+                                {row.is_extra && (
+                                    <Tag
+                                        value={t.templateimportwizardpanelExtra}
+                                        severity="warning"
+                                        title={t.templateimportwizardpanelExtraTooltip}
+                                    />
+                                )}
+                            </span>
+                        )}
+                        style={{ width: '140px' }}
                     />
                     <Column
                         field="size"
@@ -1769,7 +1812,18 @@ export default function TemplateImportWizardPanel({ visible, onClose, onSuccess 
                                             if (node.data.is_dir) {
                                                 return <Tag value={t.templateimportwizardpanel1639} severity="warning" />;
                                             }
-                                            return node.data.file_type ? fileTypeBadge(node.data.file_type, node.data.template_meta) : <Tag value="-" severity="secondary" />;
+                                            return (
+                                                <span className="flex items-center gap-1">
+                                                    {node.data.file_type ? fileTypeBadge(node.data.file_type, node.data.template_meta) : <Tag value="-" severity="secondary" />}
+                                                    {node.data.is_extra && (
+                                                        <Tag
+                                                            value={t.templateimportwizardpanelExtra}
+                                                            severity="warning"
+                                                            title={t.templateimportwizardpanelExtraTooltip}
+                                                        />
+                                                    )}
+                                                </span>
+                                            );
                                         }}
                                         style={{ width: '100px' }}
                                     />

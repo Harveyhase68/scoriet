@@ -283,29 +283,31 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
     fetchRegistrationStatus();
   }, []);
 
-  // Auto-open wizard for users - runs on mount AND when isLoggedIn changes
+  // Auto-open wizard exactly once, the moment login is confirmed.
+  //
+  // This deliberately does NOT use a fixed setTimeout: isLoggedIn is set
+  // asynchronously (after the /user request) and updateAuthStatus() fires from
+  // many sources (mount, storage/auth-change/creditsChanged events, interval),
+  // so isLoggedIn can flip several times during startup. A timer keyed on
+  // isLoggedIn would restart on every flip and — if the flips happen faster
+  // than the delay — never fire until the app settles (e.g. on a click). That
+  // was the erratic "sometimes opens, sometimes only after clicking" behaviour.
+  //
+  // Instead we react to the confirmed `isLoggedIn === true` transition. The ref
+  // guards against re-triggering on auth churn within this mount; the
+  // sessionStorage flag guards against re-showing across remounts/the session.
+  const wizardAutoShownRef = React.useRef(false);
   React.useEffect(() => {
-    // Check if we should show wizard
-    const checkAndShowWizard = () => {
-      if (!isLoggedIn) return; // Wait until user is logged in
+    if (!isLoggedIn) return;                  // wait for confirmed login
+    if (wizardAutoShownRef.current) return;   // already auto-shown this mount (ignore churn)
 
-      const shouldShowWizard = localStorage.getItem('scoriet_show_wizard_on_start');
-      if (shouldShowWizard === 'false') return; // User explicitly disabled auto-show
+    if (localStorage.getItem('scoriet_show_wizard_on_start') === 'false') return; // user opted out
+    if (sessionStorage.getItem('scoriet_wizard_shown_this_session')) return;      // already shown this session
 
-      // Only show automatically once per session
-      const shownThisSession = sessionStorage.getItem('scoriet_wizard_shown_this_session');
-      if (shownThisSession) return; // Already shown this session
-
-      // Show wizard and mark as shown
-      setShowWizard(true);
-      sessionStorage.setItem('scoriet_wizard_shown_this_session', 'true');
-    };
-
-    // Small delay to ensure UI is ready and auth state is settled
-    const timer = setTimeout(checkAndShowWizard, 800);
-
-    return () => clearTimeout(timer);
-  }, [isLoggedIn]); // Run on mount and when isLoggedIn changes
+    wizardAutoShownRef.current = true;
+    sessionStorage.setItem('scoriet_wizard_shown_this_session', 'true');
+    setShowWizard(true);
+  }, [isLoggedIn]);
 
   // Main navigation menu items for TieredMenu
   const navigationItems: MenuItem[] = [

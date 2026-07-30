@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckCliAccess;
 use App\Http\Middleware\CheckServiceAccess;
 use App\Http\Middleware\CheckTeamPermission;
+use App\Http\Middleware\DemoAccessGate;
 use App\Http\Middleware\DemoProtection;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleAppearance;
@@ -94,7 +95,10 @@ return Application::configure(basePath: dirname(__DIR__))
           ->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        // `demo_access` is left unencrypted on purpose: it must be readable in
+        // BOTH the web and api middleware groups, and the api group does not run
+        // EncryptCookies. It is HMAC-signed instead (see App\Support\DemoAccessCookie).
+        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', 'demo_access']);
 
         $middleware->web(append: [
             HandleAppearance::class,
@@ -102,11 +106,17 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
             CreateFreshApiToken::class,
             TrackVisitor::class,
+            // Demo-only gate (no-op unless config('scoriet.demo')): bounces
+            // un-authorised visits to /app and /demo-login back to the main site.
+            DemoAccessGate::class,
         ]);
 
         $middleware->api(append: [
             SetLocale::class,
             DemoProtection::class,
+            // Demo-only gate (no-op unless config('scoriet.demo')): closes the
+            // hardcoded-credential replay hole on POST /api/oauth/token.
+            DemoAccessGate::class,
         ]);
 
         // Register middleware aliases

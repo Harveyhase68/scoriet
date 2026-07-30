@@ -119,61 +119,24 @@ class TemplateImportController extends Controller
 
             // Check if template.json exists in the extracted archive (Scoriet export)
             $templateMetadata = null;
-            $templateMetadataFiles = [];
             $templateJsonPath = $extractDir . '/' . ($rootPrefix ? $rootPrefix . '/' : '') . 'template.json';
 
             if (file_exists($templateJsonPath)) {
                 $templateJsonContent = file_get_contents($templateJsonPath);
                 $templateMetadata = json_decode($templateJsonContent, true);
-
-                if ($templateMetadata && isset($templateMetadata['files']) && is_array($templateMetadata['files'])) {
-                    // Index metadata by file_name for quick lookup
-                    // For duplicate file names (with archive_source), use archive_source as key
-                    foreach ($templateMetadata['files'] as $fileMeta) {
-                        $lookupKey = $fileMeta['archive_source'] ?? $fileMeta['file_name'];
-                        $templateMetadataFiles[$lookupKey] = $fileMeta;
-                    }
-                }
             }
 
             // Scan extracted files (with prefix stripped from paths)
             $files = $this->scanDirectory($extractDir, $extractDir);
 
-            // Return ALL files (no filtering) - frontend handles categorization
-            // But filter out Scoriet internal files (template.json, README.txt) when metadata is present
-            $allFiles = [];
-            foreach ($files as $file) {
-                // Skip directories - we only want files
-                if ($file['is_dir']) {
-                    continue;
-                }
-
-                // When template.json was found, hide internal Scoriet files from the wizard
-                $basename = $file['name'];
-                if ($templateMetadata && in_array($basename, ['template.json', 'README.txt'])) {
-                    continue;
-                }
-
-                $file['file_type'] = $this->detectFileType($file['name']);
-
-                // Enrich file with template.json metadata if available
-                if (isset($templateMetadataFiles[$basename])) {
-                    $meta = $templateMetadataFiles[$basename];
-                    $file['template_meta'] = [
-                        'file_type' => $meta['file_type'] ?? null,
-                        'content_type' => $meta['content_type'] ?? null,
-                        'zip_filename' => $meta['zip_filename'] ?? null,
-                        'output_path' => $meta['output_path'] ?? null,
-                        'file_order' => $meta['file_order'] ?? null,
-                        'is_include_only' => $meta['is_include_only'] ?? false,
-                        'inject_target' => $meta['inject_target'] ?? null,
-                        'inject_tag' => $meta['inject_tag'] ?? null,
-                        'language_override' => $meta['language_override'] ?? null,
-                    ];
-                }
-
-                $allFiles[] = $file;
-            }
+            // Return ALL files (no filtering) - frontend handles categorization. When
+            // template.json metadata is present, each file is matched against it (see
+            // enrichScannedFiles()): matched files carry template_meta, unmatched ones
+            // are flagged is_extra, and template.json entries with no matching physical
+            // file come back separately as missing_files.
+            $enriched = $this->enrichScannedFiles($files, $templateMetadata);
+            $allFiles = $enriched['all_files'];
+            $missingFiles = $enriched['missing_files'];
 
             // Store session data including root prefix for file access
             $sessionData = [
@@ -187,7 +150,6 @@ class TemplateImportController extends Controller
                 'file_count' => count($allFiles),
                 'has_template_json' => $templateMetadata !== null,
                 'template_metadata' => $templateMetadata,
-                'template_metadata_files' => $templateMetadataFiles,
             ];
 
             file_put_contents($tempDir . '/session.json', json_encode($sessionData));
@@ -198,6 +160,7 @@ class TemplateImportController extends Controller
                 'original_name' => $originalName,
                 'file_count' => count($allFiles),
                 'all_files' => $allFiles,
+                'missing_files' => $missingFiles,
                 'has_template_json' => $templateMetadata !== null,
                 'template_name' => $templateMetadata['template']['name'] ?? null,
                 'template_description' => $templateMetadata['template']['description'] ?? null,
@@ -252,49 +215,17 @@ class TemplateImportController extends Controller
 
         $extractDir = $sessionData['extract_dir'];
         $templateMetadata = $sessionData['template_metadata'] ?? null;
-        $templateMetadataFiles = $sessionData['template_metadata_files'] ?? [];
         $files = $this->scanDirectory($extractDir, $extractDir);
 
-        // Return ALL files (no filtering) - frontend handles categorization
-        // But filter out Scoriet internal files when template.json metadata is present
-        $allFiles = [];
-        foreach ($files as $file) {
-            if ($file['is_dir']) {
-                continue;
-            }
-
-            $basename = $file['name'];
-            if ($templateMetadata && in_array($basename, ['template.json', 'README.txt'])) {
-                continue;
-            }
-
-            $file['file_type'] = $this->detectFileType($file['name']);
-
-            // Enrich with template.json metadata if available
-            if (isset($templateMetadataFiles[$basename])) {
-                $meta = $templateMetadataFiles[$basename];
-                $file['template_meta'] = [
-                    'file_type' => $meta['file_type'] ?? null,
-                    'content_type' => $meta['content_type'] ?? null,
-                    'zip_filename' => $meta['zip_filename'] ?? null,
-                    'output_path' => $meta['output_path'] ?? null,
-                    'file_order' => $meta['file_order'] ?? null,
-                    'is_include_only' => $meta['is_include_only'] ?? false,
-                    'inject_target' => $meta['inject_target'] ?? null,
-                    'inject_tag' => $meta['inject_tag'] ?? null,
-                    'language_override' => $meta['language_override'] ?? null,
-                ];
-            }
-
-            $allFiles[] = $file;
-        }
+        $enriched = $this->enrichScannedFiles($files, $templateMetadata);
 
         return response()->json([
             'success' => true,
             'session_id' => $sessionId,
             'original_name' => $sessionData['original_name'],
-            'file_count' => count($allFiles),
-            'all_files' => $allFiles,
+            'file_count' => count($enriched['all_files']),
+            'all_files' => $enriched['all_files'],
+            'missing_files' => $enriched['missing_files'],
             'has_template_json' => $templateMetadata !== null,
         ]);
     }
@@ -478,8 +409,12 @@ class TemplateImportController extends Controller
         $extractDir = $sessionData['extract_dir'];
 
         // Load template.json metadata from session (if a Scoriet export was detected)
-        $templateMetadataFiles = $sessionData['template_metadata_files'] ?? [];
+        // and rebuild the same path/basename matching index used by upload()/getFiles(),
+        // so a selected physical file resolves to the exact same template.json entries
+        // the user saw (and was allowed to select) in the wizard.
         $templateMetadata = $sessionData['template_metadata'] ?? null;
+        $metadataIndex = $this->buildMetadataIndex($templateMetadata);
+        $basenamePathCounts = $this->computeBasenamePathCounts($this->scanDirectory($extractDir, $extractDir));
 
         try {
             $template = \DB::transaction(function () use ($user, $validated, $extractDir, $needsPayment, $requiredCredits, $isMerge, $existingTemplate, $templateMetadata) {
@@ -595,15 +530,27 @@ class TemplateImportController extends Controller
 
                 if (is_file($fullPath)) {
                     $fileName = basename($filePath);
-                    $fileMeta = $templateMetadataFiles[$fileName] ?? null;
+                    // Usually a single entry (matched by its real archive path). Multiple
+                    // entries mean this one physical file is deliberately reused across
+                    // several output_path destinations (matched by bare name instead,
+                    // e.g. a hand-authored template sharing one .gitignore everywhere) —
+                    // each entry must become its own TemplateFile row.
+                    $matchedIndices = $this->matchScannedFile($filePath, $fileName, $metadataIndex, $basenamePathCounts);
+                    $fileMetas = empty($matchedIndices)
+                        ? [null]
+                        : array_map(fn ($i) => $metadataIndex['entries'][$i], $matchedIndices);
 
-                    // Determine if this file contains ZIP content:
+                    // Determine if this file contains ZIP content (checked once — content
+                    // is read once and shared by every destination row below):
                     // 1. template.json metadata says content_type=zip or file_type=static_directory
                     // 2. Magic bytes detection as fallback
                     $isZipContent = false;
-                    if ($fileMeta) {
-                        $isZipContent = ($fileMeta['content_type'] ?? null) === 'zip'
-                            || ($fileMeta['file_type'] ?? null) === 'static_directory';
+                    foreach ($fileMetas as $probeMeta) {
+                        if ($probeMeta && (($probeMeta['content_type'] ?? null) === 'zip'
+                            || ($probeMeta['file_type'] ?? null) === 'static_directory')) {
+                            $isZipContent = true;
+                            break;
+                        }
                     }
                     if (!$isZipContent) {
                         $isZipContent = $this->isZipFile($fullPath);
@@ -617,50 +564,56 @@ class TemplateImportController extends Controller
                         $contentType = 'text';
                     }
 
-                    // Use metadata values when available, otherwise use defaults
-                    $fileType = $fileMeta['file_type'] ?? 'db_table_file';
-                    $outputPath = $fileMeta['output_path'] ?? (($dir = dirname($filePath)) === '.' ? '/' : $dir);
-                    $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
-                    $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
-                    $injectTarget = $fileMeta['inject_target'] ?? null;
-                    $injectTag = $fileMeta['inject_tag'] ?? null;
-                    $languageOverride = $fileMeta['language_override'] ?? null;
+                    foreach ($fileMetas as $fileMeta) {
+                        // Use metadata values when available, otherwise use defaults
+                        $fileType = $fileMeta['file_type'] ?? 'db_table_file';
+                        $outputPath = $fileMeta['output_path'] ?? (($dir = dirname($filePath)) === '.' ? '/' : $dir);
+                        $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
+                        $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
+                        $injectTarget = $fileMeta['inject_target'] ?? null;
+                        $injectTag = $fileMeta['inject_tag'] ?? null;
+                        $languageOverride = $fileMeta['language_override'] ?? null;
 
-                    // For files with archive_source (duplicates), restore original file_name
-                    $storedFileName = $fileMeta['file_name'] ?? $fileName;
+                        // For files with archive_source (duplicates), restore original file_name
+                        $storedFileName = $fileMeta['file_name'] ?? $fileName;
 
-                    // Merge: update existing file or add new
-                    if ($isMerge) {
-                        $existingFile = $template->files()->where('file_path', $filePath)->first();
-                        if ($existingFile) {
-                            $existingFile->update([
-                                'file_content' => $content,
-                                'file_name' => $storedFileName,
-                                'content_type' => $contentType,
-                                'zip_filename' => $zipFilename,
-                            ]);
-                            // Increment version separately (DB::raw conflicts with Eloquent integer cast)
-                            $existingFile->increment('version');
-                            $filesUpdated++;
-                            continue;
+                        // Merge: update existing file or add new. Matched by file_path AND
+                        // output_path — a single source file_path can now own several rows.
+                        if ($isMerge) {
+                            $existingFile = $template->files()
+                                ->where('file_path', $filePath)
+                                ->where('output_path', $outputPath)
+                                ->first();
+                            if ($existingFile) {
+                                $existingFile->update([
+                                    'file_content' => $content,
+                                    'file_name' => $storedFileName,
+                                    'content_type' => $contentType,
+                                    'zip_filename' => $zipFilename,
+                                ]);
+                                // Increment version separately (DB::raw conflicts with Eloquent integer cast)
+                                $existingFile->increment('version');
+                                $filesUpdated++;
+                                continue;
+                            }
                         }
-                    }
 
-                    $template->files()->create([
-                        'file_name' => $storedFileName,
-                        'file_path' => $filePath,
-                        'file_content' => $content,
-                        'file_type' => $fileType,
-                        'file_order' => $fileMeta['file_order'] ?? $fileOrder++,
-                        'output_path' => $outputPath,
-                        'content_type' => $contentType,
-                        'zip_filename' => $zipFilename,
-                        'is_include_only' => $isIncludeOnly,
-                        'inject_target' => $injectTarget,
-                        'inject_tag' => $injectTag,
-                        'language_override' => $languageOverride,
-                    ]);
-                    $filesAdded++;
+                        $template->files()->create([
+                            'file_name' => $storedFileName,
+                            'file_path' => $filePath,
+                            'file_content' => $content,
+                            'file_type' => $fileType,
+                            'file_order' => $fileMeta['file_order'] ?? $fileOrder++,
+                            'output_path' => $outputPath,
+                            'content_type' => $contentType,
+                            'zip_filename' => $zipFilename,
+                            'is_include_only' => $isIncludeOnly,
+                            'inject_target' => $injectTarget,
+                            'inject_tag' => $injectTag,
+                            'language_override' => $languageOverride,
+                        ]);
+                        $filesAdded++;
+                    }
                 } else {
                     $errors[] = __('templateimportcontrollerphp490')."{$filePath}".__('templateimportcontrollerphp490_2')."{$fullPath})";
                     \Log::warning(__('templateimportcontrollerphp491'), [
@@ -677,13 +630,23 @@ class TemplateImportController extends Controller
 
                     if (is_file($fullPath)) {
                         $fileName = basename($filePath);
-                        $fileMeta = $templateMetadataFiles[$fileName] ?? null;
+                        // See the template_files loop above for why this can hold more than
+                        // one entry: one physical file reused across several output_path
+                        // destinations with no archive_source needed.
+                        $matchedIndices = $this->matchScannedFile($filePath, $fileName, $metadataIndex, $basenamePathCounts);
+                        $fileMetas = empty($matchedIndices)
+                            ? [null]
+                            : array_map(fn ($i) => $metadataIndex['entries'][$i], $matchedIndices);
 
-                        // Determine if ZIP content (metadata or magic bytes)
+                        // Determine if ZIP content (metadata or magic bytes) — checked once,
+                        // content is read once and shared by every destination row below.
                         $isZipContent = false;
-                        if ($fileMeta) {
-                            $isZipContent = ($fileMeta['content_type'] ?? null) === 'zip'
-                                || ($fileMeta['file_type'] ?? null) === 'static_directory';
+                        foreach ($fileMetas as $probeMeta) {
+                            if ($probeMeta && (($probeMeta['content_type'] ?? null) === 'zip'
+                                || ($probeMeta['file_type'] ?? null) === 'static_directory')) {
+                                $isZipContent = true;
+                                break;
+                            }
                         }
                         if (!$isZipContent) {
                             $isZipContent = $this->isZipFile($fullPath);
@@ -701,45 +664,51 @@ class TemplateImportController extends Controller
                             $contentType = 'text';
                         }
 
-                        $fileType = $fileMeta['file_type'] ?? 'static_file';
-                        $outputPath = $fileMeta['output_path'] ?? (($dir = dirname($filePath)) === '.' ? '/' : $dir);
-                        $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
-                        $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
-                        $injectTarget = $fileMeta['inject_target'] ?? null;
-                        $injectTag = $fileMeta['inject_tag'] ?? null;
-                        $languageOverride = $fileMeta['language_override'] ?? null;
-                        $storedFileName = $fileMeta['file_name'] ?? $fileName;
+                        foreach ($fileMetas as $fileMeta) {
+                            $fileType = $fileMeta['file_type'] ?? 'static_file';
+                            $outputPath = $fileMeta['output_path'] ?? (($dir = dirname($filePath)) === '.' ? '/' : $dir);
+                            $zipFilename = $isZipContent ? ($fileMeta['zip_filename'] ?? $fileName) : null;
+                            $isIncludeOnly = $fileMeta['is_include_only'] ?? false;
+                            $injectTarget = $fileMeta['inject_target'] ?? null;
+                            $injectTag = $fileMeta['inject_tag'] ?? null;
+                            $languageOverride = $fileMeta['language_override'] ?? null;
+                            $storedFileName = $fileMeta['file_name'] ?? $fileName;
 
-                        // Merge: update existing file or add new
-                        if ($isMerge) {
-                            $existingFile = $template->files()->where('file_path', $filePath)->first();
-                            if ($existingFile) {
-                                $existingFile->update([
-                                    'file_content' => $encodedContent,
-                                    'file_name' => $storedFileName,
-                                    'content_type' => $contentType,
-                                    'zip_filename' => $zipFilename,
-                                ]);
-                                $filesUpdated++;
-                                continue;
+                            // Merge: update existing file or add new. Matched by file_path AND
+                            // output_path — a single source file_path can now own several rows.
+                            if ($isMerge) {
+                                $existingFile = $template->files()
+                                    ->where('file_path', $filePath)
+                                    ->where('output_path', $outputPath)
+                                    ->first();
+                                if ($existingFile) {
+                                    $existingFile->update([
+                                        'file_content' => $encodedContent,
+                                        'file_name' => $storedFileName,
+                                        'content_type' => $contentType,
+                                        'zip_filename' => $zipFilename,
+                                    ]);
+                                    $filesUpdated++;
+                                    continue;
+                                }
                             }
-                        }
 
-                        $template->files()->create([
-                            'file_name' => $storedFileName,
-                            'file_path' => $filePath,
-                            'file_content' => $encodedContent,
-                            'file_type' => $fileType,
-                            'file_order' => $fileMeta['file_order'] ?? $fileOrder++,
-                            'output_path' => $outputPath,
-                            'content_type' => $contentType,
-                            'zip_filename' => $zipFilename,
-                            'is_include_only' => $isIncludeOnly,
-                            'inject_target' => $injectTarget,
-                            'inject_tag' => $injectTag,
-                            'language_override' => $languageOverride,
-                        ]);
-                        $filesAdded++;
+                            $template->files()->create([
+                                'file_name' => $storedFileName,
+                                'file_path' => $filePath,
+                                'file_content' => $encodedContent,
+                                'file_type' => $fileType,
+                                'file_order' => $fileMeta['file_order'] ?? $fileOrder++,
+                                'output_path' => $outputPath,
+                                'content_type' => $contentType,
+                                'zip_filename' => $zipFilename,
+                                'is_include_only' => $isIncludeOnly,
+                                'inject_target' => $injectTarget,
+                                'inject_tag' => $injectTag,
+                                'language_override' => $languageOverride,
+                            ]);
+                            $filesAdded++;
+                        }
                     } else {
                         $errors[] = "Static file not found: {$filePath} (resolved to: {$fullPath})";
                         \Log::warning(__('templateimportcontrollerphp537'), [
@@ -760,7 +729,9 @@ class TemplateImportController extends Controller
                 if (count($validated['static_directory_files']) === 1) {
                     $singlePath = $validated['static_directory_files'][0];
                     $singleFileName = basename($singlePath);
-                    $singleMeta = $templateMetadataFiles[$singleFileName] ?? null;
+                    // A static_directory bundle is always a single entry — no per-destination expansion here.
+                    $singleMatches = $this->matchScannedFile($singlePath, $singleFileName, $metadataIndex, $basenamePathCounts);
+                    $singleMeta = empty($singleMatches) ? null : $metadataIndex['entries'][$singleMatches[0]];
                     $singleFullPath = $this->resolveFilePath($sessionData, $singlePath);
 
                     if ($singleMeta
@@ -979,6 +950,160 @@ class TemplateImportController extends Controller
 
         // Check if there's a single root directory - we'll handle the prefix in scanDirectory
         // Note: We don't flatten here because rename() can fail on Windows with permission errors
+    }
+
+    /**
+     * The path a template.json entry is expected to occupy inside the archive,
+     * e.g. output_path='backend/routes/' + name='api.php' -> 'backend/routes/api.php'.
+     * Mirrors TemplateFile::setOutputPathAttribute()'s canonical form and the
+     * identically-named helper in Api\TemplateController (export side).
+     */
+    private function templateFileRelativePath(?string $outputPath, string $fileName): string
+    {
+        $dir = trim((string) $outputPath, '/');
+
+        return $dir === '' ? $fileName : $dir . '/' . $fileName;
+    }
+
+    /**
+     * Index template.json's files[] two ways so a scanned physical file can be
+     * matched against it either by its real archive path (the normal case for a
+     * Scoriet-exported tree) or, failing that, by bare file name (the fallback
+     * for hand-authored templates that flatly reuse one physical file across
+     * several output_path destinations, e.g. a shared .gitignore).
+     *
+     * 'entries' keeps the raw files[] array so callers can look up full metadata
+     * by the indices returned from matchScannedFile()/byPath/byBasename.
+     */
+    private function buildMetadataIndex(?array $templateMetadata): array
+    {
+        $byPath = [];
+        $byBasename = [];
+        $entries = [];
+
+        if ($templateMetadata && isset($templateMetadata['files']) && is_array($templateMetadata['files'])) {
+            $entries = $templateMetadata['files'];
+
+            foreach ($entries as $entryIndex => $fileMeta) {
+                $physicalName = $fileMeta['archive_source'] ?? $fileMeta['file_name'];
+                $expectedPath = $this->templateFileRelativePath($fileMeta['output_path'] ?? null, $physicalName);
+                $byPath[$expectedPath] = $entryIndex;
+                $byBasename[$physicalName][] = $entryIndex;
+            }
+        }
+
+        return ['byPath' => $byPath, 'byBasename' => $byBasename, 'entries' => $entries];
+    }
+
+    /**
+     * How many distinct physical files in the current scan share each bare file
+     * name — used to gate the basename fallback in matchScannedFile(): it's only
+     * safe to guess "this is the reused file" when there is exactly one physical
+     * candidate for that name anywhere in the tree.
+     */
+    private function computeBasenamePathCounts(array $scannedFiles): array
+    {
+        $counts = [];
+        foreach ($scannedFiles as $file) {
+            if (!$file['is_dir']) {
+                $counts[$file['name']] = ($counts[$file['name']] ?? 0) + 1;
+            }
+        }
+
+        return $counts;
+    }
+
+    /**
+     * Two-tier match of one scanned physical file against template.json:
+     *   1. Exact archive-path hit -> unambiguous single entry.
+     *   2. Bare-name fallback -> only trusted when this name has exactly one
+     *      physical candidate in the whole tree (the deliberate reuse case);
+     *      a name that exists at more than one real path is a genuine ambiguity
+     *      this method refuses to guess at.
+     * Returns the matched template.json entry indices (into $index['entries']),
+     * empty when nothing matched.
+     */
+    private function matchScannedFile(string $relativePath, string $basename, array $index, array $basenamePathCounts): array
+    {
+        if (isset($index['byPath'][$relativePath])) {
+            return [$index['byPath'][$relativePath]];
+        }
+
+        if (($basenamePathCounts[$basename] ?? 0) === 1 && isset($index['byBasename'][$basename])) {
+            return $index['byBasename'][$basename];
+        }
+
+        return [];
+    }
+
+    /**
+     * Enrich a scanned file list against template.json metadata (when present):
+     * matched files get template_meta, unmatched ones get is_extra=true, and
+     * template.json entries with no matching physical file anywhere are
+     * reported back separately as missing_files. Shared by upload() and
+     * getFiles() so the two entry points can't drift out of sync.
+     */
+    private function enrichScannedFiles(array $files, ?array $templateMetadata): array
+    {
+        $index = $this->buildMetadataIndex($templateMetadata);
+        $basenamePathCounts = $this->computeBasenamePathCounts($files);
+        $claimedEntryIndices = [];
+
+        $allFiles = [];
+        foreach ($files as $file) {
+            if ($file['is_dir']) {
+                continue;
+            }
+
+            $basename = $file['name'];
+            if ($templateMetadata && in_array($basename, ['template.json', 'README.txt'])) {
+                continue;
+            }
+
+            $file['file_type'] = $this->detectFileType($file['name']);
+
+            if ($templateMetadata) {
+                $matchedIndices = $this->matchScannedFile($file['path'], $basename, $index, $basenamePathCounts);
+
+                if (!empty($matchedIndices)) {
+                    // Preview only shows the file once, so surface the first destination —
+                    // createTemplate() is what actually expands all of them into rows.
+                    $meta = $index['entries'][$matchedIndices[0]];
+                    $file['template_meta'] = [
+                        'file_type' => $meta['file_type'] ?? null,
+                        'content_type' => $meta['content_type'] ?? null,
+                        'zip_filename' => $meta['zip_filename'] ?? null,
+                        'output_path' => $meta['output_path'] ?? null,
+                        'file_order' => $meta['file_order'] ?? null,
+                        'is_include_only' => $meta['is_include_only'] ?? false,
+                        'inject_target' => $meta['inject_target'] ?? null,
+                        'inject_tag' => $meta['inject_tag'] ?? null,
+                        'language_override' => $meta['language_override'] ?? null,
+                        'destination_count' => count($matchedIndices),
+                    ];
+                    foreach ($matchedIndices as $entryIndex) {
+                        $claimedEntryIndices[$entryIndex] = true;
+                    }
+                } else {
+                    $file['is_extra'] = true;
+                }
+            }
+
+            $allFiles[] = $file;
+        }
+
+        $missingFiles = [];
+        foreach ($index['entries'] as $entryIndex => $fileMeta) {
+            if (!isset($claimedEntryIndices[$entryIndex])) {
+                $missingFiles[] = [
+                    'file_name' => $fileMeta['file_name'],
+                    'output_path' => $fileMeta['output_path'] ?? null,
+                    'file_type' => $fileMeta['file_type'] ?? null,
+                ];
+            }
+        }
+
+        return ['all_files' => $allFiles, 'missing_files' => $missingFiles];
     }
 
     private function scanDirectory(string $dir, string $baseDir): array

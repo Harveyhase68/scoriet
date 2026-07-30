@@ -1871,10 +1871,12 @@ class TemplateController extends Controller
         }
         $zip->addFromString('README.txt', $readme);
 
-        // Add all template files
+        // Add all template files at their real generated-project path — two rows
+        // with the same file_name but different output_path (or content) must not
+        // collide into a single ZIP entry.
         foreach ($template->files as $file) {
-            // Use file_name as the name in the ZIP
-            $zip->addFromString($file->file_name, $file->file_content);
+            $relativePath = $this->templateFileRelativePath($file->output_path, $file->file_name);
+            $zip->addFromString($relativePath, $file->file_content);
         }
 
         $zip->close();
@@ -1930,67 +1932,23 @@ class TemplateController extends Controller
         \Illuminate\Support\Facades\File::makeDirectory($tempDir, 0755, true);
 
         try {
-            // Detect duplicate file names and prepare archive file mapping
-            $fileNameCount = [];
-            $fileArchiveMapping = []; // Maps original file to archive filename
-
-            foreach ($template->files as $file) {
-                $fileName = $file->file_name;
-
-                if (!isset($fileNameCount[$fileName])) {
-                    $fileNameCount[$fileName] = 0;
-                }
-                $fileNameCount[$fileName]++;
-            }
-
-            // Build file data with archive_source for duplicates
-            $filesData = [];
-            $fileNameCounter = [];
-
-            foreach ($template->files as $file) {
-                $fileName = $file->file_name;
-                $isDuplicate = $fileNameCount[$fileName] > 1;
-
-                if ($isDuplicate) {
-                    // Track how many times we've seen this filename
-                    if (!isset($fileNameCounter[$fileName])) {
-                        $fileNameCounter[$fileName] = 0;
-                    }
-                    $fileNameCounter[$fileName]++;
-
-                    // Generate unique archive name: app.php.1, app.php.2, etc.
-                    $archiveFileName = $fileName . '.' . $fileNameCounter[$fileName];
-                    $fileArchiveMapping[$file->id] = $archiveFileName;
-
-                    $filesData[] = [
-                        'file_name' => $fileName,
-                        'archive_source' => $archiveFileName,  // Only for duplicates
-                        'output_path' => $file->output_path,
-                        'file_type' => $file->file_type,
-                        'file_order' => $file->file_order,
-                        'content_type' => $file->content_type ?? 'text',
-                        'zip_filename' => $file->zip_filename,
-                        'is_include_only' => $file->is_include_only ?? false,
-                        'inject_target' => $file->inject_target,
-                        'inject_tag' => $file->inject_tag,
-                    ];
-                } else {
-                    // No duplicate - no archive_source needed
-                    $fileArchiveMapping[$file->id] = $fileName;
-
-                    $filesData[] = [
-                        'file_name' => $fileName,
-                        'output_path' => $file->output_path,
-                        'file_type' => $file->file_type,
-                        'file_order' => $file->file_order,
-                        'content_type' => $file->content_type ?? 'text',
-                        'zip_filename' => $file->zip_filename,
-                        'is_include_only' => $file->is_include_only ?? false,
-                        'inject_target' => $file->inject_target,
-                        'inject_tag' => $file->inject_tag,
-                    ];
-                }
-            }
+            // The archive now mirrors the real generated project tree (output_path +
+            // file_name), so two rows can only collide if they describe the exact same
+            // generated file — which would be a genuine data problem, not something to
+            // paper over with a ".1"/".2" suffix. No archive_source needed anymore.
+            $filesData = $template->files->map(function ($file) {
+                return [
+                    'file_name' => $file->file_name,
+                    'output_path' => $file->output_path,
+                    'file_type' => $file->file_type,
+                    'file_order' => $file->file_order,
+                    'content_type' => $file->content_type ?? 'text',
+                    'zip_filename' => $file->zip_filename,
+                    'is_include_only' => $file->is_include_only ?? false,
+                    'inject_target' => $file->inject_target,
+                    'inject_tag' => $file->inject_tag,
+                ];
+            })->toArray();
 
             // Add template metadata as JSON (WITHOUT file_content - files are in archive)
             $templateData = [
@@ -2036,16 +1994,20 @@ class TemplateController extends Controller
             $readme .= "https://scoriet.com\n";
             \Illuminate\Support\Facades\File::put($tempDir . '/README.txt', $readme);
 
-            // Add all template files (flat structure - all in root, with unique names for duplicates)
+            // Add all template files at their real generated-project path, so the
+            // archive can be browsed/edited by hand just like the actual output.
             foreach ($template->files as $file) {
                 // Skip template.json and README.txt to avoid conflicts
                 if (in_array($file->file_name, ['template.json', 'README.txt'])) {
                     continue;
                 }
 
-                // Use mapped archive filename (handles duplicates)
-                $archiveFileName = $fileArchiveMapping[$file->id];
-                $filePath = $tempDir . '/' . $archiveFileName;
+                $relativePath = $this->templateFileRelativePath($file->output_path, $file->file_name);
+                $filePath = $tempDir . '/' . $relativePath;
+
+                // File::put() is a bare file_put_contents() wrapper — it does not create
+                // missing parent directories, and the real tree can contain new ones.
+                \Illuminate\Support\Facades\File::ensureDirectoryExists(dirname($filePath));
 
                 // Handle different content types
                 if ($file->content_type === 'zip') {
@@ -2114,6 +2076,19 @@ class TemplateController extends Controller
                 \Illuminate\Support\Facades\File::deleteDirectory($tempDir);
             }
         }
+    }
+
+    /**
+     * The path a template file occupies inside the archive/generated project,
+     * e.g. output_path='backend/routes/' + file_name='api.php' -> 'backend/routes/api.php'.
+     * Mirrors TemplateFile::setOutputPathAttribute()'s canonical form (always
+     * trailing slash, '/' for root) — strips it back off to build a join-safe prefix.
+     */
+    private function templateFileRelativePath(?string $outputPath, string $fileName): string
+    {
+        $dir = trim((string) $outputPath, '/');
+
+        return $dir === '' ? $fileName : $dir . '/' . $fileName;
     }
 
     private function addFilesToZipRecursive($zip, $sourceDir, $relativePath)

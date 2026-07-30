@@ -2994,6 +2994,10 @@ templatemodal480: string;
   templateimportwizardpanelOverwriteTooltip: string;
   templateimportwizardpanelMerge: string;
   templateimportwizardpanelMergeTooltip: string;
+  templateimportwizardpanelExtra: string;
+  templateimportwizardpanelExtraTooltip: string;
+  templateimportwizardpanelMissingFilesTitle: string;
+  templateimportwizardpanelMissingFilesDescription: string;
   templatemanagementpanel2171: string;
   templatemanagementpanel2324: string;
   

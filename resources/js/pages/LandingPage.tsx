@@ -18,6 +18,7 @@ import {
   ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
 import AuthModalManager, { AuthModalType } from '@/Components/AuthModals/AuthModalManager';
+import DemoAccessModal from '@/Components/AuthModals/DemoAccessModal';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import LanguageSelector from '@/Components/LanguageSelector';
 import CMSPopupModal from '@/Components/Modals/CMSPopupModal';
@@ -77,6 +78,8 @@ export default function LandingPage() {
     sessionStorage.getItem('demo_mode') === 'true'
   );
   const [activeModal, setActiveModal] = useState<AuthModalType>(null);
+  const [showDemoModal, setShowDemoModal] = useState<boolean>(false);
+  const [demoNotice, setDemoNotice] = useState<'required' | 'expired' | null>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
   const [showFeaturesModal, setShowFeaturesModal] = useState<boolean>(false);
@@ -112,6 +115,22 @@ export default function LandingPage() {
       setActiveModal('register');
     }
   }, [openRegister]);
+
+  // Auto-open the demo-access modal when bounced here from the demo deployment
+  // (?demo_access=required|expired). The gate redirects un-authorised demo
+  // visitors to the main site with this flag so we can capture their email.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get('demo_access');
+    if (flag === 'required' || flag === 'expired' || flag === 'error') {
+      setDemoNotice(flag === 'expired' ? 'expired' : 'required');
+      setShowDemoModal(true);
+      // Strip the query param so a refresh / bookmark doesn't re-trigger it.
+      params.delete('demo_access');
+      const qs = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    }
+  }, []);
 
   const [openHomeOnStart, setOpenHomeOnStart] = useState<boolean>(() => {
     const setting = localStorage.getItem('open_home_on_start');
@@ -704,18 +723,7 @@ export default function LandingPage() {
                     icon="pi pi-desktop"
                     className="p-button-outlined p-button-primary"
                     style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
-                    onClick={() => {
-                      const hostname = window.location.hostname;
-                      const isLocalDev = hostname === 'localhost' ||
-                                         hostname === '127.0.0.1' ||
-                                         hostname.includes('.local') ||
-                                         hostname.startsWith('10.') ||
-                                         hostname.startsWith('192.168.');
-                      const demoUrl = isLocalDev
-                        ? 'http://demo.scoriet.local/demo-login?user=demo-user'
-                        : 'https://demo.scoriet.dev/demo-login?user=demo-user';
-                      window.location.href = demoUrl;
-                    }}
+                    onClick={() => { setDemoNotice(null); setShowDemoModal(true); }}
                   />
                 </>
               )}
@@ -1127,6 +1135,14 @@ export default function LandingPage() {
         }}
         currentLanguage={currentLanguage}
         inviteToken={inviteToken}
+      />
+
+      {/* Email-gated demo access request */}
+      <DemoAccessModal
+        visible={showDemoModal}
+        onHide={() => setShowDemoModal(false)}
+        currentLanguage={currentLanguage}
+        notice={demoNotice}
       />
 
       {/* CMS Popups */}

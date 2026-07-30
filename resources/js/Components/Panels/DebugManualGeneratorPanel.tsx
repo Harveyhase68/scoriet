@@ -567,6 +567,15 @@ export default function DebugManualGeneratorPanel({
   // and saveRawTemplate below.
   const [rawTemplate, setRawTemplate] = useState<string>('');
   const [rawTemplateOriginal, setRawTemplateOriginal] = useState<string>('');
+  // Full TemplateFile record (file_path, output_path, file_type, file_order,
+  // content_type, zip_filename, language_override, ...) as returned by
+  // GET /templates/{id}/files — the SAME rich endpoint fetchRawTemplate already
+  // uses to pull file_content. saveRawTemplate MUST read metadata from here,
+  // never from `templateFiles` (populated by /template-output/{id}, which only
+  // returns filename/content/type/order/id — every other field is undefined
+  // there, so falling back to it silently resets output_path/file_path/
+  // language_override to their defaults on every save).
+  const [rawTemplateFileMeta, setRawTemplateFileMeta] = useState<any>(null);
   const [rawTemplateLoading, setRawTemplateLoading] = useState(false);
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [includeTemplateSource, setIncludeTemplateSource] = useState<boolean>(restored.selection.includeTemplateSource);
@@ -1423,6 +1432,7 @@ export default function DebugManualGeneratorPanel({
       const content = String(file.file_content ?? '');
       setRawTemplate(content);
       setRawTemplateOriginal(content);
+      setRawTemplateFileMeta(file); // full record incl. output_path/file_path/language_override for saveRawTemplate
       setActiveTabIndex(0); // jump to Raw Template tab
     } catch (err: any) {
       setError((err?.response?.data?.message as string) || t.debugmanualgeneratorpanel_raw_load_failed || 'Failed to load raw template.');
@@ -1433,12 +1443,18 @@ export default function DebugManualGeneratorPanel({
 
   // saveRawTemplate: PUT the edited content back. Backend requires the full
   // file-metadata payload (file_name / file_path / file_content / file_type)
-  // — we pull the existing metadata from templateFiles[] and override only
-  // the content. Triggered AFTER the confirm dialog approves so the user
-  // can't overwrite the DB with a fat-finger click.
+  // — we pull the existing metadata from rawTemplateFileMeta (the full record
+  // fetchRawTemplate stashed from GET /templates/{id}/files) and override only
+  // the content. MUST NOT read from templateFiles[] — that array comes from
+  // /template-output/{id}, which only ever returns filename/content/type/
+  // order/id, so file_path/output_path/language_override are always undefined
+  // there and every save would silently reset them to their defaults ('/',
+  // bare filename, null) instead of preserving the real stored value.
+  // Triggered AFTER the confirm dialog approves so the user can't overwrite
+  // the DB with a fat-finger click.
   const saveRawTemplate = async () => {
     if (!selectedTemplate || selectedFile === null || selectedFile === undefined) return;
-    const file: any = templateFiles.find((f) => f.id === selectedFile);
+    const file: any = rawTemplateFileMeta;
     if (!file) {
       setError(t.debugmanualgeneratorpanel_raw_not_found || 'Template file not found.');
       return;
@@ -1454,6 +1470,8 @@ export default function DebugManualGeneratorPanel({
         file_order: file.file_order ?? 0,
         output_path: file.output_path ?? '/',
         language_override: file.language_override ?? null,
+        content_type: file.content_type ?? 'text',
+        zip_filename: file.zip_filename ?? null,
       });
       setRawTemplateOriginal(rawTemplate); // mark clean
     } catch (err: any) {
@@ -1470,6 +1488,7 @@ export default function DebugManualGeneratorPanel({
   useEffect(() => {
     setRawTemplate('');
     setRawTemplateOriginal('');
+    setRawTemplateFileMeta(null);
   }, [selectedTemplate, selectedFile]);
 
   const fetchCode = async () => {

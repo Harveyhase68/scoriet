@@ -2502,23 +2502,15 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
                         )}
                     </div>
 
-                    {/* Hide visibility selector for purchased templates - they must be private */}
-                    {!((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
-                        <div>
-                            <label className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                                {t.templatemanagementpanel2422}
-                            </label>
-                            <select
-                                value={cloneVisibility}
-                                onChange={(e) => setCloneVisibility(e.target.value as 'public' | 'private')}
-                                className="w-full p-2 border rounded"
-                                style={{ backgroundColor: colors.bgSecondary, color: colors.textPrimary, border: `1px solid ${colors.borderPrimary}` }}
-                            >
-                                <option value="public">{t.templatemanagementpanel2430}</option>
-                                <option value="private">{t.templatemanagementpanel2431}</option>
-                            </select>
-                        </div>
-                    )}
+                    {/*
+                      * Visibility selector intentionally removed: a clone is always created as
+                      * 'public' (handleClone sets this for non-purchased templates). Switching a
+                      * clone to 'private' would otherwise bypass the paid unlock mechanic
+                      * (50 credits/year). If the user wants the clone private, they open the
+                      * cloned template afterwards and toggle visibility there, where the unlock
+                      * gate applies. Purchased/store templates keep their forced 'private' state
+                      * (see the info block below) — they are paid for and exempt from the gate.
+                      */}
 
                     {/* Show info for purchased templates */}
                     {((templateToClone as any)?.is_purchased || templateToClone?.visibility === 'store') && (
