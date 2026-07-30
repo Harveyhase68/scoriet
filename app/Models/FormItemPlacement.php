@@ -250,15 +250,22 @@ class FormItemPlacement extends Model
 
         // ── Type-specific keys ──
         if ($this->item_type === 'field') {
-            $result['control_type']   = $this->control_type ?? 'text';
-            $result['label_position'] = $this->label_position ?? 'top';
-            $result['label_width']    = $this->label_width ?? 100;
-            $result['field_name']     = $this->schemaField?->field_name;
-            $result['field_type']     = $this->schemaField?->field_type;
-            $result['lookup_table']   = $this->lookupTable?->table_name ?? $this->schemaField?->link_table;
-            $result['lookup_display'] = $this->lookup_display_field ?? $this->schemaField?->link_display_field;
-            $result['lookup_value']   = $this->lookup_value_field ?? $this->schemaField?->link_field;
-            $result['lookup_sort']    = $this->lookup_sort_field ?? $this->schemaField?->link_order_field;
+            $result['control_type']    = $this->control_type ?? 'text';
+            $result['label_position']  = $this->label_position ?? 'top';
+            $result['label_width']     = $this->label_width ?? 100;
+            $result['field_name']      = $this->schemaField?->field_name;
+            $result['field_type']      = $this->schemaField?->field_type;
+            $result['lookup_table']    = $this->lookupTable?->table_name ?? $this->schemaField?->link_table;
+            $result['lookup_display']  = $this->lookup_display_field ?? $this->schemaField?->link_display_field;
+            $result['lookup_value']    = $this->lookup_value_field ?? $this->schemaField?->link_field;
+            $result['lookup_sort']     = $this->lookup_sort_field ?? $this->schemaField?->link_order_field;
+            // Raw per-language override map (mirrors field.lang[]/table.lang[]) so a
+            // Profil-customized caption stays multi-language instead of being frozen
+            // to whichever language this particular generation call used. Plain
+            // caption_override (no per-language map set) is exposed too, for a
+            // fixed single-string override with no translations of its own.
+            $result['caption_labels']   = $this->caption_labels ?? [];
+            $result['caption_override'] = $this->caption_override;
         } elseif ($this->item_type === 'button') {
             $result['control_type']     = 'button';
             $result['button_type']      = $this->button_type;
@@ -266,12 +273,18 @@ class FormItemPlacement extends Model
             $result['action']           = $this->button_action;
             $result['background_color'] = $this->button_background_color;
             $result['text_color']       = $this->button_text_color;
+            $result['button_labels']    = $this->button_labels ?? [];
         } elseif ($this->item_type === 'menu_item') {
-            $result['control_type'] = 'menu_item';
-            $result['icon']         = $this->menu_icon;
-            $result['action']       = $this->menu_action;
-            $result['menu_role']    = $this->menu_role_required;
-            $result['menu_depth']   = $this->menu_depth;
+            $result['control_type']    = 'menu_item';
+            $result['icon']            = $this->menu_icon;
+            $result['action']          = $this->menu_action;
+            $result['menu_role']       = $this->menu_role_required;
+            $result['menu_depth']      = $this->menu_depth;
+            // Tree hierarchy + navigation target, so a code generator can rebuild
+            // the nested menu (group/leaf) and route a leaf to its table.
+            $result['parent_id']       = $this->parent_placement_id;
+            $result['schema_table_id'] = $this->schema_table_id;
+            $result['table_name']      = $this->schemaTable?->table_name;
         }
 
         return $result;

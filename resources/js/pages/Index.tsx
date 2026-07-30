@@ -1546,6 +1546,18 @@ export default function Index(props: IndexProps = {}) {
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('auth-change'));
           } else {
+            // The demo gate refuses to issue a token without a valid access
+            // cookie (e.g. it expired between page load and this request).
+            // Send the visitor to the main site to request a fresh link.
+            if (response.status === 403) {
+              const data = await response.clone().json().catch(() => null);
+              if (data?.error === 'demo_access_required') {
+                const host = window.location.hostname;
+                const mainHost = host.startsWith('demo.') ? host.slice(5) : host;
+                window.location.href = `${window.location.protocol}//${mainHost}/?demo_access=required`;
+                return;
+              }
+            }
             console.error(t.index1405, await response.text());
           }
         } catch (error) {

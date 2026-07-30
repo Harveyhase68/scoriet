@@ -661,6 +661,24 @@ class UltimateTemplateController extends Controller
             return $reportPatternCache[$id];
         };
 
+        // 🎯 Main-menu placement tree (nested, cross-table navigation) — computed
+        // ONCE for the whole project, not per table. Unlike create_edit/data_table
+        // windows (which are legitimately per-table layouts), the main menu is a
+        // single tree spanning every table, so per-table FormSet overrides are
+        // deliberately NOT consulted here — only the project's default FormSet's
+        // main_menu window. Every table's tableData gets the SAME layoutmenus
+        // array below, reusing the engine's existing per-table
+        // `{:for nmaxlayoutmenus:}` / `{:layoutmenu.*:}` plumbing without needing
+        // a new project-level loop construct.
+        $projectMainMenuWindow = $projectFormSet?->windows->firstWhere('window_type', 'main_menu');
+        $projectLayoutMenus = [];
+        $projectNmaxLayoutMenus = 0;
+        if ($projectMainMenuWindow) {
+            $menuTree = $projectMainMenuWindow->toGTreeArrayWithPlacements(null, $selectedLanguageCode);
+            $projectLayoutMenus = $menuTree['layoutmenus'] ?? [];
+            $projectNmaxLayoutMenus = $menuTree['nmaxlayoutmenus'] ?? 0;
+        }
+
         foreach ($projectData['tables'] as &$tableData) {
             $tblName = $tableData['filename'] ?? '';
             $schemaTable = $schemaTables->firstWhere('table_name', $tblName);
@@ -743,7 +761,11 @@ class UltimateTemplateController extends Controller
                 $tableData['layoutsinglecount'] = count($merged);
             }
 
-            // Data Table layout (columns) — fields only.
+            // Data Table layout (columns) — fields only. Buttons (New/Delete/
+            // Close/nav/custom placed on the data_table window in the
+            // Designer) are kept in their own array, mirroring layoutsingles'
+            // create_edit buttons but NOT merged in — a grid toolbar has no
+            // tab-order-interleaved-with-fields concept to preserve.
             if ($dataTableWindow) {
                 $layouts = $this->getOrGenerateFormLayout($dataTableWindow, $schemaTable, $selectedLanguageCode ?? null);
                 foreach ($layouts as &$l) {
@@ -752,6 +774,10 @@ class UltimateTemplateController extends Controller
                 unset($l);
                 $tableData['layoutcolumns'] = $layouts;
                 $tableData['nmaxlayoutcolumns'] = count($layouts);
+
+                $columnButtons = $this->getOrGenerateFormButtons($dataTableWindow, $selectedLanguageCode ?? null, $tableFormSet);
+                $tableData['layoutcolumnbuttons'] = $columnButtons;
+                $tableData['nmaxlayoutcolumnbuttons'] = count($columnButtons);
             }
 
             // ── Per-table FORM WINDOW DESIGNS ──────────────────────────────
@@ -770,6 +796,8 @@ class UltimateTemplateController extends Controller
             if ($mainMenuWindow) {
                 $tableData['formmenu'] = $mainMenuWindow->toGTreeArray();
             }
+            $tableData['layoutmenus'] = $projectLayoutMenus;
+            $tableData['nmaxlayoutmenus'] = $projectNmaxLayoutMenus;
             if ($createEditWindow) {
                 $tableData['formedit'] = $createEditWindow->toGTreeArray();
             }

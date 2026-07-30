@@ -1,0 +1,117 @@
+/* Global Scrollbar Styling - uses CSS variables from ThemeContext */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--theme-scrollbar-track, var(--theme-bg-primary)) !important;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb, var(--theme-border-secondary)) !important;
+  border-radius: 5px;
+  border: 2px solid var(--theme-scrollbar-track, var(--theme-bg-primary));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-scrollbar-thumb-hover, var(--theme-text-muted)) !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--theme-scrollbar-track, var(--theme-bg-primary)) !important;
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-scrollbar-thumb, var(--theme-border-secondary)) var(--theme-scrollbar-track, var(--theme-bg-primary));
+}
+
+/* Themed Input Placeholders */
+.themed-input::placeholder {
+  color: var(--theme-text-muted) !important;
+  opacity: 0.7;
+}
+
+/* ============================================================
+   GLOBAL DataTable Theming
+   ============================================================ */
+
+.p-datatable .p-datatable-thead > tr > th {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr:nth-child(even) {
+  background: var(--theme-bg-tertiary) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr > td {
+  border-color: var(--theme-border-primary) !important;
+}
+
+.p-datatable .p-datatable-tbody > tr:hover {
+  background: var(--theme-bg-hover) !important;
+}
+
+/* Paginator theming */
+.p-paginator {
+  background: var(--theme-bg-tertiary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+.p-paginator .p-paginator-pages .p-paginator-page {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+  background: var(--theme-accent) !important;
+  color: white !important;
+  border-color: var(--theme-accent) !important;
+}
+
+.p-paginator .p-paginator-first,
+.p-paginator .p-paginator-prev,
+.p-paginator .p-paginator-next,
+.p-paginator .p-paginator-last {
+  color: var(--theme-text-secondary) !important;
+}
+
+.p-paginator .p-paginator-first:not(.p-disabled):hover,
+.p-paginator .p-paginator-prev:not(.p-disabled):hover,
+.p-paginator .p-paginator-next:not(.p-disabled):hover,
+.p-paginator .p-paginator-last:not(.p-disabled):hover {
+  background: var(--theme-bg-hover) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+.p-paginator .p-paginator-current {
+  color: var(--theme-text-muted) !important;
+}
+
+/* Sort icons */
+.p-datatable .p-sortable-column .p-sortable-column-icon {
+  color: var(--theme-text-muted) !important;
+}
+
+.p-datatable .p-sortable-column.p-highlight .p-sortable-column-icon {
+  color: var(--theme-accent) !important;
+}
+
+.p-datatable .p-sortable-column:hover {
+  background: var(--theme-bg-hover) !important;
+}
+
+/* Empty message */
+.p-datatable .p-datatable-emptymessage td {
+  color: var(--theme-text-muted) !important;
+}

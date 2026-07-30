@@ -1,0 +1,97 @@
+{
+    "template": {
+        "name": "flutter_template",
+        "full_name": "scoriet-system/flutter_template",
+        "compatibility_tag": null,
+        "generation_order": 0,
+        "description": "Flutter desktop/mobile/web CRUD app: Riverpod state management, direct MySQL access (mysql_client), data_table_2 grids, PDF reports, FK lookup comboboxes with inline \"add new\". Windows/Android/iOS/macOS/Linux/Web targets.",
+        "category": "Desktop",
+        "language": "Dart",
+        "tags": ["Flutter", "Riverpod", "MySQL", "CRUD", "Desktop", "Mobile", "Web"],
+        "is_active": true,
+        "protected_files": [],
+        "install_script": [],
+        "update_script": []
+    },
+    "custom_variables": [],
+    "files": [
+        { "file_name": "pubspec.yaml", "output_path": "/", "file_type": "project_file", "file_order": 1, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "analysis_options.yaml", "output_path": "/", "file_type": "static_file", "file_order": 2, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "main.dart", "output_path": "lib/", "file_type": "static_file", "file_order": 10, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app.dart", "output_path": "lib/", "file_type": "project_file", "file_order": 11, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app_modules.dart", "output_path": "lib/", "file_type": "project_file", "file_order": 12, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "db_config.dart", "output_path": "lib/core/db/", "file_type": "project_file", "file_order": 20, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "database.dart", "output_path": "lib/core/db/", "file_type": "static_file", "file_order": 21, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "db_bootstrap.dart", "output_path": "lib/core/db/", "file_type": "project_file", "file_order": 22, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "migrations.dart", "output_path": "lib/core/db/", "file_type": "static_file", "file_order": 23, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app_theme.dart", "output_path": "lib/core/theme/", "file_type": "static_file", "file_order": 24, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "nav_module.dart", "output_path": "lib/core/ui/", "file_type": "static_file", "file_order": 25, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "menu_tree.dart", "output_path": "lib/core/ui/", "file_type": "project_file", "file_order": 26, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app_shell.dart", "output_path": "lib/core/ui/", "file_type": "project_file", "file_order": 27, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "db_bootstrap_gate.dart", "output_path": "lib/core/ui/", "file_type": "static_file", "file_order": 28, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "startup_gate.dart", "output_path": "lib/core/ui/", "file_type": "static_file", "file_order": 29, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "lookup_field.dart", "output_path": "lib/core/ui/", "file_type": "static_file", "file_order": 30, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "anchor_layout.dart", "output_path": "lib/core/ui/", "file_type": "static_file", "file_order": 31, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "report_service.dart", "output_path": "lib/core/report/", "file_type": "project_file", "file_order": 32, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "app_strings.dart", "output_path": "lib/core/i18n/", "file_type": "static_file", "file_order": 33, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "schema_captions.dart", "output_path": "lib/core/i18n/", "file_type": "project_file", "file_order": 34, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "locale_provider.dart", "output_path": "lib/core/i18n/", "file_type": "project_file", "file_order": 35, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "crypto_random.dart", "output_path": "lib/core/auth/", "file_type": "static_file", "file_order": 36, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "password_hasher.dart", "output_path": "lib/core/auth/", "file_type": "static_file", "file_order": 37, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "totp_service.dart", "output_path": "lib/core/auth/", "file_type": "project_file", "file_order": 38, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "mail_sender.dart", "output_path": "lib/core/auth/", "file_type": "project_file", "file_order": 39, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "auth_gate.dart", "output_path": "lib/features/auth/", "file_type": "static_file", "file_order": 40, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app_user.dart", "output_path": "lib/features/auth/model/", "file_type": "static_file", "file_order": 41, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "user_repository.dart", "output_path": "lib/features/auth/data/", "file_type": "static_file", "file_order": 42, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "auth_providers.dart", "output_path": "lib/features/auth/state/", "file_type": "static_file", "file_order": 43, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "account_controller.dart", "output_path": "lib/features/auth/state/", "file_type": "static_file", "file_order": 44, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "password_reset_controller.dart", "output_path": "lib/features/auth/state/", "file_type": "static_file", "file_order": 45, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "auth_scaffold.dart", "output_path": "lib/features/auth/ui/widgets/", "file_type": "project_file", "file_order": 46, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "login_page.dart", "output_path": "lib/features/auth/ui/", "file_type": "static_file", "file_order": 47, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "register_page.dart", "output_path": "lib/features/auth/ui/", "file_type": "project_file", "file_order": 48, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "forgot_password_page.dart", "output_path": "lib/features/auth/ui/", "file_type": "static_file", "file_order": 49, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "two_factor_challenge_page.dart", "output_path": "lib/features/auth/ui/", "file_type": "static_file", "file_order": 50, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "two_factor_setup_page.dart", "output_path": "lib/features/auth/ui/", "file_type": "static_file", "file_order": 51, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "profile_page.dart", "output_path": "lib/features/auth/ui/", "file_type": "project_file", "file_order": 52, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "%1_module.dart", "output_path": "lib/features/%1/", "file_type": "db_table_file", "file_order": 150, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%15.dart", "output_path": "lib/features/%1/model/", "file_type": "db_table_file", "file_order": 151, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%15_repository.dart", "output_path": "lib/features/%1/data/", "file_type": "db_table_file", "file_order": 152, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%15_providers.dart", "output_path": "lib/features/%1/state/", "file_type": "db_table_file", "file_order": 153, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%15_list_page.dart", "output_path": "lib/features/%1/ui/", "file_type": "db_table_file", "file_order": 154, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%15_form_page.dart", "output_path": "lib/features/%1/ui/", "file_type": "db_table_file", "file_order": 155, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%15_report_page.dart", "output_path": "lib/features/%1/ui/", "file_type": "db_table_file", "file_order": 156, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "CMakeLists.txt", "output_path": "windows/", "file_type": "project_file", "file_order": 60, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "CMakeLists.txt", "output_path": "windows/runner/", "file_type": "static_file", "file_order": 61, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "main.cpp", "output_path": "windows/runner/", "file_type": "project_file", "file_order": 62, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "Runner.rc", "output_path": "windows/runner/", "file_type": "project_file", "file_order": 63, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": ".gitignore", "output_path": "windows/", "file_type": "static_file", "file_order": 64, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "windows_extra.zip", "output_path": "windows/", "file_type": "static_directory", "file_order": 65, "content_type": "zip", "zip_filename": "windows_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "build.gradle.kts", "output_path": "android/app/", "file_type": "project_file", "file_order": 70, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "AndroidManifest.xml", "output_path": "android/app/src/main/", "file_type": "project_file", "file_order": 71, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "MainActivity.kt", "output_path": "android/app/src/main/kotlin/com/example/app/", "file_type": "project_file", "file_order": 72, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "android_extra.zip", "output_path": "android/", "file_type": "static_directory", "file_order": 73, "content_type": "zip", "zip_filename": "android_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "Info.plist", "output_path": "ios/Runner/", "file_type": "project_file", "file_order": 80, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "ios_extra.zip", "output_path": "ios/", "file_type": "static_directory", "file_order": 81, "content_type": "zip", "zip_filename": "ios_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "AppInfo.xcconfig", "output_path": "macos/Runner/Configs/", "file_type": "project_file", "file_order": 90, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "Info.plist", "output_path": "macos/Runner/", "file_type": "static_file", "file_order": 91, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "macos_extra.zip", "output_path": "macos/", "file_type": "static_directory", "file_order": 92, "content_type": "zip", "zip_filename": "macos_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "CMakeLists.txt", "output_path": "linux/", "file_type": "project_file", "file_order": 100, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "my_application.cc", "output_path": "linux/runner/", "file_type": "project_file", "file_order": 101, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "linux_extra.zip", "output_path": "linux/", "file_type": "static_directory", "file_order": 102, "content_type": "zip", "zip_filename": "linux_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null },
+
+        { "file_name": "index.html", "output_path": "web/", "file_type": "project_file", "file_order": 110, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "manifest.json", "output_path": "web/", "file_type": "project_file", "file_order": 111, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "web_extra.zip", "output_path": "web/", "file_type": "static_directory", "file_order": 112, "content_type": "zip", "zip_filename": "web_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null }
+    ]
+}

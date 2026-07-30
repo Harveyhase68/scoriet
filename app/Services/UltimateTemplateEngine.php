@@ -529,6 +529,22 @@ class UltimateTemplateEngine
                 $switchStack++;
             }
 
+            // Check {case} / {:default:} / {:othercase:} outside {switch}.
+            //
+            // MUST run here — right after the switch-open increment above and
+            // BEFORE the endswitch-close decrement further down — because this
+            // validator tracks nesting per PHYSICAL LINE, not per tag. Inline
+            // one-liners like {:switch item.type:}{:case 'X':}...{:endswitch:}
+            // (common in single-line SQL column templates) put open, case(s),
+            // AND close on the SAME line. If this check ran after the endswitch
+            // decrement (as it used to, at the bottom of the loop body), the
+            // stack would already be back at 0 by the time the case check saw
+            // it — a false "{:case:} without matching {:switch:}" even though
+            // the switch on that exact same line was perfectly valid.
+            if ((preg_match('/\{:case\s+/', $line) || strpos($line, '{:default:}') !== false || strpos($line, '{:othercase:}') !== false) && $switchStack === 0) {
+                $errors[] = "Line {$lineNum}: {:case:}/{:default:}/{:othercase:} without matching {:switch:}";
+            }
+
             // 🎯 Track {:code:} blocks
             if (strpos($line, '{:code:}') !== false) {
                 if ($codeStack > 0) {
@@ -585,11 +601,6 @@ class UltimateTemplateEngine
                 if ($codeStack < 0) {
                     $errors[] = "Line {$lineNum}: {:codeend:} without matching {:code:}";
                 }
-            }
-
-            // Check {case} / {:default:} / {:othercase:} outside {switch}
-            if ((preg_match('/\{:case\s+/', $line) || strpos($line, '{:default:}') !== false || strpos($line, '{:othercase:}') !== false) && $switchStack === 0) {
-                $errors[] = "Line {$lineNum}: {:case:}/{:default:}/{:othercase:} without matching {:switch:}";
             }
         }
 
@@ -1237,12 +1248,60 @@ class UltimateTemplateEngine
         $condition = preg_replace_callback('/(?<![.\'"])\b([a-zA-Z_][a-zA-Z0-9_]*)\b/', function($matches) use ($tableIndex) {
             $word = $matches[1];
             // Skip JavaScript keywords, literals, already-resolved expressions, and loop variables
+            //
+            // 🎯 All values from the `{:i:}` resolver's $counterMap (see processVariable(),
+            // ~line 2261) MUST be listed here too. The earlier {:var:} pass above already
+            // replaced e.g. "{:i:}" inside an item.enum_values loop with the raw JS
+            // identifier "_valIdx" (no gtree[] prefix — it's a bare `for` loop counter).
+            // Without this skip entry, THIS pass re-scans that already-substituted text,
+            // sees "_valIdx" as just another bare word, and calls processVariable('_valIdx', ...)
+            // on it — which isn't a recognized top-level variable, so it falls through to the
+            // generic "unknown variable" fallback and produces garbage like
+            // `(gtree[0].project[0]._valIdx || '_valIdx')` instead of leaving the counter alone.
+            // Same class of bug would hit `_fkI`/`_fkuI`/`migIdx`/the layout loopIndex_* counters
+            // the moment any of THEM appear in a condition, since none were listed either.
+            // 🎯 Bare `i` needs the SAME loop-context-aware resolution as `{:i:}` (with
+            // braces) already gets via processVariable()'s $counterMap. Historically bare
+            // `i` was just skip-listed (returned literally unchanged), which happened to be
+            // correct only because every loop context that existed back then mapped to
+            // plain 'i' anyway (fields, keys, constraints, foreignkeys were the exception
+            // handled elsewhere). Now that item_enum_values/tables/foreignkeys*/migration_*/
+            // layout* contexts map to their own JS counters (_valIdx, tableIdx, _fkI, ...),
+            // a hardcoded-literal `i` silently references an undefined or wrong-scope
+            // variable inside those loops — e.g. `{:if i<nmaxenum-1:}` inside
+            // `{:for item.enum_values:}` produced `if (i<...)` even though the loop
+            // declares `_valIdx`, not `i`. Routing bare `i` through the identical resolver
+            // as `{:i:}` removes the asymmetry instead of special-casing this one instance.
+            if ($word === 'i') {
+                $resolved = $this->processVariable('i', $tableIndex);
+                $resolved = preg_replace("/^'\s*\+\s*/", '', $resolved);
+                $resolved = preg_replace("/\s*\+\s*'$/", '', $resolved);
+                return $resolved;
+            }
+            // Skip JavaScript keywords, literals, already-resolved expressions, and loop variables
+            //
+            // 🎯 All values from the `{:i:}` resolver's $counterMap (see processVariable(),
+            // ~line 2261) MUST be listed here too. The earlier {:var:} pass above already
+            // replaced e.g. "{:i:}" inside an item.enum_values loop with the raw JS
+            // identifier "_valIdx" (no gtree[] prefix — it's a bare `for` loop counter).
+            // Without this skip entry, THIS pass re-scans that already-substituted text,
+            // sees "_valIdx" as just another bare word, and calls processVariable('_valIdx', ...)
+            // on it — which isn't a recognized top-level variable, so it falls through to the
+            // generic "unknown variable" fallback and produces garbage like
+            // `(gtree[0].project[0]._valIdx || '_valIdx')` instead of leaving the counter alone.
+            // Same class of bug would hit `_fkI`/`_fkuI`/`migIdx`/the layout loopIndex_* counters
+            // the moment any of THEM appear in a condition, since none were listed either.
             $skipWords = ['true', 'false', 'null', 'undefined', 'typeof', 'instanceof',
-                          'i', 'j', 'tableIdx', 'gtree', 'project', 'tables', 'fields',
+                          'j', 'tableIdx', 'gtree', 'project', 'tables', 'fields',
                           'keys', 'foreignkeys', 'constraints', 'lang', 'formset', 'windows',
                           'if', 'else', 'return', 'var', 'let', 'const', 'function',
                           'length', 'indexOf', 'includes', 'toString', 'trim',
                           'String', 'Number', 'Boolean', 'Array', 'Object', 'Math',
+                          '_valIdx', '_fkI', '_fkuI', 'migIdx',
+                          'loopIndex_layoutsingles', 'loopIndex_layoutcolumns',
+                          'loopIndex_layoutbuttons', 'loopIndex_layoutmenus',
+                          'loopIndex_layoutreportsingles', 'loopIndex_layoutreportlists',
+                          'loopIndex_reportsingleelements', 'loopIndex_reportlistelements',
                           // Comparison operators — must NOT be resolved as variables!
                           // They are converted to JS operators in the next step.
                           'eq', 'ne', 'gt', 'lt', 'gte', 'lte', 'and', 'or', 'not'];
@@ -1528,8 +1587,15 @@ class UltimateTemplateEngine
     {
         // Check if line contains template syntax but is not a standalone template command
 
-        // Skip if it's a standalone template command (entire line is just one template tag)
-        if (preg_match('/^\s*\{:(for|endfor|foreach|if|endif|else|elseif|switch|endswitch|case|default|othercase|break|macro|\/\w+)\s*.*?:\}\s*$/', $line)) {
+        // Skip if it's a standalone template command (entire line is just one template tag).
+        // The inner segment must not contain ":}" itself — otherwise the lazy ".*?", forced
+        // to satisfy the trailing "\s*$" anchor, backtracks PAST an embedded ":}" and swallows
+        // everything up to the LAST closing tag on the line (e.g. a whole inline
+        // {:switch:}{:case:}...{:endswitch:} one-liner gets misread as a single standalone
+        // {:switch ...:} tag whose "condition" is the entire rest of the line). That mis-route
+        // sent this exact pattern to isSwitchStart() instead of processMixedContentLine(),
+        // producing a broken switch() with the raw template text as its condition.
+        if (preg_match('/^\s*\{:(for|endfor|foreach|if|endif|else|elseif|switch|endswitch|case|default|othercase|break|macro|\/\w+)\s*(?:(?!:\}).)*:\}\s*$/', $line)) {
             return false;
         }
 
@@ -1553,6 +1619,7 @@ class UltimateTemplateEngine
         // Note: :? before closing \} handles both {:if cond:} and {:if cond{:var::}} syntax
         $templatePattern = '/\{:for\s+\{:[^:]+:\}:\}'  // {:for {:var:}:} (nested syntax)
             . '|\{:foreach\s+[^:]+:\}'                  // {:foreach ...:}
+            . '|\{:for\s+item\.enum_values:\}'          // {:for item.enum_values:} (dotted, before \w+ below)
             . '|\{:for\s+\w+:\}'                        // {:for word:}
             . '|\{:elseif\s+' . $nestedCondition . ':?\\}' // {:elseif condition:} (before else!)
             . '|\{:if\s+' . $nestedCondition . ':?\\}'  // {:if condition:} (supports nested {:var:})
@@ -1612,16 +1679,40 @@ class UltimateTemplateEngine
                 } elseif ($matchText === '{:else:}') {
                     $result .= "  } else {\n";
                 } elseif (strpos($matchText, '{:switch ') === 0) {
+                    // Mirrors the SMART AUTO-BREAK state machine in processLine() (the
+                    // standalone-line switch handler) — that logic never ran for inline
+                    // one-liners like {:switch:}{:case:}...{:endswitch:} because this
+                    // whole branch used to just emit "switch (...) {" with no break
+                    // bookkeeping, so every case fell through into the next one in the
+                    // generated JS. Same $this->inSwitchCase/$this->userManagesBreaks
+                    // fields, so a switch spanning both a standalone line and inline
+                    // tags on other lines still behaves consistently.
                     if (preg_match('/\{:switch\s+(.+?):\}/', $matchText, $switchMatch)) {
+                        $this->inSwitchCase = false;
+                        $this->userManagesBreaks = false;
                         $result .= $this->processSwitchStart("{$matchText}", $tableIndex);
                     }
                 } elseif ($matchText === '{:endswitch:}') {
+                    if ($this->inSwitchCase && !$this->userManagesBreaks) {
+                        $result .= "      break;\n";
+                    }
+                    $this->inSwitchCase = false;
+                    $this->userManagesBreaks = false;
                     $result .= "  }\n";
                 } elseif (strpos($matchText, '{:case ') === 0) {
+                    if ($this->inSwitchCase && !$this->userManagesBreaks) {
+                        $result .= "      break;\n";
+                    }
+                    $this->inSwitchCase = true;
                     $result .= $this->processSwitchCase($matchText);
                 } elseif ($matchText === '{:default:}' || $matchText === '{:othercase:}') {
+                    if ($this->inSwitchCase && !$this->userManagesBreaks) {
+                        $result .= "      break;\n";
+                    }
+                    $this->inSwitchCase = true;
                     $result .= "    default:\n";
                 } elseif ($matchText === '{:break:}') {
+                    $this->userManagesBreaks = true;
                     $result .= "      break;\n";
                 }
 
@@ -1692,6 +1783,23 @@ class UltimateTemplateEngine
         // (nmaxitems at ~line 1707) keep their local nested guard as safety net.
         if ($tableIndex !== null && $this->isInsideLoopContext('tables')) {
             $tableIndex = null;
+        }
+
+        // 🎯 ITEM ARRAY-PROPERTY LOOP (inline form) — mirrors processLoopStart()'s
+        // {:for item.enum_values:} special-case. This construct almost always
+        // appears inline inside a {:switch item.type:}{:case 'ENUM':}...{:endfor:}
+        // one-liner, so it goes through processInlineLoopStart(), not the
+        // standalone-line emitter. `\w+` in the generic extraction below doesn't
+        // match the dot in "item.enum_values", so this must be special-cased
+        // before that generic regex runs, exactly like the block version.
+        if (strpos($matchText, '{:for item.enum_values:}') !== false) {
+            $nestedInTables = $this->isInsideLoopContext('tables');
+            $this->pushLoopContext('item_enum_values');
+            $itemRef = ($tableIndex !== null && !$nestedInTables)
+                ? "gtree[0].project[0].tables[{$tableIndex}].fields[i]"
+                : "gtree[0].project[0].tables[tableIdx].fields[i]";
+            return "  for (let _valIdx = 0; _valIdx < (({$itemRef}.enum_values) || []).length; _valIdx++) {\n"
+                 . "    const value = {$itemRef}.enum_values[_valIdx];\n";
         }
 
         // Extract loop variable - support BOTH formats:
