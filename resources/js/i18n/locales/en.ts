@@ -193,6 +193,20 @@ export const en: Translations = {
   forgotpasswordmodal122: 'Send Reset Link',
   forgotpasswordmodal131: 'Back to Login',
 
+  // resources/js/Components/AuthModals/DemoAccessModal.tsx
+  demoaccessmodal_title: 'Request Demo Access',
+  demoaccessmodal_intro: 'Leave your email address and we\'ll send you a one-time link to the live demo.',
+  demoaccessmodal_email_label: 'Email Address',
+  demoaccessmodal_email_placeholder: 'your.email@example.com',
+  demoaccessmodal_consent: 'I agree that my email address may be used to send me the demo access link (GDPR).',
+  demoaccessmodal_consent_required: 'Please accept the consent checkbox to continue.',
+  demoaccessmodal_sending: 'Sending...',
+  demoaccessmodal_submit: 'Request Access',
+  demoaccessmodal_error: 'Something went wrong. Please try again.',
+  demoaccessmodal_success: 'Check your inbox — we\'ve sent you the demo access link.',
+  demoaccessmodal_expired: 'Your demo access link has expired. Please request a new one.',
+  demoaccessmodal_required: 'Demo access requires a valid email link. Please request one below.',
+
   // resources/js/Components/AuthModals/LoginModal.tsx
 
   // resources/js\Components\AuthModals\LoginModal.tsx

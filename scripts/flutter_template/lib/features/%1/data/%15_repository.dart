@@ -16,14 +16,36 @@ var entityLower = table.filesingularcamelcase;
 
 var pkField = fields.find(function (f) { return f.isprimary; });
 var foreignkeys = table.foreignkeys || [];
-// "Business key": first non-PK, single-column UNIQUE constraint in declaration
-// order, falling back to the surrogate PK when a table has none. `item.isunique`
-// is true for EVERY column in a UNIQUE constraint, including composite ones
-// (e.g. UNIQUE(cust_no, addr_no) on a join table) — a lone half of a composite
-// key isn't actually unique by itself, so those must be excluded by counting
-// constraint members via `table.keys` (one row per constraint column). FK
-// columns are excluded too, even single-column-unique ones — an FK isn't a
-// plain editable identity field, it needs the LookupField/combobox treatment.
+// "Business key" resolution, in priority order:
+//
+// 1. If any OTHER table's FOREIGN KEY actually targets a column on this
+//    table, that column IS the business key, full stop — every FK combobox
+//    across the app was generated against it, so this table's own CRUD/
+//    lookupOptions() must agree or every referencing table breaks (dart type
+//    mismatch between `LookupField<X>` and `List<LookupOption<Y>>`). A table
+//    can define several single-column UNIQUE constraints (e.g. both a "no"
+//    business code AND an unrelated unique attribute) — only the FK metadata
+//    says which one everyone else actually keys off of.
+// 2. Otherwise, first non-PK, single-column UNIQUE constraint in declaration
+//    order, falling back to the surrogate PK when a table has none.
+//    `item.isunique` is true for EVERY column in a UNIQUE constraint,
+//    including composite ones (e.g. UNIQUE(cust_no, addr_no) on a join
+//    table) — a lone half of a composite key isn't actually unique by
+//    itself, so those must be excluded by counting constraint members via
+//    `table.keys` (one row per constraint column). FK columns are excluded
+//    too, even single-column-unique ones — an FK isn't a plain editable
+//    identity field, it needs the LookupField/combobox treatment.
+var allTables = gtree[0].project[0].tables;
+var incomingKeyFieldName = null;
+for (var ti = 0; ti < allTables.length && !incomingKeyFieldName; ti++) {
+  var otherFks = allTables[ti].foreignkeys || [];
+  for (var fi = 0; fi < otherFks.length; fi++) {
+    if (otherFks[fi].referencedtable === table.filename) {
+      incomingKeyFieldName = otherFks[fi].referencedcolumn;
+      break;
+    }
+  }
+}
 var keys = table.keys || [];
 var uniqueConstraintSize = {};
 keys.forEach(function (k) {
@@ -33,9 +55,11 @@ keys.forEach(function (k) {
 var singleColumnUniqueNames = keys.filter(function (k) {
   return k.isunique && !k.isprimary && uniqueConstraintSize[k.constraintname] === 1;
 }).map(function (k) { return k.name; });
-var keyField = fields.find(function (f) {
-  return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
-}) || pkField;
+var keyField =
+  (incomingKeyFieldName && fields.find(function (f) { return f.name === incomingKeyFieldName; })) ||
+  fields.find(function (f) {
+    return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
+  }) || pkField;
 // Numeric key iff phptype int/float and not an enum column.
 var keyIsString = !(keyField.phptype === 'int' || keyField.phptype === 'float') || keyField.type === 'ENUM';
 var keyDartType = keyIsString ? 'String' : 'int';
@@ -43,9 +67,18 @@ var keyDartType = keyIsString ? 'String' : 'int';
 // Combobox label: prefer a GENERATED string column (e.g. `count_display`),
 // else the first plain (non-key, non-generated) string column, else fall
 // back to the key itself so lookupOptions() always has a usable label.
+// `phptype === 'string'` is the PHP-side type bucket and also catches
+// DATE/DATETIME/TIMESTAMP columns (they have no dedicated phptype) — those
+// are never plain Dart Strings here (the model exposes them as `DateTime?`,
+// see model/%15.dart), so they must be excluded explicitly or lookupOptions()
+// emits `row.dateField ?? row.key.toString()`, an expression whose type is
+// the DateTime?/String supertype `Object`, not `String`.
+function isPlainStringField(f) {
+  return f.phptype === 'string' && f.type !== 'DATE' && f.type !== 'DATETIME' && f.type !== 'TIMESTAMP';
+}
 var labelField =
-  fields.find(function (f) { return f.is_generated && f.phptype === 'string'; }) ||
-  fields.find(function (f) { return !f.isprimary && f.name !== keyField.name && !f.is_generated && f.phptype === 'string' && f.type !== 'TEXT'; }) ||
+  fields.find(function (f) { return f.is_generated && isPlainStringField(f); }) ||
+  fields.find(function (f) { return !f.isprimary && f.name !== keyField.name && !f.is_generated && isPlainStringField(f) && f.type !== 'TEXT'; }) ||
   keyField;
 
 var selectable = fields.filter(function (f) { return true; });

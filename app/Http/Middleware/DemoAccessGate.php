@@ -9,7 +9,16 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Server-side gate for the DEMO deployment. No-op unless `config('scoriet.demo')`
- * (so it is completely inert on the main site).
+ * (so it is completely inert on the main site) AND the request actually came
+ * in on the main host (see isMainHost()).
+ *
+ * Real deployments never share a host between main and demo, so that second
+ * check is a no-op there — main's own host always equals `main_url`'s host.
+ * It only matters on a single local instance simulating both roles behind
+ * two vhosts (e.g. `scoriet.local` for normal dev login + `demo.scoriet.local`
+ * to exercise the gated flow): without it, one shared `SCORIET_DEMO=true`
+ * would lock BOTH vhosts, even though only one of them is meant to behave
+ * like the real demo.
  *
  * The demo auto-login posts hardcoded credentials (demo-user/demo1234) to
  * /api/oauth/token, so gating the landing button or the page alone is useless —
@@ -28,7 +37,7 @@ class DemoAccessGate
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!config('scoriet.demo', false)) {
+        if (!config('scoriet.demo', false) || $this->isMainHost($request)) {
             return $next($request);
         }
 
@@ -52,5 +61,16 @@ class DemoAccessGate
         }
 
         return $next($request);
+    }
+
+    /**
+     * Is this request coming in on the host `main_url` points at? See the
+     * class docblock for why this matters on a single local instance.
+     */
+    private function isMainHost(Request $request): bool
+    {
+        $mainHost = parse_url((string) config('scoriet.main_url'), PHP_URL_HOST);
+
+        return is_string($mainHost) && strcasecmp($mainHost, $request->getHost()) === 0;
     }
 }

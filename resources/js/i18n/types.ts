@@ -210,6 +210,20 @@ export interface Translations {
   forgotpasswordmodal122: string;
   forgotpasswordmodal131: string;
 
+  // resources/js/Components/AuthModals/DemoAccessModal.tsx
+  demoaccessmodal_title: string;
+  demoaccessmodal_intro: string;
+  demoaccessmodal_email_label: string;
+  demoaccessmodal_email_placeholder: string;
+  demoaccessmodal_consent: string;
+  demoaccessmodal_consent_required: string;
+  demoaccessmodal_sending: string;
+  demoaccessmodal_submit: string;
+  demoaccessmodal_error: string;
+  demoaccessmodal_success: string;
+  demoaccessmodal_expired: string;
+  demoaccessmodal_required: string;
+
   // resources/js/Components/AuthModals/LoginModal.tsx
 
   // resources/js\Components\AuthModals\LoginModal.tsx

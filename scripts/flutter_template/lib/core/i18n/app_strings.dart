@@ -112,6 +112,7 @@ const Map<String, Map<String, String>> kAppStrings = {
   'delete_confirm_content': {'de': '#{key} löschen?', 'en': 'Delete #{key}?', 'es': '¿Eliminar #{key}?', 'fr': 'Supprimer #{key} ?', 'it': 'Eliminare #{key}?'},
   'search_hint': {'de': 'Suche…', 'en': 'Search…', 'es': 'Buscar…', 'fr': 'Rechercher…', 'it': 'Cerca…'},
   'not_found': {'de': 'Nicht gefunden', 'en': 'Not found', 'es': 'No encontrado', 'fr': 'Introuvable', 'it': 'Non trovato'},
+  'select_row_first': {'de': 'Bitte zuerst einen Datensatz markieren', 'en': 'Please select a record first', 'es': 'Selecciona primero un registro', 'fr': 'Merci de sélectionner un enregistrement', 'it': 'Seleziona prima un record'},
   'saved': {'de': 'Gespeichert', 'en': 'Saved', 'es': 'Guardado', 'fr': 'Enregistré', 'it': 'Salvato'},
   'nav_first': {'de': 'Erster Datensatz', 'en': 'First record', 'es': 'Primer registro', 'fr': 'Premier enregistrement', 'it': 'Primo record'},
   'nav_prev': {'de': 'Vorheriger Datensatz', 'en': 'Previous record', 'es': 'Registro anterior', 'fr': 'Enregistrement précédent', 'it': 'Record precedente'},

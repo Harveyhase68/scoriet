@@ -54,6 +54,21 @@ var table = gtree[0].project[0].tables[gtree[0].project[0].tableindex];
 var fields = table.fields;
 var pkField = fields.find(function (f) { return f.isprimary; });
 var foreignkeys0 = table.foreignkeys || [];
+// Business key: an incoming FK from another table wins over the generic
+// single-column-UNIQUE guess (see %15_repository.dart for the full
+// rationale) — this recordKey type must agree with every FK combobox
+// elsewhere in the app that was generated against this exact column.
+var allTables0 = gtree[0].project[0].tables;
+var incomingKeyFieldName0 = null;
+for (var ti0 = 0; ti0 < allTables0.length && !incomingKeyFieldName0; ti0++) {
+  var otherFks0 = allTables0[ti0].foreignkeys || [];
+  for (var fi0 = 0; fi0 < otherFks0.length; fi0++) {
+    if (otherFks0[fi0].referencedtable === table.filename) {
+      incomingKeyFieldName0 = otherFks0[fi0].referencedcolumn;
+      break;
+    }
+  }
+}
 var keys0 = table.keys || [];
 var uniqueConstraintSize0 = {};
 keys0.forEach(function (k) {
@@ -63,9 +78,11 @@ keys0.forEach(function (k) {
 var singleColumnUniqueNames0 = keys0.filter(function (k) {
   return k.isunique && !k.isprimary && uniqueConstraintSize0[k.constraintname] === 1;
 }).map(function (k) { return k.name; });
-var keyField = fields.find(function (f) {
-  return singleColumnUniqueNames0.indexOf(f.name) !== -1 && !foreignkeys0.some(function (fk) { return fk.name === f.name; });
-}) || pkField;
+var keyField =
+  (incomingKeyFieldName0 && fields.find(function (f) { return f.name === incomingKeyFieldName0; })) ||
+  fields.find(function (f) {
+    return singleColumnUniqueNames0.indexOf(f.name) !== -1 && !foreignkeys0.some(function (fk) { return fk.name === f.name; });
+  }) || pkField;
 var keyIsString = !(keyField.phptype === 'int' || keyField.phptype === 'float') || keyField.type === 'ENUM';
 var keyDartType = keyIsString ? 'String' : 'int';
 var out = '';
@@ -104,6 +121,18 @@ var entityLower = table.filesingularcamelcase;
 var foreignkeys = table.foreignkeys || [];
 
 var pkField = fields.find(function (f) { return f.isprimary; });
+// Business key: an incoming FK from another table wins (see %15_repository.dart).
+var allTables = gtree[0].project[0].tables;
+var incomingKeyFieldName = null;
+for (var ti = 0; ti < allTables.length && !incomingKeyFieldName; ti++) {
+  var otherFks = allTables[ti].foreignkeys || [];
+  for (var fi = 0; fi < otherFks.length; fi++) {
+    if (otherFks[fi].referencedtable === table.filename) {
+      incomingKeyFieldName = otherFks[fi].referencedcolumn;
+      break;
+    }
+  }
+}
 var keys = table.keys || [];
 var uniqueConstraintSize = {};
 keys.forEach(function (k) {
@@ -113,9 +142,11 @@ keys.forEach(function (k) {
 var singleColumnUniqueNames = keys.filter(function (k) {
   return k.isunique && !k.isprimary && uniqueConstraintSize[k.constraintname] === 1;
 }).map(function (k) { return k.name; });
-var keyField = fields.find(function (f) {
-  return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
-}) || pkField;
+var keyField =
+  (incomingKeyFieldName && fields.find(function (f) { return f.name === incomingKeyFieldName; })) ||
+  fields.find(function (f) {
+    return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
+  }) || pkField;
 var keyIsString = !(keyField.phptype === 'int' || keyField.phptype === 'float') || keyField.type === 'ENUM';
 var keyDartType = keyIsString ? 'String' : 'int';
 var hasOwnNextKey = !keyIsString && keyField.name !== pkField.name;
@@ -167,9 +198,13 @@ var editable = fields.filter(function (f) {
   return !f.isprimary && !f.is_generated;
 });
 
-var plainFields = editable.filter(function (f) { return f.type !== 'ENUM' && f.type !== 'TINYINT' && !(f.type === 'DATE' || f.type === 'DATETIME' || f.type === 'TIMESTAMP') && !fkFor(f); });
+// TINYINT is only a boolean under the MySQL TINYINT(1) convention; any other
+// width (e.g. bare `TINYINT UNSIGNED`) is a genuine small integer and must be
+// treated like every other numeric column.
+function isBoolField(f) { return f.type === 'TINYINT' && Number(f.size) === 1; }
+var plainFields = editable.filter(function (f) { return f.type !== 'ENUM' && !isBoolField(f) && !(f.type === 'DATE' || f.type === 'DATETIME' || f.type === 'TIMESTAMP') && !fkFor(f); });
 var enumFields = editable.filter(function (f) { return f.type === 'ENUM'; });
-var boolFields = editable.filter(function (f) { return f.type === 'TINYINT'; });
+var boolFields = editable.filter(function (f) { return isBoolField(f); });
 var dateFields = editable.filter(function (f) { return f.type === 'DATE' || f.type === 'DATETIME' || f.type === 'TIMESTAMP'; });
 var fkFields = editable.filter(function (f) { return !!fkFor(f); });
 // GENERATED (non-PK) columns: never user-edited, but if NOT NULL the model
@@ -180,7 +215,7 @@ var fkFields = editable.filter(function (f) { return !!fkFor(f); });
 var generatedFields = fields.filter(function (f) { return !f.isprimary && f.is_generated; });
 function generatedPlaceholder(f) {
   if (f.type === 'ENUM') return entity + (f.pascalcasenoprefix || f.pascalcase) + '.values.first';
-  if (f.type === 'TINYINT') return 'false';
+  if (isBoolField(f)) return 'false';
   if (f.type === 'DATE' || f.type === 'DATETIME' || f.type === 'TIMESTAMP') return 'null';
   if (f.phptype === 'int') return '0';
   if (f.phptype === 'float') return '0';
