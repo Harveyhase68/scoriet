@@ -61,7 +61,7 @@ class {:filesingularpascalcase:} {
     this.{:item.camelcase:},
 {:elseif item.type eq "ENUM":}
     required this.{:item.camelcase:},
-{:elseif item.type eq "TINYINT":}
+{:elseif item.type eq "TINYINT" and item.size eq 1:}
     required this.{:item.camelcase:},
 {:elseif item.notnull:}
     required this.{:item.camelcase:},
@@ -76,7 +76,7 @@ class {:filesingularpascalcase:} {
   final {:filesingularpascalcase:}{:item.pascalcasenoprefix:} {:item.camelcase:};
 {:elseif item.isprimary:}
   final int? {:item.camelcase:};
-{:elseif item.type eq "TINYINT":}
+{:elseif item.type eq "TINYINT" and item.size eq 1:}
   final bool {:item.camelcase:};
 {:elseif item.type eq "DATE" or item.type eq "DATETIME" or item.type eq "TIMESTAMP":}
   final DateTime? {:item.camelcase:};
@@ -117,7 +117,7 @@ class {:filesingularpascalcase:} {
       {:item.camelcase:}: {:filesingularpascalcase:}{:item.pascalcasenoprefix:}.fromWire(m['{:item.name:}']),
 {:elseif item.isprimary:}
       {:item.camelcase:}: _int(m['{:item.name:}']),
-{:elseif item.type eq "TINYINT":}
+{:elseif item.type eq "TINYINT" and item.size eq 1:}
       {:item.camelcase:}: (m['{:item.name:}'] ?? '0') == '1',
 {:elseif item.type eq "DATE" or item.type eq "DATETIME" or item.type eq "TIMESTAMP":}
       {:item.camelcase:}: _dt(m['{:item.name:}']),
@@ -151,7 +151,7 @@ class {:filesingularpascalcase:} {
 {:elseif item.is_generated:}
 {:elseif item.type eq "ENUM":}
         '{:item.name:}': {:item.camelcase:}.wire,
-{:elseif item.type eq "TINYINT":}
+{:elseif item.type eq "TINYINT" and item.size eq 1:}
         '{:item.name:}': {:item.camelcase:} ? 1 : 0,
 {:elseif item.type eq "DATE":}
         '{:item.name:}': _fmtDate({:item.camelcase:}),

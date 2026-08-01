@@ -18,6 +18,21 @@ var entityLower = table.filesingularcamelcase;
 
 var pkField = fields.find(function (f) { return f.isprimary; });
 var foreignkeys = table.foreignkeys || [];
+// Business key: an incoming FK from another table (see %15_repository.dart
+// for the full rationale) wins over the generic single-column-UNIQUE guess —
+// every FK combobox elsewhere in the app was generated against that exact
+// column, and this table's own provider types must agree with it.
+var allTables = gtree[0].project[0].tables;
+var incomingKeyFieldName = null;
+for (var ti = 0; ti < allTables.length && !incomingKeyFieldName; ti++) {
+  var otherFks = allTables[ti].foreignkeys || [];
+  for (var fi = 0; fi < otherFks.length; fi++) {
+    if (otherFks[fi].referencedtable === table.filename) {
+      incomingKeyFieldName = otherFks[fi].referencedcolumn;
+      break;
+    }
+  }
+}
 var keys = table.keys || [];
 var uniqueConstraintSize = {};
 keys.forEach(function (k) {
@@ -27,9 +42,11 @@ keys.forEach(function (k) {
 var singleColumnUniqueNames = keys.filter(function (k) {
   return k.isunique && !k.isprimary && uniqueConstraintSize[k.constraintname] === 1;
 }).map(function (k) { return k.name; });
-var keyField = fields.find(function (f) {
-  return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
-}) || pkField;
+var keyField =
+  (incomingKeyFieldName && fields.find(function (f) { return f.name === incomingKeyFieldName; })) ||
+  fields.find(function (f) {
+    return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
+  }) || pkField;
 var keyIsString = !(keyField.phptype === 'int' || keyField.phptype === 'float') || keyField.type === 'ENUM';
 var keyDartType = keyIsString ? 'String' : 'int';
 

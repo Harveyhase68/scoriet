@@ -193,6 +193,20 @@ export const it: Translations = {
   forgotpasswordmodal122: 'Reimposta collegamento Invia',
   forgotpasswordmodal131: 'Torna al login',
 
+  // resources/js/Components/AuthModals/DemoAccessModal.tsx
+  demoaccessmodal_title: 'Richiedi accesso alla demo',
+  demoaccessmodal_intro: 'Lascia il tuo indirizzo email e ti invieremo un link monouso alla demo live.',
+  demoaccessmodal_email_label: 'Indirizzo email',
+  demoaccessmodal_email_placeholder: 'tua.email@esempio.com',
+  demoaccessmodal_consent: 'Accetto che il mio indirizzo email venga utilizzato per inviarmi il link di accesso alla demo (GDPR).',
+  demoaccessmodal_consent_required: 'Si prega di accettare la casella di consenso per continuare.',
+  demoaccessmodal_sending: 'Invio in corso...',
+  demoaccessmodal_submit: 'Richiedi accesso',
+  demoaccessmodal_error: 'Qualcosa è andato storto. Riprova.',
+  demoaccessmodal_success: 'Controlla la tua casella di posta – ti abbiamo inviato il link di accesso alla demo.',
+  demoaccessmodal_expired: 'Il tuo link di accesso alla demo è scaduto. Richiedine uno nuovo.',
+  demoaccessmodal_required: 'L\'accesso alla demo richiede un link email valido. Richiedine uno qui sotto.',
+
   // resources/js/Components/AuthModals/LoginModal.tsx
 
   // resources/js\Components\AuthModals\LoginModal.tsx

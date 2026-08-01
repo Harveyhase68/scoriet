@@ -20,9 +20,18 @@ import '{:filesingularlower:}_report_page.dart';
 ///    wherever the Designer put them (top/bottom/left/right of the grid).
 ///  - a saved column Profil exists      -> column order/width/caption exactly
 ///    as designed for this table.
-class {:filesingularpascalcase:}ListPage extends ConsumerWidget {
+class {:filesingularpascalcase:}ListPage extends ConsumerStatefulWidget {
   const {:filesingularpascalcase:}ListPage({super.key});
 
+  @override
+  ConsumerState<{:filesingularpascalcase:}ListPage> createState() => _{:filesingularpascalcase:}ListPageState();
+}
+
+// Stateful so a Designer-configured "delete"/"modify" button (which acts on
+// "the current row" rather than a fixed page-level target like New/Print/
+// Close) has somewhere to keep track of which row that is — see
+// `_selected` below. Tables without such a button simply never touch it.
+class _{:filesingularpascalcase:}ListPageState extends ConsumerState<{:filesingularpascalcase:}ListPage> {
 {:code:}
 var table = gtree[0].project[0].tables[gtree[0].project[0].tableindex];
 var fields = table.fields;
@@ -31,6 +40,18 @@ var entityLower = table.filesingularcamelcase;
 
 var pkField = fields.find(function (f) { return f.isprimary; });
 var foreignkeys = table.foreignkeys || [];
+// Business key: an incoming FK from another table wins (see %15_repository.dart).
+var allTables = gtree[0].project[0].tables;
+var incomingKeyFieldName = null;
+for (var ti = 0; ti < allTables.length && !incomingKeyFieldName; ti++) {
+  var otherFks = allTables[ti].foreignkeys || [];
+  for (var fi = 0; fi < otherFks.length; fi++) {
+    if (otherFks[fi].referencedtable === table.filename) {
+      incomingKeyFieldName = otherFks[fi].referencedcolumn;
+      break;
+    }
+  }
+}
 var keys = table.keys || [];
 var uniqueConstraintSize = {};
 keys.forEach(function (k) {
@@ -40,9 +61,11 @@ keys.forEach(function (k) {
 var singleColumnUniqueNames = keys.filter(function (k) {
   return k.isunique && !k.isprimary && uniqueConstraintSize[k.constraintname] === 1;
 }).map(function (k) { return k.name; });
-var keyField = fields.find(function (f) {
-  return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
-}) || pkField;
+var keyField =
+  (incomingKeyFieldName && fields.find(function (f) { return f.name === incomingKeyFieldName; })) ||
+  fields.find(function (f) {
+    return singleColumnUniqueNames.indexOf(f.name) !== -1 && !foreignkeys.some(function (fk) { return fk.name === f.name; });
+  }) || pkField;
 var keyIsString = !(keyField.phptype === 'int' || keyField.phptype === 'float') || keyField.type === 'ENUM';
 var keyDartType = keyIsString ? 'String' : 'int';
 
@@ -110,7 +133,7 @@ if (tier === 'a') {
 function cellExpr(f) {
   var access = 'row.' + f.camelcase;
   if (f.type === 'ENUM') return access + '.label';
-  if (f.type === 'TINYINT') return access + " ? s(ref, 'yes') : s(ref, 'no')";
+  if (f.type === 'TINYINT' && Number(f.size) === 1) return access + " ? s(ref, 'yes') : s(ref, 'no')";
   if (f.type === 'DATE' || f.type === 'DATETIME' || f.type === 'TIMESTAMP') {
     return access + "?.toIso8601String().split('T').first ?? '—'";
   }
@@ -127,6 +150,16 @@ var navButtonRows = buttonRows.filter(function (b) { return navButtonTypes.index
 var otherButtonRows = buttonRows.filter(function (b) { return navButtonTypes.indexOf(b.button_type) === -1; });
 var hasNewButtonConfigured = buttonRows.some(function (b) { return b.button_type === 'button_new' || (b.action || '').toLowerCase() === 'new'; });
 var hasPrintButtonConfigured = buttonRows.some(function (b) { return b.button_type === 'button_print' || (b.action || '').toLowerCase() === 'print'; });
+// "delete"/"modify" (unlike New/Print/Close) act on a specific row, which a
+// plain list has no concept of on its own — so only pull in row-selection
+// state (checkbox column + `_selected` field) when the Designer actually
+// configured one of these buttons for this table.
+var hasDeleteAction = buttonRows.some(function (b) { return b.button_type === 'button_delete' || (b.action || '').toLowerCase() === 'delete'; });
+var hasModifyAction = buttonRows.some(function (b) {
+  var a = (b.action || '').toLowerCase();
+  return b.button_type === 'button_modify' || b.button_type === 'button_edit' || a === 'modify' || a === 'edit';
+});
+var needsSelection = hasDeleteAction || hasModifyAction;
 
 function buttonLabelExpr(btn) {
   var fallbackKey =
@@ -164,10 +197,11 @@ function buttonHandlerExpr(btn) {
   if (action === 'new' || type === 'button_new') return '() => _openForm(context, ref, null)';
   if (action === 'print' || type === 'button_print') return '() => _openReport(context)';
   if (action === 'close' || action === 'cancel' || type === 'button_close' || type === 'button_cancel') return '() => Navigator.of(context).pop()';
-  // delete / nav_* / custom / anything else: no natural page-level meaning on
-  // a plain list view (no row-selection or pagination model here) — render
-  // faithfully at the Designer's position/caption, wire to a clearly marked
-  // TODO instead of fabricating behavior.
+  if (action === 'delete' || type === 'button_delete') return '() => _deleteSelected(context, ref)';
+  if (action === 'modify' || action === 'edit' || type === 'button_modify' || type === 'button_edit') return '() => _modifySelected(context, ref)';
+  // nav_* / custom / anything else: no natural page-level meaning on a plain
+  // list view — render faithfully at the Designer's position/caption, wire
+  // to a clearly marked TODO instead of fabricating behavior.
   return "() { /* TODO: implement action " + dartString(action || type) + " */ }";
 }
 function buttonColorExpr(btn) {
@@ -267,8 +301,13 @@ function buttonBottomBarExpr() {
 }
 
 var out = '';
+if (needsSelection) {
+  out += '  // The row a Designer-configured delete/modify button acts on. Set by\n';
+  out += "  // the grid's checkbox column; cleared once acted on or on deselect.\n";
+  out += '  ' + entity + '? _selected;\n\n';
+}
 out += '  @override\n';
-out += '  Widget build(BuildContext context, WidgetRef ref) {\n';
+out += '  Widget build(BuildContext context) {\n';
 out += '    final async = ref.watch(' + entityLower + 'ListProvider);\n\n';
 out += '    return Scaffold(\n';
 out += '      appBar: AppBar(\n';
@@ -340,7 +379,7 @@ out += '      child: DataTable2(\n';
 out += '        columnSpacing: 12,\n';
 out += '        horizontalMargin: 12,\n';
 out += '        minWidth: ' + gridMinWidth + ',\n';
-out += '        showCheckboxColumn: false,\n';
+out += '        showCheckboxColumn: ' + (needsSelection ? 'true' : 'false') + ',\n';
 out += '        columns: [\n';
 for (var i = 0; i < gridFields.length; i++) {
   var f = gridFields[i];
@@ -353,6 +392,10 @@ out += '        ],\n';
 out += '        rows: [\n';
 out += '          for (final row in rows)\n';
 out += '            DataRow2(\n';
+if (needsSelection) {
+  out += '              selected: _selected?.' + keyField.camelcase + ' == row.' + keyField.camelcase + ',\n';
+  out += '              onSelectChanged: (checked) => setState(() => _selected = (checked ?? false) ? row : null),\n';
+}
 out += '              onTap: () => _openForm(context, ref, row.' + keyField.camelcase + '),\n';
 out += '              cells: [\n';
 for (var i = 0; i < gridFields.length; i++) {
@@ -405,6 +448,31 @@ out += "        ScaffoldMessenger.of(context)\n            .showSnackBar(SnackBa
 out += '      }\n';
 out += '    }\n';
 out += '  }\n';
+
+if (hasDeleteAction) {
+  out += '\n';
+  out += '  Future<void> _deleteSelected(BuildContext context, WidgetRef ref) async {\n';
+  out += '    final row = _selected;\n';
+  out += '    if (row == null) {\n';
+  out += "      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s(ref, 'select_row_first'))));\n";
+  out += '      return;\n';
+  out += '    }\n';
+  out += '    await _confirmDelete(context, ref, row);\n';
+  out += '    if (mounted) setState(() => _selected = null);\n';
+  out += '  }\n';
+}
+
+if (hasModifyAction) {
+  out += '\n';
+  out += '  void _modifySelected(BuildContext context, WidgetRef ref) {\n';
+  out += '    final row = _selected;\n';
+  out += '    if (row == null) {\n';
+  out += "      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s(ref, 'select_row_first'))));\n";
+  out += '      return;\n';
+  out += '    }\n';
+  out += '    _openForm(context, ref, row.' + keyField.camelcase + ');\n';
+  out += '  }\n';
+}
 
 sContentResult += out;
 return sContentResult;

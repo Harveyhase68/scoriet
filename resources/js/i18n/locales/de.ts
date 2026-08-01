@@ -193,6 +193,20 @@ export const de: Translations = {
  forgotpasswordmodal122: 'Link zurücksetzen Senden',
  forgotpasswordmodal131: 'Zurück zur Anmeldung',
 
+ // resources/js/Components/AuthModals/DemoAccessModal.tsx
+ demoaccessmodal_title: 'Demo-Zugang anfordern',
+ demoaccessmodal_intro: 'Geben Sie Ihre E-Mail-Adresse ein und wir senden Ihnen einen einmaligen Link zur Live-Demo.',
+ demoaccessmodal_email_label: 'E-Mail-Adresse',
+ demoaccessmodal_email_placeholder: 'ihre.email@beispiel.com',
+ demoaccessmodal_consent: 'Ich stimme zu, dass meine E-Mail-Adresse verwendet wird, um mir den Demo-Zugangslink zuzusenden (DSGVO).',
+ demoaccessmodal_consent_required: 'Bitte akzeptieren Sie die Einwilligung, um fortzufahren.',
+ demoaccessmodal_sending: 'Wird gesendet...',
+ demoaccessmodal_submit: 'Zugang anfordern',
+ demoaccessmodal_error: 'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
+ demoaccessmodal_success: 'Bitte prüfen Sie Ihr Postfach – wir haben Ihnen den Demo-Zugangslink gesendet.',
+ demoaccessmodal_expired: 'Ihr Demo-Zugangslink ist abgelaufen. Bitte fordern Sie einen neuen an.',
+ demoaccessmodal_required: 'Für den Demo-Zugang ist ein gültiger E-Mail-Link erforderlich. Bitte fordern Sie unten einen an.',
+
  // resources/js/Components/AuthModals/LoginModal.tsx
 
  // resources/js\Components\AuthModals\LoginModal.tsx
