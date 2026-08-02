@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Support\DemoAccessCookie;
 use Closure;
 use Illuminate\Http\Request;
@@ -32,6 +33,13 @@ use Symfony\Component\HttpFoundation\Response;
  * The redeem entry route (/demo-access/{token}) is intentionally NOT gated —
  * it is how the cookie is obtained. Everything else (assets, /up, other api
  * calls that already require a bearer token) is left untouched.
+ *
+ * Exemption: any account with `user_type = 'system'` (admin accounts, e.g.
+ * to check statistics) is let through to the real password check without a
+ * demo_access cookie — see isSystemLoginAttempt(). It still needs the
+ * correct password; only the cookie requirement is skipped, and only for
+ * system accounts, so this scales to however many exist without config
+ * changes.
  */
 class DemoAccessGate
 {
@@ -42,6 +50,10 @@ class DemoAccessGate
         }
 
         if (DemoAccessCookie::valid($request->cookie(DemoAccessCookie::NAME))) {
+            return $next($request);
+        }
+
+        if ($request->isMethod('POST') && $request->is('api/oauth/token') && $this->isSystemLoginAttempt($request)) {
             return $next($request);
         }
 
@@ -72,5 +84,26 @@ class DemoAccessGate
         $mainHost = parse_url((string) config('scoriet.main_url'), PHP_URL_HOST);
 
         return is_string($mainHost) && strcasecmp($mainHost, $request->getHost()) === 0;
+    }
+
+    /**
+     * Is this a password-grant token request for an account with
+     * `user_type = 'system'`? Resolves username/email the same way
+     * CustomTokenController does. Only identity is checked here — the
+     * actual password grant that runs afterwards still verifies the
+     * password normally, so a wrong password still fails as usual.
+     */
+    private function isSystemLoginAttempt(Request $request): bool
+    {
+        $loginField = (string) $request->input('username');
+        if ($loginField === '') {
+            return false;
+        }
+
+        $user = str_contains($loginField, '@')
+            ? User::where('email', $loginField)->first()
+            : User::where('username', $loginField)->first();
+
+        return $user !== null && $user->user_type === 'system';
     }
 }
