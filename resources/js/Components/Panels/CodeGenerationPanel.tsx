@@ -937,7 +937,7 @@ export default function CodeGenerationPanel() {
     if (selectedLanguageCodes.size === 0) {
       const templatesNeedingLang = selectedTemplates.filter(template =>
         template.files?.some(file =>
-          file.file_type === 'project_file_languages' || file.file_type === 'db_table_file_languages'
+          file.file_type === 'project_file_languages' || file.file_type === 'db_table_file_languages' || file.file_type === 'window_file_languages'
         )
       );
 
@@ -1399,6 +1399,20 @@ export default function CodeGenerationPanel() {
         allTables.push(...tables);
       });
 
+      // 🪟 Window Designer windows (project-scoped, not schema-scoped - unlike
+      // tables there's no per-schema gtree endpoint to pull these from, so a
+      // dedicated lightweight list call is used instead of round-tripping
+      // through template compilation just to discover which windows exist).
+      let allWindows: any[] = [];
+      if (selectedProjectId) {
+        try {
+          const windowsResponse = await apiClient.get(`/projects/${selectedProjectId}/windows`);
+          allWindows = windowsResponse.data || [];
+        } catch {
+          allWindows = [];
+        }
+      }
+
       // 🚀 PERFORMANCE OPTIMIZATION: Store the base gtree that we'll clone and modify
       const baseGtree = gtreeDataArray.length > 0 ? gtreeDataArray[0].gtree : [];
 
@@ -1419,6 +1433,8 @@ export default function CodeGenerationPanel() {
         const projectLangFiles = templateFiles.filter(f => f.file_type === 'project_file_languages');
         const tableFiles = templateFiles.filter(f => f.file_type === 'db_table_file');
         const tableLangFiles = templateFiles.filter(f => f.file_type === 'db_table_file_languages');
+        const windowFiles = templateFiles.filter(f => f.file_type === 'window_file');
+        const windowLangFiles = templateFiles.filter(f => f.file_type === 'window_file_languages');
 
         // 🎯 Count TABLES (much more intuitive: 137/137 instead of 47/47!)
         if (projectFiles.length > 0) totalOperations += 1; // 1 update for project files
@@ -1430,6 +1446,14 @@ export default function CodeGenerationPanel() {
         }
         if (tableLangFiles.length > 0 && allTables.length > 0 && selectedLangs.length > 0) {
           totalOperations += allTables.length; // 1 update per table
+        }
+
+        // Count individual windows (same pattern as tables above)
+        if (windowFiles.length > 0 && allWindows.length > 0) {
+          totalOperations += allWindows.length; // 1 update per window
+        }
+        if (windowLangFiles.length > 0 && allWindows.length > 0 && selectedLangs.length > 0) {
+          totalOperations += allWindows.length; // 1 update per window
         }
       }
 
@@ -1608,6 +1632,8 @@ export default function CodeGenerationPanel() {
         const projectLangFiles = templateFiles.filter(f => f.file_type === 'project_file_languages');
         const tableFiles = templateFiles.filter(f => f.file_type === 'db_table_file');
         const tableLangFiles = templateFiles.filter(f => f.file_type === 'db_table_file_languages');
+        const windowFiles = templateFiles.filter(f => f.file_type === 'window_file');
+        const windowLangFiles = templateFiles.filter(f => f.file_type === 'window_file_languages');
 
         // 🚀 OPTIMIZED: Cache compiled templates AND gtree per table
         // API calls: once per table (not per table×language)
@@ -1615,8 +1641,8 @@ export default function CodeGenerationPanel() {
         const compiledCache = new Map<string, { compiled: any[], gtree: any }>();
 
         // Helper to fetch and cache compiled templates with their gtree
-        const fetchCompiledTemplates = async (tableName: string | null, langCode: string | null): Promise<{ compiled: any[], gtree: any }> => {
-          const cacheKey = `${templateId}_${tableName || 'project'}`;
+        const fetchCompiledTemplates = async (tableName: string | null, langCode: string | null, windowName: string | null = null): Promise<{ compiled: any[], gtree: any }> => {
+          const cacheKey = `${templateId}_${tableName || windowName || 'project'}`;
 
           if (compiledCache.has(cacheKey)) {
             return compiledCache.get(cacheKey)!;
@@ -1628,6 +1654,10 @@ export default function CodeGenerationPanel() {
 
             if (tableName) {
               params.set('table_name', tableName);
+            }
+
+            if (windowName) {
+              params.set('window_name', windowName);
             }
 
             // ✅ OPTIMIZATION: Only pass language on first call (for compilation)
@@ -1865,10 +1895,22 @@ export default function CodeGenerationPanel() {
             // Execute compiled JavaScript IN BROWSER with cloned gtree
             let generatedCode = '';
             try {
-              // ✅ SET CLONED GTREE: both window.gtree AND localStorage
-              // Compiled code reads from localStorage, so we must update it there too
+              // ✅ SET CLONED GTREE: window.gtree is what the eval'd compiled
+              // function actually reads (a bare `gtree` reference in
+              // generated code resolves to this global) - localStorage is
+              // NOT read by anything in this execution path, it's only kept
+              // as a convenience for the Debug Generator's copy/download
+              // buttons and for code copied out to run standalone. A large
+              // project's gtree can exceed the browser's localStorage quota
+              // (~5-10MB/origin) and throw QuotaExceededError - that must
+              // not abort actual generation, which doesn't need it to
+              // succeed at all.
               (window as any).gtree = clonedGtree;
-              localStorage.setItem('scoriet_gtree', JSON.stringify(clonedGtree));
+              try {
+                localStorage.setItem('scoriet_gtree', JSON.stringify(clonedGtree));
+              } catch (storageErr) {
+                console.warn('Could not cache gtree in localStorage (quota exceeded?) - generation continues via window.gtree regardless.', storageErr);
+              }
 
               // Execute the compiled function
               const globalEval = eval;
@@ -2241,6 +2283,47 @@ export default function CodeGenerationPanel() {
             processedCount++;
             // 🎯 Update progress for EVERY table (not just every 5)
             await updateProgress(`[${template.name}]${t.codegenerationpanel2093}${processedCount}/${allTables.length}: ${tableName}`);
+          }
+        }
+
+        // 5. Process window_file - one compiled file PER WINDOW, mirroring
+        // db_table_file above. Uses the plain per-window fetch (not the
+        // /batch endpoint tables use) - correctness first; batching windows
+        // the same way is a straightforward follow-up if a project's window
+        // count ever makes this the bottleneck.
+        if (windowFiles.length > 0 && allWindows.length > 0) {
+          let processedCount = 0;
+          for (const win of allWindows) {
+            const windowName = win.name;
+            const { compiled, gtree } = await fetchCompiledTemplates(null, null, windowName);
+            const windowFileTemplates = compiled.filter((c: any) => c.generation_type === 'window_file');
+
+            for (const compiledFile of windowFileTemplates) {
+              executeCompiledTemplate(compiledFile, windowName, null, compiledFile.overlaid_gtree || gtree);
+            }
+
+            processedCount++;
+            await updateProgress(`[${template.name}] Window ${processedCount}/${allWindows.length}: ${windowName}`);
+          }
+        }
+
+        // 6. Process window_file_languages - same idea as db_table_file_languages.
+        if (windowLangFiles.length > 0 && allWindows.length > 0 && selectedLangs.length > 0) {
+          const firstLang = selectedLangs[0];
+          let processedCount = 0;
+          for (const win of allWindows) {
+            const windowName = win.name;
+            const { compiled, gtree } = await fetchCompiledTemplates(null, firstLang, windowName);
+            const windowLangTemplates = compiled.filter((c: any) => c.generation_type === 'window_file_languages');
+
+            for (const lang of selectedLangs) {
+              for (const compiledFile of windowLangTemplates) {
+                executeCompiledTemplate(compiledFile, windowName, lang, compiledFile.overlaid_gtree || gtree);
+              }
+            }
+
+            processedCount++;
+            await updateProgress(`[${template.name}] Window ${processedCount}/${allWindows.length}: ${windowName}`);
           }
         }
       }

@@ -446,6 +446,12 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false, updat
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+
+  // Table search (find-and-jump in the visual designer)
+  const [tableSearchQuery, setTableSearchQuery] = useState('');
+  const [showTableSearchDropdown, setShowTableSearchDropdown] = useState(false);
+  const reactFlowWrapperRef = useRef<HTMLDivElement>(null);
+  const tableSearchWrapperRef = useRef<HTMLDivElement>(null);
   const [floatingSchemas, setFloatingSchemas] = useState<FloatingSchema[]>([]);
   const [selectedSchema, setSelectedSchema] = useState<FloatingSchema | null>(null);
 
@@ -881,6 +887,141 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false, updat
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
   }, []);
+
+  // Tables matching the search query, ranked so prefix matches ("pro" -> "products")
+  // come before mid-word matches ("pro" -> "price_list_products").
+  const matchingSearchTables = React.useMemo(() => {
+    const query = tableSearchQuery.trim().toLowerCase();
+    if (!query) return [];
+
+    const matches = nodes.filter(node => {
+      const tableName = (node.data as DatabaseNodeData).tableName;
+      return !!tableName && tableName.toLowerCase().includes(query);
+    });
+
+    matches.sort((a, b) => {
+      const nameA = (a.data as DatabaseNodeData).tableName.toLowerCase();
+      const nameB = (b.data as DatabaseNodeData).tableName.toLowerCase();
+      const startsA = nameA.startsWith(query) ? 0 : 1;
+      const startsB = nameB.startsWith(query) ? 0 : 1;
+      if (startsA !== startsB) return startsA - startsB;
+      return nameA.localeCompare(nameB);
+    });
+
+    return matches;
+  }, [tableSearchQuery, nodes]);
+
+  // Selects a table and moves the viewport to it. The viewport is centered on
+  // the table, but clamped to the overall diagram's bounding box so that
+  // tables near the top/bottom/left/right edge of the diagram align to that
+  // edge instead of the camera scrolling past the diagram into empty canvas.
+  const centerAndSelectTable = useCallback((targetNode: Node) => {
+    const instance = reactFlowInstance.current;
+    if (!instance) return;
+
+    setNodes(currentNodes => currentNodes.map(n => ({ ...n, selected: n.id === targetNode.id })));
+    setSelectedNode(targetNode);
+    const targetTableId = (targetNode.data as DatabaseNodeData).table?.id;
+    setSelectedTableIds(targetTableId !== undefined ? [targetTableId] : []);
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const node of nodes) {
+      const w = node.measured?.width || node.width || 220;
+      const h = node.measured?.height || node.height || 150;
+      if (node.position.x < minX) minX = node.position.x;
+      if (node.position.y < minY) minY = node.position.y;
+      if (node.position.x + w > maxX) maxX = node.position.x + w;
+      if (node.position.y + h > maxY) maxY = node.position.y + h;
+    }
+
+    const targetW = targetNode.measured?.width || targetNode.width || 220;
+    const targetH = targetNode.measured?.height || targetNode.height || 150;
+    const targetCenterX = targetNode.position.x + targetW / 2;
+    const targetCenterY = targetNode.position.y + targetH / 2;
+
+    const containerWidth = reactFlowWrapperRef.current?.clientWidth || 800;
+    const containerHeight = reactFlowWrapperRef.current?.clientHeight || 600;
+    const zoom = instance.getViewport().zoom || 0.8;
+    const viewportFlowWidth = containerWidth / zoom;
+    const viewportFlowHeight = containerHeight / zoom;
+
+    // Margin (in flow coordinates) kept between the diagram edge and the container edge.
+    const padding = 80;
+
+    const clamp = (desired: number, lo: number, hi: number) => {
+      if (lo > hi) return (lo + hi) / 2; // diagram smaller than viewport: just center on it
+      return Math.min(Math.max(desired, lo), hi);
+    };
+
+    const clampedLeft = clamp(
+      targetCenterX - viewportFlowWidth / 2,
+      minX - padding,
+      maxX + padding - viewportFlowWidth
+    );
+    const clampedTop = clamp(
+      targetCenterY - viewportFlowHeight / 2,
+      minY - padding,
+      maxY + padding - viewportFlowHeight
+    );
+
+    instance.setViewport(
+      { x: -clampedLeft * zoom, y: -clampedTop * zoom, zoom },
+      { duration: 400 }
+    );
+  }, [nodes, setNodes]);
+
+  const handleTableSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setTableSearchQuery(query);
+    setShowTableSearchDropdown(query.trim().length > 0);
+
+    const q = query.trim().toLowerCase();
+    if (!q) return;
+
+    const matches = nodes.filter(node => {
+      const tableName = (node.data as DatabaseNodeData).tableName;
+      return !!tableName && tableName.toLowerCase().includes(q);
+    });
+    if (matches.length === 1) {
+      centerAndSelectTable(matches[0]);
+    }
+  }, [nodes, centerAndSelectTable]);
+
+  const handleTableSearchSelect = useCallback((node: Node) => {
+    const tableName = (node.data as DatabaseNodeData).tableName;
+    setTableSearchQuery(tableName);
+    setShowTableSearchDropdown(false);
+    centerAndSelectTable(node);
+  }, [centerAndSelectTable]);
+
+  const handleTableSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && matchingSearchTables.length > 0) {
+      e.preventDefault();
+      handleTableSearchSelect(matchingSearchTables[0]);
+    } else if (e.key === 'Escape') {
+      setShowTableSearchDropdown(false);
+    }
+  }, [matchingSearchTables, handleTableSearchSelect]);
+
+  // Close the search dropdown on outside clicks. This panel's TabContent wrapper
+  // steals focus to itself on every mousedown (onMouseDownCapture={setFocus}),
+  // which fires in the capture phase before any bubble-phase handler on the
+  // dropdown items - so closing on the input's onBlur raced the item's own
+  // click and swallowed selections. Tracking clicks against the wrapper's
+  // bounds sidesteps focus/blur timing entirely.
+  useEffect(() => {
+    if (!showTableSearchDropdown) return;
+
+    const handleOutsideMouseDown = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (tableSearchWrapperRef.current && target && !tableSearchWrapperRef.current.contains(target)) {
+        setShowTableSearchDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideMouseDown, true);
+    return () => document.removeEventListener('mousedown', handleOutsideMouseDown, true);
+  }, [showTableSearchDropdown]);
 
   const onEdgeDoubleClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
     // Clear any text selection caused by double-click
@@ -2434,7 +2575,65 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false, updat
         </div>
 
         {/* Compact Toolbar with Icons Only */}
-        <div className="px-3 py-2 flex items-center justify-end" style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
+        <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: colors.bgTertiary, borderBottom: `1px solid ${colors.borderPrimary}` }}>
+          <div ref={tableSearchWrapperRef} className="relative" style={{ width: '260px' }}>
+            <i className="pi pi-search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: colors.textMuted, fontSize: '0.75rem', pointerEvents: 'none' }}></i>
+            <input
+              type="text"
+              value={tableSearchQuery}
+              onChange={handleTableSearchChange}
+              onKeyDown={handleTableSearchKeyDown}
+              onFocus={() => setShowTableSearchDropdown(tableSearchQuery.trim().length > 0)}
+              disabled={nodes.length === 0}
+              placeholder={t.panelt2searchtable}
+              className="text-xs rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                width: '100%',
+                padding: '6px 8px 6px 26px',
+                backgroundColor: colors.bgSecondary,
+                border: `1px solid ${colors.borderPrimary}`,
+                color: colors.textPrimary,
+                outline: 'none',
+              }}
+            />
+            {showTableSearchDropdown && (
+              <div
+                className="absolute z-50 rounded shadow-lg"
+                style={{
+                  top: 'calc(100% + 4px)',
+                  left: 0,
+                  right: 0,
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  backgroundColor: colors.bgSecondary,
+                  border: `1px solid ${colors.borderPrimary}`,
+                }}
+              >
+                {matchingSearchTables.length > 0 ? (
+                  matchingSearchTables.map(node => {
+                    const tableName = (node.data as DatabaseNodeData).tableName;
+                    return (
+                      <div
+                        key={node.id}
+                        onClick={() => handleTableSearchSelect(node)}
+                        className="px-3 py-2 text-xs cursor-pointer"
+                        style={{ color: colors.textPrimary }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bgTertiary)}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        {tableName}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-xs" style={{ color: colors.textMuted }}>
+                    {t.panelt2searchtablenoresults}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <button
               onClick={handleRefresh}
@@ -2567,7 +2766,7 @@ export default function PanelT2({ preSelectedSchemaId, isReadOnly = false, updat
         )}
 
         {/* React Flow Container */}
-        <div className="flex-1" style={{ height: 'calc(100% - 200px)' }}>
+        <div ref={reactFlowWrapperRef} className="flex-1" style={{ height: 'calc(100% - 200px)' }}>
           {nodes.length > 0 ? (
             <ReactFlow
               nodes={nodes}

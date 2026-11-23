@@ -8,7 +8,7 @@
     "authcontrollerphp309": "Invalid 2FA code.",
     "authcontrollerphp371": "Login successful",
     "authcontrollerphp402": "Email address not found",
-    "authcontrollerphp413": "Reset link sent",
+    "authcontrollerphp413": "If an account exists for this email address, a password reset link has been sent.",
     "authcontrollerphp418": "Error sending reset link",
     "authcontrollerphp435": "Validation error",
     "authcontrollerphp453": "Password successfully reset",
@@ -1610,6 +1610,11 @@
     "editbladephp8": "Edit Page",
     "editbladephp22": "Title",
     "editbladephp53": "Cancel",
-    "editbladephp57": "Update Page"
-    
+    "editbladephp57": "Update Page",
+    "registrationattempt_subject": "Registration attempt with your email address",
+    "registrationattempt_greeting": "Hello :name,",
+    "registrationattempt_line1": "Someone just tried to create a new Scoriet account with your email address. Your existing account has not been changed.",
+    "registrationattempt_line2": "If this was you: you already have an account - simply log in. If you forgot your password, use \"Forgot password\" in the login dialog.",
+    "registrationattempt_action": "Go to Scoriet",
+    "registrationattempt_line3": "If this was not you, you can safely ignore this email."
 }

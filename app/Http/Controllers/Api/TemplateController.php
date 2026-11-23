@@ -1525,16 +1525,22 @@ class TemplateController extends Controller
             return response()->json(['message' => __('templatecontrollerphp1412')], 403);
         }
 
+        // See FlutterSmlTemplateFreshener's own doc comment - disk always
+        // wins over the stored snapshot for this ONE known template.
+        $freshened = \App\Services\FlutterSmlTemplateFreshener::freshen(
+            $template->name,
+            $template->files->map(fn ($file) => $file->toArray())->all()
+        );
+
         // Add content_length for ZIP files to enable frontend integrity verification
-        $files = $template->files->map(function ($file) {
-            $fileArray = $file->toArray();
-            if ($file->content_type === 'zip' && $file->file_content) {
-                $fileArray['file_content_length'] = strlen($file->file_content);
+        $files = array_map(function ($fileArray) {
+            if (($fileArray['content_type'] ?? null) === 'zip') {
+                $fileArray['file_content_length'] = strlen($fileArray['file_content'] ?? '');
             }
             return $fileArray;
-        });
+        }, $freshened);
 
-        return response()->json($files);
+        return response()->json(array_values($files));
     }
 
     /**

@@ -72,7 +72,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
 
   // Form Designer Paywall States
   const [showFormPaywall, setShowFormPaywall] = useState(false);
-  const [formPaywallTarget, setFormPaywallTarget] = useState<'formset-management' | 'form-designer' | 'form-layout-designer' | 'report-management' | 'report-pattern-designer' | 'report-layout-designer' | null>(null);
+  const [formPaywallTarget, setFormPaywallTarget] = useState<'formset-management' | 'form-designer' | 'form-layout-designer' | 'report-management' | 'report-pattern-designer' | 'report-layout-designer' | 'window-designer' | null>(null);
   const [formPaywallLoading, setFormPaywallLoading] = useState(false);
   const [formAccessInfo, setFormAccessInfo] = useState<{
     hasAccess: boolean;
@@ -137,7 +137,7 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
   }, [isCollapsed]);
 
   // Check form designer access and show paywall if needed
-  const checkFormDesignerAccess = useCallback(async (target: 'formset-management' | 'form-designer' | 'form-layout-designer' | 'report-management' | 'report-pattern-designer' | 'report-layout-designer') => {
+  const checkFormDesignerAccess = useCallback(async (target: 'formset-management' | 'form-designer' | 'form-layout-designer' | 'report-management' | 'report-pattern-designer' | 'report-layout-designer' | 'window-designer') => {
     setFormPaywallLoading(true);
     setFormPaywallTarget(target);
 
@@ -533,6 +533,13 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
           ],
         },
       ],
+    },
+    // ── New top-level: "Windows" — free, project-scoped screens, independent
+    // of Form Sets / Report Patterns (which are always table-bound).
+    {
+      label: t.menu_windows,
+      icon: 'pi pi-desktop',
+      command: () => checkFormDesignerAccess('window-designer'),
     },
     {
       label: t.panelsewnavigationpanel223,
@@ -1070,6 +1077,17 @@ export default function NewNavigationPanel({ onOpenPanel, onOpenModal, onOpenSql
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Windows — free, project-scoped screens, independent of Form Sets / Report Patterns */}
+            <div className="relative group">
+              <button
+                onClick={blurAndRun(() => checkFormDesignerAccess('window-designer'))}
+                className="w-8 h-8 flex items-center justify-center rounded nav-hover-btn transition-colors"
+                title={t.menu_windows}
+              >
+                <i className="pi pi-desktop nav-icon-color"></i>
+              </button>
             </div>
 
             <div className="relative" onMouseEnter={() => handleMenuEnter('database')} onMouseLeave={handleMenuLeave}>

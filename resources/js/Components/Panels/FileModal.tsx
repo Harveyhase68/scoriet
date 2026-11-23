@@ -19,7 +19,7 @@ import { apiClient } from '@/lib/api';
 // local getAuthToken() helper this file used to ship is no longer needed.
 import { EditorState, Extension } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { defaultKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { php } from '@codemirror/lang-php';
 import { javascript } from '@codemirror/lang-javascript';
 import { css } from '@codemirror/lang-css';
@@ -36,10 +36,11 @@ import { yaml } from '@codemirror/lang-yaml';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
+import { sml, smlAutoLowerExtension, smlLinter } from '@/lib/smlLanguage';
 import JSZip from 'jszip';
 
 // Detect language based on file extension
-const getLanguageExtension = (fileName: string): Extension => {
+export const getLanguageExtension = (fileName: string): Extension => {
     if (!fileName) return php(); // Default to PHP
 
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
@@ -73,13 +74,14 @@ const getLanguageExtension = (fileName: string): Extension => {
         'markdown': markdown(),
         'yml': yaml(),
         'yaml': yaml(),
+        'sml': sml(),
     };
 
     return languageMap[ext] || php(); // Default to PHP if unknown
 };
 
 // Get display name for language badge
-const getLanguageDisplayName = (fileName: string): string => {
+export const getLanguageDisplayName = (fileName: string): string => {
     if (!fileName) return 'PHP';
 
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
@@ -113,13 +115,14 @@ const getLanguageDisplayName = (fileName: string): string => {
         'markdown': 'Markdown',
         'yml': 'YAML',
         'yaml': 'YAML',
+        'sml': 'SML',
     };
 
     return displayNames[ext] || 'PHP';
 };
 
 // Light theme for CodeMirror
-const lightTheme = EditorView.theme({
+export const lightTheme = EditorView.theme({
     "&": {
         backgroundColor: "#ffffff",
         color: "#24292e"
@@ -195,7 +198,7 @@ const lightTheme = EditorView.theme({
 }, { dark: false });
 
 // Light syntax highlighting
-const lightHighlightStyle = HighlightStyle.define([
+export const lightHighlightStyle = HighlightStyle.define([
     { tag: t.keyword, color: "#d73a49" },
     { tag: [t.name, t.deleted, t.character, t.propertyName, t.macroName], color: "#6f42c1" },
     { tag: [t.function(t.variableName), t.labelName], color: "#6f42c1" },
@@ -215,7 +218,7 @@ const lightHighlightStyle = HighlightStyle.define([
 ]);
 
 // CodeMirror 6 Editor Component - Multi-Language Support
-const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMaximized }: {
+export const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMaximized }: {
     value: string;
     onChange: (value: string) => void;
     fileName: string;
@@ -230,6 +233,7 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
         if (!editorRef.current) return;
 
         const languageExtension = getLanguageExtension(fileName);
+        const isSml = fileName.toLowerCase().endsWith('.sml');
 
         // Choose theme based on current theme setting
         const themeExtensions = isDark
@@ -243,7 +247,24 @@ const MultiLanguageCodeEditor = ({ value, onChange, fileName, _placeholder, isMa
                 lineNumbers(),
                 languageExtension,
                 ...themeExtensions,
-                keymap.of(defaultKeymap),
+                // `history()` is what actually RECORDS undoable edits -
+                // `defaultKeymap` alone binds no Ctrl+Z/Ctrl+Y at all
+                // (those live in `historyKeymap`), and without `history()`
+                // there would be no undo stack to bind them to even if it
+                // did. Every code-editor context in the app (Project Init
+                // Code, Window Code, Control Code, plain file editing) goes
+                // through this one shared component, so this fixes Ctrl+Z
+                // everywhere at once.
+                history(),
+                keymap.of([...defaultKeymap, ...historyKeymap]),
+                // SML-only (2026-09-06 follow-up, items f/g): auto-lowercase
+                // known keywords/bare builtins as you type, and a live,
+                // non-blocking (underline-only, never a popup) syntax
+                // checker - see smlLanguage.ts's own doc comments for scope
+                // and why both are safe to run on every SML editor
+                // everywhere (Project Init Code, Global/Local Procedures,
+                // Window/Control event code all share this one component).
+                ...(isSml ? [smlAutoLowerExtension(), smlLinter] : []),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         const newValue = update.state.doc.toString();

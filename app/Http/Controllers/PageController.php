@@ -3,14 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Models\Page;
+use App\Support\Seo\PublicLocales;
+use App\Support\Seo\SeoMeta;
+use App\Support\Seo\StructuredData;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use Illuminate\View\View;
 
+/**
+ * Localized CMS pages (/{locale}/{slug}), server-rendered with Blade so the
+ * content is visible to crawlers without JavaScript. See PublicSiteController
+ * for the overall public-site architecture.
+ */
 class PageController extends Controller
 {
-    public function show(Request $request, $locale, $slug)
+    public function show(Request $request, string $locale, string $slug): View
     {
-        // Set the locale from the URL
+        return $this->renderPage($locale, $slug);
+    }
+
+    /** Named route kept for existing links (route('pages.help')). */
+    public function help(Request $request, string $locale): View
+    {
+        return $this->renderPage($locale, 'help');
+    }
+
+    /** Named route kept for existing links (route('pages.impressum')). */
+    public function impressum(Request $request, string $locale): View
+    {
+        return $this->renderPage($locale, 'impressum');
+    }
+
+    /** Named route kept for existing links (route('pages.contact')). */
+    public function contact(Request $request, string $locale): View
+    {
+        return $this->renderPage($locale, 'contact');
+    }
+
+    private function renderPage(string $locale, string $slug): View
+    {
         app()->setLocale($locale);
 
         $page = Page::where('slug', $slug)
@@ -18,98 +48,80 @@ class PageController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$page) {
+        if (! $page) {
             abort(404);
         }
 
-        return Inertia::render('LandingPage', [
-            'title' => $page->title,
-            'content' => $page->content,
-            'pageId' => $page->id,
-            'slug' => $page->slug,
+        $url = route('page', ['locale' => $locale, 'slug' => $slug]);
+        $title = $page->title.' – Scoriet';
+        $description = SeoMeta::summarize($page->content) ?: __('landing.seo_description');
+        $alternates = $this->alternatesFor($slug);
+
+        $seo = new SeoMeta(
+            title: $title,
+            description: $description,
+            canonical: $url,
+            locale: $locale,
+            alternates: $alternates,
+            ogType: 'article',
+            jsonLd: [
+                StructuredData::webPage($url, $page->title, $description, $locale),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Scoriet', 'url' => PublicLocales::homeUrl($locale)],
+                    ['name' => $page->title, 'url' => $url],
+                ]),
+            ],
+        );
+
+        return view('public.page', [
             'locale' => $locale,
+            'seo' => $seo,
+            'page' => $page,
+            'isDemo' => (bool) config('scoriet.demo'),
+            'languageLinks' => array_diff_key($alternates, ['x-default' => true]),
+            'islandContext' => [
+                'page' => 'cms',
+                'locale' => $locale,
+                'uiLanguage' => $locale,
+                'isDemo' => (bool) config('scoriet.demo'),
+                'openRegister' => false,
+                'inviteToken' => null,
+                'cmsPageId' => $page->id,
+            ],
         ]);
     }
 
     /**
-     * Display the Help page
+     * hreflang alternates: the same slug in every language where it is published.
+     * x-default points to the default-language version when it exists.
+     *
+     * @return array<string, string>
      */
-    public function help(Request $request)
+    private function alternatesFor(string $slug): array
     {
-        $locale = $request->route('locale', 'de');
-        app()->setLocale($locale);
-
-        // Load from database
-        $page = Page::where('slug', 'help')
-            ->where('locale', $locale)
+        $locales = Page::where('slug', $slug)
             ->where('is_active', true)
-            ->first();
+            ->whereIn('locale', PublicLocales::codes())
+            ->pluck('locale')
+            ->unique()
+            ->all();
 
-        if (!$page) {
-            abort(404, __('pagecontrollerphp49')."{$locale}");
+        // A single language has no alternates to announce.
+        if (count($locales) < 2) {
+            return [];
         }
 
-        return Inertia::render('LandingPage', [
-            'title' => $page->title,
-            'content' => $page->content,
-            'pageId' => $page->id,
-            'slug' => $page->slug,
-            'locale' => $locale,
-        ]);
-    }
-
-    /**
-     * Display the Impressum page
-     */
-    public function impressum(Request $request)
-    {
-        $locale = $request->route('locale', 'de');
-        app()->setLocale($locale);
-
-        // Load from database
-        $page = Page::where('slug', 'impressum')
-            ->where('locale', $locale)
-            ->where('is_active', true)
-            ->first();
-
-        if (!$page) {
-            abort(404, __('pagecontrollerphp76')."{$locale}");
+        $alternates = [];
+        foreach (PublicLocales::codes() as $code) {
+            if (in_array($code, $locales, true)) {
+                $alternates[$code] = route('page', ['locale' => $code, 'slug' => $slug]);
+            }
+        }
+        if (isset($alternates[PublicLocales::DEFAULT])) {
+            $alternates['x-default'] = $alternates[PublicLocales::DEFAULT];
         }
 
-        return Inertia::render('LandingPage', [
-            'title' => $page->title,
-            'content' => $page->content,
-            'pageId' => $page->id,
-            'slug' => $page->slug,
-            'locale' => $locale,
-        ]);
-    }
-
-    /**
-     * Display the Contact page
-     */
-    public function contact(Request $request)
-    {
-        $locale = $request->route('locale', 'de');
-        app()->setLocale($locale);
-
-        // Load from database
-        $page = Page::where('slug', 'contact')
-            ->where('locale', $locale)
-            ->where('is_active', true)
-            ->first();
-
-        if (!$page) {
-            abort(404, __('pagecontrollerphp103')."{$locale}");
-        }
-
-        return Inertia::render('LandingPage', [
-            'title' => $page->title,
-            'content' => $page->content,
-            'pageId' => $page->id,
-            'slug' => $page->slug,
-            'locale' => $locale,
-        ]);
+        return $alternates;
     }
 
     /**

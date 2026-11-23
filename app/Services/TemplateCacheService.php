@@ -65,13 +65,21 @@ class TemplateCacheService
         ?string $tableName,
         ?string $languageCode,
         int $fileUpdatedAt,
-        bool $includeSource = false
+        bool $includeSource = false,
+        ?string $windowName = null
     ): string {
         return sprintf(
-            'compiled_template:%d:%d:%s:%s:%d:%s',
+            'compiled_template:%d:%d:%s:%s:%s:%d:%s',
             $templateId,
             $fileId,
             $tableName ?? 'project',
+            // 🪟 window_file/window_file_languages compile to DIFFERENT
+            // content per window (see UltimateTemplateController's
+            // $windowName param) - without this in the key, two different
+            // windows' requests for the same file collide on the same cache
+            // entry and one silently gets served the other's (or an
+            // "unknown"-named) compiled output.
+            $windowName ?? 'nowindow',
             $languageCode ?? 'none',
             $fileUpdatedAt,
             $includeSource ? 'src' : 'nosrc'
@@ -95,7 +103,8 @@ class TemplateCacheService
         ?string $tableName,
         ?string $languageCode,
         callable $compileCallback,
-        bool $includeSource = false
+        bool $includeSource = false,
+        ?string $windowName = null
     ): array {
         // Get file's updated_at timestamp
         $file = TemplateFile::find($fileId);
@@ -109,7 +118,8 @@ class TemplateCacheService
             $tableName,
             $languageCode,
             $file->updated_at->timestamp,
-            $includeSource
+            $includeSource,
+            $windowName
         );
 
         // Try cache first, track hit/miss

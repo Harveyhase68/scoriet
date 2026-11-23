@@ -8,7 +8,13 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.tsx',
+                // Public marketing pages (Blade + React island), see resources/views/public
+                'resources/css/public.css',
+                'resources/js/public.tsx',
+            ],
             refresh: true,
         }),
         react(),
@@ -130,7 +136,7 @@ export default defineConfig({
         watch: {
             // Ignore directories where PHP writes files at runtime — prevents Vite from
             // triggering a full-reload when e.g. the template import wizard extracts archives
-            ignored: ['**/storage/**', '**/vendor/**', '**/public/build/**'],
+            ignored: ['**/storage/**', '**/vendor/**', '**/public/build/**', '**/scripts/**'],
         },
     },    
     esbuild: {

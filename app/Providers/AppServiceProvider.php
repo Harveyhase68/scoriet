@@ -9,6 +9,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Template;
@@ -56,6 +57,12 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
 
         $this->registerPolicies();
 
+        // Public (Blade) site: footer CMS links resolved against published pages.
+        \Illuminate\Support\Facades\View::composer(
+            'public.partials.footer',
+            \App\View\Composers\PublicFooterComposer::class
+        );
+
         // 🔒 SCHUTZ: Verhindere passport:install in bestehenden Projekten
         // Schützt OAuth Clients vor versehentlichem Überschreiben
         try {
@@ -82,7 +89,12 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
         }
 
         // Default token expiry (will be overridden in CustomTokenController for remember_me)
-        Passport::tokensExpireIn(now()->addHours(2));
+        // Raised 2h -> 24h (2026-08-27): the shorter window meant the access
+        // token expired mid-session roughly every 2 hours, and every expiry
+        // is a moment where a multi-tab refresh race can bite (see the
+        // `oauth/token` refresh_token grant in resources/js/lib/api.ts) -
+        // fewer refresh cycles per working day means fewer chances to hit it.
+        Passport::tokensExpireIn(now()->addHours(24));
         Passport::refreshTokensExpireIn(now()->addDays(7));
         Passport::personalAccessTokensExpireIn(CarbonInterval::months(6));
 
@@ -177,6 +189,69 @@ class AppServiceProvider extends \Illuminate\Foundation\Support\Providers\AuthSe
 
         RateLimiter::for('cli-generate', function (Request $request) use ($bucketFor) {
             return $bucketFor($request, 30, 5);
+        });
+
+        $this->registerAuthRateLimiters();
+    }
+
+    /**
+     * Rate limiters for the public authentication endpoints (/api/auth/*,
+     * /api/oauth/token).
+     *
+     * Each limiter combines a per-IP bucket (caps one source) with a
+     * per-target bucket (caps distributed attacks on one account, where the
+     * attacker rotates IPs). Targets are normalised so case/whitespace
+     * variants of an email share one bucket.
+     *
+     * 2FA is keyed by the USER behind the pending-2FA token, not by the token:
+     * a fresh token is minted on every password login, so a per-token bucket
+     * would reset with each retry and allow unbounded guessing of the 6-digit
+     * code.
+     */
+    private function registerAuthRateLimiters(): void
+    {
+        $emailKey = fn (Request $request): string => strtolower(trim((string) $request->input('email', $request->input('username', ''))));
+
+        // Per-account buckets apply only when the request names an account.
+        // /api/oauth/token also serves refresh_token grants, which carry no
+        // email; without this guard they would all share one global '' bucket.
+        $accountLimits = function (string $prefix, string $account, array $limits): array {
+            if ($account === '') {
+                return [];
+            }
+            return array_map(fn (Limit $limit) => $limit->by($prefix . $account), $limits);
+        };
+
+        RateLimiter::for('auth-login', function (Request $request) use ($emailKey, $accountLimits) {
+            return [
+                Limit::perMinute(10)->by('auth-login-ip:' . $request->ip()),
+                ...$accountLimits('auth-login-account:', $emailKey($request), [Limit::perMinute(5)]),
+                ...$accountLimits('auth-login-account-h:', $emailKey($request), [Limit::perHour(30)]),
+            ];
+        });
+
+        RateLimiter::for('auth-2fa', function (Request $request) {
+            $pending = Cache::get('2fa_pending_' . (string) $request->input('two_factor_token', ''));
+            $limits = [Limit::perMinute(10)->by('auth-2fa-ip:' . $request->ip())];
+            if (is_array($pending) && isset($pending['user_id'])) {
+                $limits[] = Limit::perMinute(5)->by('auth-2fa-user:' . $pending['user_id']);
+                $limits[] = Limit::perHour(30)->by('auth-2fa-user-h:' . $pending['user_id']);
+            }
+            return $limits;
+        });
+
+        RateLimiter::for('auth-register', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by('auth-register-ip:' . $request->ip()),
+                Limit::perHour(20)->by('auth-register-ip-h:' . $request->ip()),
+            ];
+        });
+
+        RateLimiter::for('auth-password-reset', function (Request $request) use ($emailKey, $accountLimits) {
+            return [
+                Limit::perMinute(5)->by('auth-pwreset-ip:' . $request->ip()),
+                ...$accountLimits('auth-pwreset-account:', $emailKey($request), [Limit::perHour(5)]),
+            ];
         });
     }
 }

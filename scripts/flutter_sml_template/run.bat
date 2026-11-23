@@ -1,0 +1,1 @@
+call "build\windows\x64\runner\Debug\flutter_project.exe"

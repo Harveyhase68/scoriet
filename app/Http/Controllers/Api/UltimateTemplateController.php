@@ -39,6 +39,17 @@ use Illuminate\Support\Facades\Cache;
 class UltimateTemplateController extends Controller
 {
     /**
+     * Names of the CURRENT project's real, registered structs - set once
+     * at the top of buildUltimateGtree() (an instance property, not a
+     * parameter, since smlTypeToDart()'s `record<X>` handling is called
+     * from several methods deep in the gtree-build that don't otherwise
+     * share this data) and consulted there to avoid emitting a Dart type
+     * name with no matching class - see buildUltimateGtree()'s own doc
+     * comment on this property's assignment for the real bug this fixes.
+     */
+    private array $knownStructNames = [];
+
+    /**
      * 💰 CHARGE CREDITS FOR GENERATION
      *
      * This endpoint should be called BEFORE starting a full project generation.
@@ -109,6 +120,7 @@ class UltimateTemplateController extends Controller
             // Get project context
             $projectId = $request->query('project_id');
             $tableName = $request->query('table_name'); // For db_table_file types
+            $windowName = $request->query('window_name'); // For window_file types
             $languageCode = $request->query('language_code'); // For language-enabled file types
             $format = $request->query('format', 'json'); // json, js, php
             $compile = $request->query('compile', true); // Compile templates to JS functions
@@ -126,12 +138,19 @@ class UltimateTemplateController extends Controller
                 $schemaIds = json_decode($schemaIds, true);
             }
 
+            // 🎯 In-memory file overrides (Debug Generator's "Code vorbereiten"
+            // with unsaved editor edits) - fetched here, BEFORE
+            // buildUltimateGtree(), so templateUsesUiWindows() can see edits
+            // the user hasn't saved yet. Read again (unchanged) further below
+            // where the rest of the override-merge logic lives.
+            $overrideFilesForGtree = $request->input('override_files', []);
+
             // Load project and schema data (with optional migration)
             // 🎯 WICHTIG: $tableName wird übergeben, um zu bestimmen, ob Migrations eingebunden werden sollen
             // Wenn $tableName gesetzt ist (db_table_file) → KEINE Migrations im GTree
             // Wenn $tableName NULL ist (project_file) → Migrations im GTree einbinden
             // 🎯 NEU: $schemaVersion erlaubt die Auswahl einer spezifischen Schema-Version (nicht automatisch die neueste)
-            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions, $tableName, $schemaVersion, $schemaIds);
+            $gtreeData = $this->buildUltimateGtree($projectId, $templateId, $template, $migrationFromVersions, $tableName, $schemaVersion, $schemaIds, $overrideFilesForGtree, $windowName);
 
             // Initialize Ultimate Template Engine
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
@@ -143,10 +162,35 @@ class UltimateTemplateController extends Controller
             $allOptionalMissing = []; // Collect all optional but missing variables
             $allSyntaxErrors = []; // Collect all syntax errors across all files
             $allSyntaxWarnings = []; // Collect all syntax warnings across all files
+            // 🪟 Surfaces through the SAME validation.syntax_warnings channel
+            // the Debug Generator already reads and displays - no frontend
+            // change needed to make this visible.
+            if (!empty($gtreeData['metadata']['ui_windows_size_warning'])) {
+                $allSyntaxWarnings[] = [
+                    'file' => 'GTree',
+                    'warning' => $gtreeData['metadata']['ui_windows_size_warning'],
+                ];
+            }
 
             // 🎯 Initialize cache service (only if enabled in config)
             // skip_cache=1 bypasses Redis cache for debugging/testing
             $skipCache = $request->query('skip_cache', false);
+            // Same rationale as the override-files case right below: the
+            // cache key is (templateId, fileId, table, window, language,
+            // file's DB `updated_at`) - it has no way to know that
+            // FlutterSmlTemplateFreshener just substituted DIFFERENT
+            // content for THIS one template's files without touching that
+            // `updated_at` column at all (freshening happens purely
+            // in-memory, on every request, deliberately never persisted -
+            // see its own doc comment for why). Without this, a cache
+            // entry written before some disk edit would keep being served
+            // for up to the FULL 24h TTL after that edit, even though every
+            // fix above is already 100% correct - confirmed real: exactly
+            // this cost an entire extra debugging round on a status-bar
+            // feature that had, in fact, already been fixed server-side.
+            if ($template->name === 'flutter_sml_template') {
+                $skipCache = true;
+            }
 
             // 🎯 In-memory file overrides — used by the Debug Generator's
             // "Code vorbereiten" so the user can compile their unsaved
@@ -169,7 +213,15 @@ class UltimateTemplateController extends Controller
             // Build a working copy of $template->files with the overrides
             // merged in. We don't touch the original Eloquent collection —
             // the change has to be transient (no persistence, no cache).
-            $workingFiles = $template->files->toArray();
+            // See FlutterSmlTemplateFreshener's own doc comment - disk
+            // always wins over the stored snapshot for flutter_sml_template's
+            // own files, applied BEFORE any user override so an explicit
+            // "Code vorbereiten" edit (a more specific, intentional action)
+            // still wins if it happens to target the same file.
+            $workingFiles = \App\Services\FlutterSmlTemplateFreshener::freshen(
+                $template->name,
+                $template->files->toArray()
+            );
             if ($hasOverrides) {
                 $overrideById = [];
                 foreach ($overrideFiles as $ov) {
@@ -201,6 +253,12 @@ class UltimateTemplateController extends Controller
             // ONLY count files that actually USE %13 in their filename or output_path
             $dbTableFilePositions = [];
             $dbTableFileIdx = 0;
+            // 🪟 Own, independent position space for window_file/window_file_languages
+            // (per-user decision) - a window_file must never inherit a table's %13
+            // position number, and vice versa. Same "only files that literally use
+            // %13" gate as the table one.
+            $windowFilePositions = [];
+            $windowFileIdx = 0;
             foreach ($resolvedFiles as $rf) {
                 $rf = (object) $rf;
                 if (($rf->content_type ?? null) === 'zip') continue;
@@ -209,6 +267,9 @@ class UltimateTemplateController extends Controller
                 if (in_array($rfGenType, ['db_table_file', 'db_table_file_languages']) && $usesPercent13) {
                     $dbTableFilePositions[$rf->id] = $dbTableFileIdx;
                     $dbTableFileIdx++;
+                } elseif (in_array($rfGenType, ['window_file', 'window_file_languages']) && $usesPercent13) {
+                    $windowFilePositions[$rf->id] = $windowFileIdx;
+                    $windowFileIdx++;
                 }
             }
 
@@ -221,7 +282,7 @@ class UltimateTemplateController extends Controller
                     continue;
                 }
 
-                $filePosition = $dbTableFilePositions[$file->id] ?? 0;
+                $filePosition = $dbTableFilePositions[$file->id] ?? $windowFilePositions[$file->id] ?? 0;
 
                 // 🚀 CACHE: Try to get from cache first
                 $fileResult = null;
@@ -232,10 +293,11 @@ class UltimateTemplateController extends Controller
                             fileId: $file->id,
                             tableName: $tableName,
                             languageCode: $languageCode,
-                            compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, &$globalFileCounter, $filePosition) {
-                                return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, 0, $globalFileCounter, $filePosition);
+                            compileCallback: function() use ($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, &$globalFileCounter, $filePosition, $windowName) {
+                                return $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, 0, $globalFileCounter, $filePosition, windowName: $windowName);
                             },
-                            includeSource: $includeSource
+                            includeSource: $includeSource,
+                            windowName: $windowName
                         );
                     } catch (\Exception $e) {
                         \Log::warning("⚠️ [CACHE ERROR] Cache lookup failed for file {$file->id}: {$e->getMessage()}. Compiling without cache.");
@@ -245,7 +307,7 @@ class UltimateTemplateController extends Controller
 
                 // Fallback: No cache or cache disabled
                 if (!$fileResult) {
-                    $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, 0, $globalFileCounter, $filePosition);
+                    $fileResult = $this->processTemplateFile($engine, $file, $gtreeData, $compile, $tableName, $languageCode, $includeSource, 0, $globalFileCounter, $filePosition, windowName: $windowName);
                 }
 
                 // Skip files whose table was excluded at schema level (no tableIdx resolved).
@@ -415,8 +477,24 @@ class UltimateTemplateController extends Controller
      * @param string|null $tableName Table name for db_table_file types (null = project file)
      * @param int|null $schemaVersion Specific schema version to use (null = use latest)
      */
-    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersions = null, ?string $tableName = null, $schemaVersion = null, ?array $schemaIds = null): array
+    public function buildUltimateGtree(?int $projectId, int $templateId, Template $template, $migrationFromVersions = null, ?string $tableName = null, $schemaVersion = null, ?array $schemaIds = null, ?array $overrideFiles = null, ?string $windowName = null): array
     {
+        // Cheap, EARLY, names-only query - smlTypeToDart()'s `record<X>`
+        // handling (called from window/global-procedure param/return-type
+        // resolution, itself built further down in THIS method, well
+        // before the project's full struct data normally loads) needs to
+        // know which struct names are actually real for THIS project.
+        // Confirmed real and necessary: a project can have ZERO registered
+        // structs (this.project_id has none) while its imported global
+        // procedures still reference `record<Connection>`/
+        // `record<stArrIdentOriginal>` (shared/copied WinDev utility code
+        // that assumes a struct the IMPORT never actually brought over) -
+        // emitting a Dart type name with no matching class is a hard
+        // "Type not found" compile error, not a runtime concern to defer.
+        $this->knownStructNames = $projectId
+            ? \App\Models\UiProjectStruct::where('project_id', $projectId)->pluck('name')->all()
+            : [];
+
         // Load project and schema data
         $actualProject = $projectId ? Project::find($projectId) : null;
         $schemaTables = collect();
@@ -619,8 +697,111 @@ class UltimateTemplateController extends Controller
         $projectData['projectcaption'] = $defaultCaption;
         $projectData['projectdescription'] = $defaultDescription;
 
-        // Build ultimate table data with translations
-        $projectData['tables'] = $this->buildUltimateTableDataWithTranslations($schemaTables, $projectId, $languages);
+        // {:firstwindowname:} - the ONE window the Window Designer marked
+        // "First Project Window" (UiWindow::is_first_window), used by
+        // window_modules.dart to pick which window main.dart launches
+        // directly into instead of a generic menu/demo screen. A separate,
+        // independent query (not reusing whatever subset buildUltimateWindowsData()
+        // loaded for THIS generation pass, which may be a single forced
+        // window) so the result is correct regardless of which file is
+        // being generated. Empty string (falsy in {:if:}) when no window is
+        // marked - main.dart falls back to "the only window" itself.
+        $projectData['firstwindowname'] = $projectId
+            ? (\App\Models\UiWindow::where('project_id', $projectId)->where('is_first_window', true)->value('name') ?? '')
+            : '';
+
+        // Build ultimate table data with translations - only when this
+        // template's own files actually need it. This is expensive: it
+        // walks every table's every field for per-field/per-table
+        // translations (real-world measurement: ~7900 queries for one
+        // compile pass on a project with a normal-sized schema). A
+        // window_file/project_file template that never references table
+        // data (like the Window Designer's flutter_windows skeleton) was
+        // paying that cost on EVERY SINGLE per-window compile pass (84
+        // windows = 84x the waste) even though nothing it generates ever
+        // reads `tables`. $tableName being set (a db_table_file/
+        // db_table_file_languages compile pass for one specific table)
+        // always forces this to build, regardless of content-scan result -
+        // that compile pass structurally cannot work without it.
+        if ($tableName !== null || $this->templateUsesTables($template, $overrideFiles)) {
+            $projectData['tables'] = $this->buildUltimateTableDataWithTranslations($schemaTables, $projectId, $languages);
+        } else {
+            $projectData['tables'] = [];
+        }
+
+        // Cheap (already-loaded $schemaTables, no extra query, no per-field
+        // translation pass) real DB table NAMES - independent of the
+        // expensive `tables` array above, which a window_file/project_file
+        // template like flutter_sml_template deliberately skips building
+        // (see the doc comment above). sml_to_dart.js needs real table
+        // names regardless of whether THIS template ever emits a
+        // db_table_file: WLanguage's `TableName.FieldName` HFSQL
+        // current-record-buffer sugar (confirmed real: `accounts.acct_id`,
+        // `companies.name`, ... - every "Form" window in a real project
+        // that displays/edits one linked data file) can only be told apart
+        // from an ordinary struct-field access by knowing which bare names
+        // are actually real table names - see translateExpr()'s own
+        // handling of this array.
+        $projectData['knowntablenames'] = $schemaTables->pluck('table_name')->filter()->values()->all();
+
+        // 🪟 Window Designer windows (project-scoped, not table-scoped -
+        // roadmap Step 3). Named 'uiwindows'/'nmaxuiwindows', NOT
+        // 'windows'/'nmaxwindows' - the legacy FormSet block further below
+        // already owns 'nmaxwindows' for its own, unrelated concept (the
+        // fixed 3-window-per-FormSet main_menu/create_edit/data_table set)
+        // and would silently overwrite it since that code runs later in this
+        // same function.
+        //
+        // Only actually built when this template's own files reference it
+        // (resolveUiWindowsRequest() below) - for a project with a lot of
+        // Window Designer windows this tree gets large fast (real-world
+        // measurement: 84 windows / ~1100 controls = ~2.8MB of gtree JSON,
+        // AND blew past the Debug Generator's browser localStorage quota),
+        // and EVERY template render pays that cost even though, before the
+        // Window template type exists (roadmap step c), no existing
+        // template can reference these variables at all. A template can
+        // narrow this further with one or more {:loadwindow 'name':}
+        // directives (exact name, or 'prefix*' wildcard) - most templates
+        // that touch windows only care about a specific one, same as a
+        // db_table_file template only cares about its own table.
+        $uiWindowsRequest = $this->resolveUiWindowsRequest($template, $overrideFiles);
+        // window_file/window_file_languages mode (roadmap step c): the caller
+        // (processTemplateFile(), one call per window) already knows exactly
+        // which window this generation pass is for - force-load just that
+        // one window regardless of whether the template text happens to
+        // mention 'uiwindows'/{:loadwindow:} at all (a window_file template
+        // will typically only ever write unqualified {:control.xxx:} /
+        // {:for nmaxcontrols:}, never the literal word "uiwindows"). Mirrors
+        // how $tableName forces a db_table_file's single table to resolve.
+        if ($windowName !== null) {
+            $uiWindowsRequest['uses'] = true;
+            $uiWindowsRequest['names'] = [$windowName];
+        }
+        $uiWindowsSizeWarning = null;
+        if ($uiWindowsRequest['uses']) {
+            $windowsData = $this->buildUltimateWindowsData($projectId, $selectedLanguageCode, $uiWindowsRequest['names']);
+            $projectData['uiwindows'] = $windowsData['windows'];
+            $projectData['nmaxuiwindows'] = $windowsData['nmaxwindows'];
+
+            // Still warn even after filtering - a wildcard like 'form*' or
+            // simply not using {:loadwindow:} at all can still pull in more
+            // than a browser's localStorage quota (~5-10MB/origin) can hold,
+            // which the Debug Generator caches the gtree into. Generation
+            // itself doesn't care about this limit - only that one cache do
+            // - but better to tell the user up front than have them chase
+            // another silent "Error loading code".
+            $uiWindowsSizeBytes = strlen(json_encode($windowsData['windows']));
+            if ($uiWindowsSizeBytes > 1_500_000) {
+                $uiWindowsSizeWarning = sprintf(
+                    'GTree enthält %s Fenster (%s MB an Fenster-Daten) - das kann das localStorage-Limit des Browsers (~5-10MB) sprengen und den GTree-Cache im Debug Generator zum Scheitern bringen. Tipp: {:loadwindow \'fenstername\':} im Template verwenden, um nur die wirklich benötigten Fenster zu laden.',
+                    $windowsData['nmaxwindows'],
+                    round($uiWindowsSizeBytes / 1024 / 1024, 2)
+                );
+            }
+        } else {
+            $projectData['uiwindows'] = [];
+            $projectData['nmaxuiwindows'] = 0;
+        }
 
         // 🎯 Add Form Layout data per table.
         // FormSet resolution is now PER-TABLE: schema_tables.form_set_id can override
@@ -679,6 +860,19 @@ class UltimateTemplateController extends Controller
             $projectNmaxLayoutMenus = $menuTree['nmaxlayoutmenus'] ?? 0;
         }
 
+        // Per-table FormSet/ReportPattern layout resolution - only ever read
+        // by `db_table_file`/`project_file` templates (`{:table.formmenu:}`,
+        // `{:table.report_pattern_id:}`, ...), NEVER by a `window_file`
+        // template (Window Designer pages use `{:window.*:}`/`{:control.*:}`
+        // instead - a completely separate data model). Measured real cost:
+        // ~12.8s for a 50-table schema, PAID ON EVERY SINGLE WINDOW REQUEST
+        // even though window-file generation never reads any of it - the
+        // dominant cost in a 32-minute, 26-window generation run. Skipped
+        // whenever this is a window-specific request ($windowName !== null,
+        // same convention as $isProjectFile above gating migration data) -
+        // every other request shape (project_file, db_table_file) keeps the
+        // exact same behaviour as before.
+        if ($windowName === null) {
         foreach ($projectData['tables'] as &$tableData) {
             $tblName = $tableData['filename'] ?? '';
             $schemaTable = $schemaTables->firstWhere('table_name', $tblName);
@@ -860,6 +1054,7 @@ class UltimateTemplateController extends Controller
             }
         }
         unset($tableData);
+        } // end if ($windowName === null) - see this block's opening comment
 
         // Build tablesgen: index array into tables[] for {:for nmaxtables:} iteration.
         // Only full/code_only tables are iterated — template_only, reference_only
@@ -945,6 +1140,149 @@ class UltimateTemplateController extends Controller
             $projectData['nmaxwindows'] = 0;
         }
 
+        // 🧩 Project-wide SML declarations (globals/structs/constants/global
+        // procedures/startup code) - gated the same cheap way as uiwindows
+        // above, since a template that never mentions any of these has no
+        // reason to pay for the extra queries.
+        if ($projectId && $this->resolveProjectDeclarationsRequest($template, $overrideFiles)) {
+            $structs = \App\Models\UiProjectStruct::where('project_id', $projectId)->orderBy('sort_order')->orderBy('name')->get();
+            $projectData['structs'] = $structs->map(function ($s) {
+                $fields = array_map(function ($f) {
+                    $dartType = $this->smlTypeToDart($f['type'] ?? '');
+                    return [
+                        'name' => $f['name'] ?? '',
+                        'type' => $f['type'] ?? '',
+                        'dart_type' => $dartType,
+                        'dart_nullable' => $this->dartTypeIsNullableByDefault($dartType),
+                        'default' => $f['default'] ?? null,
+                        'dart_default' => $this->defaultDartValue($dartType),
+                    ];
+                }, $s->fields ?? []);
+                return ['name' => $s->name, 'fields' => $fields, 'nmaxfields' => count($fields)];
+            })->values()->all();
+            $projectData['nmaxstructs'] = count($projectData['structs']);
+
+            // Every project global gets a real, always-present static field
+            // (dart_default - a language-appropriate zero value, NEVER the
+            // real SML default_value expression - see the note on
+            // globals_init_code below for why) so `AppGlobals.<name>` is
+            // always a valid Dart reference the moment the field is
+            // declared, even before AppGlobals.init() has run.
+            $globals = \App\Models\UiProjectGlobal::where('project_id', $projectId)->orderBy('sort_order')->orderBy('name')->get();
+            $projectData['globals'] = $globals->map(function ($g) {
+                $dartType = $this->smlTypeToDart($g->type);
+                return [
+                    'name' => $g->name,
+                    'type' => $g->type,
+                    'dart_type' => $dartType,
+                    'dart_nullable' => $this->dartTypeIsNullableByDefault($dartType),
+                    'default_value' => $g->default_value,
+                    'dart_default' => $this->defaultDartValue($dartType),
+                ];
+            })->values()->all();
+            $projectData['nmaxglobals'] = count($projectData['globals']);
+
+            // A global's REAL SML default_value (e.g.
+            // `sys.load_setting("SERVERIP", "")`) can be an arbitrary
+            // expression - including an ASYNC one (confirmed real: WIN_IP's
+            // own gsServer default calls sys.load_setting) - which can never
+            // legally sit inside a Dart `static` field initializer. Instead
+            // every global's field gets the plain zero-value default above,
+            // and every global WITH a real default_value gets one `set`
+            // statement here, translated exactly like any other SML snippet
+            // and run once from AppGlobals.init() (called from main.dart
+            // before runApp(), same early-async-setup slot as the project's
+            // own init_code - see app_globals.dart/main.dart).
+            $globalsInitLines = [];
+            foreach ($projectData['globals'] as $g) {
+                if (trim((string) $g['default_value']) !== '') {
+                    $globalsInitLines[] = "set {$g['name']} = {$g['default_value']}";
+                }
+            }
+            $projectData['globals_init_code'] = implode("\n", $globalsInitLines);
+            // Own, narrower import scan for app_globals.dart specifically -
+            // reusing the project-wide uses_X below (meant for
+            // global_procedures.dart, all ~68 global procedures combined)
+            // would over-import here, since AppGlobals.init() only ever
+            // runs THIS code, never any global procedure's body.
+            $globalsInitLibraries = $this->requiredSmlLibraries($projectData['globals_init_code']);
+            foreach (self::SML_NAMESPACES as $ns) {
+                $projectData['globals_init_uses_' . $ns] = in_array($ns, $globalsInitLibraries, true);
+            }
+
+            $constants = \App\Models\UiProjectConstant::where('project_id', $projectId)->orderBy('sort_order')->orderBy('name')->get();
+            $projectData['constants'] = $constants->map(fn($c) => ['name' => $c->name, 'value' => $c->value ?? ''])->values()->all();
+            $projectData['nmaxconstants'] = count($projectData['constants']);
+
+            // Deliberately 'globalprocedures' (not 'procedures') - a WINDOW's
+            // own local procedures live at uiwindows[i].procedures, a
+            // DIFFERENT gtree path, so the two can never collide even though
+            // both ultimately come from the same UiProcedure model. See
+            // processLoopStart()'s {:for nmaxglobalprocedures:} handler.
+            $globalProcedures = \App\Models\UiProcedure::where('project_id', $projectId)->whereNull('window_id')->orderBy('sort_order')->orderBy('name')->get();
+            $projectData['globalprocedures'] = $globalProcedures->map(fn($p) => $this->procedureGTreeNode($p))->values()->all();
+            $projectData['nmaxglobalprocedures'] = count($projectData['globalprocedures']);
+
+            $initEvent = \App\Models\UiProjectEvent::where('project_id', $projectId)->where('event_name', 'init')->first();
+            $projectData['init_code'] = $initEvent->code ?? '';
+
+            $projectSmlCode = implode("\n", array_merge(
+                array_column($projectData['globalprocedures'], 'code'),
+                [$projectData['init_code']]
+            ));
+            $projectData['required_libraries'] = $this->requiredSmlLibraries($projectSmlCode);
+            foreach (self::SML_NAMESPACES as $ns) {
+                $projectData['uses_' . $ns] = in_array($ns, $projectData['required_libraries'], true);
+            }
+        } else {
+            $projectData['structs'] = [];
+            $projectData['nmaxstructs'] = 0;
+            $projectData['globals'] = [];
+            $projectData['nmaxglobals'] = 0;
+            $projectData['globals_init_code'] = '';
+            foreach (self::SML_NAMESPACES as $ns) {
+                $projectData['globals_init_uses_' . $ns] = false;
+            }
+            $projectData['constants'] = [];
+            $projectData['nmaxconstants'] = 0;
+            $projectData['globalprocedures'] = [];
+            $projectData['nmaxglobalprocedures'] = 0;
+            $projectData['init_code'] = '';
+            $projectData['required_libraries'] = [];
+            foreach (self::SML_NAMESPACES as $ns) {
+                $projectData['uses_' . $ns] = false;
+            }
+        }
+
+        // 🧩 SML -> Dart translation (see translateSmlCodeBatch()'s own doc
+        // comment for why this runs here, server-side, rather than inside
+        // the template's own {:code:} blocks). Attaches `dart_code`/
+        // `needs_async` onto every event/procedure node in place, plus
+        // `init_dart_code`/`init_needs_async` on the project itself.
+        $this->attachDartTranslations($projectData);
+
+        // 🍔 Menu bar Dart literals - built AFTER attachDartTranslations()
+        // since they read each menu item's `dart_code` (patched in above by
+        // applySmlTranslationToMenus()). A window's menu tree can nest to an
+        // arbitrary depth (a real WinDev project alone: File > M_Action >
+        // M_accounts > OPT_Table_accounts, 4 levels), which the template's
+        // own {:for nmaxX:} constructs can't express (every one of them is
+        // individually hand-registered in UltimateTemplateEngine.php - see
+        // its own doc comments - there is no generic "just loop whatever
+        // array is here" case, and none of the existing ones support
+        // recursing into their OWN children indefinitely). PHP recurses
+        // fine, so it renders the whole tree - both the widget-tree literal
+        // AND each leaf's generated Dart method - as plain text once, here,
+        // the same way renderDartParamList() already pre-renders Dart
+        // syntax a template loop can't express on its own.
+        if (isset($projectData['uiwindows'])) {
+            foreach ($projectData['uiwindows'] as &$window) {
+                $window['menu_bar_dart'] = $this->menuBarDartLiteral($window['menus'] ?? []);
+                $window['menu_handlers_dart'] = $this->menuHandlersDartLiteral($window['menus'] ?? []);
+            }
+            unset($window);
+        }
+
         // Create gtree structure
         $gtree = [
             [
@@ -962,6 +1300,8 @@ class UltimateTemplateController extends Controller
                 'total_fields' => array_sum(array_column($projectData['tables'], 'nmaxitems')),
                 'formset_linked' => isset($projectData['formset']) && $projectData['formset'] !== null,
                 'formset_windows' => $projectData['nmaxwindows'] ?? 0,
+                'ui_windows_count' => $projectData['nmaxuiwindows'] ?? 0,
+                'ui_windows_size_warning' => $uiWindowsSizeWarning,
                 'features' => [
                     'enhanced_naming_conventions' => true,
                     'extended_metadata' => true,
@@ -1111,6 +1451,1276 @@ class UltimateTemplateController extends Controller
         }
 
         return $projectData;
+    }
+
+    /**
+     * 🪟 BUILD ULTIMATE WINDOWS DATA (roadmap Step 3 - Window Designer gtree
+     * integration).
+     *
+     * Windows are project-scoped, not table-scoped (see UiWindow's own
+     * docblock) - this mirrors buildUltimateTableData()'s role for
+     * `{:for nmaxtables:}`, but for the new `windows` array instead. Each
+     * window's layout is a real tree (container/group_box can nest inside
+     * each other; tab_container has tab_panel pages, each of which can again
+     * contain controls and nested containers) so this recurses through
+     * UiWindowElement's parent_element_id/container_element_id relationships
+     * rather than doing a single flat pass - that tree shape is exactly what
+     * `{:for nmaxcontrols:}` / `{:for nmaxtabs:}` / `{:for nmaxelements:}`
+     * (added in the next generator step) need to walk.
+     *
+     * Both element and control lookups are loaded ONCE per project (not per
+     * node) and grouped in PHP, to keep this O(2 queries) regardless of how
+     * deeply nested a window's layout is.
+     */
+
+    /**
+     * Cheap gate for the expensive buildUltimateTableDataWithTranslations()
+     * call - true if any file in the template is itself a db_table_file/
+     * db_table_file_languages (which structurally cannot work without table
+     * data), or if any file's content plausibly references table/field
+     * constructs. False lets buildUltimateGtree() skip straight to an empty
+     * `tables: []`, saving a real-world-measured ~7900 queries per compile
+     * pass for templates (window_file, plain project_file) that never read
+     * table data at all - see the call site for the story of why this
+     * mattered enough to add.
+     */
+    private function templateUsesTables(Template $template, ?array $overrideFiles = null): bool
+    {
+        foreach ($template->files as $file) {
+            if (in_array($this->determineGenerationType($file), ['db_table_file', 'db_table_file_languages'], true)) {
+                return true;
+            }
+        }
+
+        // Broad but cheap - these are common enough prefixes/keywords that a
+        // false positive (loading tables when not strictly needed) is far
+        // preferable to a false negative (a template silently missing table
+        // data it actually wanted). No regex, matching this codebase's
+        // general preference.
+        //
+        // `table.`/`item.`/`field.`/`keys.`/`foreign.` are prefixed with the
+        // literal `{:` template-syntax opener - bare (unprefixed) versions
+        // matched ordinary prose/code too eagerly: confirmed real, this
+        // caused a 7-8 SECOND cost (buildUltimateTableDataWithTranslations()'s
+        // ~7900 queries) on EVERY SINGLE per-window compile pass of the
+        // flutter_sml_template, because sml_to_dart.js's own doc comments
+        // and JS property access (`_item.${x}`, `field.dart_type`) contain
+        // the bare substring "item."/"field.", and app_structs.dart's real
+        // `{:structfield.name:}` syntax contains "field." as a sub-string of
+        // "structfield." - neither has anything to do with database TABLE
+        // data. Real Scoriet template syntax for these ALWAYS starts with
+        // `{:` (confirmed throughout this project's own templates), so
+        // requiring it eliminates both false-positive sources while still
+        // catching every genuine usage. `nmaxtables`/`tablesgen`/`nmaxitems`
+        // are left bare - they're specific enough coined identifiers that
+        // an accidental match in prose/code is not a real risk, and the
+        // real `{:for nmaxitems:}` directive syntax has other words BETWEEN
+        // `{:` and the keyword, so a `{:`-prefixed needle couldn't match it.
+        $needles = ['nmaxtables', 'tablesgen', 'nmaxitems', '{:table.', '{:item.', '{:field.', '{:keys.', '{:foreign.'];
+        $scan = function (string $content) use ($needles): bool {
+            foreach ($needles as $needle) {
+                if (str_contains($content, $needle)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (is_array($overrideFiles)) {
+            foreach ($overrideFiles as $override) {
+                $content = is_array($override) ? ($override['file_content'] ?? '') : '';
+                if ($content !== '' && $scan($content)) {
+                    return true;
+                }
+            }
+        }
+
+        foreach ($template->files as $file) {
+            if (($file->content_type ?? null) === 'zip') {
+                continue;
+            }
+            $content = $file->file_content ?? '';
+            if ($content !== '' && $scan($content)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Same cheap gate as templateUsesTables(), for the project-wide SML
+     * declarations block (globals/structs/constants/global procedures/init
+     * code) - a template that never references any of these has no reason
+     * to pay for the extra queries.
+     */
+    private function resolveProjectDeclarationsRequest(Template $template, ?array $overrideFiles = null): bool
+    {
+        $needles = ['globalprocedure.', 'nmaxglobalprocedures', 'global.', 'nmaxglobals', 'struct.', 'nmaxstructs', 'constant.', 'nmaxconstants', 'project.init_code'];
+        $scan = function (string $content) use ($needles): bool {
+            foreach ($needles as $needle) {
+                if (str_contains($content, $needle)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (is_array($overrideFiles)) {
+            foreach ($overrideFiles as $override) {
+                $content = is_array($override) ? ($override['file_content'] ?? '') : '';
+                if ($content !== '' && $scan($content)) {
+                    return true;
+                }
+            }
+        }
+
+        foreach ($template->files as $file) {
+            if (($file->content_type ?? null) === 'zip') {
+                continue;
+            }
+            $content = $file->file_content ?? '';
+            if ($content !== '' && $scan($content)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Scans this template's content (overrides first, then saved files) for
+     * (a) whether it references 'uiwindows'/'nmaxuiwindows' at all, and (b)
+     * any `{:loadwindow 'window_name':}` directives - lets a template scope
+     * itself to specific window(s) by name instead of always pulling the
+     * WHOLE project's window tree. A real project's full tree can be
+     * multiple MB (the exact thing that broke both server-side generation
+     * time and the Debug Generator's localStorage cache before this) - most
+     * templates that touch windows only ever care about one or a few of
+     * them, same as a db_table_file template only cares about one table.
+     * `'form*'` (trailing `*`) is a prefix match; anything else is exact.
+     * No `{:loadwindow:}` directive at all = load every window (old
+     * behavior - still fine for a project with only a handful).
+     *
+     * Plain string scanning, not regex, matching this codebase's general
+     * preference - the delimiter is simple and fixed, a manual scan is
+     * exactly as reliable and easier to step through.
+     */
+    private function resolveUiWindowsRequest(Template $template, ?array $overrideFiles = null): array
+    {
+        $uses = false;
+        $names = [];
+
+        $scan = function (string $content) use (&$uses, &$names) {
+            if ($content === '') {
+                return;
+            }
+            if (str_contains($content, 'uiwindows') || str_contains($content, 'nmaxuiwindows')) {
+                $uses = true;
+            }
+            $needle = "{:loadwindow '";
+            $offset = 0;
+            while (($start = strpos($content, $needle, $offset)) !== false) {
+                $nameStart = $start + strlen($needle);
+                $end = strpos($content, "':}", $nameStart);
+                if ($end === false) {
+                    break; // Malformed/unterminated directive - stop rather than misparse the rest of the file
+                }
+                $name = substr($content, $nameStart, $end - $nameStart);
+                if ($name !== '') {
+                    $names[] = $name;
+                }
+                $offset = $end + 3;
+            }
+        };
+
+        // In-memory editor overrides (Debug Generator's "Code vorbereiten"
+        // with unsaved edits, see processTemplate()) - checked FIRST and
+        // independently of $template->files, since an override's whole
+        // point is that its content hasn't been saved to that file's DB row
+        // yet. Scanning only the saved content would silently miss whatever
+        // the user just typed.
+        if (is_array($overrideFiles)) {
+            foreach ($overrideFiles as $override) {
+                $scan(is_array($override) ? ($override['file_content'] ?? '') : '');
+            }
+        }
+
+        foreach ($template->files as $file) {
+            if (($file->content_type ?? null) === 'zip') {
+                continue; // Base64 blob, never template source text
+            }
+            $scan($file->file_content ?? '');
+        }
+
+        return ['uses' => $uses, 'names' => array_values(array_unique($names))];
+    }
+
+    /**
+     * @param array $windowNames Optional whitelist of window `name` values
+     *   (from {:loadwindow 'x':} directives, see resolveUiWindowsRequest()).
+     *   A trailing '*' is a prefix match ('form*' matches 'form_settings',
+     *   'form_login', ...); anything else must match exactly. Empty array =
+     *   no filter, load every window in the project (old behavior).
+     */
+    private function buildUltimateWindowsData(?int $projectId, ?string $languageCode, array $windowNames = []): array
+    {
+        if (!$projectId) {
+            return ['windows' => [], 'nmaxwindows' => 0];
+        }
+
+        $windows = \App\Models\UiWindow::where('project_id', $projectId)->orderBy('sort_order')->get();
+        if (!empty($windowNames)) {
+            $exact = array_filter($windowNames, fn($n) => !str_ends_with($n, '*'));
+            $prefixes = array_map(fn($n) => substr($n, 0, -1), array_filter($windowNames, fn($n) => str_ends_with($n, '*')));
+            $windows = $windows->filter(function ($w) use ($exact, $prefixes) {
+                if (in_array($w->name, $exact, true)) {
+                    return true;
+                }
+                foreach ($prefixes as $prefix) {
+                    if ($prefix === '' || str_starts_with($w->name, $prefix)) {
+                        return true;
+                    }
+                }
+                return false;
+            })->values();
+        }
+        if ($windows->isEmpty()) {
+            return ['windows' => [], 'nmaxwindows' => 0];
+        }
+
+        $windowIds = $windows->pluck('id');
+        $allElements = \App\Models\UiWindowElement::whereIn('window_id', $windowIds)->orderBy('sort_order')->get();
+        $allControls = \App\Models\UiWindowControl::whereIn('window_id', $windowIds)->orderBy('sort_order')->get();
+        $allMenus = \App\Models\UiWindowMenu::whereIn('window_id', $windowIds)->orderBy('sort_order')->get();
+        // SML code-behind + local procedures - see buildEventsGTree()/
+        // buildProceduresGTree() for the exact shape attached to each node.
+        $allEvents = \App\Models\UiWindowEvent::whereIn('window_id', $windowIds)->get();
+        $allProcedures = \App\Models\UiProcedure::whereIn('window_id', $windowIds)
+            ->whereNull('project_id')
+            ->orderBy('sort_order')->orderBy('name')->get();
+
+        // Group once, up front, instead of re-scanning the full per-project
+        // collection with ->where() at every single node of every window's
+        // tree. That earlier approach was O(nodes × collection size) - fine
+        // for a handful of controls, but on a real project (84 windows /
+        // ~1100 controls) it measured 12+ seconds of pure PHP time (DB time
+        // alone was 23ms - not a query problem). Grouping is one O(n) pass;
+        // every node lookup below is then an O(1) array-key access.
+        // '__root__' is a normalizing sentinel for the null (window-level /
+        // no-parent) key - groupBy()'s own handling of a literal null key
+        // isn't worth relying on.
+        $elementsByWindow = $allElements->groupBy('window_id');
+        $controlsByWindow = $allControls->groupBy('window_id');
+        $menusByWindow = $allMenus->groupBy('window_id');
+        $eventsByControl = $allEvents->whereNotNull('control_id')->groupBy('control_id');
+        $eventsByElement = $allEvents->whereNotNull('element_id')->groupBy('element_id');
+        $eventsByMenu = $allEvents->whereNotNull('menu_id')->groupBy('menu_id');
+        // A menu event also has control_id/element_id both null (see
+        // UiWindowEvent's own doc comment on the three being mutually
+        // exclusive) - excluded here too, or it would double up as BOTH a
+        // window-level event AND a menu event.
+        $eventsByWindow = $allEvents->filter(fn($e) => $e->control_id === null && $e->element_id === null && $e->menu_id === null)->groupBy('window_id');
+        $proceduresByWindow = $allProcedures->groupBy('window_id');
+
+        $mappedWindows = $windows->map(function ($window) use (
+            $elementsByWindow, $controlsByWindow, $menusByWindow, $languageCode,
+            $eventsByControl, $eventsByElement, $eventsByMenu, $eventsByWindow, $proceduresByWindow
+        ) {
+            $windowElements = $elementsByWindow->get($window->id, collect());
+            $windowControls = $controlsByWindow->get($window->id, collect());
+            $windowMenus = $menusByWindow->get($window->id, collect());
+
+            $elementsByParent = $windowElements->groupBy(fn($el) => $el->parent_element_id ?? '__root__');
+            $controlsByContainer = $windowControls->groupBy(fn($c) => $c->container_element_id ?? '__root__');
+            $menusByParent = $windowMenus->groupBy(fn($m) => $m->parent_menu_id ?? '__root__');
+
+            $topControls = $controlsByContainer->get('__root__', collect())->values();
+            $topElements = $elementsByParent->get('__root__', collect())
+                ->reject(fn($el) => $el->element_type === 'tab_panel') // tab_panel only ever appears nested under its own tab_container, never at window level
+                ->values();
+            $topMenus = $menusByParent->get('__root__', collect())->values();
+
+            $node = $window->toGTreeArray();
+            $node['controls'] = $topControls->map(fn($c) => $this->controlGTreeNode($c, $eventsByControl, $languageCode))->all();
+            $node['nmaxcontrols'] = count($node['controls']);
+            $node['elements'] = $topElements->map(fn($el) => $this->buildWindowElementNode($el, $elementsByParent, $controlsByContainer, $languageCode, $eventsByControl, $eventsByElement))->all();
+            $node['nmaxelements'] = count($node['elements']);
+            $node['tabs'] = [];
+            $node['nmaxtabs'] = 0;
+            $node['menus'] = $topMenus->map(fn($m) => $this->buildWindowMenuNode($m, $menusByParent, $languageCode, $eventsByMenu))->all();
+            $node['nmaxmenus'] = count($node['menus']);
+
+            $node['events'] = $this->eventsGTreeArray($eventsByWindow->get($window->id, collect()));
+            $node['nmaxevents'] = count($node['events']);
+
+            // See inferMissingProcedureParams()'s own doc comment - built
+            // from $node['events']/['controls']/['elements'] (already set
+            // above) PLUS this window's own procedures' raw code (not yet
+            // on $node - can't reuse windowSmlCodeForScan() below, which
+            // reads FROM $node['procedures'], the very thing being built
+            // here). A window-local procedure can only ever be called from
+            // within its OWN window, so this is already the complete,
+            // correctly-scoped search space - no cross-window query needed.
+            $windowProceduresForParams = $proceduresByWindow->get($window->id, collect());
+            $windowRawCodeForParams = implode("\n", array_filter([
+                implode("\n", array_map(fn ($e) => $e['code'] ?? '', $node['events'])),
+                $this->collectNestedSmlCode($node),
+                $windowProceduresForParams->pluck('code')->implode("\n"),
+            ]));
+            $windowControlNamesForParams = $this->collectAllControlSourceNames($node['controls'], $node['elements']);
+
+            $node['procedures'] = $windowProceduresForParams
+                ->map(fn($p) => $this->procedureGTreeNode($p, $windowRawCodeForParams, $windowControlNamesForParams))->values()->all();
+            $node['nmaxprocedures'] = count($node['procedures']);
+            $node['required_libraries'] = $this->requiredSmlLibraries($this->windowSmlCodeForScan($node));
+            foreach (self::SML_NAMESPACES as $ns) {
+                $node['uses_' . $ns] = in_array($ns, $node['required_libraries'], true);
+            }
+
+            return $node;
+        })->values()->all();
+
+        return ['windows' => $mappedWindows, 'nmaxwindows' => count($mappedWindows)];
+    }
+
+    /**
+     * One UiWindowControl's gtree node plus its SML events - factored out
+     * since it's called from three places (a window's own top-level
+     * controls, a container element's controls, and a looper's flattened
+     * row controls all go through buildWindowElementNode()).
+     */
+    private function controlGTreeNode($control, $eventsByControl, ?string $languageCode): array
+    {
+        $node = $control->toGTreeArray($languageCode);
+        $node['events'] = $this->eventsGTreeArray($eventsByControl->get($control->id, collect()));
+        $node['nmaxevents'] = count($node['events']);
+        return $node;
+    }
+
+    /**
+     * A collection of UiWindowEvent rows -> the plain {event_name, code}
+     * shape a template's `{:for nmaxevents:}` loop walks. `code` always a
+     * string (never null) so a template can safely test its length/content
+     * without an extra null-check.
+     */
+    private function eventsGTreeArray($events): array
+    {
+        return $events->map(fn($e) => [
+            'event_name' => $e->event_name,
+            'code' => $e->code ?? '',
+        ])->values()->all();
+    }
+
+    // ========== SML -> Dart generation support ==========
+    //
+    // Shared by the window/project gtree builders below: SML type mapping,
+    // procedure signatures, and per-window "which runtime libraries does
+    // this code actually need" detection (see scripts/flutter_sml_template's
+    // README for how the template consumes these fields).
+
+    /**
+     * The 20 namespaces from the SML spec (supported.md), one Dart runtime
+     * library each, plus 'i18n' - real and documented
+     * (07_REAL_PROJECT_FINDINGS.md) but added to the converter after
+     * supported.md's own snapshot, for WinDev's embedded multilingual
+     * string resources.
+     */
+    private const SML_NAMESPACES = [
+        'arr', 'crypt', 'db', 'dlg', 'draw', 'dt', 'file', 'ftp', 'http', 'json',
+        'log', 'num', 'rpt', 'sock', 'sql', 'str', 'sys', 'timer', 'ui', 'win', 'i18n',
+    ];
+
+    /**
+     * Namespaces whose functions are inherently tied to a live window (a
+     * control name, a BuildContext, ...) rather than being pure data
+     * transforms - see the template's SmlWindowContext design. A global
+     * procedure whose code touches one of these needs a window context
+     * parameter injected; one that only uses the rest can stay a plain
+     * top-level function.
+     */
+    private const WINDOW_SCOPED_SML_NAMESPACES = ['ui', 'dlg', 'win', 'rpt', 'timer'];
+
+    /**
+     * Which SML namespaces does this code actually call? Drives per-window
+     * "smart imports" (a project with no db.* code needs no lib_db.dart and
+     * no SQLite dependency at all) - see SML_NAMESPACES for the full list
+     * and supported.md for what each namespace covers.
+     */
+    private function requiredSmlLibraries(string $code): array
+    {
+        if ($code === '') {
+            return [];
+        }
+        $alternation = implode('|', self::SML_NAMESPACES);
+        $required = [];
+        if (preg_match_all('/\b(' . $alternation . ')\./', $code, $matches)) {
+            $required = $matches[1];
+        }
+
+        // `Val(s)` - WinDev's bare (non-namespaced) string-to-number
+        // builtin - is rewritten by sml_to_dart.js into `SmlNum.parse(...)`
+        // (see its own translateExpr() branch), so a window/project that
+        // ONLY uses `Val()` and never writes `num.` itself still genuinely
+        // needs lib_num.dart imported - the dotted-namespace scan above can
+        // never see that on its own (the raw SML text never contains "num."
+        // for it). Confirmed real (`Val(INIRead("Einstellungen", "DB_CS",
+        // "", gsIni))` assigned to an int global). Keep in sync with
+        // sml_to_dart.js's own 'val' bare-call branch if that ever changes
+        // what it delegates to.
+        if (preg_match('/\bVal\s*\(/i', $code) === 1) {
+            $required[] = 'num';
+        }
+
+        return array_values(array_unique($required));
+    }
+
+    private function usesWindowScopedNamespace(string $code): bool
+    {
+        return count(array_intersect($this->requiredSmlLibraries($code), self::WINDOW_SCOPED_SML_NAMESPACES)) > 0;
+    }
+
+    /**
+     * Concatenates every piece of SML code attached to an already-built
+     * window gtree node (its own events, its procedures, and every
+     * control's/element's/tab's events recursively) into one string for
+     * requiredSmlLibraries() to scan. Called after the node's controls/
+     * elements/events/procedures are all attached, so it walks the built
+     * array rather than re-querying the database.
+     */
+    private function windowSmlCodeForScan(array $windowNode): string
+    {
+        $parts = [];
+        foreach ($windowNode['events'] ?? [] as $e) {
+            $parts[] = $e['code'] ?? '';
+        }
+        foreach ($windowNode['procedures'] ?? [] as $p) {
+            $parts[] = $p['code'] ?? '';
+        }
+        $parts[] = $this->collectNestedSmlCode($windowNode);
+        return implode("\n", $parts);
+    }
+
+    /** Recurses into controls/elements/tabs/menus, collecting every event's code. */
+    private function collectNestedSmlCode(array $node): string
+    {
+        $parts = [];
+        foreach ($node['controls'] ?? [] as $c) {
+            foreach ($c['events'] ?? [] as $e) {
+                $parts[] = $e['code'] ?? '';
+            }
+        }
+        foreach ($node['elements'] ?? [] as $el) {
+            foreach ($el['events'] ?? [] as $e) {
+                $parts[] = $e['code'] ?? '';
+            }
+            $parts[] = $this->collectNestedSmlCode($el);
+        }
+        foreach ($node['tabs'] ?? [] as $tab) {
+            foreach ($tab['events'] ?? [] as $e) {
+                $parts[] = $e['code'] ?? '';
+            }
+            $parts[] = $this->collectNestedSmlCode($tab);
+        }
+        foreach ($node['menus'] ?? [] as $menu) {
+            foreach ($menu['events'] ?? [] as $e) {
+                $parts[] = $e['code'] ?? '';
+            }
+            $parts[] = $this->collectNestedSmlCode(['menus' => $menu['menu_items'] ?? []]);
+        }
+        return implode("\n", $parts);
+    }
+
+    /**
+     * Renders $dartParams (see parseSmlParamList()) into a ready-to-splice
+     * Dart parameter-list string, e.g. `int a, [bool b = true]` - a single
+     * PHP-computed string rather than a template `{:for:}` loop, because
+     * Dart's optional-positional-parameter syntax (`[...]`) needs bracket
+     * placement that depends on EVERY param's position at once (all
+     * optional params must trail contiguously), not something a per-item
+     * loop can emit correctly on its own.
+     *
+     * Confirmed real and necessary: `Datendateien_HFSQL(bFortschritt: any =
+     * true)` - a genuine SML default value, with every real call site
+     * passing zero arguments (relying on it) - the OLD unconditional
+     * `{:for nmaxdartparams:}{:param.dart_type:} {:param.name:}, {:endfor:}`
+     * rendering made every parameter required regardless of its own
+     * `default`, breaking every zero-arg call site.
+     *
+     * Only brackets a default when it is a SIMPLE literal this can trust
+     * un-modified as Dart source (bool/int/float/double-quoted string) -
+     * anything else (an expression, a project constant name, ...) falls
+     * back to leaving that parameter (and by construction, every one
+     * before it - Dart requires optional params to be a contiguous
+     * trailing run) required, exactly today's existing behaviour, rather
+     * than risking a wrong literal translation.
+     */
+    private function buildDartParamSignature(array $dartParams): string
+    {
+        $count = count($dartParams);
+        $firstOptional = null;
+        for ($i = 0; $i < $count; $i++) {
+            $default = $dartParams[$i]['default'] ?? null;
+            $isSimpleLiteral = $default !== null && (bool) preg_match('/^(true|false|-?\d+(\.\d+)?|"(?:[^"\\\\]|\\\\.)*")$/', trim($default));
+            if ($isSimpleLiteral) {
+                if ($firstOptional === null) {
+                    $firstOptional = $i;
+                }
+            } else {
+                $firstOptional = null; // a later required param breaks the trailing-run requirement - reset
+            }
+        }
+
+        $parts = [];
+        for ($i = 0; $i < $count; $i++) {
+            $p = $dartParams[$i];
+            if ($firstOptional !== null && $i === $firstOptional) {
+                $parts[] = '[';
+            }
+            $parts[] = $p['dart_type'] . ' ' . $p['name'];
+            if ($firstOptional !== null && $i >= $firstOptional) {
+                $parts[count($parts) - 1] .= ' = ' . trim($p['default']);
+            }
+            $parts[] = ', ';
+        }
+        if ($firstOptional !== null && $count > 0) {
+            $parts[] = ']';
+        }
+        return implode('', $parts);
+    }
+
+    /**
+     * One UiProcedure's gtree node - its signature pre-resolved into Dart
+     * form (dart_return_type, dart_params) so the template/translator never
+     * needs to re-parse SML type syntax itself.
+     */
+    private function procedureGTreeNode($p, ?string $siblingCode = null, array $knownNames = []): array
+    {
+        $dartParams = $this->parseSmlParamList($p->params ?? '');
+        // See inferMissingProcedureParams()'s own doc comment - a window-
+        // local procedure imported with ZERO declared params despite real
+        // call sites elsewhere in the SAME window passing arguments
+        // anyway. $siblingCode is only ever passed for window-local
+        // procedures (see buildUltimateWindowsData()'s own call site) -
+        // global procedures don't get this treatment (no confirmed real
+        // case yet - see that method's own doc comment for why guessing
+        // without one would be unjustified).
+        if (empty($dartParams) && $siblingCode !== null) {
+            $dartParams = $this->inferMissingProcedureParams($p->name, $p->code ?? '', $siblingCode, $knownNames);
+        }
+        return [
+            'name' => $p->name,
+            'params' => $p->params ?? '',
+            'return_type' => $p->return_type ?? 'void',
+            'dart_return_type' => $dartReturnType = $this->smlTypeToDart($p->return_type ?? 'void'),
+            'is_private' => (bool) $p->is_private,
+            'code' => $p->code ?? '',
+            'dart_params' => $dartParams,
+            'nmaxdartparams' => count($dartParams),
+            'dartparamsignature' => $this->buildDartParamSignature($dartParams),
+            // WLanguage's OWN semantic, not a Dart-specific patch: a
+            // function reaching its final `}` with no explicit `RESULT` yet
+            // DOES return - implicitly, the declared return type's zero/
+            // default value (False for boolean, 0 for integer, "" for
+            // string, ...) - exactly [defaultDartValue()]'s own existing
+            // table, already used elsewhere for uninitialized `var`
+            // declarations. Dart has no such implicit fallthrough (a
+            // non-void function must return explicitly on every path), so
+            // the template appends `return {:procedure.dartdefaultreturn:};`
+            // as the LAST statement whenever dart_return_type isn't void -
+            // unconditionally, not gated on whether the real code already
+            // returns everywhere. Confirmed safe to always emit: a
+            // procedure that already returns on every path just makes this
+            // final line dead code, and Dart's dead-code check is a
+            // non-fatal hint, not a compile error - so this never breaks an
+            // already-correct procedure, and it fixes the real, confirmed
+            // gap (this project's own `Check_Verzeichnis()`, whose `IF
+            // Ping(...) THEN ELSE ... RESULT False END` has an EMPTY THEN
+            // branch in the real WinDev source - the SML importer nested
+            // all of the function's remaining code inside that branch
+            // instead of after it, so on the ping-success path there is no
+            // return to be found, `dart analyze` correctly flags "body
+            // might complete normally" - a genuine upstream WinDev->SML
+            // conversion bug, not a translator gap, but this fallback keeps
+            // the generated Dart correct and compiling regardless, matching
+            // WLanguage's own real behavior either way).
+            'dartdefaultreturn' => $dartReturnType === 'void' ? null : $this->defaultDartValue($dartReturnType),
+            // See WINDOW_SCOPED_SML_NAMESPACES - a global procedure whose
+            // own body needs a live window (ui./dlg./win./rpt./timer.) gets
+            // an extra leading SmlWindowContext parameter in the generated
+            // Dart; a window's OWN local procedures never need this since
+            // they're generated as State methods and already have `this`.
+            'needs_window_context' => $this->usesWindowScopedNamespace($p->code ?? ''),
+        ];
+    }
+
+    /**
+     * Reconstructs a plausible parameter list for a window-local procedure
+     * imported with ZERO declared params despite real call sites elsewhere
+     * in the SAME window passing arguments anyway - confirmed real and NOT
+     * a one-off: `ModifyWindowMode`/`SuspendRefresh`/`InitialFilter` (each
+     * duplicated once per table's own copy of the window, ~50 real
+     * windows) all show this EXACT shape - `UiProcedure.params` is empty,
+     * yet the procedure's own body reads a bare name it never declares
+     * (`if sModeAppliedWindow == "Browse"`) AND every real call site
+     * (including the procedure's own recursive self-call, RAD's own
+     * `call ModifyWindowMode(sModeAppliedWindow)` opening line) passes
+     * exactly one argument. A genuine SML-import gap (the real WinDev
+     * procedure very likely DID declare this parameter; something dropped
+     * it), not a translator design question - same root-cause shape
+     * collectImplicitLocals() in sml_to_dart.js already fixes for a
+     * procedure's OWN internal reads, but that alone can't fix the
+     * SIGNATURE every OTHER call site is checked against.
+     *
+     * $siblingCode is the window's ENTIRE own combined code (every event +
+     * every procedure) - a window-local procedure can only ever be called
+     * from within its OWN window (WLanguage has no cross-window local-
+     * procedure calls), so this is the complete, correctly-scoped search
+     * space for "how many arguments does a real call site pass".
+     *
+     * Deliberately NOT applied to global procedures - no confirmed real
+     * case has surfaced there yet, and a global procedure can be called
+     * from ANY window project-wide, making "the call sites" a much more
+     * expensive, harder-to-bound search - a follow-up if real evidence
+     * ever shows the same gap there.
+     */
+    private function inferMissingProcedureParams(string $procName, string $procCode, string $siblingCode, array $knownNames): array
+    {
+        // 1. The real max argument count any call site in this window
+        // passes to this procedure name (case-insensitive - WLanguage
+        // identifiers always are).
+        $maxArgs = 0;
+        if (preg_match_all('/\b' . preg_quote($procName, '/') . '\s*\(([^)]*)\)/i', $siblingCode, $matches)) {
+            foreach ($matches[1] as $argsText) {
+                $argsText = trim($argsText);
+                $count = $argsText === '' ? 0 : count($this->splitTopLevel($argsText, ','));
+                $maxArgs = max($maxArgs, $count);
+            }
+        }
+        if ($maxArgs === 0) {
+            return [];
+        }
+
+        // 2. Candidate implicit parameter names from this procedure's OWN
+        // body - a bare word that isn't a call target (`ModifyWindowMode`
+        // itself, in its own opening self-call line), the second half of
+        // a dotted access, an SML keyword, or a known control/global name.
+        // Same shape as sml_to_dart.js's collectBareReadNames() - kept as
+        // its own PHP port rather than shared code, since this runs at
+        // gtree-build time (before any Node process exists) while that
+        // one runs inside the translator's own Node batch.
+        $excluded = [];
+        foreach ($knownNames as $n) {
+            $excluded[strtolower($n)] = true;
+        }
+        foreach ([
+            'if', 'elseif', 'else', 'switch', 'case', 'default', 'for', 'foreach', 'while', 'loop',
+            'try', 'catch', 'finally', 'var', 'set', 'call', 'return', 'break', 'continue', 'throw',
+            'true', 'false', 'null', 'to', 'in', 'step', 'raw', 'todo',
+        ] as $keyword) {
+            $excluded[$keyword] = true;
+        }
+
+        $candidates = [];
+        foreach (preg_split('/\r\n|\r|\n/', $procCode) as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '' || str_starts_with($trimmed, '//')) {
+                continue;
+            }
+            $commentPos = strpos($trimmed, '//');
+            $codePart = $commentPos === false ? $trimmed : substr($trimmed, 0, $commentPos);
+            $stripped = preg_replace('/"(?:[^"\\\\]|\\\\.)*"/', '""', $codePart) ?? $codePart;
+            $len = strlen($stripped);
+            if (!preg_match_all('/[A-Za-zÀ-ɏ_][A-Za-z0-9À-ɏ_]*/u', $stripped, $wordMatches, PREG_OFFSET_CAPTURE)) {
+                continue;
+            }
+            foreach ($wordMatches[0] as [$word, $offset]) {
+                $lower = strtolower($word);
+                if (isset($excluded[$lower])) {
+                    continue;
+                }
+                if ($offset > 0 && $stripped[$offset - 1] === '.') {
+                    continue; // second half of a dotted access
+                }
+                $afterPos = $offset + strlen($word);
+                if ($afterPos < $len && $stripped[$afterPos] === '.') {
+                    continue; // first half of a dotted access - not a bare value itself
+                }
+                $k = $afterPos;
+                while ($k < $len && $stripped[$k] === ' ') {
+                    $k++;
+                }
+                if ($k < $len && $stripped[$k] === '(') {
+                    continue; // a call target - never needs a local/param
+                }
+                if (!isset($candidates[$lower])) {
+                    $candidates[$lower] = $word;
+                }
+            }
+        }
+
+        $names = array_slice(array_values($candidates), 0, $maxArgs);
+        while (count($names) < $maxArgs) {
+            $names[] = 'arg' . count($names); // never guessed a real name for these - see class doc comment
+        }
+
+        return array_map(fn ($n) => [
+            'name' => $n,
+            'sml_type' => 'any',
+            'dart_type' => 'dynamic',
+            'default' => null,
+        ], $names);
+    }
+
+    /**
+     * SML type spelling -> Dart type spelling, per the SML spec's type
+     * table (02_SML_SPECIFICATION.md). Used for procedure params/return
+     * types, global variable types, and struct field types alike, so the
+     * mapping only ever lives in one place.
+     */
+    private function smlTypeToDart(?string $smlType): string
+    {
+        $smlType = trim((string) $smlType);
+
+        $simple = [
+            'int' => 'int', 'real' => 'double', 'currency' => 'double', 'bool' => 'bool',
+            'string' => 'String', 'buffer' => 'Uint8List', 'date' => 'DateTime',
+            'time' => 'DateTime', 'datetime' => 'DateTime', 'variant' => 'dynamic',
+            'any' => 'dynamic', 'void' => 'void',
+        ];
+        if (isset($simple[$smlType])) {
+            return $simple[$smlType];
+        }
+
+        if (str_starts_with($smlType, 'array<') && str_ends_with($smlType, '>')) {
+            return 'List<' . $this->smlTypeToDart(substr($smlType, 6, -1)) . '>';
+        }
+
+        if (str_starts_with($smlType, 'map<') && str_ends_with($smlType, '>')) {
+            $parts = $this->splitTopLevel(substr($smlType, 4, -1), ',');
+            if (count($parts) === 2) {
+                return 'Map<' . $this->smlTypeToDart($parts[0]) . ', ' . $this->smlTypeToDart($parts[1]) . '>';
+            }
+            return 'Map<dynamic, dynamic>'; // malformed - never guess a wrong single type
+        }
+
+        if (str_starts_with($smlType, 'record<') && str_ends_with($smlType, '>')) {
+            $structName = trim(substr($smlType, 7, -1));
+            // The generated struct class keeps the struct's own name
+            // verbatim (see app_structs.dart generation), so a template
+            // referencing `record<stproducts>` and the struct actually
+            // named "stproducts" always agree - no case conversion here.
+            // BUT only when that struct is real for THIS project
+            // ($this->knownStructNames, set once at the top of
+            // buildUltimateGtree()) - confirmed real and not rare: a
+            // project with ZERO registered structs can still have
+            // imported global procedures/globals typed `record<Connection>`/
+            // `record<stArrIdentOriginal>` (copied WinDev utility code that
+            // assumes a struct this project's own import never brought
+            // over). Emitting that name anyway is a hard "Type not found"
+            // compile error - `dynamic` is always valid Dart and never
+            // fabricates fields this translator has no way to know.
+            return in_array($structName, $this->knownStructNames, true) ? $structName : 'dynamic';
+        }
+
+        // Unknown/uncatalogued/empty type - `dynamic` is always valid Dart,
+        // never fabricate a type name that might not compile.
+        return 'dynamic';
+    }
+
+    /**
+     * A ready-to-emit Dart literal for a field/global's zero-value default -
+     * used for every struct field and every project global that has no SML
+     * `default_value` of its own (see app_structs.dart/app_globals.dart).
+     * `DateTime` gets a nullable field (`DateTime?` -> `null`) rather than a
+     * fabricated placeholder date - WinDev has no real "empty date" value
+     * that would be honest to invent here. A struct type (anything not
+     * matched above) gets its own no-arg constructor call - every generated
+     * struct class has one (see buildAppStructsDart()), so this recurses
+     * correctly for nested records (`array<record<X>>` -> `List<X>` -> `[]`,
+     * needing no per-element default at all).
+     */
+    private function defaultDartValue(string $dartType): string
+    {
+        return match (true) {
+            $dartType === 'String' => "''",
+            $dartType === 'int' => '0',
+            $dartType === 'double' => '0.0',
+            $dartType === 'bool' => 'false',
+            $dartType === 'dynamic' => 'null',
+            $dartType === 'DateTime' => 'null',
+            $dartType === 'Uint8List' => 'Uint8List(0)',
+            str_starts_with($dartType, 'List<') => '[]',
+            str_starts_with($dartType, 'Map<') => '{}',
+            default => "{$dartType}()", // a generated struct class
+        };
+    }
+
+    /**
+     * Whether a field/global's Dart type needs a `?` suffix on its
+     * declaration to accept the default from defaultDartValue() above -
+     * currently only `DateTime` (defaulted to `null`, see above).
+     */
+    private function dartTypeIsNullableByDefault(string $dartType): bool
+    {
+        return $dartType === 'DateTime';
+    }
+
+    /**
+     * A `,`-separated SML parameter list (`"sName: string, nCount: int = 0"`)
+     * -> structured params with pre-resolved Dart types. Splits on
+     * TOP-LEVEL commas only (depth-aware over `<>`/`()`/`[]`/`""`) so a
+     * generic type argument's own comma (`map<string, int>`) is never
+     * mistaken for a parameter separator.
+     */
+    private function parseSmlParamList(string $raw): array
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return [];
+        }
+
+        $result = [];
+        foreach ($this->splitTopLevel($raw, ',') as $part) {
+            $colon = strpos($part, ':');
+            if ($colon === false) {
+                continue; // malformed segment - skip rather than guess a type
+            }
+            $name = trim(substr($part, 0, $colon));
+            $rest = trim(substr($part, $colon + 1));
+
+            $eq = strpos($rest, '=');
+            if ($eq !== false) {
+                $type = trim(substr($rest, 0, $eq));
+                $default = trim(substr($rest, $eq + 1));
+            } else {
+                $type = $rest;
+                $default = null;
+            }
+
+            if ($name === '' || $type === '') {
+                continue;
+            }
+            $result[] = [
+                'name' => $name,
+                'sml_type' => $type,
+                'dart_type' => $this->smlTypeToDart($type),
+                'default' => $default,
+            ];
+        }
+        return $result;
+    }
+
+    /**
+     * First top-level `=` in $s (not part of `==`/`!=`/`<=`/`>=`) - a
+     * string/bracket-aware scan, PHP mirror of sml_to_dart.js's own
+     * findTopLevelEquals(). Used by extractImplicitFieldNames() to isolate
+     * a `set` statement's lvalue without needing the full expression
+     * translator - the lvalue is everything before this position.
+     */
+    private function findTopLevelEqualsPhp(string $s): int
+    {
+        $depth = 0;
+        $len = strlen($s);
+        $inString = false;
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $s[$i];
+            if ($inString) {
+                if ($ch === '\\') { $i++; continue; }
+                if ($ch === '"') { $inString = false; }
+                continue;
+            }
+            if ($ch === '"') { $inString = true; continue; }
+            if ($ch === '(' || $ch === '[') { $depth++; continue; }
+            if ($ch === ')' || $ch === ']') { $depth--; continue; }
+            if ($ch === '=' && $depth === 0) {
+                $prev = $i > 0 ? $s[$i - 1] : '';
+                $next = $i + 1 < $len ? $s[$i + 1] : '';
+                if ($prev === '=' || $prev === '!' || $prev === '<' || $prev === '>' || $next === '=') {
+                    continue;
+                }
+                return $i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Bare names this window's own code `set`s but NEVER declares anywhere
+     * (not a control, not a global, not a declarations-scoped name, not a
+     * `var` line in ANY of this window's events/procedures) - WLanguage
+     * allows using a never-declared local as an implicitly-created
+     * "hidden" variable on first assignment; Dart requires every field/
+     * local to be declared before use. Confirmed real and NOT rare:
+     * `win_table_settings`'s `id` (set in one control-click handler,
+     * threaded through to `LoggingInsert` afterward) and
+     * `win_form_settings`'s `head_text1_fontname`..`head_text9_fontname`/
+     * `footer_text1_fontname`..`footer_text9_fontname` (assigned from a
+     * font-picker dialog result, read back later when building the save
+     * payload) are BOTH this exact shape - 20 confirmed occurrences in one
+     * project, not a one-off. Every name found here becomes a `dynamic`
+     * field on the window's State class (see attachDartTranslations()'s
+     * `declarations_fields_dart` append) and is ALSO threaded into
+     * `declarationNames` (see extractDeclarationFieldNames()'s own doc
+     * comment) so ordinary reads/writes resolve to it exactly like any
+     * other declarations field - the same "zero-default field, no
+     * fabricated initial value" honesty already used throughout this
+     * template's declarations/globals handling. A name that genuinely IS
+     * scoped to just one procedure (declared there via its own `var` line)
+     * is correctly excluded - it stays that procedure's own local, never
+     * promoted to a field it doesn't need.
+     */
+    private function extractImplicitFieldNames(string $allCode, array $windowControlNames, array $globalNames, array $windowDeclarationNames): array
+    {
+        if (trim($allCode) === '') {
+            return [];
+        }
+
+        $excluded = [];
+        foreach ($windowControlNames as $c) {
+            $excluded[strtolower($c)] = true;
+        }
+        foreach ($globalNames as $g) {
+            $excluded[strtolower($g['name'])] = true;
+        }
+        foreach ($windowDeclarationNames as $d) {
+            $excluded[strtolower($d['name'])] = true;
+        }
+
+        $declaredSomewhere = [];
+        $setTargets = [];
+
+        foreach (preg_split('/\r\n|\r|\n/', $allCode) as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            if (str_starts_with($trimmed, 'var ')) {
+                $rest = trim(substr($trimmed, 3));
+                $colon = strpos($rest, ':');
+                if ($colon !== false) {
+                    $declaredSomewhere[strtolower(trim(substr($rest, 0, $colon)))] = true;
+                }
+                continue;
+            }
+
+            if (!str_starts_with($trimmed, 'set ')) {
+                continue;
+            }
+
+            $afterSet = trim(substr($trimmed, 3));
+            $eq = $this->findTopLevelEqualsPhp($afterSet);
+            if ($eq === -1) {
+                continue;
+            }
+            $lvalue = trim(substr($afterSet, 0, $eq));
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $lvalue) === 1) {
+                $setTargets[strtolower($lvalue)] = $lvalue; // keep first-seen casing
+            }
+        }
+
+        $implicit = [];
+        foreach ($setTargets as $lower => $name) {
+            if (isset($excluded[$lower]) || isset($declaredSomewhere[$lower])) {
+                continue;
+            }
+            $implicit[] = $name;
+        }
+        return $implicit;
+    }
+
+    /**
+     * A window's own declarations-scoped names (both `var` lines and the
+     * converter's `// event parameters: ...` comment - see
+     * sml_to_dart.js's translateDeclarationsToFields()) -> `[{name,
+     * dart_type}, ...]`, threaded into EVERY other snippet belonging to
+     * this same window as `declarationNames` (see attachDartTranslations())
+     * so the translator can resolve a differently-cased reference back to
+     * its canonical declared name - the same WLanguage case-insensitivity
+     * already applied to controls/globals/procedures (confirmed real and
+     * necessary: WIN_Password_change declares `sUserName` but its own
+     * button-click code refers back to it as `susername`). Both line shapes
+     * reduce to the exact same `name: type [= default]` grammar
+     * parseSmlParamList() already parses for procedure parameter lists - a
+     * `var` line has no top-level comma of its own, so passing it through
+     * unchanged is just a one-segment "parameter list".
+     */
+    private function extractDeclarationFieldNames(string $code): array
+    {
+        if (trim($code) === '') {
+            return [];
+        }
+
+        $names = [];
+        foreach (preg_split('/\r\n|\r|\n/', $code) as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $eventParamsPrefix = '// event parameters:';
+            if (stripos($trimmed, $eventParamsPrefix) === 0) {
+                $rest = trim(substr($trimmed, strlen($eventParamsPrefix)));
+                foreach ($this->parseSmlParamList($rest) as $p) {
+                    $names[] = ['name' => $p['name'], 'dart_type' => $p['dart_type']];
+                }
+                continue;
+            }
+
+            if (!str_starts_with($trimmed, 'var ')) {
+                continue; // any other line (comment, malformed) - never guessed
+            }
+
+            $rest = trim(substr($trimmed, 3));
+            $commentPos = strpos($rest, '//');
+            if ($commentPos !== false) {
+                $rest = trim(substr($rest, 0, $commentPos));
+            }
+            foreach ($this->parseSmlParamList($rest) as $p) {
+                $names[] = ['name' => $p['name'], 'dart_type' => $p['dart_type']];
+            }
+        }
+        return $names;
+    }
+
+    /**
+     * Splits $s on $sep, but only at depth 0 - `<`/`(`/`[` increase depth,
+     * their closing counterparts decrease it, and a double-quoted string's
+     * contents are never inspected for separators or brackets. Used for SML
+     * type generics (`map<K,V>`) and parameter lists so a nested comma is
+     * never mistaken for the outer separator.
+     *
+     * Note: `<`/`>` are treated purely as generic-bracket markers here, not
+     * as comparison operators - correct for the type/param-list contexts
+     * this is used in, where a comparison expression cannot occur.
+     */
+    private function splitTopLevel(string $s, string $sep = ','): array
+    {
+        $parts = [];
+        $current = '';
+        $depth = 0;
+        $inString = false;
+        $len = strlen($s);
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $s[$i];
+
+            if ($inString) {
+                $current .= $ch;
+                if ($ch === '\\' && $i + 1 < $len) {
+                    $current .= $s[++$i];
+                    continue;
+                }
+                if ($ch === '"') {
+                    $inString = false;
+                }
+                continue;
+            }
+
+            if ($ch === '"') {
+                $inString = true;
+                $current .= $ch;
+            } elseif ($ch === '<' || $ch === '(' || $ch === '[') {
+                $depth++;
+                $current .= $ch;
+            } elseif ($ch === '>' || $ch === ')' || $ch === ']') {
+                $depth--;
+                $current .= $ch;
+            } elseif ($ch === $sep && $depth === 0) {
+                $parts[] = $current;
+                $current = '';
+            } else {
+                $current .= $ch;
+            }
+        }
+        if (trim($current) !== '') {
+            $parts[] = $current;
+        }
+
+        return array_values(array_filter(array_map('trim', $parts), fn($p) => $p !== ''));
+    }
+
+    /**
+     * Recursively builds one UiWindowElement's gtree node - its own controls,
+     * any nested containers (`elements`), and (for tab_container only) its
+     * tab_panel pages (`tabs`), each of which recurses through this same
+     * function since a tab_panel is itself just another element that can
+     * hold controls and nested containers.
+     *
+     * @param \Illuminate\Support\Collection $elementsByParent ALL elements of the current window, pre-grouped by parent_element_id ('__root__' for null)
+     * @param \Illuminate\Support\Collection $controlsByContainer ALL controls of the current window, pre-grouped by container_element_id ('__root__' for null)
+     * @param \Illuminate\Support\Collection $eventsByControl ALL of the current window's control-scoped SML events, pre-grouped by control_id
+     * @param \Illuminate\Support\Collection $eventsByElement ALL of the current window's element-scoped SML events, pre-grouped by element_id
+     */
+    private function buildWindowElementNode($element, $elementsByParent, $controlsByContainer, ?string $languageCode, $eventsByControl, $eventsByElement): array
+    {
+        $ownControls = $controlsByContainer->get($element->id, collect())->values();
+        $childElements = $elementsByParent->get($element->id, collect());
+
+        $node = $element->toGTreeArray($languageCode);
+        $node['controls'] = $ownControls->map(fn($c) => $this->controlGTreeNode($c, $eventsByControl, $languageCode))->all();
+        $node['nmaxcontrols'] = count($node['controls']);
+        $node['events'] = $this->eventsGTreeArray($eventsByElement->get($element->id, collect()));
+        $node['nmaxevents'] = count($node['events']);
+
+        if ($element->element_type === 'tab_container') {
+            $tabs = $childElements->where('element_type', 'tab_panel')->values();
+            $node['tabs'] = $tabs->map(fn($tab) => $this->buildWindowElementNode($tab, $elementsByParent, $controlsByContainer, $languageCode, $eventsByControl, $eventsByElement))->all();
+            $node['nmaxtabs'] = count($node['tabs']);
+            $node['elements'] = [];
+            $node['nmaxelements'] = 0;
+        } elseif ($element->element_type === 'looper') {
+            // A looper never has controls attached to itself directly - they
+            // all live on its one-and-only looper_row child instead (same
+            // relationship tab_container has to tab_panel). Flattening the
+            // row's controls onto the LOOPER's own 'controls'/'nmaxcontrols'
+            // here means the template side needs no new loop construct at
+            // all: {:for nmaxcontrols:} already works inside {:for
+            // nmaxelements:} exactly like it does for a plain container/
+            // group_box element - the Dart side just wraps that same output
+            // in a repeating ListView instead of placing it once.
+            $rowTemplate = $childElements->firstWhere('element_type', 'looper_row');
+            $rowControls = $rowTemplate ? $controlsByContainer->get($rowTemplate->id, collect())->values() : collect();
+            $node['controls'] = $rowControls->map(fn($c) => $this->controlGTreeNode($c, $eventsByControl, $languageCode))->all();
+            $node['nmaxcontrols'] = count($node['controls']);
+            $node['elements'] = [];
+            $node['nmaxelements'] = 0;
+            $node['tabs'] = [];
+            $node['nmaxtabs'] = 0;
+        } else {
+            $childContainers = $childElements->reject(fn($el) => $el->element_type === 'tab_panel')->values();
+            $node['elements'] = $childContainers->map(fn($el) => $this->buildWindowElementNode($el, $elementsByParent, $controlsByContainer, $languageCode, $eventsByControl, $eventsByElement))->all();
+            $node['nmaxelements'] = count($node['elements']);
+            $node['tabs'] = [];
+            $node['nmaxtabs'] = 0;
+        }
+
+        return $node;
+    }
+
+    /**
+     * One UiWindowMenu's gtree node, recursively - `menu_items` mirrors
+     * how buildWindowElementNode() nests `elements`/`tabs`, just for a
+     * window's own menu bar tree instead of its layout containers.
+     */
+    private function buildWindowMenuNode($menu, $menusByParent, ?string $languageCode, $eventsByMenu): array
+    {
+        $node = $menu->toGTreeArray($languageCode);
+        $node['events'] = $this->eventsGTreeArray($eventsByMenu->get($menu->id, collect()));
+        $node['nmaxevents'] = count($node['events']);
+
+        $children = $menusByParent->get($menu->id, collect())->values();
+        $node['menu_items'] = $children->map(fn($m) => $this->buildWindowMenuNode($m, $menusByParent, $languageCode, $eventsByMenu))->all();
+        $node['nmaxmenu_items'] = count($node['menu_items']);
+
+        return $node;
+    }
+
+    /**
+     * Recursively renders a window's own menu tree as a Dart
+     * `SmlMenuBarItem` list literal (see core/sml_runtime/sml_menu_bar.dart)
+     * - splice straight into the template via `{:window.menu_bar_dart:}`,
+     * no `{:for:}` loop needed (see the call site's own doc comment for
+     * why). A submenu (has menu_items) gets `onSelect: null` - the same
+     * convention every desktop menu follows, a parent entry only opens its
+     * children. Escaping/casing mirrors the template's own dartstring()/
+     * pascalcase() JS functions (UltimateTemplateEngine.php) exactly, so a
+     * menu item's generated method name always matches what
+     * menuHandlersDartLiteral() below declares for the SAME item.
+     */
+    private function menuBarDartLiteral(array $menus): string
+    {
+        if (empty($menus)) {
+            return '[]';
+        }
+
+        $items = array_map(function ($menu) {
+            $caption = $this->dartStringLiteral($menu['caption'] ?? '');
+            $children = $this->menuBarDartLiteral($menu['menu_items'] ?? []);
+            $onSelect = empty($menu['menu_items'])
+                ? $this->menuItemMethodName($menu)
+                : 'null';
+
+            return "SmlMenuBarItem(caption: {$caption}, onSelect: {$onSelect}, children: {$children})";
+        }, $menus);
+
+        return '['.implode(', ', $items).']';
+    }
+
+    /**
+     * Recursively renders every LEAF menu item's own `_onMenu...Select()`
+     * State method - a window-level string field
+     * (`{:window.menu_handlers_dart:}`), same reasoning as
+     * menuBarDartLiteral() above. A menu item with no `select` event still
+     * gets an (empty) method generated, exactly like a button's own
+     * `_on...Click()` a few lines below in %1_page.dart - so
+     * `onSelect: _onMenuXSelect` above always resolves to a real method.
+     */
+    private function menuHandlersDartLiteral(array $menus): string
+    {
+        $parts = [];
+        foreach ($menus as $menu) {
+            if (! empty($menu['menu_items'])) {
+                $parts[] = $this->menuHandlersDartLiteral($menu['menu_items']);
+
+                continue;
+            }
+
+            $selectEvent = null;
+            foreach ($menu['events'] ?? [] as $e) {
+                if (($e['event_name'] ?? null) === 'select') {
+                    $selectEvent = $e;
+                    break;
+                }
+            }
+            $methodName = $this->menuItemMethodName($menu);
+            $body = $selectEvent['dart_code'] ?? '';
+            $parts[] = "  Future<void> {$methodName}() async {\n{$body}  }\n";
+        }
+
+        return implode("\n", $parts);
+    }
+
+    private function menuItemMethodName(array $menu): string
+    {
+        $name = $menu['source_name'] ?: ('Item'.$menu['id']);
+
+        return '_onMenu'.$this->pascalCase($name).'Select';
+    }
+
+    /**
+     * PHP-side equivalent of the template's own `pascalcase()` JS function
+     * (UltimateTemplateEngine.php) - same word-splitting/casing rule,
+     * needed here since this runs entirely in PHP, before any template
+     * text is compiled.
+     */
+    private function pascalCase(string $str): string
+    {
+        $words = preg_split('/[_\s-]+/', $str) ?: [];
+
+        return implode('', array_map(
+            fn ($w) => $w === '' ? '' : mb_strtoupper(mb_substr($w, 0, 1)).mb_strtolower(mb_substr($w, 1)),
+            $words
+        ));
+    }
+
+    /**
+     * PHP-side equivalent of the template's own `dartstring()` JS function
+     * (UltimateTemplateEngine.php) - identical escape order (backslash
+     * first, or backslashes added by the later escapes would themselves
+     * get re-escaped) - see that function's own doc comment.
+     */
+    private function dartStringLiteral(?string $str): string
+    {
+        $str = $str ?? '';
+        $str = str_replace('\\', '\\\\', $str);
+        $str = str_replace("'", "\\'", $str);
+        $str = str_replace("\n", '\\n', $str);
+        $str = str_replace("\r", '\\r', $str);
+        $str = str_replace('$', '\\$', $str);
+
+        return "'{$str}'";
     }
 
     /**
@@ -2194,7 +3804,7 @@ class UltimateTemplateController extends Controller
         $tableNameLower = strtolower($tableName ?? 'unknown');
         // For _languages file types, keep %2 unreplaced — frontend handles per-language replacement
         $generationType = $file ? $this->determineGenerationType($file) : 'project_file';
-        $keepPercent2 = in_array($generationType, ['project_file_languages', 'db_table_file_languages']);
+        $keepPercent2 = in_array($generationType, ['project_file_languages', 'db_table_file_languages', 'window_file_languages']);
 
         // %15–%19: singular / case variants. The singular form comes from the
         // table's gtree row (which already honours the per-table singular_name),
@@ -2229,7 +3839,7 @@ class UltimateTemplateController extends Controller
     /**
      * 📝 PROCESS TEMPLATE FILE
      */
-    private function processTemplateFile(UltimateTemplateEngine $engine, $file, array $gtreeData, bool $compile, ?string $tableName = null, ?string $languageCode = null, bool $includeSource = false, int $fileCounter = 0, int &$globalFileCounter = 0, int $dbTableFilePosition = 0, int $sequentialTableCounter = 0, int $totalTablesForCounter = 0): array
+    private function processTemplateFile(UltimateTemplateEngine $engine, $file, array $gtreeData, bool $compile, ?string $tableName = null, ?string $languageCode = null, bool $includeSource = false, int $fileCounter = 0, int &$globalFileCounter = 0, int $dbTableFilePosition = 0, int $sequentialTableCounter = 0, int $totalTablesForCounter = 0, ?string $windowName = null): array
     {
         $content = $file->file_content;
 
@@ -2237,6 +3847,8 @@ class UltimateTemplateController extends Controller
         $generationType = $this->determineGenerationType($file);
         $tableIndex = null;
         $actualTableName = null;
+        $windowIndex = null;
+        $actualWindowName = null;
 
         // If table_name parameter is provided, resolve table index for db_table types
         // Only override generation type for actual db_table types, NOT for project/static files
@@ -2314,13 +3926,81 @@ class UltimateTemplateController extends Controller
             // No tableName — project_file or static_file
         }
 
+        // 🪟 Same idea as the tableName block above, but for window_file/
+        // window_file_languages - resolves which uiwindows[] entry this
+        // generation pass is for (buildUltimateGtree() force-loads exactly
+        // that one window when $windowName is passed in, so it's reliably
+        // at a KNOWN position - but we still scan by name rather than
+        // assuming index 0, in case a future caller ever loads more than one).
+        if ($windowName) {
+            if ($generationType === 'window_file' || $generationType === 'window_file_languages') {
+                // Keep original type (already correct)
+            } elseif ($generationType === 'project_file' || $generationType === 'project_file_languages'
+                || $generationType === 'static_file' || $generationType === 'static_directory'
+                || $generationType === 'db_table_file' || $generationType === 'db_table_file_languages') {
+                // Do NOT override - not a window_file type
+            } else {
+                $generationType = 'window_file';
+            }
+
+            $gtree = $gtreeData['gtree'] ?? [];
+            if (isset($gtree[0]['project'][0]['uiwindows'])) {
+                foreach ($gtree[0]['project'][0]['uiwindows'] as $index => $windowData) {
+                    if (($windowData['name'] ?? null) === $windowName) {
+                        $windowIndex = $index;
+                        $actualWindowName = $windowName;
+                        break;
+                    }
+                }
+            }
+
+            // Graceful skip - same rationale as the table skip above: a
+            // window_file with no resolved window would otherwise compile
+            // JS that references `windowIdx` without it ever being defined.
+            if (($generationType === 'window_file' || $generationType === 'window_file_languages')
+                && $windowIndex === null) {
+                return [
+                    'file_id' => $file->id,
+                    'filename' => $file->file_name,
+                    'original_template' => $file->file_name,
+                    'file_type' => $file->file_type,
+                    'original_content' => $content,
+                    'compiled_content' => '',
+                    'is_compiled' => false,
+                    'output_path' => $file->output_path ?? '/',
+                    'file_size' => 0,
+                    'generation_type' => $generationType,
+                    'generated_from_template' => $file->file_name,
+                    'window' => $windowName,
+                    'window_index' => null,
+                    'language_code' => $languageCode,
+                    'unknown_variables' => [],
+                    'required_missing' => [],
+                    'optional_missing' => [],
+                    'has_unknown_variables' => false,
+                    'syntax_errors' => [],
+                    'syntax_warnings' => [],
+                    'has_syntax_errors' => false,
+                    'skipped' => true,
+                    'skip_reason' => "Window '{$windowName}' was not found (not active, or not loaded into this gtree).",
+                ];
+            }
+        }
+
         // Replace %1-%13 placeholders in filename, output path, and inject_target
-        // Uses sequential counter (independent of GTree index) for %12/%13
-        $counterIndex = $tableIndex ?? 0;
-        $processedFileName = $this->replaceFilenamePlaceholders($file->file_name, $gtreeData, $actualTableName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter);
-        $processedOutputPath = $this->replaceFilenamePlaceholders($file->output_path ?? '/', $gtreeData, $actualTableName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter);
+        // Uses sequential counter (independent of GTree index) for %12/%13.
+        // Window-file mode reuses the exact same %1/%10/%11 mechanics as
+        // tables (both are plain string transforms of whatever name is
+        // passed in) by passing the window's name through the same
+        // $tableName parameter slot - %15-%19 (singular/plural) don't
+        // really apply to a window name and are left as a harmless
+        // auto-guess, same as an unrecognized table name would get.
+        $counterIndex = $tableIndex ?? $windowIndex ?? 0;
+        $placeholderName = $actualTableName ?? $actualWindowName;
+        $processedFileName = $this->replaceFilenamePlaceholders($file->file_name, $gtreeData, $placeholderName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter);
+        $processedOutputPath = $this->replaceFilenamePlaceholders($file->output_path ?? '/', $gtreeData, $placeholderName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter);
         $processedInjectTarget = $file->inject_target
-            ? $this->replaceFilenamePlaceholders($file->inject_target, $gtreeData, $actualTableName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter)
+            ? $this->replaceFilenamePlaceholders($file->inject_target, $gtreeData, $placeholderName, $languageCode, $file, $counterIndex, $globalFileCounter, $dbTableFilePosition, $sequentialTableCounter, $totalTablesForCounter)
             : null;
 
         // 🎯 INJECT TEMPLATE FILE VARIABLES into gtreeData for this file
@@ -2421,6 +4101,33 @@ class UltimateTemplateController extends Controller
         $syntaxErrors = $syntaxValidation['errors'];
         $syntaxWarnings = $syntaxValidation['warnings'];
 
+        // 🚫 A never-declared SML variable (see attachDartTranslations()'s
+        // own doc comment on $undeclaredVariables) is a REAL, BLOCKING error
+        // here, by explicit user decision - not a soft warning that still
+        // lets a silently-wrong `dynamic` field ship. Scoped to what THIS
+        // SPECIFIC file actually embeds: a window_file only fails for ITS
+        // OWN window's findings (window_index === $windowIndex); only
+        // main.dart (project-init/globals-init code) and
+        // global_procedures.dart (every global procedure's own body) ever
+        // embed a non-window-scoped (window_index === null) finding, so
+        // only those two file names are checked against that list -
+        // everything else (pubspec.yaml, app_globals.dart, CMakeLists.txt,
+        // ...) never runs a single line of translated SML and must never be
+        // blocked by a problem that isn't even IN it. A db_table_file never
+        // embeds any translated SML code at all either, so it is unaffected
+        // regardless of file name.
+        $allUndeclared = $gtreeData['gtree'][0]['project'][0]['sml_undeclared_variables'] ?? [];
+        if ($windowIndex !== null) {
+            $relevantUndeclared = array_filter($allUndeclared, fn ($u) => $u['window_index'] === $windowIndex);
+        } elseif (in_array($file->file_name, ['main.dart', 'global_procedures.dart'], true)) {
+            $relevantUndeclared = array_filter($allUndeclared, fn ($u) => $u['window_index'] === null);
+        } else {
+            $relevantUndeclared = [];
+        }
+        foreach ($relevantUndeclared as $undeclared) {
+            $syntaxErrors[] = "Undeklarierte Variable '{$undeclared['name']}' verwendet ({$undeclared['label']}) - bitte als var/globale Variable deklarieren.";
+        }
+
         $validationResult = $engine->validateVariablesWithContext(
             $content,
             $templateId,
@@ -2433,11 +4140,11 @@ class UltimateTemplateController extends Controller
         $requiredMissing = $validationResult['required_missing'];
         $optionalMissing = $validationResult['optional_missing'];
 
-        // NOW compile the template with the correct tableIndex
+        // NOW compile the template with the correct tableIndex/windowIndex
         if ($compile) {
             // Use the Ultimate Template Engine to compile template to JavaScript
             $functionName = 'generate_' . preg_replace('/[^a-zA-Z0-9]/', '_', $processedFileName);
-            $compiledContent = $engine->processTemplate($content, $functionName, $tableIndex, $includeSource);
+            $compiledContent = $engine->processTemplate($content, $functionName, $tableIndex, $includeSource, $windowIndex);
         } else {
             // Simple variable replacement for backward compatibility
             $compiledContent = $content;
@@ -2457,9 +4164,11 @@ class UltimateTemplateController extends Controller
             'generated_from_template' => $file->file_name,
             'table' => $actualTableName,
             'table_index' => $tableIndex,
+            'window' => $actualWindowName,
+            'window_index' => $windowIndex,
             'language_code' => $languageCode,
             'is_project_file' => $generationType === 'project_file' || $generationType === 'project_file_languages',
-            'is_language_enabled' => in_array($generationType, ['project_file_languages', 'db_table_file_languages']),
+            'is_language_enabled' => in_array($generationType, ['project_file_languages', 'db_table_file_languages', 'window_file_languages']),
             // ✅ Add validation results (3 categories)
             'has_unknown_variables' => $hasUnknownVariables,
             'unknown_variables' => $unknownVariables,
@@ -2721,6 +4430,14 @@ class UltimateTemplateController extends Controller
             return 'db_table_file_languages';
         }
 
+        if ($file->file_type === 'window_file') {
+            return 'window_file';
+        }
+
+        if ($file->file_type === 'window_file_languages') {
+            return 'window_file_languages';
+        }
+
         if (in_array($file->file_type, ['model', 'controller', 'view', 'migration', 'db_table_file'])) {
             return 'db_table_file';
         }
@@ -2966,7 +4683,11 @@ class UltimateTemplateController extends Controller
                 }
 
                 // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
-                $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+                // See FlutterSmlTemplateFreshener's own doc comment - disk
+                // always wins over the stored snapshot for that one template.
+                $includeResolution = TemplateIncludeResolver::resolveAllFiles(
+                    \App\Services\FlutterSmlTemplateFreshener::freshen($template->name, $template->files->toArray())
+                );
                 $resolvedFiles = $includeResolution['files'];
                 $includeErrors = $includeResolution['errors'];
 
@@ -3500,6 +5221,593 @@ class UltimateTemplateController extends Controller
      *
      * Executes the generated JavaScript function with gtree data and returns the output
      */
+    /**
+     * Translates a batch of SML code snippets into Dart source, using the
+     * SAME translator (`scripts/flutter_sml_template/lib/generator/
+     * sml_to_dart.js`) the Flutter SML Template splices into its own
+     * generated files via `{:include:}` - called from HERE instead,
+     * server-side, once per generation pass, rather than from inside the
+     * template's own compiled `{:code:}` blocks.
+     *
+     * Why server-side and not a `{:code:}` block in the template itself:
+     * `{:code:}` blocks compile to a NESTED JS function whose exact
+     * placement relative to a surrounding `{:for nmaxcontrols:}` loop's own
+     * `let i` isn't something this class can rely on staying in closure
+     * scope - the translator instead needs the FULL gtree once (to compute
+     * async-procedure propagation, see sml_to_dart.js's
+     * computeAsyncProcedureMap()), which this method already has here, no
+     * closure question involved. The template itself only ever consumes
+     * the RESULT (`event.dart_code`/`event.needs_async`,
+     * `procedure.dart_code`/`procedure.needs_async` - see
+     * attachDartTranslations()) via plain, already-proven `{:if:}`/
+     * `{:for:}`/bare-variable template syntax.
+     *
+     * @param array<string, string> $snippets id => raw SML code
+     * @param array $gtree the full gtree (as returned by buildUltimateGtree, i.e. $result['gtree'])
+     * @return array<string, array{dart_code: string, needs_async: bool}>
+     */
+    private function translateSmlCodeBatch(array $snippets, array $gtree): array
+    {
+        if (empty($snippets)) {
+            return [];
+        }
+
+        $fallback = [];
+        foreach (array_keys($snippets) as $id) {
+            $fallback[$id] = ['dart_code' => "// TODO: SML translation unavailable\n", 'needs_async' => false];
+        }
+
+        $nodeCheck = shell_exec('node --version 2>&1');
+        if (empty($nodeCheck) || strpos($nodeCheck, 'not found') !== false) {
+            \Log::warning('⚠️ Node.js not available - SML->Dart translation skipped');
+            return $fallback;
+        }
+
+        $translatorPath = base_path('scripts/flutter_sml_template/lib/generator/sml_to_dart.js');
+        if (!file_exists($translatorPath)) {
+            \Log::warning('⚠️ sml_to_dart.js not found at expected path', ['path' => $translatorPath]);
+            return $fallback;
+        }
+        $translatorSource = file_get_contents($translatorPath);
+
+        $tempScriptPath = storage_path('app/temp/sml_translate_' . uniqid() . '.cjs');
+        $tempDataPath = storage_path('app/temp/sml_translate_data_' . uniqid() . '.json');
+        $normalizedDataPath = str_replace('\\', '/', $tempDataPath);
+
+        $script = <<<JS
+const fs = require('fs');
+const __data = JSON.parse(fs.readFileSync('{$normalizedDataPath}', 'utf8'));
+const gtree = __data.gtree;
+
+{$translatorSource}
+
+const __results = {};
+for (const __id of Object.keys(__data.snippets)) {
+    const __snippet = __data.snippets[__id];
+    if (__snippet.type === 'declarations') {
+        __results[__id] = translateDeclarationsToFields(__snippet.code, gtree, __snippet.controls, __snippet.globals, __snippet.loopers, __snippet.window_index);
+        continue;
+    }
+    __results[__id] = {
+        dart_code: translateSmlToDart(__snippet.code, gtree, __snippet.controls, __snippet.globals, __snippet.self, __snippet.loopers, __snippet.params, __snippet.declarationNames, __snippet.window_index, __snippet.defer_ctx_calls),
+        needs_async: smlNeedsAsyncDart(__snippet.code, gtree, __snippet.window_index),
+        needs_window_context: smlNeedsWindowContext(__snippet.code, gtree, __snippet.window_index),
+        undeclared_variables: collectUndeclaredVariables(__snippet.code, gtree, __snippet.controls, __snippet.globals, __snippet.self, __snippet.loopers, __snippet.params, __snippet.declarationNames, __snippet.window_index),
+    };
+}
+console.log(JSON.stringify(__results));
+JS;
+
+        file_put_contents($tempScriptPath, $script);
+        file_put_contents($tempDataPath, json_encode(['gtree' => $gtree, 'snippets' => $snippets]));
+
+        $output = shell_exec("node \"{$tempScriptPath}\" 2>&1");
+
+        @unlink($tempScriptPath);
+        @unlink($tempDataPath);
+
+        $decoded = json_decode((string) $output, true);
+        if (!is_array($decoded)) {
+            \Log::warning('⚠️ SML->Dart batch translation failed', ['output' => $output]);
+            return $fallback;
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Walks the fully-built $projectData (windows, their controls/elements/
+     * tabs, local + global procedures, the project init event), collects
+     * every non-empty SML code string, translates them all in ONE batch
+     * (see translateSmlCodeBatch()), and attaches `dart_code`/`needs_async`
+     * back onto each originating node - so the template only ever reads
+     * already-translated Dart text via plain `{:event.dart_code:}`/
+     * `{:if event.needs_async:}` syntax.
+     */
+    private function attachDartTranslations(array &$projectData): void
+    {
+        $snippets = [];
+
+        // Every never-declared SML variable found anywhere in the project -
+        // both the PHP-side extractImplicitFieldNames() scan below (a
+        // window `set`s a name nowhere ever declared, becoming a silent
+        // window-level `dynamic` field) and the JS-side
+        // collectUndeclaredVariables() scan (the SAME kind of gap, but
+        // scoped to one event/procedure body, found further down once
+        // $results comes back) both feed into this ONE flat list - see its
+        // own doc comment further down for why this became a real,
+        // BLOCKING generation error rather than a silent fallback.
+        $undeclaredVariables = [];
+
+        // Unlike controlNames (window-scoped), a project global is a plain
+        // Dart static field (AppGlobals.<name>) reachable from EVERYWHERE -
+        // window events/procedures, global procedures, project init, and
+        // the globals' own default-value init code below - so this ONE list
+        // is threaded into every snippet collected in this function. Carries
+        // {name, dart_type} (not just the name) - sml_to_dart.js's
+        // bare-global-WRITE handling needs dart_type to cast a `num`-typed
+        // expression (e.g. `num.parse(...)`) down to the field's own `int`/
+        // `double` type - confirmed a real, not hypothetical, need: this
+        // project's own `gnLoginTry` (declared `int`) defaults to
+        // `num.parse(sys.load_setting("LOGINTRY", "0"))`, which returns
+        // `num` - assigning that to an `int` field is a Dart compile error
+        // without the cast.
+        $globalNames = array_map(
+            fn ($g) => ['name' => $g['name'], 'dart_type' => $g['dart_type']],
+            $projectData['globals'] ?? []
+        );
+
+        if (isset($projectData['uiwindows'])) {
+            foreach ($projectData['uiwindows'] as $wi => &$window) {
+                // The bare-control-name shorthand (`set EDT_IPURL = ...`,
+                // `str.right(EDT_IPURL, 1)` - WinDev's RAD-generated code
+                // reading/writing a control's default property without any
+                // `ui.get`/`ui.set` call - is only meaningful where a live
+                // SmlWindowContext (`ctx`) is in scope: window/control/
+                // element events and this window's own local procedures,
+                // all generated as State methods on this SAME window. Only
+                // Recurses into EVERY container/tab, at any depth, so a
+                // nested control's bare name still resolves through ctx.ui.
+                // get/set - confirmed necessary: real RAD-generated forms
+                // (win_form_settings alone has 196 controls, almost all
+                // inside tabs/group boxes) freely bare-read/write nested
+                // fields the identical way they do top-level ones. This is
+                // SAFE without also wiring nested control BINDING/rendering
+                // (a separate, still out-of-scope prerequisite) - ctx.ui.
+                // get/set already returns null/no-ops for a name with no
+                // registry entry (see SmlUiContext), so a nested control's
+                // bare reference compiles and behaves as an inert TODO
+                // exactly like it would if left unresolved, but WITHOUT the
+                // hard compile error an unrecognised bare identifier causes.
+                // Looper ELEMENTS get the identical bare-name treatment as a
+                // control (WinDev addresses both through `ui.*` the same
+                // way - see sml_to_dart.js's row-indexed `Name[index].Field`
+                // handling) - collected at every depth for the same reason.
+                $windowControlNames = array_values(array_filter(array_unique(
+                    $this->collectAllControlSourceNames($window['controls'], $window['elements'])
+                )));
+
+                // Per-looper row-template sub-control names (e.g. 'FavButton'
+                // inside LOOP_Main) - lets the translator tell apart
+                // `LooperName[i].SubControl` (a CONTROL REFERENCE - the
+                // row's own instance of that sub-control, passed as the
+                // controlName argument to ui.set/ui.get - confirmed real:
+                // `ui.set(LOOP_Main[n-1].FavButton, "caption", ...)`) from
+                // `TableName[i].ColumnName` (plain ROW DATA - a Table has no
+                // equivalent row-template sub-controls in this data model,
+                // so it's never in this map and always falls back to plain
+                // data access - see sml_to_dart.js).
+                $windowLoopers = [];
+                foreach ($window['elements'] as $el) {
+                    if (($el['element_type'] ?? null) === 'looper' && !empty($el['source_name'])) {
+                        $windowLoopers[$el['source_name']] = array_values(array_filter(array_map(
+                            fn ($c) => $c['source_name'] ?? null,
+                            $el['controls'] ?? []
+                        )));
+                    }
+                }
+
+                // This window's own declarations-scoped names (`var` lines
+                // + `// event parameters:` entries - see
+                // extractDeclarationFieldNames()'s doc comment) - extracted
+                // straight from the raw SML text (no translation needed yet,
+                // just the name/type schema), so it's available to thread
+                // into EVERY snippet below, including ones collected BEFORE
+                // the declarations event's own full translation runs later
+                // in this same batch.
+                $declarationsEvent = null;
+                foreach ($window['events'] as $ev) {
+                    if (($ev['event_name'] ?? null) === 'declarations') {
+                        $declarationsEvent = $ev;
+                        break;
+                    }
+                }
+                $windowDeclarationNames = $declarationsEvent
+                    ? $this->extractDeclarationFieldNames($declarationsEvent['code'] ?? '')
+                    : [];
+
+                // Bare names this window `set`s but never declares anywhere
+                // (see extractImplicitFieldNames()'s own doc comment) -
+                // added to the SAME declarationNames list so ordinary
+                // reads/writes resolve to them exactly like a real
+                // declarations field, `dynamic`-typed (no SML type was ever
+                // declared for these, so no narrowing cast applies).
+                // Stashed on the window node under a `__`-prefixed key so
+                // it survives into the second pass below (after batch
+                // translation), where it becomes real field declarations -
+                // removed again before this window's gtree node is used
+                // for anything else.
+                $windowImplicitFieldNames = $this->extractImplicitFieldNames(
+                    $this->windowSmlCodeForScan($window),
+                    $windowControlNames,
+                    $globalNames,
+                    $windowDeclarationNames
+                );
+                $window['__implicit_field_names'] = $windowImplicitFieldNames;
+                foreach ($windowImplicitFieldNames as $implicitName) {
+                    $undeclaredVariables[] = [
+                        'name' => $implicitName,
+                        'window_index' => $wi,
+                        'label' => "Fenster '{$window['name']}'",
+                    ];
+                }
+                $windowDeclarationNames = array_merge(
+                    $windowDeclarationNames,
+                    array_map(fn ($n) => ['name' => $n, 'dart_type' => 'dynamic'], $windowImplicitFieldNames)
+                );
+
+                foreach ($window['events'] as $ei => &$event) {
+                    if (trim($event['code'] ?? '') !== '') {
+                        $id = "w{$wi}_ev{$ei}";
+                        $snippets[$id] = ['code' => $event['code'], 'controls' => $windowControlNames, 'globals' => $globalNames, 'loopers' => $windowLoopers, 'declarationNames' => $windowDeclarationNames, 'window_index' => $wi, 'label' => "Fenster '{$window['name']}', Event '{$event['event_name']}'"];
+                        $event['__sml_id'] = $id;
+
+                        // The window's "declarations" event ALSO gets a
+                        // SEPARATE, special translation pass (see
+                        // translateDeclarationsToFields()'s own doc comment)
+                        // - its `var` declarations become class-level State
+                        // FIELDS (visible to every event/procedure of this
+                        // window), not local variables scoped to just
+                        // _runWindowInit() - confirmed real and necessary: a
+                        // window's Timer callback referencing a
+                        // declarations-declared counter otherwise gets
+                        // "undefined name" (the counter was a DIFFERENT
+                        // method's local variable). The event's own
+                        // `dart_code` above is harmlessly unused for this
+                        // one event once the template stops reading it.
+                        if (($event['event_name'] ?? null) === 'declarations') {
+                            $snippets["w{$wi}_decl"] = [
+                                'code' => $event['code'],
+                                'controls' => $windowControlNames,
+                                'globals' => $globalNames,
+                                'loopers' => $windowLoopers,
+                                'type' => 'declarations',
+                                'window_index' => $wi,
+                            ];
+                        }
+                    }
+                }
+                unset($event);
+
+                foreach ($window['procedures'] as $pi => &$proc) {
+                    if (trim($proc['code'] ?? '') !== '') {
+                        $id = "w{$wi}_proc{$pi}";
+                        // 'params' - this procedure's own parameters
+                        // (name + dart_type), pre-seeded into the
+                        // translator's local-variable type map (see
+                        // sml_to_dart.js's translateSmlToDart()) so a
+                        // PARAMETER gets the same num->int/double narrowing
+                        // AND same "known List<T> element type" resolution
+                        // (arr.add(param) - see translateArrAdd()) as a
+                        // locally-declared `var` does.
+                        $snippets[$id] = ['code' => $proc['code'], 'controls' => $windowControlNames, 'globals' => $globalNames, 'loopers' => $windowLoopers, 'params' => $proc['dart_params'], 'declarationNames' => $windowDeclarationNames, 'window_index' => $wi, 'label' => "Fenster '{$window['name']}', Prozedur '{$proc['name']}'"];
+                        $proc['__sml_id'] = $id;
+                    }
+                }
+                unset($proc);
+
+                $this->collectSmlFromControls($window['controls'], $snippets, "w{$wi}_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $wi);
+                $this->collectSmlFromElements($window['elements'], $snippets, "w{$wi}_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $wi);
+                $this->collectSmlFromMenus($window['menus'], $snippets, "w{$wi}_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $wi);
+            }
+            unset($window);
+        }
+
+        if (isset($projectData['globalprocedures'])) {
+            foreach ($projectData['globalprocedures'] as $gi => &$proc) {
+                if (trim($proc['code'] ?? '') !== '') {
+                    $id = "gproc{$gi}";
+                    $snippets[$id] = ['code' => $proc['code'], 'controls' => [], 'globals' => $globalNames, 'params' => $proc['dart_params'], 'label' => "Globale Prozedur '{$proc['name']}'"];
+                    $proc['__sml_id'] = $id;
+                }
+            }
+            unset($proc);
+        }
+
+        $hasInitCode = isset($projectData['init_code']) && trim($projectData['init_code']) !== '';
+        if ($hasInitCode) {
+            // defer_ctx_calls - ONLY this ONE snippet needs it (see
+            // sml_to_dart.js's emitCallStatement()/ProjectInitQueue's own
+            // doc comment): project init runs in main(), before runApp(),
+            // so a window-scoped call (`dlg.info(...)`, confirmed real)
+            // has no live window/ctx yet to reach through - queued instead
+            // of run immediately. Every other snippet (window events/
+            // procedures, global procedures, globals-init) already has - or
+            // never needs - a real `ctx` and must never set this.
+            $snippets['project_init'] = ['code' => $projectData['init_code'], 'controls' => [], 'globals' => $globalNames, 'label' => 'Projekt-Init-Code', 'defer_ctx_calls' => true];
+        }
+
+        $hasGlobalsInit = isset($projectData['globals_init_code']) && trim($projectData['globals_init_code']) !== '';
+        if ($hasGlobalsInit) {
+            $snippets['globals_init'] = ['code' => $projectData['globals_init_code'], 'controls' => [], 'globals' => $globalNames, 'label' => 'Projekt-Variablen-Init'];
+        }
+
+        $projectData['init_dart_code'] = '';
+        $projectData['init_needs_async'] = false;
+        $projectData['globals_init_dart_code'] = '';
+        if (isset($projectData['uiwindows'])) {
+            foreach ($projectData['uiwindows'] as &$window) {
+                $window['declarations_fields_dart'] = '';
+                $window['declarations_init_dart'] = '';
+            }
+            unset($window);
+        }
+
+        if (empty($snippets)) {
+            $projectData['sml_undeclared_variables'] = $undeclaredVariables;
+            return;
+        }
+
+        // A snapshot gtree for the translator's own async-fixed-point
+        // analysis (see sml_to_dart.js's computeAsyncProcedureMap()) - the
+        // real gtree wrapper shape, built from the SAME $projectData this
+        // method is still in the middle of finishing.
+        $results = $this->translateSmlCodeBatch($snippets, [['project' => [$projectData]]]);
+
+        // A never-declared SML variable used to compile silently into a
+        // `dynamic X;` auto-declaration that stayed `null` forever unless
+        // something else happened to write to the SAME name elsewhere - a
+        // real, confirmed trap (the user's own `gsIni`/`gsDB_IP` mistake:
+        // never declared, silently auto-fielded, and nothing ever told
+        // them). Merged here from TWO independent detectors that both feed
+        // the SAME flat list: the PHP-side extractImplicitFieldNames() scan
+        // above (a window `set`s a name nowhere ever declared - this is
+        // what actually caught `gsDB_IP`, since that gap gets absorbed into
+        // $windowDeclarationNames BEFORE the per-snippet JS scan below ever
+        // sees it) and this JS-side collectUndeclaredVariables() scan (the
+        // same kind of gap, but scoped to one event/procedure body, and the
+        // only one of the two that also covers GLOBAL procedures/project
+        // init, which have no window-level field-hoisting step at all).
+        // processTemplateFile() turns the ones relevant to the file it's
+        // currently generating into a real, BLOCKING syntax_errors entry,
+        // deliberately not a soft warning: the user asked to be stopped and
+        // told exactly which variable is wrong, not to keep generating on
+        // top of a silent guess.
+        foreach ($results as $id => $result) {
+            if (empty($result['undeclared_variables'])) {
+                continue;
+            }
+            $snippet = $snippets[$id] ?? [];
+            foreach ($result['undeclared_variables'] as $varName) {
+                $undeclaredVariables[] = [
+                    'name' => $varName,
+                    'window_index' => $snippet['window_index'] ?? null,
+                    'label' => $snippet['label'] ?? $id,
+                ];
+            }
+        }
+        $projectData['sml_undeclared_variables'] = $undeclaredVariables;
+
+        if (isset($projectData['uiwindows'])) {
+            foreach ($projectData['uiwindows'] as $wi => &$window) {
+                foreach ($window['events'] as &$event) {
+                    $this->applySmlTranslation($event, $results);
+                }
+                unset($event);
+                foreach ($window['procedures'] as &$proc) {
+                    $this->applySmlTranslation($proc, $results);
+                }
+                unset($proc);
+                $this->applySmlTranslationToControls($window['controls'], $results);
+                $this->applySmlTranslationToElements($window['elements'], $results);
+                $this->applySmlTranslationToMenus($window['menus'], $results);
+
+                // See translateDeclarationsToFields()'s doc comment - the
+                // window's own declarations-as-State-fields, separate from
+                // the ordinary per-event dart_code above.
+                $declResult = $results["w{$wi}_decl"] ?? null;
+                $window['declarations_fields_dart'] = $declResult['fields'] ?? '';
+                $window['declarations_init_dart'] = $declResult['initStatements'] ?? '';
+
+                // Implicit fields (see extractImplicitFieldNames()) need no
+                // translation - a plain `dynamic name;` per name, appended
+                // onto the SAME field-declarations text the declarations
+                // event's own `var` lines produce, so both land in the
+                // identical spot on the generated State class (see
+                // %1_page.dart's field-declarations section).
+                $implicitFieldNames = $window['__implicit_field_names'] ?? [];
+                unset($window['__implicit_field_names']);
+                foreach ($implicitFieldNames as $name) {
+                    $window['declarations_fields_dart'] .= "dynamic {$name};\n";
+                }
+            }
+            unset($window);
+        }
+
+        if (isset($projectData['globalprocedures'])) {
+            foreach ($projectData['globalprocedures'] as &$proc) {
+                $this->applySmlTranslation($proc, $results);
+            }
+            unset($proc);
+        }
+
+        if ($hasInitCode && isset($results['project_init'])) {
+            $projectData['init_dart_code'] = $results['project_init']['dart_code'];
+            $projectData['init_needs_async'] = $results['project_init']['needs_async'];
+        }
+
+        if ($hasGlobalsInit && isset($results['globals_init'])) {
+            $projectData['globals_init_dart_code'] = $results['globals_init']['dart_code'];
+        }
+    }
+
+    /**
+     * Every control's/looper's own source_name reachable from a window,
+     * recursing into containers/tabs at any depth - see the call site's own
+     * doc comment for why this is safe/necessary for bare-name resolution
+     * even though nested-control BINDING stays out of scope this round.
+     */
+    private function collectAllControlSourceNames(array $controls, array $elements): array
+    {
+        $names = array_map(fn ($c) => $c['source_name'] ?? null, $controls);
+        foreach ($elements as $el) {
+            if (($el['element_type'] ?? null) === 'looper' && !empty($el['source_name'])) {
+                $names[] = $el['source_name'];
+            }
+            $names = array_merge(
+                $names,
+                $this->collectAllControlSourceNames($el['controls'] ?? [], $el['elements'] ?? []),
+                $this->collectAllControlSourceNames([], $el['tabs'] ?? [])
+            );
+        }
+        return $names;
+    }
+
+    private function collectSmlFromControls(array &$controls, array &$snippets, string $prefix, array $windowControlNames, array $globalNames, array $windowLoopers = [], array $windowDeclarationNames = [], ?int $windowIndex = null): void
+    {
+        foreach ($controls as $ci => &$control) {
+            foreach ($control['events'] as $ei => &$event) {
+                if (trim($event['code'] ?? '') !== '') {
+                    $id = "{$prefix}c{$ci}_ev{$ei}";
+                    // 'self' - this control's OWN source_name, resolves
+                    // `ui.SELF` (see sml_to_dart.js) - only ever set for a
+                    // control's OWN event code, never events belonging to
+                    // some other control/the window itself.
+                    $snippets[$id] = [
+                        'code' => $event['code'],
+                        'controls' => $windowControlNames,
+                        'globals' => $globalNames,
+                        'loopers' => $windowLoopers,
+                        'self' => $control['source_name'] ?? null,
+                        'declarationNames' => $windowDeclarationNames,
+                        'window_index' => $windowIndex,
+                        'label' => "Control '{$control['source_name']}', Event '{$event['event_name']}'",
+                    ];
+                    $event['__sml_id'] = $id;
+                }
+            }
+            unset($event);
+        }
+        unset($control);
+    }
+
+    private function collectSmlFromElements(array &$elements, array &$snippets, string $prefix, array $windowControlNames, array $globalNames, array $windowLoopers = [], array $windowDeclarationNames = [], ?int $windowIndex = null): void
+    {
+        foreach ($elements as $eli => &$element) {
+            foreach ($element['events'] as $ei => &$event) {
+                if (trim($event['code'] ?? '') !== '') {
+                    $id = "{$prefix}el{$eli}_ev{$ei}";
+                    $snippets[$id] = ['code' => $event['code'], 'controls' => $windowControlNames, 'globals' => $globalNames, 'loopers' => $windowLoopers, 'declarationNames' => $windowDeclarationNames, 'window_index' => $windowIndex, 'label' => "Element '{$element['source_name']}', Event '{$event['event_name']}'"];
+                    $event['__sml_id'] = $id;
+                }
+            }
+            unset($event);
+
+            $this->collectSmlFromControls($element['controls'], $snippets, "{$prefix}el{$eli}_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $windowIndex);
+            $this->collectSmlFromElements($element['elements'], $snippets, "{$prefix}el{$eli}_n_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $windowIndex);
+            $this->collectSmlFromElements($element['tabs'], $snippets, "{$prefix}el{$eli}_t_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $windowIndex);
+        }
+        unset($element);
+    }
+
+    private function applySmlTranslation(array &$node, array $results): void
+    {
+        $id = $node['__sml_id'] ?? null;
+        unset($node['__sml_id']);
+        if ($id !== null && isset($results[$id])) {
+            $node['dart_code'] = $results[$id]['dart_code'];
+            $node['needs_async'] = $results[$id]['needs_async'];
+            // Overwrites procedureGTreeNode()'s naive DIRECT-only value
+            // (set before translation ran) with the transitively-correct
+            // one from smlNeedsWindowContext() - a global procedure that
+            // only calls ANOTHER ctx-needing global procedure needs this
+            // too, not just one that directly calls ui./win./dlg./etc.
+            // Harmless no-op for event nodes, which don't read this field.
+            if (isset($results[$id]['needs_window_context'])) {
+                $node['needs_window_context'] = $results[$id]['needs_window_context'];
+            }
+        } else {
+            $node['dart_code'] = '';
+            $node['needs_async'] = false;
+        }
+    }
+
+    private function applySmlTranslationToControls(array &$controls, array $results): void
+    {
+        foreach ($controls as &$control) {
+            foreach ($control['events'] as &$event) {
+                $this->applySmlTranslation($event, $results);
+            }
+            unset($event);
+        }
+        unset($control);
+    }
+
+    private function applySmlTranslationToElements(array &$elements, array $results): void
+    {
+        foreach ($elements as &$element) {
+            foreach ($element['events'] as &$event) {
+                $this->applySmlTranslation($event, $results);
+            }
+            unset($event);
+
+            $this->applySmlTranslationToControls($element['controls'], $results);
+            $this->applySmlTranslationToElements($element['elements'], $results);
+            $this->applySmlTranslationToElements($element['tabs'], $results);
+        }
+        unset($element);
+    }
+
+    /**
+     * A menu item's own code-behind (WIN_Menu.sml's
+     * `on control "Exit" select { ... }`, imported via importSml() onto
+     * UiWindowMenu through the SAME control-name resolution a real
+     * control's event uses - see WindowDesignerController::importSml()'s
+     * own doc comment) - collected/applied the same recursive way
+     * collectSmlFromElements()/applySmlTranslationToElements() already
+     * handle nested containers, just walking `menu_items` instead of
+     * `elements`/`tabs`.
+     */
+    private function collectSmlFromMenus(array &$menus, array &$snippets, string $prefix, array $windowControlNames, array $globalNames, array $windowLoopers = [], array $windowDeclarationNames = [], ?int $windowIndex = null): void
+    {
+        foreach ($menus as $mi => &$menu) {
+            foreach ($menu['events'] as $ei => &$event) {
+                if (trim($event['code'] ?? '') !== '') {
+                    $id = "{$prefix}m{$mi}_ev{$ei}";
+                    $snippets[$id] = ['code' => $event['code'], 'controls' => $windowControlNames, 'globals' => $globalNames, 'loopers' => $windowLoopers, 'declarationNames' => $windowDeclarationNames, 'window_index' => $windowIndex, 'label' => "Menu '{$menu['source_name']}', Event '{$event['event_name']}'"];
+                    $event['__sml_id'] = $id;
+                }
+            }
+            unset($event);
+
+            $this->collectSmlFromMenus($menu['menu_items'], $snippets, "{$prefix}m{$mi}_", $windowControlNames, $globalNames, $windowLoopers, $windowDeclarationNames, $windowIndex);
+        }
+        unset($menu);
+    }
+
+    private function applySmlTranslationToMenus(array &$menus, array $results): void
+    {
+        foreach ($menus as &$menu) {
+            foreach ($menu['events'] as &$event) {
+                $this->applySmlTranslation($event, $results);
+            }
+            unset($event);
+
+            $this->applySmlTranslationToMenus($menu['menu_items'], $results);
+        }
+        unset($menu);
+    }
+
     private function executeJavaScript(string $jsCode, array $gtreeData, ?string $languageCode = null): string
     {
         // Check if Node.js is available
@@ -3583,6 +5891,117 @@ JS;
     }
 
     /**
+     * Runs every job's compiled `{:code:}` output in ONE shared Node
+     * process against ONE gtree file write, instead of executeJavaScript()'s
+     * one-process-and-one-gtree-write-PER-FILE cost - confirmed the
+     * dominant cost of a real, large-project generation (measured at 32
+     * minutes for ~30 files, each independently re-serialising/re-writing
+     * the full multi-window gtree and paying Node's own process-startup
+     * cost). `$jobs` is `[fileIdx => ['code' => string, 'language' =>
+     * ?string]]` - the SAME `$fileIdx` keys the caller's own
+     * `$generatedFiles` array, so results slot straight back in.
+     *
+     * Each job's compiled code runs inside its OWN `(function () {...})()`
+     * IIFE in the generated script text, not string-concatenated at the
+     * top level - two jobs whose compiled code happens to declare the same
+     * function name (`generate`, the extraction fallback below) would
+     * otherwise collide as duplicate top-level declarations the moment
+     * they share one Node process; per-job function scoping avoids that
+     * without needing to rename anything. The shared `gtree` object is
+     * mutated in place for the language override (`selectedlanguage`/
+     * selectedlanguageindex`) immediately before each job runs - safe
+     * because jobs execute strictly sequentially in one synchronous
+     * script, identical to what executeJavaScript() already did per-call,
+     * just without re-reading/re-parsing the underlying JSON for each one.
+     */
+    private function executeJavaScriptBatch(array $jobs, array $gtreeData): array
+    {
+        if (empty($jobs)) {
+            return [];
+        }
+
+        $fallback = [];
+        foreach ($jobs as $fileIdx => $job) {
+            $fallback[$fileIdx] = $job['code'];
+        }
+
+        $nodeCheck = shell_exec('node --version 2>&1');
+        if (empty($nodeCheck) || strpos($nodeCheck, 'not found') !== false) {
+            \Log::warning("⚠️ Node.js not available - batch JavaScript execution skipped");
+            return $fallback;
+        }
+
+        $tempScriptPath = storage_path('app/temp/exec_batch_' . uniqid() . '.cjs');
+        $tempGtreePath = storage_path('app/temp/gtree_batch_' . uniqid() . '.json');
+        $normalizedGtreePath = str_replace('\\', '/', $tempGtreePath);
+
+        $scriptParts = [];
+        $scriptParts[] = <<<JS
+const fs = require('fs');
+const gtree = JSON.parse(fs.readFileSync('{$normalizedGtreePath}', 'utf8'));
+const __results = {};
+JS;
+
+        foreach ($jobs as $fileIdx => $job) {
+            preg_match('/function\s+([a-zA-Z0-9_]+)\s*\(\)/', $job['code'], $matches);
+            $functionName = $matches[1] ?? 'generate';
+            $languageCode = $job['language'];
+            $languageOverride = '';
+            if ($languageCode !== null) {
+                $jsLang = json_encode($languageCode);
+                $languageOverride = <<<JS
+if (gtree[0] && gtree[0].project && gtree[0].project[0]) {
+    const languages = gtree[0].project[0].lang || [];
+    const __langIdx = languages.findIndex(l => l.code === {$jsLang});
+    if (__langIdx !== -1) {
+        gtree[0].project[0].selectedlanguage = {$jsLang};
+        gtree[0].project[0].selectedlanguageindex = __langIdx;
+    }
+}
+JS;
+            }
+
+            $jsKey = json_encode((string) $fileIdx);
+            $scriptParts[] = <<<JS
+(function () {
+    {$languageOverride}
+    try {
+        {$job['code']}
+        __results[{$jsKey}] = String({$functionName}());
+    } catch (error) {
+        __results[{$jsKey}] = null;
+        console.error('Job {$fileIdx} failed: ' + error.message);
+    }
+})();
+JS;
+        }
+
+        $scriptParts[] = 'console.log(JSON.stringify(__results));';
+        $script = implode("\n\n", $scriptParts);
+
+        file_put_contents($tempScriptPath, $script);
+        file_put_contents($tempGtreePath, json_encode($gtreeData['gtree']));
+
+        $output = shell_exec("node \"{$tempScriptPath}\" 2>&1");
+
+        @unlink($tempScriptPath);
+        @unlink($tempGtreePath);
+
+        $decoded = json_decode((string) $output, true);
+        if (!is_array($decoded)) {
+            \Log::warning("⚠️ Batch JavaScript execution failed", ['output' => $output]);
+            return $fallback;
+        }
+
+        $results = [];
+        foreach ($jobs as $fileIdx => $job) {
+            $value = $decoded[(string) $fileIdx] ?? null;
+            $results[$fileIdx] = $value !== null ? $value : $job['code'];
+        }
+        return $results;
+    }
+
+    /**
      * 🚀 BATCH TEMPLATE PROCESSING
      *
      * Process templates for multiple tables in a single request
@@ -3636,6 +6055,13 @@ JS;
             // Initialize cache service
             // skip_cache=1 bypasses Redis cache for debugging/testing
             $skipCache = $request->input('skip_cache', false);
+            // See processTemplate()'s own doc comment on this same check -
+            // FlutterSmlTemplateFreshener's substitutions never touch the
+            // DB `updated_at` the cache key is keyed on, so this template's
+            // own files must never be served from that cache at all.
+            if ($template->name === 'flutter_sml_template') {
+                $skipCache = true;
+            }
             $cacheService = (!$skipCache && config('scoriet.template_cache.enabled', false)) ? app(TemplateCacheService::class) : null;
 
             // 🚀 OPTIMIZATION: Cache gtree in Redis (MASSIVE PERFORMANCE BOOST!)
@@ -3669,7 +6095,11 @@ JS;
             $engine = new UltimateTemplateEngine($gtreeData['gtree']);
 
             // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns ONCE before processing all tables
-            $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+            // See FlutterSmlTemplateFreshener's own doc comment - disk
+            // always wins over the stored snapshot for that one template.
+            $includeResolution = TemplateIncludeResolver::resolveAllFiles(
+                \App\Services\FlutterSmlTemplateFreshener::freshen($template->name, $template->files->toArray())
+            );
             $resolvedFiles = $includeResolution['files'];
             $includeErrors = $includeResolution['errors'];
 
@@ -4021,7 +6451,11 @@ JS;
             $generatedFiles = [];
 
             // 🔗 INCLUDE RESOLUTION: Resolve {:include: path/file.ext:} patterns before processing
-            $includeResolution = TemplateIncludeResolver::resolveAllFiles($template->files->toArray());
+            // See FlutterSmlTemplateFreshener's own doc comment - disk
+            // always wins over the stored snapshot for that one template.
+            $includeResolution = TemplateIncludeResolver::resolveAllFiles(
+                \App\Services\FlutterSmlTemplateFreshener::freshen($template->name, $template->files->toArray())
+            );
             $resolvedFiles = $includeResolution['files'];
             $includeErrors = $includeResolution['errors'];
 
@@ -4054,6 +6488,19 @@ JS;
                     $dbTableFileIdx++;
                 }
             }
+
+            // Every `executeJavaScript()` call used to spawn its OWN `node`
+            // process AND re-serialise/re-write the ENTIRE gtree (every
+            // window's already-translated Dart code embedded - easily
+            // several MB for a real project) to a fresh temp file - for
+            // EVERY generated file (30+ for a real project). Confirmed the
+            // dominant cost of a 32-MINUTE generation. Instead, every file's
+            // compiled JS is now collected into $jsJobs here (content left
+            // `null` as a placeholder in $generatedFiles - filled in once
+            // the batch actually runs, see executeJavaScriptBatch() below)
+            // and executed together in ONE Node process against ONE
+            // gtree write, after this loop finishes.
+            $jsJobs = [];
 
             foreach ($resolvedFiles as $templateFile) {
                 // Convert back to object if needed for compatibility
@@ -4126,22 +6573,21 @@ JS;
                                 }
 
                                 if (!$result['has_syntax_errors']) {
-                                    // 🎯 Execute JavaScript to get actual output
-                                    $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, $languageCode);
-
                                     // Build full file path (path key must include filename for ZIP)
                                     $fullPath = trim($result['output_path'] ?? '', '/');
                                     $fullPath = $fullPath ? $fullPath . '/' . $result['filename'] : $result['filename'];
 
+                                    $fileIdx = count($generatedFiles);
                                     $generatedFiles[] = [
                                         'path' => $fullPath,
                                         'filepath' => $fullPath,
                                         'filename' => $result['filename'],
-                                        'content' => $output,
+                                        'content' => null, // filled in by executeJavaScriptBatch() below
                                         'table' => $tableName,
                                         'table_index' => $tblIdx,
                                         'language' => $languageCode,
                                     ];
+                                    $jsJobs[$fileIdx] = ['code' => $result['compiled_content'], 'language' => $languageCode];
                                 } else {
                                     \Log::warning("⚠️ [CLI] Syntax errors in file", [
                                         'file' => $result['filename'],
@@ -4167,19 +6613,19 @@ JS;
                             );
 
                             if (!$result['has_syntax_errors']) {
-                                $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, $languageCode);
-
                                 // Build full file path (path key must include filename for ZIP)
                                 $fullPath = trim($result['output_path'] ?? '', '/');
                                 $fullPath = $fullPath ? $fullPath . '/' . $result['filename'] : $result['filename'];
 
+                                $fileIdx = count($generatedFiles);
                                 $generatedFiles[] = [
                                     'path' => $fullPath,
                                     'filepath' => $fullPath,
                                     'filename' => $result['filename'],
-                                    'content' => $output,
+                                    'content' => null, // filled in by executeJavaScriptBatch() below
                                     'language' => $languageCode,
                                 ];
+                                $jsJobs[$fileIdx] = ['code' => $result['compiled_content'], 'language' => $languageCode];
                             } else {
                                 \Log::warning("⚠️ [CLI] Syntax errors in file", [
                                     'file' => $result['filename'],
@@ -4202,18 +6648,18 @@ JS;
                         );
 
                         if (!$result['has_syntax_errors']) {
-                            $output = $this->executeJavaScript($result['compiled_content'], $gtreeData, 'en');
-
                             // Build full file path (path key must include filename for ZIP)
                             $fullPath = trim($result['output_path'] ?? '', '/');
                             $fullPath = $fullPath ? $fullPath . '/' . $result['filename'] : $result['filename'];
 
+                            $fileIdx = count($generatedFiles);
                             $generatedFiles[] = [
                                 'path' => $fullPath,
                                 'filepath' => $fullPath,
                                 'filename' => $result['filename'],
-                                'content' => $output,
+                                'content' => null, // filled in by executeJavaScriptBatch() below
                             ];
+                            $jsJobs[$fileIdx] = ['code' => $result['compiled_content'], 'language' => 'en'];
                         } else {
                             \Log::warning("⚠️ [CLI] Syntax errors in file", [
                                 'file' => $result['filename'],
@@ -4225,6 +6671,13 @@ JS;
                     // Log error but continue with other files
                     \Log::error("CLI Generation failed for file {$templateFile->file_name}: " . $e->getMessage());
                 }
+            }
+
+            // One Node process, one gtree write, for every file collected
+            // above - see the doc comment on $jsJobs's declaration.
+            $jsResults = $this->executeJavaScriptBatch($jsJobs, $gtreeData);
+            foreach ($jsResults as $fileIdx => $content) {
+                $generatedFiles[$fileIdx]['content'] = $content;
             }
 
             return [

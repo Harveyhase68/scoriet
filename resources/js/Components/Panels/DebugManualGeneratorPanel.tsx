@@ -424,6 +424,44 @@ const newProfileId = (): string => {
   }
 };
 
+// The debug/execute flow needs a place to stash the current gtree so
+// compiled template code (eval'd elsewhere, or copy-pasted into DevTools)
+// can read it back. localStorage was the original choice, but it's capped
+// at ~5-10MB per browser origin - a real project's gtree (schema tables +
+// Window Designer windows) can exceed that easily, silently throwing
+// QuotaExceededError and leaving the "GTree kopieren"/"herunterladen"
+// buttons permanently disabled (they gate on localStorage having a value).
+// window.gtree is a plain JS variable - no storage quota at all, bounded
+// only by available RAM - so it's now the primary store; localStorage is
+// kept only as a best-effort fallback for cases where window.gtree isn't
+// populated (e.g. a copy-pasted DevTools session with no prior page state).
+const setCachedGtree = (gtreeData: unknown): void => {
+  (window as unknown as { gtree?: unknown }).gtree = gtreeData;
+  try {
+    localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
+  } catch (storageErr) {
+    console.warn('Could not also cache gtree in localStorage (quota exceeded?) - window.gtree still holds it for this session.', storageErr);
+  }
+};
+
+const getCachedGtree = (): unknown => {
+  const fromWindow = (window as unknown as { gtree?: unknown }).gtree;
+  if (fromWindow !== undefined) {
+    return fromWindow;
+  }
+  const raw = localStorage.getItem('scoriet_gtree');
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const hasCachedGtree = (): boolean => getCachedGtree() !== null;
+
 export default function DebugManualGeneratorPanel({
   tableId: _preSelectedTableId,
   tableName: preSelectedTableName,
@@ -1709,8 +1747,10 @@ export default function DebugManualGeneratorPanel({
           // Falls back to base GTree when no assignments exist for this file
           const gtreeData = targetFile.overlaid_gtree || data.gtree || [];
 
-          // Store gtree in localStorage for efficient access during execution
-          localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
+          // Store gtree for the Execute tab / compiled code to read back -
+          // see setCachedGtree()'s docblock for why window.gtree (not just
+          // localStorage) matters here.
+          setCachedGtree(gtreeData);
 
           // Store processed filename for download
           setDownloadFilename(targetFile.filename || 'generated.php');
@@ -1749,9 +1789,12 @@ export default function DebugManualGeneratorPanel({
           // Convert Unicode spaces back to regular spaces for indentation
           cleanedCode = cleanedCode.replace(/\\u0020/g, ' ');
 
-          // Add lightweight gtree loader instead of embedding huge JSON
-          const gtreeCode = `// GTree Data loaded efficiently from localStorage
-const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
+          // Add lightweight gtree loader instead of embedding huge JSON.
+          // window.gtree first (no storage quota - see setCachedGtree()),
+          // localStorage only as a fallback for e.g. a copy-pasted DevTools
+          // session that never went through this panel's own state.
+          const gtreeCode = `// GTree Data loaded efficiently (window.gtree, falling back to localStorage)
+const gtree = window.gtree || JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
 `;
 
@@ -1804,7 +1847,14 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
       } else {
         setError(errorMessage || t.debugmanualgeneratorpanel959);
       }
-    } catch {
+    } catch (err) {
+      // Was a bare `catch {}` - any unexpected failure in this whole block
+      // (JSON parsing, gtree processing, ...) fell straight to the generic
+      // "Error loading code" message with NOTHING in the console, making it
+      // indistinguishable from an actual network/auth failure. Logging here
+      // doesn't change the user-facing message, just makes the real cause
+      // visible for the next time something in here breaks.
+      console.error('fetchCode failed:', err);
       setError(t.debugmanualgeneratorpanel959);
     } finally {
       setLoading(false);
@@ -2198,8 +2248,7 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
         return;
       }
 
-      // Save to localStorage
-      localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
+      setCachedGtree(gtreeData);
 
       alert(`${t.debugmanualgeneratorpanel1487}\n\n${t.debugmanualgeneratorpanel1487_2}${gtreeData[0].project[0]?.projectname || t.debugmanualgeneratorpanel1487_3}\n${t.debugmanualgeneratorpanel1487_4}${gtreeData[0].project[0]?.tables?.length || 0}`);
 
@@ -2225,8 +2274,8 @@ const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
         // Create function name from file name (sanitize)
         const functionName = `generate_${fileName.replace(/[^a-zA-Z0-9_]/g, '_').replace(/_{2,}/g, '_')}`;
 
-        const starterCode = `// GTree Data loaded efficiently from localStorage
-const gtree = JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
+        const starterCode = `// GTree Data loaded efficiently (window.gtree, falling back to localStorage)
+const gtree = window.gtree || JSON.parse(localStorage.getItem('scoriet_gtree') || '[]');
 
 function ${functionName}() {
   let sContentResult = '';
@@ -3380,11 +3429,11 @@ function ${functionName}() {
                           {
                             label: t.debugmanualgeneratorpanel1537 || 'GTree kopieren',
                             icon: 'pi pi-database',
-                            disabled: !localStorage.getItem('scoriet_gtree'),
+                            disabled: !hasCachedGtree(),
                             command: () => {
-                              const gtreeData = localStorage.getItem('scoriet_gtree');
+                              const gtreeData = getCachedGtree();
                               if (gtreeData) {
-                                const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
+                                const jsonData = JSON.stringify(gtreeData, null, 2);
                                 const formattedGTree = `const gtree = ${jsonData};`;
                                 if (navigator.clipboard && window.isSecureContext) {
                                   navigator.clipboard.writeText(formattedGTree).catch(() => copyToClipboardFallback(formattedGTree, t));
@@ -3397,12 +3446,12 @@ function ${functionName}() {
                           {
                             label: t.debugmanualgeneratorpanel1564 || 'GTree herunterladen',
                             icon: 'pi pi-download',
-                            disabled: !localStorage.getItem('scoriet_gtree'),
+                            disabled: !hasCachedGtree(),
                             command: () => {
-                              const gtreeData = localStorage.getItem('scoriet_gtree');
+                              const gtreeData = getCachedGtree();
                               if (gtreeData) {
                                 try {
-                                  const jsonData = JSON.stringify(JSON.parse(gtreeData), null, 2);
+                                  const jsonData = JSON.stringify(gtreeData, null, 2);
                                   const formattedGTree = `const gtree = ${jsonData};`;
                                   const blob = new Blob([formattedGTree], { type: 'application/javascript' });
                                   const url = URL.createObjectURL(blob);
@@ -3478,7 +3527,7 @@ function ${functionName}() {
                                         alert(t.debugmanualgeneratorpanel2341);
                                         return;
                                       }
-                                      localStorage.setItem('scoriet_gtree', JSON.stringify(gtreeData));
+                                      setCachedGtree(gtreeData);
                                       alert(`${t.debugmanualgeneratorpanel2348}\n\n📊 Projekt: ${gtreeData[0].project[0]?.projectname || t.debugmanualgeneratorpanel2348_2}\n${t.debugmanualgeneratorpanel2348_3}${gtreeData[0].project[0]?.tables?.length || 0}`);
                                     } catch (error) {
                                       alert(`${t.debugmanualgeneratorpanel2351}\n\n${(error as Error).message}\n\n${t.debugmanualgeneratorpanel2351_2}`);

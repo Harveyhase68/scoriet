@@ -22,8 +22,19 @@ class UltimateTemplateEngine
     private const MAX_LOOP_DEPTH = 10;
 
     // 🎯 Track current loop context for item variable resolution
-    private string $currentLoopContext = 'fields'; // 'fields', 'keys', 'fieldsnokey', 'fieldsnokeyall', 'constraints'
+    private string $currentLoopContext = 'fields'; // 'fields', 'keys', 'fieldsnokey', 'fieldsnokeyall', 'constraints', 'uiwindows', 'controls'
     private array $loopContextStack = []; // Stack for nested loops
+
+    // 🪟 Window Designer (window_file/window_file_languages) - the "current
+    // window" lock, mirroring $tableIndex's role for db_table_file. Unlike
+    // $tableIndex, this is NOT threaded as a parameter through the whole
+    // processLine()/processVariable()/... call chain (that chain is deep,
+    // heavily tested, and threading a second parameter through all ~19
+    // methods would be a large, high-risk diff for a feature orthogonal to
+    // tables). Instead it's set once per processTemplate() call (same
+    // lifecycle as tableIndex) and read directly by the new window/control
+    // resolver code paths that need it.
+    private ?int $windowIndex = null;
 
     // 🎯 Index-based contexts: these arrays contain indices into fields[] instead of duplicated objects
     private const INDEX_BASED_CONTEXTS = [
@@ -260,14 +271,14 @@ class UltimateTemplateEngine
         // Check if it's a function call like upper(tablename), lower(item.name)
         if (preg_match('/^(\w+)\(/', $variable, $funcMatch)) {
             $funcName = strtolower($funcMatch[1]);
-            $knownFunctions = ['upper', 'lower', 'capitalize', 'plural', 'singular', 'camelcase', 'pascalcase', 'snakecase', 'kebabcase', 'length', 'strlen', 'substr', 'replace'];
+            $knownFunctions = ['upper', 'lower', 'capitalize', 'plural', 'singular', 'camelcase', 'pascalcase', 'snakecase', 'kebabcase', 'length', 'strlen', 'substr', 'replace', 'dartstring'];
             if (in_array($funcName, $knownFunctions)) {
                 return true;
             }
         }
 
         // Check if it has a known prefix
-        if (preg_match('/^(project|file|item|field|formset|formmenu|formedit|formtable|table|language|keys|foreign|foreignunique|foreignkeys|foreignkeysunique|migration|layoutsingle|layoutbutton|layoutcolumn|layoutmenu|reportpattern|reportsingle|reportlist|reportsingleelement|reportlistelement|layoutreportsingle|layoutreportlist)\./', $variable)) {
+        if (preg_match('/^(project|file|item|field|formset|formmenu|formedit|formtable|table|language|keys|foreign|foreignunique|foreignkeys|foreignkeysunique|migration|layoutsingle|layoutbutton|layoutcolumn|layoutmenu|reportpattern|reportsingle|reportlist|reportsingleelement|reportlistelement|layoutreportsingle|layoutreportlist|control|window|element|tab|column|option|event|procedure|globalprocedure|param|global|struct|structfield|constant)\./', $variable)) {
             return true;
         }
 
@@ -286,7 +297,7 @@ class UltimateTemplateEngine
             // checker doesn't flag {:packagename:} as unknown. Pairs with the %20 path code.
             'packagename',
             'projectname', 'projectcaption', 'projectdescription', 'projectid', 'projectdatabase',
-            'projecturl', 'projectdirectory', 'startpage',
+            'projecturl', 'projectdirectory', 'startpage', 'firstwindowname',
             'projectowner', 'projectowneremail', 'projectcreated', 'projectupdated',
             'defaultlanguage', 'defaultlanguagename', 'defaultlanguageindex',
             'filenameshortlength',
@@ -314,6 +325,9 @@ class UltimateTemplateEngine
             'laravelversion', 'scorietversion',
             'generationdatetime', 'generationuser',
 
+            // WINDOW INFO (window_file - see UiWindow::toGTreeArray())
+            'windowname', 'windowindex',
+
             // FILE/TABLE INFO
             'tablename', 'tableindex', 'filename', 'filenameshort', 'fileid',
             'filecamelcase', 'filepascalcase', 'filenamerenamed',
@@ -335,6 +349,21 @@ class UltimateTemplateEngine
             'nmaxconstraints', 'tablesgen', 'fieldsgen',
             // FormSet/Report counters (project-global, exposed in buildUltimateProjectData)
             'nmaxformsets', 'nmaxwindows',
+            // Window Designer counters (project-global 'nmaxuiwindows' - see
+            // resolveUiWindowsRequest(); per-window/-element/-tab 'nmaxcontrols',
+            // per-window 'nmaxelements', per-tab_container 'nmaxtabs', per-
+            // 'table' control 'nmaxcolumns' - see UiWindow::toGTreeArray() /
+            // buildUltimateWindowsData() / buildWindowElementNode() /
+            // UiWindowControl::toGTreeArray())
+            'nmaxuiwindows', 'nmaxcontrols', 'nmaxelements', 'nmaxtabs', 'nmaxcolumns', 'nmaxoptions',
+            // SML code-behind counters (see UltimateTemplateController::
+            // eventsGTreeArray()/procedureGTreeNode() and the project-level
+            // globals/structs/constants/globalprocedures wiring in
+            // buildUltimateGtree()). 'nmaxevents'/'nmaxprocedures' are
+            // context-dependent (window/control/element - see
+            // processLoopStart()); the rest are flat project-level.
+            'nmaxevents', 'nmaxprocedures', 'nmaxglobalprocedures', 'nmaxdartparams',
+            'nmaxglobals', 'nmaxstructs', 'nmaxfields', 'nmaxconstants',
             // Per-item enum value counter (resolves to fields[i].enum_values.length inside nmaxitems loops)
             'nmaxenum',
             // Loop-local: current value inside `{:for item.enum_values:}`. Resolver
@@ -396,8 +425,9 @@ class UltimateTemplateEngine
     /**
      * 🎯 MAIN TEMPLATE PROCESSING - Convert template to JavaScript function
      */
-    public function processTemplate(string $templateContent, string $functionName = 'generate', ?int $tableIndex = null, bool $includeSource = false): string
+    public function processTemplate(string $templateContent, string $functionName = 'generate', ?int $tableIndex = null, bool $includeSource = false, ?int $windowIndex = null): string
     {
+        $this->windowIndex = $windowIndex;
         // 🛠️ Detect used functions BEFORE any content transformation
         $originalTemplateContent = $templateContent;
         $usedFunctions = $this->detectUsedFunctions($originalTemplateContent);
@@ -438,6 +468,18 @@ class UltimateTemplateEngine
             $jsFunction .= "  const tableIdx = {$tableIndex}; // Fixed table index for db_table_file\n";
             $jsFunction .= "  gtree[0].project[0].tableindex = {$tableIndex};\n";
             $jsFunction .= "  gtree[0].project[0].tablename = gtree[0].project[0].tables[{$tableIndex}]?.filename || '';\n";
+        }
+
+        // 🪟 Same idea as tableIdx above, but for window_file/window_file_languages:
+        // defines windowIdx as a constant so templates using {:control.xxx:} /
+        // {:for nmaxcontrols:} (unqualified, no explicit uiwindows[N] indexing)
+        // resolve against THIS window - exactly how db_table_file templates
+        // write {:field.xxx:} without ever mentioning tables[N].
+        if ($windowIndex !== null) {
+            $jsFunction .= "  // Current window context\n";
+            $jsFunction .= "  const windowIdx = {$windowIndex}; // Fixed window index for window_file\n";
+            $jsFunction .= "  gtree[0].project[0].windowindex = {$windowIndex};\n";
+            $jsFunction .= "  gtree[0].project[0].windowname = gtree[0].project[0].uiwindows[{$windowIndex}]?.name || '';\n";
         }
         $jsFunction .= "  \n";
 
@@ -828,6 +870,52 @@ class UltimateTemplateEngine
             ? "tables[{$tableIndex}]"
             : "tables[tableIdx]";
 
+        // 🪟 Same idea as $tableRef above, but for windows: uses the
+        // engine's static $this->windowIndex lock (window_file's own
+        // generation pass) UNLESS this loop sits inside an outer
+        // {:for nmaxuiwindows:} (a project_file dumping every window's
+        // data), in which case the JS windowIdx reassigned per outer
+        // iteration must win - same nested-override rationale as tables.
+        $nestedInUiwindows = $this->isInsideLoopContext('uiwindows');
+        $windowRef = ($this->windowIndex !== null && !$nestedInUiwindows)
+            ? "uiwindows[{$this->windowIndex}]"
+            : "uiwindows[windowIdx]";
+
+        // 🪟 Same idea again, one level deeper: a window's own root-level
+        // `elements` (containers/group_boxes/tab_containers - see
+        // UiWindowElement::toGTreeArray() / buildWindowElementNode()), and
+        // (only meaningful for a tab_container) that element's `tabs`
+        // (its tab_panel pages). Unlike tableRef/windowRef there is no
+        // "static engine lock" for elements/tabs - they only ever exist
+        // inside a {:for nmaxelements:}/{:for nmaxtabs:} loop, so elementIdx/
+        // tabIdx are always the live JS loop variables. Scope limit (documented,
+        // same "good enough for now" pattern as the rest of this file): this
+        // supports exactly ONE level of {:for nmaxelements:} nesting from the
+        // window root, and ONE level of {:for nmaxtabs:} nesting inside that -
+        // a container nested inside another container, or inside a tab_panel,
+        // isn't reachable by {:control.xxx:}/{:for nmaxcontrols:} yet (its data
+        // IS in the gtree via buildWindowElementNode()'s recursion, just not
+        // wired up to the engine's loop/variable resolution below).
+        $nestedInTabs = $this->isInsideLoopContext('tabs');
+        $elementRef = "{$windowRef}.elements[elementIdx]";
+        $tabRef = "{$elementRef}.tabs[tabIdx]";
+
+        // 🪟 ELEMENTS LOOP - a window's own root-level containers/group_boxes/
+        // tab_containers (not tab_panels - those live under nmaxtabs instead).
+        if (strpos($line, '{:for nmaxelements:}') !== false) {
+            $this->pushLoopContext('elements');
+            return "  for (let elementIdx = 0; elementIdx < gtree[0].project[0].{$windowRef}.nmaxelements; elementIdx++) {\n";
+        }
+
+        // 🪟 TABS LOOP - a tab_container element's tab_panel pages. Only
+        // meaningful nested inside {:for nmaxelements:} (checks the CURRENT
+        // element's element_type via {:if element.element_type eq "tab_container":}
+        // before entering this loop, same as any other conditional loop use).
+        if (strpos($line, '{:for nmaxtabs:}') !== false) {
+            $this->pushLoopContext('tabs');
+            return "  for (let tabIdx = 0; tabIdx < gtree[0].project[0].{$elementRef}.nmaxtabs; tabIdx++) {\n";
+        }
+
         // 🎯 KEYS LOOP - Loop through keys array
         if (strpos($line, '{:for nmaxkeys:}') !== false) {
             $this->pushLoopContext('keys');
@@ -922,6 +1010,136 @@ class UltimateTemplateEngine
             $this->pushLoopContext('tables');
             return "  for (let _tgenI = 0; _tgenI < gtree[0].project[0].nmaxtables; _tgenI++) {\n"
                  . "    const tableIdx = gtree[0].project[0].tablesgen[_tgenI];\n";
+        }
+
+        // 🪟 WINDOWS LOOP - iterates every window in the gtree's `uiwindows`
+        // array (a project_file dumping all windows, e.g. a menu generator;
+        // window_file mode locks to ONE window via the engine's static
+        // $this->windowIndex instead and never uses this loop at all).
+        // Body code references `windowIdx` as the actual window index (like
+        // `tableIdx` for nmaxtables), so nested {:for nmaxcontrols:} /
+        // {:control.xxx:} resolve against the CURRENT window.
+        if (strpos($line, '{:for nmaxuiwindows:}') !== false) {
+            $this->pushLoopContext('uiwindows');
+            return "  for (let windowIdx = 0; windowIdx < gtree[0].project[0].nmaxuiwindows; windowIdx++) {\n";
+        }
+
+        // 🪟 CONTROLS LOOP - resolves against whichever container is CURRENTLY
+        // active: a tab_panel's own controls (inside {:for nmaxtabs:}), an
+        // element's own controls (inside {:for nmaxelements:}), or the
+        // window's direct-on-canvas root controls (control_type/caption/...
+        // - see UiWindowControl::toGTreeArray()) otherwise. Stack-deep checks
+        // (not just currentLoopContext) for the same reason as tableRef above -
+        // {:for nmaxelements:}{:if element.element_type eq "tab_container":}
+        // {:for nmaxtabs:}{:for nmaxcontrols:} has currentLoopContext ===
+        // 'tabs' by the time nmaxcontrols is reached, several levels deep.
+        // Roadmap: controls nested inside table-columns/radio-checkbox-options,
+        // and elements/controls nested more than one level deep (a container
+        // inside another container, or inside a tab_panel), are a separate
+        // follow-up (need their own "current element"/"current control"
+        // locking, same pattern as this one).
+        $controlsContainerRef = $nestedInTabs ? $tabRef : ($this->isInsideLoopContext('elements') ? $elementRef : $windowRef);
+        if (strpos($line, '{:for nmaxcontrols:}') !== false) {
+            $this->pushLoopContext('controls');
+            return "  for (let i = 0; i < gtree[0].project[0].{$controlsContainerRef}.nmaxcontrols; i++) {\n";
+        }
+
+        // 🪟 TABLE COLUMNS LOOP - a 'table' control's own configured columns
+        // (see UiWindowControl::toGTreeArray()'s 'columns'/'nmaxcolumns' -
+        // table_columns is stored as one JSON array on the control itself,
+        // not a separate row-owning relation, so no elements/tabs-style
+        // recursion is needed here - just the current control's own array).
+        // Only meaningful nested inside {:for nmaxcontrols:} (checks the
+        // current control's control_type via {:if control.control_type eq
+        // "table":} before entering this loop, same as any other
+        // conditional loop use).
+        if (strpos($line, '{:for nmaxcolumns:}') !== false) {
+            $this->pushLoopContext('columns');
+            $controlRef = "{$controlsContainerRef}.controls[i]";
+            return "  for (let colIdx = 0; colIdx < gtree[0].project[0].{$controlRef}.nmaxcolumns; colIdx++) {\n";
+        }
+
+        // 🪟 RADIO/CHECKBOX GROUP OPTIONS LOOP - same shape as the table
+        // columns loop just above (one JSON array stored directly on the
+        // current control, see UiWindowControl::toGTreeArray()'s resolved
+        // 'options'/'nmaxoptions'), only meaningful nested inside
+        // {:for nmaxcontrols:} for a radio_group/checkbox_group control.
+        if (strpos($line, '{:for nmaxoptions:}') !== false) {
+            $this->pushLoopContext('options');
+            $controlRef = "{$controlsContainerRef}.controls[i]";
+            return "  for (let optIdx = 0; optIdx < gtree[0].project[0].{$controlRef}.nmaxoptions; optIdx++) {\n";
+        }
+
+        // 🧩 SML EVENTS LOOP - context-dependent, same "innermost wins"
+        // priority as $controlsContainerRef above: the CURRENT control's own
+        // events (nested inside {:for nmaxcontrols:}), else the CURRENT
+        // tab's/element's own events (nested directly inside {:for
+        // nmaxtabs:}/{:for nmaxelements:}, not through a control), else the
+        // window's own top-level events (declarations/init/close/...). See
+        // UiWindowEvent + UltimateTemplateController::eventsGTreeArray().
+        if (strpos($line, '{:for nmaxevents:}') !== false) {
+            if ($this->isInsideLoopContext('controls')) {
+                $eventsOwnerRef = "{$controlsContainerRef}.controls[i]";
+            } elseif ($nestedInTabs) {
+                $eventsOwnerRef = $tabRef;
+            } elseif ($this->isInsideLoopContext('elements')) {
+                $eventsOwnerRef = $elementRef;
+            } else {
+                $eventsOwnerRef = $windowRef;
+            }
+            $this->pushLoopContext('events');
+            return "  for (let evIdx = 0; evIdx < gtree[0].project[0].{$eventsOwnerRef}.nmaxevents; evIdx++) {\n";
+        }
+
+        // 🧩 LOCAL PROCEDURES LOOP - a window's own SML procedures (see
+        // UiProcedure, window-scoped rows only). Always resolves against the
+        // CURRENT window - a window's procedures don't nest inside
+        // controls/elements/tabs the way events do.
+        if (strpos($line, '{:for nmaxprocedures:}') !== false) {
+            $this->pushLoopContext('procedures');
+            return "  for (let procIdx = 0; procIdx < gtree[0].project[0].{$windowRef}.nmaxprocedures; procIdx++) {\n";
+        }
+
+        // 🧩 GLOBAL PROCEDURES LOOP - project-wide SML procedures (UiProcedure
+        // rows with project_id set, window_id null) - callable from any
+        // window. Deliberately a DIFFERENT counter name from nmaxprocedures
+        // above (not an overload) so a template can freely use both without
+        // any window-context ambiguity.
+        if (strpos($line, '{:for nmaxglobalprocedures:}') !== false) {
+            $this->pushLoopContext('globalprocedures');
+            return "  for (let gprocIdx = 0; gprocIdx < gtree[0].project[0].nmaxglobalprocedures; gprocIdx++) {\n";
+        }
+
+        // 🧩 PROCEDURE PARAMETERS LOOP - the CURRENT procedure's own
+        // pre-resolved dart_params (see UltimateTemplateController::
+        // procedureGTreeNode()) - only meaningful nested inside {:for
+        // nmaxprocedures:} (local) or {:for nmaxglobalprocedures:} (global);
+        // checks which one is currently active the same way nmaxcolumns/
+        // nmaxoptions check for nmaxcontrols above.
+        if (strpos($line, '{:for nmaxdartparams:}') !== false) {
+            $procRef = $this->isInsideLoopContext('globalprocedures')
+                ? 'gtree[0].project[0].globalprocedures[gprocIdx]'
+                : "gtree[0].project[0].{$windowRef}.procedures[procIdx]";
+            $this->pushLoopContext('dartparams');
+            return "  for (let paramIdx = 0; paramIdx < {$procRef}.nmaxdartparams; paramIdx++) {\n";
+        }
+
+        // 🧩 STRUCTS LOOP - project-wide SML structure definitions (see
+        // UiProjectStruct). Flat, project-scoped - no window context needed.
+        if (strpos($line, '{:for nmaxstructs:}') !== false) {
+            $this->pushLoopContext('structs');
+            return "  for (let structIdx = 0; structIdx < gtree[0].project[0].nmaxstructs; structIdx++) {\n";
+        }
+
+        // 🧩 STRUCT FIELDS LOOP - the CURRENT struct's own field list, only
+        // meaningful nested inside {:for nmaxstructs:} (same shape as
+        // nmaxcolumns being only meaningful inside nmaxcontrols above).
+        // Item prefix is 'structfield.' (not 'field.') to stay unambiguous
+        // from the pre-existing schema-table 'field.' prefix used inside
+        // {:for nmaxitems:}.
+        if (strpos($line, '{:for nmaxfields:}') !== false) {
+            $this->pushLoopContext('structfields');
+            return "  for (let fieldIdx = 0; fieldIdx < gtree[0].project[0].structs[structIdx].nmaxfields; fieldIdx++) {\n";
         }
 
         // 🎯 MIGRATION LOOPS - Loop through migration change arrays
@@ -1229,7 +1447,17 @@ class UltimateTemplateEngine
 
         // 🔧 NEW: Also support bare variable names like item.typecast (without {:...:})
         // Match dotted variable names that are NOT inside quotes and NOT already processed
-        $condition = preg_replace_callback('/\b(item|field|table|project|file|form)\.[a-zA-Z_][a-zA-Z0-9_.]*\b/', function($matches) use ($tableIndex) {
+        // 'control'/'window' added for Window Designer templates - without them here,
+        // a bare {:if control.anchor_right:} condition (no operator, just checking
+        // truthiness) never reaches this dotted-prefix pass at all: the LAST pass
+        // below (bare single-word matching) instead matches 'control' and
+        // 'anchor_right' as two SEPARATE words (since '.' isn't a word character),
+        // resolves 'control' alone to the nonsensical top-level-project fallback
+        // `gtree[0].project[0].control || 'control'`, and appends the literal
+        // (never evaluated) text '.anchor_right' after it - always truthy on the
+        // STRING 'control', so the anchor branch looked like it silently never
+        // fired for ANY control, anchored or not.
+        $condition = preg_replace_callback('/\b(item|field|table|project|file|form|control|window|element|tab|column|option|event|procedure|globalprocedure|param|global|struct|structfield|constant)\.[a-zA-Z_][a-zA-Z0-9_.]*\b/', function($matches) use ($tableIndex) {
             $varName = $matches[0];
             $replacement = $this->processVariable($varName, $tableIndex);
 
@@ -1294,10 +1522,26 @@ class UltimateTemplateEngine
             $skipWords = ['true', 'false', 'null', 'undefined', 'typeof', 'instanceof',
                           'j', 'tableIdx', 'gtree', 'project', 'tables', 'fields',
                           'keys', 'foreignkeys', 'constraints', 'lang', 'formset', 'windows',
+                          // windowIdx: same class of bug as tableIdx above - only ever
+                          // stayed hidden because every {:window.xxx:}/{:control.xxx:}
+                          // condition tested so far used window_file's fixed windowIndex
+                          // lock (a numeric uiwindows[N], never the bare loop variable).
+                          // elementIdx/tabIdx/colIdx have NO fixed-lock mode at all -
+                          // elements/tabs/columns only ever exist inside a loop - so
+                          // this bug is not latent for them, it fires on the very
+                          // first {:if element.x:}/{:if tab.x:}/{:if column.x:}
+                          // condition. Found + fixed together 2026-08-17/18.
+                          'windowIdx', 'elementIdx', 'tabIdx', 'colIdx', 'optIdx',
                           'if', 'else', 'return', 'var', 'let', 'const', 'function',
                           'length', 'indexOf', 'includes', 'toString', 'trim',
                           'String', 'Number', 'Boolean', 'Array', 'Object', 'Math',
                           '_valIdx', '_fkI', '_fkuI', 'migIdx',
+                          // SML code-behind loop counters (see processLoopStart()'s
+                          // {:for nmaxevents:}/{:for nmaxprocedures:}/{:for
+                          // nmaxglobalprocedures:}/{:for nmaxdartparams:}/{:for
+                          // nmaxstructs:}/{:for nmaxfields:} handlers) - same class
+                          // of bug as _valIdx/_fkI/tableIdx above.
+                          'evIdx', 'procIdx', 'gprocIdx', 'paramIdx', 'structIdx', 'fieldIdx',
                           'loopIndex_layoutsingles', 'loopIndex_layoutcolumns',
                           'loopIndex_layoutbuttons', 'loopIndex_layoutmenus',
                           'loopIndex_layoutreportsingles', 'loopIndex_layoutreportlists',
@@ -1953,6 +2197,76 @@ class UltimateTemplateEngine
                 $this->pushLoopContext('tables');
                 return "  for (let _tgenI = 0; _tgenI < gtree[0].project[0].nmaxtables; _tgenI++) {\n"
                      . "    const tableIdx = gtree[0].project[0].tablesgen[_tgenI];\n";
+            } elseif ($loopVar === 'nmaxevents' || $loopVar === 'nmaxprocedures' || $loopVar === 'nmaxglobalprocedures'
+                || $loopVar === 'nmaxdartparams' || $loopVar === 'nmaxstructs' || $loopVar === 'nmaxfields') {
+                // 🧩 SML code-behind loops (events/procedures/globalprocedures/
+                // dartparams/structs/fields) — this function is a SEPARATE,
+                // parallel dispatch table from processLoopStart() for {:for:}
+                // tags that appear INLINE (mixed with other content on the same
+                // line, e.g. a function signature built from a single line like
+                // `{:name:}({:if needs_ctx:}ctx, {:endif:}{:for nmaxdartparams:}
+                // {:param.type:} {:param.name:}, {:endfor:})`). Without dedicated
+                // entries here, ANY of these loop variables silently fell through
+                // to the generic "project[0].{$loopVar}" fallback below — which
+                // doesn't exist at that path — running 0 iterations. Confirmed
+                // real: global_procedures.dart's/​%1_page.dart's own generated
+                // procedure signatures lost 100% of their parameters this way
+                // (`CheckLogin()` instead of `CheckLogin(sUserName, sPassword,
+                // ...)`) even though the underlying dart_params data was correct.
+                // Same resolution logic as processLoopStart()'s dedicated
+                // handlers for these exact loop variables - kept in sync
+                // deliberately, see that function's own comments for the full
+                // per-variable rationale.
+                $nestedInUiwindows = $this->isInsideLoopContext('uiwindows');
+                $windowRef = ($this->windowIndex !== null && !$nestedInUiwindows)
+                    ? "gtree[0].project[0].uiwindows[{$this->windowIndex}]"
+                    : "gtree[0].project[0].uiwindows[windowIdx]";
+                $elementRef = "{$windowRef}.elements[elementIdx]";
+                $tabRef = "{$elementRef}.tabs[tabIdx]";
+                $nestedInTabs = $this->isInsideLoopContext('tabs');
+                $nestedInElements = $this->isInsideLoopContext('elements');
+
+                if ($loopVar === 'nmaxevents') {
+                    if ($this->isInsideLoopContext('controls')) {
+                        $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+                        $eventsOwnerRef = "{$controlsContainerRef}.controls[i]";
+                    } elseif ($nestedInTabs) {
+                        $eventsOwnerRef = $tabRef;
+                    } elseif ($nestedInElements) {
+                        $eventsOwnerRef = $elementRef;
+                    } else {
+                        $eventsOwnerRef = $windowRef;
+                    }
+                    $this->pushLoopContext('events');
+                    return "  for (let evIdx = 0; evIdx < {$eventsOwnerRef}.nmaxevents; evIdx++) {\n";
+                }
+
+                if ($loopVar === 'nmaxprocedures') {
+                    $this->pushLoopContext('procedures');
+                    return "  for (let procIdx = 0; procIdx < {$windowRef}.nmaxprocedures; procIdx++) {\n";
+                }
+
+                if ($loopVar === 'nmaxglobalprocedures') {
+                    $this->pushLoopContext('globalprocedures');
+                    return "  for (let gprocIdx = 0; gprocIdx < gtree[0].project[0].nmaxglobalprocedures; gprocIdx++) {\n";
+                }
+
+                if ($loopVar === 'nmaxdartparams') {
+                    $procRef = $this->isInsideLoopContext('globalprocedures')
+                        ? 'gtree[0].project[0].globalprocedures[gprocIdx]'
+                        : "{$windowRef}.procedures[procIdx]";
+                    $this->pushLoopContext('dartparams');
+                    return "  for (let paramIdx = 0; paramIdx < {$procRef}.nmaxdartparams; paramIdx++) {\n";
+                }
+
+                if ($loopVar === 'nmaxstructs') {
+                    $this->pushLoopContext('structs');
+                    return "  for (let structIdx = 0; structIdx < gtree[0].project[0].nmaxstructs; structIdx++) {\n";
+                }
+
+                // nmaxfields (struct fields, nested inside nmaxstructs)
+                $this->pushLoopContext('structfields');
+                return "  for (let fieldIdx = 0; fieldIdx < gtree[0].project[0].structs[structIdx].nmaxfields; fieldIdx++) {\n";
             } else {
                 // Generic loop variable
                 $this->pushLoopContext('fields'); // Default to fields
@@ -2184,6 +2498,17 @@ class UltimateTemplateEngine
         // instead of advancing the table per iteration. Same pattern as the
         // keys.X / foreign.X resolver fixes.
         $nestedInTables = $this->isInsideLoopContext('tables');
+        // Same idea, for windows - see the identical override in processLoopStart().
+        $nestedInUiwindows = $this->isInsideLoopContext('uiwindows');
+        $windowRef = ($this->windowIndex !== null && !$nestedInUiwindows)
+            ? "gtree[0].project[0].uiwindows[{$this->windowIndex}]"
+            : "gtree[0].project[0].uiwindows[windowIdx]";
+        // Same idea again for elements/tabs - see the identical block in
+        // processLoopStart() for the scope-limit rationale (one level each).
+        $nestedInTabs = $this->isInsideLoopContext('tabs');
+        $nestedInElements = $this->isInsideLoopContext('elements');
+        $elementRef = "{$windowRef}.elements[elementIdx]";
+        $tabRef = "{$elementRef}.tabs[tabIdx]";
 
         // Check legacyMappings first (most common variables)
         $tableRef = ($tableIndex !== null && !$nestedInTables)
@@ -2192,12 +2517,15 @@ class UltimateTemplateEngine
         $legacyMappings = [
             // Project-level
             'projectname' => "gtree[0].project[0].projectname",
+            'firstwindowname' => "gtree[0].project[0].firstwindowname",
             'projectcaption' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].caption",
             'projectdescription' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].filedescription",
             'projectid' => "gtree[0].project[0].projectid",
             'projectdatabase' => "gtree[0].project[0].projectdatabase",
             'tablename' => "gtree[0].project[0].tablename", // Set directly on project level before execution
             'tableindex' => "gtree[0].project[0].tableindex", // Set directly on project level before execution
+            'windowname' => "gtree[0].project[0].windowname", // Set directly on project level before execution (window_file)
+            'windowindex' => "gtree[0].project[0].windowindex", // Set directly on project level before execution (window_file)
 
             // Table-level: basic info
             'filename' => "{$tableRef}.filename",
@@ -2269,6 +2597,130 @@ class UltimateTemplateEngine
         if (strpos($variable, 'language.') === 0) {
             $langVar = substr($variable, 9);
             return "gtree[0].project[0].lang[i].{$langVar}";
+        }
+
+        // Control variables (inside nmaxcontrols loops) - see
+        // UiWindowControl::toGTreeArray(). Resolves against whichever
+        // container is CURRENTLY active - see the identical priority order
+        // (tabs > elements > window root) in processLoopStart().
+        if (strpos($variable, 'control.') === 0) {
+            $controlVar = substr($variable, 8);
+            $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+            return "{$controlsContainerRef}.controls[i].{$controlVar}";
+        }
+
+        // Window variables (inside nmaxuiwindows loops, or window_file's own locked window)
+        if (strpos($variable, 'window.') === 0) {
+            $windowVar = substr($variable, 7);
+            return "{$windowRef}.{$windowVar}";
+        }
+
+        // Element variables (inside nmaxelements loops) - see
+        // UiWindowElement::toGTreeArray() / buildWindowElementNode()
+        if (strpos($variable, 'element.') === 0) {
+            $elementVar = substr($variable, 8);
+            return "{$elementRef}.{$elementVar}";
+        }
+
+        // Tab variables (inside nmaxtabs loops) - a tab_panel is itself just
+        // another UiWindowElement node, same field shape as element.*
+        if (strpos($variable, 'tab.') === 0) {
+            $tabVar = substr($variable, 4);
+            return "{$tabRef}.{$tabVar}";
+        }
+
+        // Column variables (inside nmaxcolumns loops) - the CURRENT control's
+        // own table_columns entry (see UiWindowControl::toGTreeArray()) -
+        // same priority order as control.* above for which control "current" means.
+        if (strpos($variable, 'column.') === 0) {
+            $columnVar = substr($variable, 7);
+            $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+            return "{$controlsContainerRef}.controls[i].columns[colIdx].{$columnVar}";
+        }
+
+        // Option variables (inside nmaxoptions loops) - the CURRENT control's
+        // own resolved options entry (see UiWindowControl::toGTreeArray()'s
+        // 'options') - same shape/priority as column.* just above.
+        if (strpos($variable, 'option.') === 0) {
+            $optionVar = substr($variable, 7);
+            $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+            return "{$controlsContainerRef}.controls[i].options[optIdx].{$optionVar}";
+        }
+
+        // 🧩 SML event variables (inside nmaxevents loops) - same
+        // context-priority as control.* above, see processLoopStart()'s
+        // identical resolution for {:for nmaxevents:}.
+        if (strpos($variable, 'event.') === 0) {
+            $eventVar = substr($variable, 6);
+            if ($this->isInsideLoopContext('controls')) {
+                $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+                $eventsOwnerRef = "{$controlsContainerRef}.controls[i]";
+            } elseif ($nestedInTabs) {
+                $eventsOwnerRef = $tabRef;
+            } elseif ($nestedInElements) {
+                $eventsOwnerRef = $elementRef;
+            } else {
+                $eventsOwnerRef = $windowRef;
+            }
+            return "{$eventsOwnerRef}.events[evIdx].{$eventVar}";
+        }
+
+        // 🧩 Local procedure variables (inside nmaxprocedures loops - a
+        // window's own SML procedures)
+        if (strpos($variable, 'procedure.') === 0) {
+            $procVar = substr($variable, 10);
+            return "{$windowRef}.procedures[procIdx].{$procVar}";
+        }
+
+        // 🧩 Global procedure variables (inside nmaxglobalprocedures loops -
+        // project-wide SML procedures, callable from any window)
+        if (strpos($variable, 'globalprocedure.') === 0) {
+            $gprocVar = substr($variable, 16);
+            return "gtree[0].project[0].globalprocedures[gprocIdx].{$gprocVar}";
+        }
+
+        // 🧩 Procedure parameter variables (inside nmaxdartparams loops,
+        // nested inside either nmaxprocedures or nmaxglobalprocedures - same
+        // "which procedure loop is active" check as processLoopStart()'s
+        // identical resolution for {:for nmaxdartparams:}).
+        if (strpos($variable, 'param.') === 0) {
+            $paramVar = substr($variable, 6);
+            $procRef = $this->isInsideLoopContext('globalprocedures')
+                ? 'gtree[0].project[0].globalprocedures[gprocIdx]'
+                : "{$windowRef}.procedures[procIdx]";
+            return "{$procRef}.dart_params[paramIdx].{$paramVar}";
+        }
+
+        // 🧩 Project global variable variables (inside nmaxglobals loops -
+        // project-wide SML var declarations, see UiProjectGlobal). Uses the
+        // generic custom-count-loop fallback's plain `i` loop variable
+        // (processLoopStart() has no dedicated {:for nmaxglobals:} handler -
+        // it doesn't need one, this is a flat project-root array).
+        if (strpos($variable, 'global.') === 0) {
+            $globalVar = substr($variable, 7);
+            return "gtree[0].project[0].globals[i].{$globalVar}";
+        }
+
+        // 🧩 Project structure variables (inside nmaxstructs loops)
+        if (strpos($variable, 'struct.') === 0) {
+            $structVar = substr($variable, 7);
+            return "gtree[0].project[0].structs[structIdx].{$structVar}";
+        }
+
+        // 🧩 Structure field variables (inside nmaxfields loops, nested
+        // inside nmaxstructs - deliberately 'structfield.' not 'field.' to
+        // stay unambiguous from the pre-existing schema-table 'field.'
+        // prefix used inside {:for nmaxitems:}).
+        if (strpos($variable, 'structfield.') === 0) {
+            $structFieldVar = substr($variable, 12);
+            return "gtree[0].project[0].structs[structIdx].fields[fieldIdx].{$structFieldVar}";
+        }
+
+        // 🧩 Project constant variables (inside nmaxconstants loops) - same
+        // plain `i` generic-fallback loop variable as global.* above.
+        if (strpos($variable, 'constant.') === 0) {
+            $constantVar = substr($variable, 9);
+            return "gtree[0].project[0].constants[i].{$constantVar}";
         }
 
         // Fallback - try direct project access
@@ -2552,6 +3004,10 @@ class UltimateTemplateEngine
         $legacyMappings = [
             // PROJECT BASICS
             'projectname' => "gtree[0].project[0].projectname",
+            // The ONE window UiWindow.is_first_window marked, or '' - see
+            // window_modules.dart's firstWindowId/main.dart's own launch
+            // logic (UltimateTemplateController::buildUltimateGtree()).
+            'firstwindowname' => "gtree[0].project[0].firstwindowname",
             'projectcaption' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].caption",
             'projectdescription' => "gtree[0].project[0].lang[gtree[0].project[0].selectedlanguageindex].filedescription",
             'projectid' => "gtree[0].project[0].projectid",
@@ -2936,6 +3392,131 @@ class UltimateTemplateEngine
             }
         }
 
+        // 🪟 CONTROL / WINDOW VARIABLES (for {:for nmaxcontrols:} / {:for nmaxuiwindows:}
+        // loops, or window_file's own locked window) - generic <prefix>.<single-word>
+        // resolvers, same pattern as language.*/table.* above, so new
+        // UiWindowControl::toGTreeArray()/UiWindow::toGTreeArray() fields work here
+        // without a whitelist that inevitably drifts out of sync.
+        // Same nested-override rationale as tables: a {:for nmaxcontrols:} sitting
+        // inside an outer {:for nmaxuiwindows:} must resolve against the window
+        // CURRENTLY being iterated (JS windowIdx), not window_file's static lock.
+        $nestedInUiwindows = $this->isInsideLoopContext('uiwindows');
+        $windowRef = ($this->windowIndex !== null && !$nestedInUiwindows)
+            ? "gtree[0].project[0].uiwindows[{$this->windowIndex}]"
+            : "gtree[0].project[0].uiwindows[windowIdx]";
+        // Same idea again for elements/tabs - see the identical block in
+        // processLoopStart() for the scope-limit rationale (one level each).
+        $nestedInTabs = $this->isInsideLoopContext('tabs');
+        $nestedInElements = $this->isInsideLoopContext('elements');
+        $elementRef = "{$windowRef}.elements[elementIdx]";
+        $tabRef = "{$elementRef}.tabs[tabIdx]";
+        if (strpos($variable, 'control.') === 0) {
+            $controlField = substr($variable, 8);
+            $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+            if ($controlField !== '' && ctype_alpha($controlField[0]) && strpbrk($controlField, '.[]') === false) {
+                return "' + ({$controlsContainerRef}.controls[i].{$controlField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'window.') === 0) {
+            $windowField = substr($variable, 7);
+            if ($windowField !== '' && ctype_alpha($windowField[0]) && strpbrk($windowField, '.[]') === false) {
+                return "' + ({$windowRef}.{$windowField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'element.') === 0) {
+            $elementField = substr($variable, 8);
+            if ($elementField !== '' && ctype_alpha($elementField[0]) && strpbrk($elementField, '.[]') === false) {
+                return "' + ({$elementRef}.{$elementField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'tab.') === 0) {
+            $tabField = substr($variable, 4);
+            if ($tabField !== '' && ctype_alpha($tabField[0]) && strpbrk($tabField, '.[]') === false) {
+                return "' + ({$tabRef}.{$tabField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'column.') === 0) {
+            $columnField = substr($variable, 7);
+            $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+            if ($columnField !== '' && ctype_alpha($columnField[0]) && strpbrk($columnField, '.[]') === false) {
+                return "' + ({$controlsContainerRef}.controls[i].columns[colIdx].{$columnField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'option.') === 0) {
+            $optionField = substr($variable, 7);
+            $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+            if ($optionField !== '' && ctype_alpha($optionField[0]) && strpbrk($optionField, '.[]') === false) {
+                return "' + ({$controlsContainerRef}.controls[i].options[optIdx].{$optionField} ?? '') + '";
+            }
+        }
+
+        // 🧩 SML event/procedure/global/struct/constant variables - mirrors
+        // the identical resolution in processAllVariablesForContentLine()
+        // (and processLoopStart() for the loop-start side) exactly; kept
+        // here too since mixed-content lines (literal text around a
+        // {:variable:}) go through THIS resolver instead of that one.
+        if (strpos($variable, 'event.') === 0) {
+            $eventField = substr($variable, 6);
+            if ($this->isInsideLoopContext('controls')) {
+                $controlsContainerRef = $nestedInTabs ? $tabRef : ($nestedInElements ? $elementRef : $windowRef);
+                $eventsOwnerRef = "{$controlsContainerRef}.controls[i]";
+            } elseif ($nestedInTabs) {
+                $eventsOwnerRef = $tabRef;
+            } elseif ($nestedInElements) {
+                $eventsOwnerRef = $elementRef;
+            } else {
+                $eventsOwnerRef = $windowRef;
+            }
+            if ($eventField !== '' && ctype_alpha($eventField[0]) && strpbrk($eventField, '.[]') === false) {
+                return "' + ({$eventsOwnerRef}.events[evIdx].{$eventField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'procedure.') === 0) {
+            $procField = substr($variable, 10);
+            if ($procField !== '' && ctype_alpha($procField[0]) && strpbrk($procField, '.[]') === false) {
+                return "' + ({$windowRef}.procedures[procIdx].{$procField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'globalprocedure.') === 0) {
+            $gprocField = substr($variable, 16);
+            if ($gprocField !== '' && ctype_alpha($gprocField[0]) && strpbrk($gprocField, '.[]') === false) {
+                return "' + (gtree[0].project[0].globalprocedures[gprocIdx].{$gprocField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'param.') === 0) {
+            $paramField = substr($variable, 6);
+            $procRef = $this->isInsideLoopContext('globalprocedures')
+                ? 'gtree[0].project[0].globalprocedures[gprocIdx]'
+                : "{$windowRef}.procedures[procIdx]";
+            if ($paramField !== '' && ctype_alpha($paramField[0]) && strpbrk($paramField, '.[]') === false) {
+                return "' + ({$procRef}.dart_params[paramIdx].{$paramField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'global.') === 0) {
+            $globalField = substr($variable, 7);
+            if ($globalField !== '' && ctype_alpha($globalField[0]) && strpbrk($globalField, '.[]') === false) {
+                return "' + (gtree[0].project[0].globals[i].{$globalField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'struct.') === 0) {
+            $structField = substr($variable, 7);
+            if ($structField !== '' && ctype_alpha($structField[0]) && strpbrk($structField, '.[]') === false) {
+                return "' + (gtree[0].project[0].structs[structIdx].{$structField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'structfield.') === 0) {
+            $structFieldField = substr($variable, 12);
+            if ($structFieldField !== '' && ctype_alpha($structFieldField[0]) && strpbrk($structFieldField, '.[]') === false) {
+                return "' + (gtree[0].project[0].structs[structIdx].fields[fieldIdx].{$structFieldField} ?? '') + '";
+            }
+        }
+        if (strpos($variable, 'constant.') === 0) {
+            $constantField = substr($variable, 9);
+            if ($constantField !== '' && ctype_alpha($constantField[0]) && strpbrk($constantField, '.[]') === false) {
+                return "' + (gtree[0].project[0].constants[i].{$constantField} ?? '') + '";
+            }
+        }
+
         // 🎯 MIGRATION TABLE VARIABLES (for {for {nmaxmigration_tables}} loops)
         $migrationTableMappings = [
             'migration.action' => "gtree[0].project[0].migration.tables[migIdx].action",
@@ -3035,6 +3616,26 @@ class UltimateTemplateEngine
             'pascalcase' => 'function(str) { return String(str ?? "").split(/[_\\s-]+/).map(function(w) { return w.length > 0 ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : ""; }).join(""); }',
             'kebabcase' => 'function(str) { return String(str ?? "").replace(/([a-z])([A-Z])/g, "$1-$2").replace(/[_\\s]+/g, "-").toLowerCase(); }',
             'strlen' => 'function(str) { return String(str ?? "").length; }',
+            // Escapes a value for safe embedding inside a Dart single-quoted
+            // string literal - needed by any Dart-generating template that
+            // interpolates free-text data (captions, names, ...) directly
+            // into 'literal text' rather than passing it through a variable.
+            // Real-world trigger: a WinDev-imported control caption with an
+            // embedded newline ("Bestellung\nJetzt\nImportieren\n...")
+            // silently produced `Text('Bestellung<REAL NEWLINE>Jetzt...')`,
+            // which is invalid Dart (unterminated string) and cascades into
+            // dozens of unrelated-looking parser errors in the SAME file
+            // after that point. .split(x).join(y) instead of .replace with
+            // a regex, deliberately - no risk of a regex-metacharacter bug
+            // in the search term breaking the very escaper meant to prevent
+            // breakage. Order matters: backslash MUST be escaped first, or
+            // the backslashes just added by escaping quotes/newlines would
+            // themselves get re-escaped. `$` is Dart's string-interpolation
+            // marker, live even inside single-quoted strings - unescaped it
+            // silently turns "5$" into an interpolation attempt.
+            'dartstring' => <<<'JSFUNC'
+function(str) { str = String(str ?? ""); return str.split("\\").join("\\\\").split("'").join("\\'").split("\n").join("\\n").split("\r").join("\\r").split("$").join("\\$"); }
+JSFUNC,
         ];
     }
 

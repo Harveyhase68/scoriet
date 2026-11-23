@@ -8,7 +8,7 @@
     "authcontrollerphp309": "Codice 2FA non valido.",
     "authcontrollerphp371": "Accesso riuscito",
     "authcontrollerphp402": "Indirizzo email non trovato",
-    "authcontrollerphp413": "Collegamento di reimpostazione inviato",
+    "authcontrollerphp413": "Se esiste un account per questo indirizzo e-mail, è stato inviato un link per reimpostare la password.",
     "authcontrollerphp418": "Errore durante l'invio del collegamento di ripristino",
     "authcontrollerphp435": "Errore di convalida",
     "authcontrollerphp453": "Password reimpostata correttamente",
@@ -1610,6 +1610,11 @@
     "editbladephp8": "Modifica pagina",
     "editbladephp22": "Titolo",
     "editbladephp53": "Cancellare",
-    "editbladephp57": "Aggiorna pagina"
-    
+    "editbladephp57": "Aggiorna pagina",
+    "registrationattempt_subject": "Tentativo di registrazione con il tuo indirizzo e-mail",
+    "registrationattempt_greeting": "Ciao :name,",
+    "registrationattempt_line1": "Qualcuno ha appena provato a creare un nuovo account Scoriet con il tuo indirizzo e-mail. Il tuo account esistente non è stato modificato.",
+    "registrationattempt_line2": "Se sei stato tu: hai già un account, accedi semplicemente. Se hai dimenticato la password, usa \"Password dimenticata\" nella finestra di accesso.",
+    "registrationattempt_action": "Vai a Scoriet",
+    "registrationattempt_line3": "Se non sei stato tu, puoi ignorare questa e-mail."
 }

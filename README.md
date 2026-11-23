@@ -36,13 +36,13 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Theme System**: Dark/Light mode with dynamic color switching via `useTheme()` hook
 - ✅ **Modern UI/UX**: Professional theme-aware interface with dockable panels
 - ✅ **Authentication System**: Complete OAuth2 login, registration, profiles
-- ✅ **2FA with TOTP Authenticator App**: User optional activated 2FA authtetifiaction with an authenticator app
+- ✅ **2FA with TOTP Authenticator App**: User optional activated 2FA authentication with an authenticator app
 - ✅ **Internationalization (i18n)**: 5 languages with automatic browser detection
 - ✅ **CSS Flag Icons**: Beautiful country flags using pure CSS gradients
 - ✅ **Language Selector**: Elegant dropdown with flag icons and smooth UX
 - ✅ **Demo System**: Instant demo access with `demo-admin` and `demo-user`
 - ✅ **Professional Landing Page**: Marketing site with pricing tiers
-- ✅ **CMS System**: Inertia-based CMS pages (Impressum, Help) with React components
+- ✅ **CMS System**: Inertia-based CMS pages (Imprint, Help) with React components
 - ✅ **Maintenance Mode**: Professional 503 page for updates
 - ✅ **Responsive Design**: Works on desktop, tablet, and mobile
 - ✅ **Environment-based Features**: Demo vs. Production mode
@@ -58,7 +58,7 @@ Scoriet is a modern enterprise code generator that revolutionizes development wo
 - ✅ **Per-Table/Field Generation State**: Two orthogonal ENUMs on every schema table and field — `display_state` (enabled, disabled, grayed, invisible, excluded) passes visual metadata into the gtree, and `generation_mode` (full, code_only, template_only, reference_only, excluded) controls which parts of the code-generator iterate a given table or field. Typical use: keep ASP.NET Identity `Users`/`Tenants` in the schema for FK resolution but exclude them from generated Controllers/Models/Forms.
 - ✅ **Resizable Table Modal**: The Database Designer's table editor (`TableModal`) now opens as a draggable, resizable, and maximizable dialog with two tabs — **Table Settings** (name, file key, generation state, FormSet/ReportPattern overrides) and **Fields** (per-field editor including the same state combos). No more cramped layouts when editing large tables.
 - ✅ **Per-Row Audit & Versioning**: Every `schema_tables` and `schema_fields` row now carries `version`, `created_at`, `created_by_username`, `updated_at`, `updated_by_username`. Field edits bump the field version; structural table edits (rename, settings) and field add/remove bump the table version. Pure field-content edits do **not** bump the table version — the two counters are independent so you can tell at a glance "what changed where". Surfaced in the Table Modal via the new `AuditInfoBlock` card in both Settings and Fields tabs.
-- ✅ **JSON Metadata in SQL COMMENT (Round-Trip Safe)**: The MySQL/PostgreSQL exporter now serialises Scoriet-only metadata (audit, version, lookup config, display/generation state, edit mask, FormSet/ReportPattern by **name**) as a compact JSON object **inside the SQL COMMENT clause** itself. On re-import the JSON is parsed back out, the keys are restored to their proper columns, and only the human-readable `comment` ends up in the comment column. Legacy SQL without the marker is recognised and falls through with sensible defaults — nothing breaks for foreign dumps. Field comments stay under MySQL's 1024-byte cap via graceful comment truncation; lookup/audit/version keys are sacred. **Effect: an SQL export is now a true backup vector — drop the schema, re-import the SQL, lookup combos / audit history / formset assignments all come back exactly as they were.**
+- ✅ **JSON Metadata in SQL COMMENT (Round-Trip Safe)**: The MySQL/PostgreSQL exporter now serialises Scoriet-only metadata (audit, version, lookup config, display/generation state, edit mask, FormSet/ReportPattern by **name**) as a compact JSON object **inside the SQL COMMENT clause** itself. On re-import the JSON is parsed back out, the keys are restored to their proper columns, and only the human-readable `comment` ends up in the comment column. Legacy SQL without the marker is recognized and falls through with sensible defaults — nothing breaks for foreign dumps. Field comments stay under MySQL's 1024-byte cap via graceful comment truncation; lookup/audit/version keys are sacred. **Effect: an SQL export is now a true backup vector — drop the schema, re-import the SQL, lookup combos / audit history / formset assignments all come back exactly as they were.**
 - ✅ **Control Types Expanded (11 → 42)**: The control-type catalogue went from 11 to 42 entries grouped into 9 categories — text & numeric (`TEXT`, `NUMBER`, `CURRENCY`, `PASSWORD`, `CAPTCHA`, `RATING`, `SLIDER`), multi-line & rich (`TEXTAREA`, `WYSIWYGEDIT`, `MARKDOWN`, `HTML`, `CODEEDITOR`, `JSONEDITOR`), boolean (`CHECKBOX`, `SWITCH`, `RADIOBUTTONS`), selection (`COMBOBOX`, `LISTBOX`, `MULTISELECT`, `TAGSELECT`, `PICKLIST`, `TREEVIEW`), date/time, color & icon pickers, file & media (`FILEUPLOAD`, `SIGNATURE`, `IMAGE`, `VIDEO`, `AUDIO`, `CAMERA`), geo (`LOCATION`, `MAP`), codes (`BARCODE`, `QRCODE`), plus `HIDDEN` and `LABEL`. Lookup-relevant link fields auto-show only for COMBOBOX / LISTBOX / MULTISELECT / TAGSELECT / PICKLIST / TREEVIEW — clean UI for the other 36.
 - ✅ **Schema Translation**: Multi-language support for table and field descriptions
 - ✅ **Excel Translation Import**: Bulk import translations from Excel files
@@ -1206,7 +1206,7 @@ System monitoring and performance tracking:
 
 ### Development Features
 - ⚡ **Hot Reload** - Instant UI updates
-- 🔍 **Debug Toolbar** - Laravel Debugbar (when enabled)
+- 🔍 **Debug Toolbar** - Laravel Debug bar (when enabled)
 - 📝 **Logging** - Real-time logs with `php artisan pail`
 - 🎨 **Live Styling** - Tailwind CSS with JIT compilation
 

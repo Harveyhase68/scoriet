@@ -31,7 +31,7 @@ use App\Http\Controllers\Api\PushSubscriptionController;
 
 // Manual OAuth token route for API with email verification check
 use App\Http\Controllers\CustomTokenController;
-Route::post('/oauth/token', [CustomTokenController::class, 'issueToken'])->name('api.oauth.token');
+Route::post('/oauth/token', [CustomTokenController::class, 'issueToken'])->middleware('throttle:auth-login')->name('api.oauth.token');
 
 // Stripe Webhook (public - called by Stripe servers)
 Route::post('/stripe/webhook', [StripeController::class, 'handleWebhook'])->name('api.stripe.webhook');
@@ -114,35 +114,18 @@ Route::get('/test/observer', function () {
 
 // Authentication Routes (public)
 Route::prefix('auth')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/login-2fa', [AuthController::class, 'loginWith2FA']); // 2FA verification step
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
+    Route::post('/login-2fa', [AuthController::class, 'loginWith2FA'])->middleware('throttle:auth-2fa'); // 2FA verification step
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-password-reset');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-password-reset');
     
     // Email Verification Routes
     Route::post('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('api.verification.verify');
     Route::post('/email/resend', [AuthController::class, 'resendVerificationEmail'])->middleware('auth:api');
     
     // Token validation endpoint for Reset Password Modal
-    Route::post('/validate-reset-token', function (Request $request) {
-        $request->validate([
-            'token' => 'required|string',
-            'email' => 'required|email',
-        ]);
-
-        // Use Laravel's Password Broker to validate the token
-        $status = \Illuminate\Support\Facades\Password::getRepository()->exists(
-            \App\Models\User::where('email', $request->email)->first(),
-            $request->token
-        );
-
-        if ($status) {
-            return response()->json(['valid' => true]);
-        } else {
-            return response()->json(['valid' => false, 'message' => 'This password reset token is invalid.'], 400);
-        }
-    });
+    Route::post('/validate-reset-token', [AuthController::class, 'validateResetToken'])->middleware('throttle:auth-password-reset');
 });
 
 // Public Project Invitation Routes (token-based, no auth required)
@@ -155,32 +138,14 @@ Route::prefix('project-invitations')->name('api.project-invitations.')->group(fu
 // Public Pricing API (no auth required)
 Route::get('/pricing', function () {
     try {
-        $settings = \App\Models\Settings::first();
-
-        if (!$settings) {
-            // Fallback to default prices if no settings exist
-            $prices = [
-                'patron_annual' => 34.90,
-                'patron_monthly' => 49.90,
-                'credits_500' => 9.90,
-                'credits_1000' => 17.90,
-                'credits_2500' => 29.90
-            ];
-        } else {
-            $prices = [
-                'patron_annual' => (float) $settings->price_patron_annual,
-                'patron_monthly' => (float) $settings->price_patron_monthly,
-                'credits_500' => (float) $settings->price_credits_500,
-                'credits_1000' => (float) $settings->price_credits_1000,
-                'credits_2500' => (float) $settings->price_credits_2500
-            ];
-        }
+        // Same source as the server-rendered landing page (App\Support\PricingCatalog).
+        $catalog = \App\Support\PricingCatalog::current();
 
         return response()->json([
             'success' => true,
-            'prices' => $prices,
-            'currency' => 'EUR',
-            'updated_at' => $settings ? $settings->updated_at : now()
+            'prices' => $catalog['prices'],
+            'currency' => $catalog['currency'],
+            'updated_at' => $catalog['updated_at'],
         ]);
     } catch (\Exception $e) {
         return response()->json([
@@ -1612,6 +1577,64 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/report-patterns/{patternId}/images', [\App\Http\Controllers\Api\ReportImageController::class, 'upload']);
     Route::get('/report-images/{id}', [\App\Http\Controllers\Api\ReportImageController::class, 'show']);
     Route::delete('/report-images/{id}', [\App\Http\Controllers\Api\ReportImageController::class, 'destroy']);
+
+    // ===== WINDOW DESIGNER (free, project-scoped windows — independent of FormSets) =====
+    // Access gated by the shared /form-designer/access credit check above.
+    Route::get('/projects/{projectId}/window-categories', [\App\Http\Controllers\Api\WindowDesignerController::class, 'categories']);
+    Route::post('/window-categories', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeCategory']);
+    Route::put('/window-categories/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateCategory']);
+    Route::delete('/window-categories/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'destroyCategory']);
+
+    Route::get('/projects/{projectId}/windows', [\App\Http\Controllers\Api\WindowDesignerController::class, 'windows']);
+    Route::post('/projects/{projectId}/windows/import-windev', [\App\Http\Controllers\Api\WindowDesignerController::class, 'importWindev']);
+    Route::post('/projects/{projectId}/windows/import-sml', [\App\Http\Controllers\Api\WindowDesignerController::class, 'importSml']);
+    Route::post('/windows', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeWindow']);
+    Route::get('/windows/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'showWindow']);
+    Route::put('/windows/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateWindow']);
+    Route::put('/windows/{id}/set-first-window', [\App\Http\Controllers\Api\WindowDesignerController::class, 'setFirstWindow']);
+    Route::delete('/windows/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'destroyWindow']);
+
+    Route::get('/windows/{id}/elements', [\App\Http\Controllers\Api\WindowDesignerController::class, 'elements']);
+    Route::post('/windows/{id}/elements', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeElement']);
+    Route::put('/windows/{id}/elements', [\App\Http\Controllers\Api\WindowDesignerController::class, 'saveElements']);
+    Route::delete('/window-elements/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteElement']);
+
+    Route::get('/windows/{id}/controls', [\App\Http\Controllers\Api\WindowDesignerController::class, 'controls']);
+    Route::put('/windows/{id}/controls', [\App\Http\Controllers\Api\WindowDesignerController::class, 'saveControls']);
+    Route::delete('/window-controls/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteControl']);
+
+    Route::get('/windows/{id}/menus', [\App\Http\Controllers\Api\WindowDesignerController::class, 'menus']);
+    Route::post('/windows/{id}/menus', [\App\Http\Controllers\Api\WindowDesignerController::class, 'createMenu']);
+    Route::put('/window-menus/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateMenu']);
+    Route::delete('/window-menus/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteMenu']);
+
+    Route::get('/windows/{id}/events', [\App\Http\Controllers\Api\WindowDesignerController::class, 'events']);
+    Route::put('/windows/{id}/events', [\App\Http\Controllers\Api\WindowDesignerController::class, 'saveEvent']);
+    Route::delete('/window-events/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteEvent']);
+
+    Route::get('/procedures', [\App\Http\Controllers\Api\WindowDesignerController::class, 'procedures']);
+    Route::post('/procedures', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeProcedure']);
+    Route::put('/procedures/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateProcedure']);
+    Route::delete('/procedures/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteProcedure']);
+
+    Route::get('/project-globals', [\App\Http\Controllers\Api\WindowDesignerController::class, 'projectGlobals']);
+    Route::post('/project-globals', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeProjectGlobal']);
+    Route::put('/project-globals/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateProjectGlobal']);
+    Route::delete('/project-globals/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteProjectGlobal']);
+
+    Route::get('/project-events', [\App\Http\Controllers\Api\WindowDesignerController::class, 'projectEvents']);
+    Route::put('/project-events', [\App\Http\Controllers\Api\WindowDesignerController::class, 'saveProjectEvent']);
+    Route::delete('/project-events/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteProjectEvent']);
+
+    Route::get('/project-structs', [\App\Http\Controllers\Api\WindowDesignerController::class, 'projectStructs']);
+    Route::post('/project-structs', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeProjectStruct']);
+    Route::put('/project-structs/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateProjectStruct']);
+    Route::delete('/project-structs/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteProjectStruct']);
+
+    Route::get('/project-constants', [\App\Http\Controllers\Api\WindowDesignerController::class, 'projectConstants']);
+    Route::post('/project-constants', [\App\Http\Controllers\Api\WindowDesignerController::class, 'storeProjectConstant']);
+    Route::put('/project-constants/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'updateProjectConstant']);
+    Route::delete('/project-constants/{id}', [\App\Http\Controllers\Api\WindowDesignerController::class, 'deleteProjectConstant']);
 });
 
 // Report Image serving (public — no auth required for <img src="..."> tags)
