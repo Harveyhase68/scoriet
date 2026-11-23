@@ -422,6 +422,8 @@ class ProjectController extends Controller
                     'project_url'           => $project->project_url,
                     'start_page'            => $project->start_page,
                     'filename_short_length' => $project->filename_short_length,
+                    'programming_language'  => $project->programming_language,
+                    'target_framework'      => $project->target_framework,
                 ],
                 'database' => [
                     'database_name'     => $project->database_name,

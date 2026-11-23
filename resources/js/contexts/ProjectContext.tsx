@@ -31,6 +31,8 @@ interface Project {
   can_join?: boolean;
   default_language?: string;
   target_language?: string;
+  programming_language?: string;
+  target_framework?: string;
   enabled_languages?: string[];
   // Subscription / Lock status
   is_soft_locked?: boolean;

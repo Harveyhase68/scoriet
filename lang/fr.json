@@ -8,7 +8,7 @@
     "authcontrollerphp309": "Code 2FA invalide.",
     "authcontrollerphp371": "Connexion réussie",
     "authcontrollerphp402": "Adresse e-mail introuvable",
-    "authcontrollerphp413": "Lien de réinitialisation envoyé",
+    "authcontrollerphp413": "Si un compte existe pour cette adresse e-mail, un lien de réinitialisation du mot de passe a été envoyé.",
     "authcontrollerphp418": "Erreur lors de l'envoi du lien de réinitialisation",
     "authcontrollerphp435": "Erreur de validation",
     "authcontrollerphp453": "Mot de passe réinitialisé avec succès",
@@ -1610,6 +1610,11 @@
     "editbladephp8": "Modifier la page",
     "editbladephp22": "Titre",
     "editbladephp53": "Annuler",
-    "editbladephp57": "Page de mise à jour"
-    
+    "editbladephp57": "Page de mise à jour",
+    "registrationattempt_subject": "Tentative d'inscription avec votre adresse e-mail",
+    "registrationattempt_greeting": "Bonjour :name,",
+    "registrationattempt_line1": "Quelqu'un vient d'essayer de créer un nouveau compte Scoriet avec votre adresse e-mail. Votre compte existant n'a pas été modifié.",
+    "registrationattempt_line2": "Si c'était vous : vous avez déjà un compte - connectez-vous simplement. Si vous avez oublié votre mot de passe, utilisez « Mot de passe oublié » dans la fenêtre de connexion.",
+    "registrationattempt_action": "Aller sur Scoriet",
+    "registrationattempt_line3": "Si ce n'était pas vous, vous pouvez ignorer cet e-mail."
 }

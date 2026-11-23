@@ -44,6 +44,8 @@ class Project extends Model
         'start_page',
         'default_language',
         'target_language',
+        'programming_language',
+        'target_framework',
         'archive_format',
         'filename_short_length',
         'enabled_languages',

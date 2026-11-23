@@ -221,6 +221,8 @@ class ProjectController extends Controller
             'start_page' => 'nullable|string|max:255',
             'default_language' => 'nullable|string|max:10',
             'target_language' => 'nullable|string|max:30',
+            'programming_language' => 'nullable|string|max:30',
+            'target_framework' => 'nullable|string|max:30',
             'archive_format' => 'nullable|string|in:zip,tar.gz,tar.xz',
             'filename_short_length' => 'nullable|integer|min:2|max:5',
             // API Keys
@@ -372,6 +374,8 @@ class ProjectController extends Controller
                 'start_page',
                 'default_language',
                 'target_language',
+                'programming_language',
+                'target_framework',
                 'archive_format',
                 'filename_short_length',
                 'enabled_languages',
@@ -500,6 +504,8 @@ class ProjectController extends Controller
             'start_page' => 'nullable|string|max:255',
             'default_language' => 'nullable|string|max:10',
             'target_language' => 'nullable|string|max:30',
+            'programming_language' => 'nullable|string|max:30',
+            'target_framework' => 'nullable|string|max:30',
             'archive_format' => 'nullable|string|in:zip,tar.gz,tar.xz',
             'filename_short_length' => 'nullable|integer|min:2|max:5',
             // API Keys

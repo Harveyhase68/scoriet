@@ -18,6 +18,45 @@ import { DeploymentScriptsEditor, ScriptStep } from '@/Components/DeploymentScri
 import { useTheme } from '@/contexts/ThemeContext';
 import { apiClient } from '@/lib/api';
 
+// The pure programming language a project targets — kept separate from
+// `target_framework` (Flutter, Spring Boot, WinDev, ...) so the two lists
+// don't mix languages and frameworks together (that read as inconsistent:
+// "C++" and "React" side by side in one dropdown). Also independent of
+// `target_language` (an unrelated, pre-existing field that only picks the
+// input-mask JS library dialect for the schema/form field editor).
+// Alphabetically sorted.
+const PROGRAMMING_LANGUAGE_OPTIONS = [
+    { label: 'C', value: 'c' },
+    { label: 'C#', value: 'csharp' },
+    { label: 'C++', value: 'cpp' },
+    { label: 'Dart', value: 'dart' },
+    { label: 'Go', value: 'go' },
+    { label: 'Java', value: 'java' },
+    { label: 'JavaScript', value: 'javascript' },
+    { label: 'Kotlin', value: 'kotlin' },
+    { label: 'Lua', value: 'lua' },
+    { label: 'Python', value: 'python' },
+    { label: 'Ruby', value: 'ruby' },
+    { label: 'Rust', value: 'rust' },
+    { label: 'Swift', value: 'swift' },
+    { label: 'TypeScript', value: 'typescript' },
+];
+
+// The framework/stack a project generates code for — see comment above.
+const TARGET_FRAMEWORK_OPTIONS = [
+    { label: 'Delphi', value: 'delphi' },
+    { label: 'Flutter', value: 'flutter' },
+    { label: 'Node.js', value: 'nodejs' },
+    { label: 'PHP + Angular', value: 'php_angular' },
+    { label: 'PHP + React', value: 'php_react' },
+    { label: 'PHP + Vue', value: 'php_vue' },
+    { label: 'React Native', value: 'react_native' },
+    { label: 'Spring Boot (Java)', value: 'spring_boot_java' },
+    { label: 'WebDev', value: 'webdev' },
+    { label: 'WinDev', value: 'windev' },
+    { label: 'WinDev Mobile', value: 'windev_mobile' },
+];
+
 interface Language {
     code: string;
     name: string;
@@ -231,6 +270,8 @@ export default function ProjectSettingsPanel() {
         start_page: 'index.php',
         default_language: 'en',
         target_language: 'html',
+        programming_language: '',
+        target_framework: '',
         archive_format: 'zip',
         filename_short_length: 2,
         // API Keys
@@ -361,6 +402,8 @@ export default function ProjectSettingsPanel() {
                     start_page: project.start_page || 'index.php',
                     default_language: project.default_language || 'en',
                     target_language: project.target_language || 'html',
+                    programming_language: project.programming_language || '',
+                    target_framework: project.target_framework || '',
                     archive_format: project.archive_format || 'zip',
                     filename_short_length: Number(project.filename_short_length) || 2,
                     google_translate_api_key: project.google_translate_api_key || ''
@@ -798,6 +841,8 @@ export default function ProjectSettingsPanel() {
         // Tab 5 — Languages (default_language lives here)
         default_language: 5,
         target_language: 5,
+        programming_language: 5,
+        target_framework: 5,
         // Tab 7 — Code
         project_directory: 7,
         project_url: 7,
@@ -1358,30 +1403,48 @@ export default function ProjectSettingsPanel() {
                                     </div>
                                 </div>
 
+                                {/* The old "Target Programming Language" dropdown (target_language) is
+                                    intentionally no longer shown here — it reads as a confusing third,
+                                    redundant-looking language field next to Programming Language /
+                                    Target Framework below, even though it's actually a separate,
+                                    unrelated concept (the edit-mask JS dialect used by the schema/form
+                                    field editor, see TableModal.tsx). The column and its default value
+                                    ('html' unless already changed) are left untouched so that feature
+                                    keeps working — it's just no longer user-editable from this screen. */}
+
                                 <div>
                                     <label className="block text-sm font-medium mb-2 theme-text-secondary">
-                                        Target Programming Language
+                                        {t.projectsettingspanel_programming_language || 'Programming Language'}
                                     </label>
                                     <Dropdown
-                                        value={formData.target_language || 'html'}
-                                        onChange={(e) => setFormData({ ...formData, target_language: e.value })}
-                                        options={[
-                                            { label: 'HTML (pattern attribute)', value: 'html' },
-                                            { label: 'React / PrimeReact InputMask', value: 'react_primereact' },
-                                            { label: 'React / react-imask', value: 'react_imask' },
-                                            { label: 'Vue.js / Maska', value: 'vue_maska' },
-                                            { label: 'Vue.js / PrimeVue InputMask', value: 'vue_primevue' },
-                                            { label: 'Vue.js / Vuetify', value: 'vue_vuetify' },
-                                            { label: 'Vue.js / Quasar', value: 'vue_quasar' },
-                                            { label: 'Angular / ngx-mask', value: 'angular_ngxmask' },
-                                            { label: 'Angular / imaskjs', value: 'angular_imask' },
-                                            { label: 'jQuery Mask Plugin', value: 'jquery_mask' },
-                                            { label: 'Vanilla JavaScript', value: 'vanilla_js' },
-                                        ]}
+                                        value={formData.programming_language || ''}
+                                        onChange={(e) => setFormData({ ...formData, programming_language: e.value })}
+                                        options={PROGRAMMING_LANGUAGE_OPTIONS}
+                                        placeholder={t.projectsettingspanel_programming_language_placeholder || 'Not set'}
+                                        showClear
+                                        filter
                                         className="w-full"
                                     />
                                     <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                                        Defines the edit mask syntax for input fields in the database schema editor.
+                                        {t.projectsettingspanel_programming_language_hint || 'The language this project generates code in.'}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-2 theme-text-secondary">
+                                        {t.projectsettingspanel_target_framework || 'Target Framework'}
+                                    </label>
+                                    <Dropdown
+                                        value={formData.target_framework || ''}
+                                        onChange={(e) => setFormData({ ...formData, target_framework: e.value })}
+                                        options={TARGET_FRAMEWORK_OPTIONS}
+                                        placeholder={t.projectsettingspanel_target_framework_placeholder || 'Not set'}
+                                        showClear
+                                        filter
+                                        className="w-full"
+                                    />
+                                    <div className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                                        {t.projectsettingspanel_target_framework_hint || 'The stack this project generates code for — independent of the templates currently selected.'}
                                     </div>
                                 </div>
 

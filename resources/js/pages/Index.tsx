@@ -87,6 +87,10 @@ const FormLayoutDesignerPanel = lazy(() => import('@/Components/Panels/FormLayou
 const ReportManagementPanel = lazy(() => import('@/Components/Panels/ReportManagementPanel'));
 const ReportPatternDesignerPanel = lazy(() => import('@/Components/Panels/ReportPatternDesignerPanel'));
 const ReportLayoutDesignerPanel = lazy(() => import('@/Components/Panels/ReportLayoutDesignerPanel'));
+const WindowDesignerPanel = lazy(() => import('@/Components/Panels/WindowDesignerPanel'));
+// Type-only import - erased at compile time, so it doesn't defeat the
+// lazy()/code-splitting above the way a real value import would.
+import type { WindowDesignerPanelHandle } from '@/Components/Panels/WindowDesignerPanel';
 const CodeAdjustmentsPanel = lazy(() => import('@/Components/Panels/CodeAdjustmentsPanel'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 
@@ -275,6 +279,12 @@ const loadTab = (
   handleOpenDesigner?: (schemaId: number) => void,
   openPanelFn?: (panelId: string, data?: any) => void,
   updateTitleCallback?: (newTitle: string) => void,
+  // Registers/unregisters the mounted WindowDesignerPanel instance for
+  // THIS tab id (2026-09-07, item c) - loadTab is a module-level function
+  // (outside the component), so it has no access to the component's own
+  // windowDesignerRefs Map directly; both real call sites close over it
+  // and pass it in instead.
+  registerWindowDesignerRef?: (id: string, handle: WindowDesignerPanelHandle | null) => void,
 ) => {
   const { id } = data;
 
@@ -1168,6 +1178,23 @@ const loadTab = (
         group: 'card custom'
       };
 
+    case 'window-designer':
+      return {
+        id,
+        title: data.title || t.tab_window_designer || 'Window Designer',
+        content: (
+          <Suspense fallback={<PanelLoader />}>
+            <WindowDesignerPanel
+              ref={(handle: WindowDesignerPanelHandle | null) => registerWindowDesignerRef?.(id, handle)}
+              windowId={data.windowId as number | undefined}
+              onOpenPanel={openPanelFn}
+            />
+          </Suspense>
+        ),
+        closable: true,
+        group: 'card custom'
+      };
+
     case 'register':
     case 'profile':
     case 'forgot':
@@ -1363,6 +1390,21 @@ export default function Index(props: IndexProps = {}) {
   
   // Project context
   const { projects, selectedProject, setSelectedProject } = useProject();
+
+  // Window Designer instances currently mounted, keyed by their own rc-dock
+  // tab id (2026-09-07, item c) - there's only ever one such tab at a time
+  // in practice, but keying by tab id (rather than a single ref) costs
+  // nothing and stays correct if that ever changes. Populated/cleared by
+  // the ref callback on the 'window-designer' case below; consulted by
+  // onLayoutChange when a tab is about to be removed, so an unsaved-
+  // changes prompt can veto/defer that removal - see its own doc comment
+  // for how rc-dock's OWN controlled-layout contract makes that possible
+  // (already precedented here by the 'protect1' tab below).
+  const windowDesignerRefs = useRef(new Map<string, WindowDesignerPanelHandle>()).current;
+  const registerWindowDesignerRef = useCallback((id: string, handle: WindowDesignerPanelHandle | null) => {
+    if (handle) windowDesignerRefs.set(id, handle);
+    else windowDesignerRefs.delete(id);
+  }, [windowDesignerRefs]);
 
   // Initialize layout from localStorage or use default
   const [layout, setLayout] = useState(() => {
@@ -2287,7 +2329,7 @@ export default function Index(props: IndexProps = {}) {
           updateTabTitle(ref, setLayout, uniqueTabId, newTitle);
         };
 
-        const newTab = loadTab({ id: uniqueTabId, ...data }, t, handleOpenDesigner, openPanel, updateTitleCallback);
+        const newTab = loadTab({ id: uniqueTabId, ...data }, t, handleOpenDesigner, openPanel, updateTitleCallback, registerWindowDesignerRef);
 
         if (newTab) {
           const currentLayout = ref.current.saveLayout();
@@ -2686,10 +2728,27 @@ useHotkeys('alt+m', () => {
   const onLayoutChange = useCallback((newLayout: any, currentTabId?: string, direction?: string) => {
     if (currentTabId === 'protect1' && direction === 'remove') {
       alert(t.index2519);
-    } else {
-      updateLayout(newLayout);
+      return;
     }
-  }, [updateLayout]);
+    // A Window Designer tab being closed with unsaved changes (2026-09-07,
+    // item c) - same veto mechanism as the 'protect1' case above: skipping
+    // updateLayout() here leaves rc-dock's OWN layout prop unchanged, which
+    // (per its own controlled-layout contract - see DockLayout.changeLayout's
+    // "either updated or reverted back" comment) makes it revert the tab
+    // removal on its next render instead of actually closing it. Once the
+    // user answers the panel's own Save/Cancel/Discard prompt, its
+    // `requestClose` callback applies the SAME newLayout that was deferred
+    // here, so the removal completes exactly as originally requested,
+    // just after the prompt instead of before it.
+    if (direction === 'remove' && currentTabId) {
+      const handle = windowDesignerRefs.get(currentTabId);
+      if (handle && handle.hasUnsavedChanges()) {
+        handle.requestClose(() => updateLayout(newLayout));
+        return;
+      }
+    }
+    updateLayout(newLayout);
+  }, [updateLayout, windowDesignerRefs, t]);
 
   // Resize handler for the left panel
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -2827,7 +2886,7 @@ useHotkeys('alt+m', () => {
                   ref={ref}
                   layout={layout as any}
                   onLayoutChange={onLayoutChange}
-                  loadTab={(data: any) => loadTab({ ...(panelOpenDataRef.current[data?.id] || {}), ...data }, t, handleOpenDesigner, openPanel, undefined)}
+                  loadTab={(data: any) => loadTab({ ...(panelOpenDataRef.current[data?.id] || {}), ...data }, t, handleOpenDesigner, openPanel, undefined, registerWindowDesignerRef)}
                   groups={groups}
                   style={{
                     position: 'absolute',

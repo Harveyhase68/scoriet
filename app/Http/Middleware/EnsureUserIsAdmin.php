@@ -12,30 +12,24 @@ class EnsureUserIsAdmin
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Try to authenticate via session first (web guard)
-        $user = auth('web')->user();
-
-        // If not authenticated via session, try API guard (Passport)
-        // This handles Bearer tokens from Authorization header or cookies
-        if (!$user) {
-            // Check if we have a Bearer token in the Authorization header
-            if ($request->bearerToken()) {
-                $user = auth('api')->user();
-            }
-        }
+        // Admin access is granted ONLY through a Passport Bearer token. Tokens
+        // are issued exclusively by /api/auth/* and /api/oauth/token, which
+        // enforce email verification and 2FA. The web (session) guard is
+        // deliberately not consulted: a session is not proof of 2FA.
+        $user = $request->bearerToken() ? auth('api')->user() : null;
 
         // Check if user is authenticated
-        if (!$user) {
+        if (! $user) {
             Log::warning(__('ensureuserisadminphp33'));
 
             // For API or Inertia requests, return JSON error
             if ($request->expectsJson() || $request->header('X-Inertia')) {
                 return response()->json([
-                    'message' => __('ensureuserisadminphp38')
+                    'message' => __('ensureuserisadminphp38'),
                 ], 401);
             }
 
@@ -46,7 +40,7 @@ class EnsureUserIsAdmin
         // Check if user is admin or system user
         $isSystemAdmin = $user->user_type === 'system';
 
-        if (!$isSystemAdmin) {
+        if (! $isSystemAdmin) {
             Log::warning(__('ensureuserisadminphp50'), [
                 'user_id' => $user->id,
                 'user_type' => $user->user_type,
@@ -55,7 +49,7 @@ class EnsureUserIsAdmin
             // For API or Inertia requests, return JSON error
             if ($request->expectsJson() || $request->header('X-Inertia')) {
                 return response()->json([
-                    'message' => __('ensureuserisadminphp58')
+                    'message' => __('ensureuserisadminphp58'),
                 ], 403);
             }
 

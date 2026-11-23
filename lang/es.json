@@ -8,7 +8,7 @@
     "authcontrollerphp309": "Código 2FA no válido.",
     "authcontrollerphp371": "Inicio de sesión exitoso",
     "authcontrollerphp402": "Dirección de correo electrónico no encontrada",
-    "authcontrollerphp413": "Enlace de restablecimiento enviado",
+    "authcontrollerphp413": "Si existe una cuenta para esta dirección de correo electrónico, se ha enviado un enlace para restablecer la contraseña.",
     "authcontrollerphp418": "Error al enviar el enlace de restablecimiento",
     "authcontrollerphp435": "Error de validación",
     "authcontrollerphp453": "Contraseña restablecida exitosamente",
@@ -1610,6 +1610,11 @@
     "editbladephp8": "Editar página",
     "editbladephp22": "Título",
     "editbladephp53": "Cancelar",
-    "editbladephp57": "Actualizar página"
-    
+    "editbladephp57": "Actualizar página",
+    "registrationattempt_subject": "Intento de registro con su dirección de correo electrónico",
+    "registrationattempt_greeting": "Hola :name,",
+    "registrationattempt_line1": "Alguien acaba de intentar crear una nueva cuenta de Scoriet con su dirección de correo electrónico. Su cuenta existente no ha sido modificada.",
+    "registrationattempt_line2": "Si fue usted: ya tiene una cuenta, simplemente inicie sesión. Si olvidó su contraseña, use \"Olvidé mi contraseña\" en el diálogo de inicio de sesión.",
+    "registrationattempt_action": "Ir a Scoriet",
+    "registrationattempt_line3": "Si no fue usted, puede ignorar este correo electrónico."
 }

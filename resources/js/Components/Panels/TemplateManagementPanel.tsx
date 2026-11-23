@@ -210,7 +210,9 @@ const TemplateManagementPanel: React.FC<TemplateManagementPanelProps> = ({ filte
         { label: t.templatemanagementpanel200, value: 'project_file', description: t.templatemanagementpanel117 },
         { label: t.templatemanagementpanel118, value: 'db_table_file', description: t.templatemanagementpanel201 },
         { label: t.templatemanagementpanel204, value: 'project_file_languages', description: t.templatemanagementpanel119 },
-        { label: t.templatemanagementpanel203, value: 'db_table_file_languages', description: t.templatemanagementpanel120 }
+        { label: t.templatemanagementpanel203, value: 'db_table_file_languages', description: t.templatemanagementpanel120 },
+        { label: t.templatemanagementpanel_window_file || 'Window File', value: 'window_file', description: t.templatemanagementpanel_window_file_description || 'File per Window Designer window' },
+        { label: t.templatemanagementpanel_window_file_languages || 'Window File (Languages)', value: 'window_file_languages', description: t.templatemanagementpanel_window_file_languages_description || 'File per Window Designer window with language support' }
     ];
 
     useEffect(() => {

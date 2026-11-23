@@ -3,11 +3,15 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// Landing Page (Public)
-Route::get('/', function () {
-    // Frontend handles auth state via JavaScript and localStorage
-    return Inertia::render('LandingPage');
-})->name('landing');
+// Public marketing site — server-rendered Blade (crawlable without JavaScript).
+// "/" is the English home page; the other languages live at "/{locale}".
+// See App\Http\Controllers\PublicSiteController for the architecture.
+Route::get('/', [App\Http\Controllers\PublicSiteController::class, 'home'])->name('landing');
+// English has no "/en" home: one URL per language, the default lives at "/".
+Route::permanentRedirect('/en', '/');
+Route::get('/{locale}', [App\Http\Controllers\PublicSiteController::class, 'localizedHome'])
+    ->where('locale', App\Support\Seo\PublicLocales::nonDefaultRoutePattern())
+    ->name('landing.localized');
 
 // Public sitemap (dynamic, generated from DB) — referenced by public/robots.txt
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
@@ -103,7 +107,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 */
 
-require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 
 // Admin routes for CMS (protected - only system administrators)
@@ -171,21 +174,21 @@ Route::middleware(['web', 'admin'])->group(function () {
 
 // Localized CMS pages using Inertia (must be before generic route)
 Route::get('/{locale}/help', [App\Http\Controllers\PageController::class, 'help'])
-    ->where('locale', 'en|de|fr|es|it')
+    ->where('locale', App\Support\Seo\PublicLocales::routePattern())
     ->name('pages.help');
 
 Route::get('/{locale}/impressum', [App\Http\Controllers\PageController::class, 'impressum'])
-    ->where('locale', 'en|de|fr|es|it')
+    ->where('locale', App\Support\Seo\PublicLocales::routePattern())
     ->name('pages.impressum');
 
 Route::get('/{locale}/contact', [App\Http\Controllers\PageController::class, 'contact'])
-    ->where('locale', 'en|de|fr|es|it')
+    ->where('locale', App\Support\Seo\PublicLocales::routePattern())
     ->name('pages.contact');
 
 // Localized static pages (only for known locales)
 Route::middleware(['web'])->group(function () {
     Route::get('/{locale}/{slug}', [App\Http\Controllers\PageController::class, 'show'])
-        ->where('locale', 'en|de|fr|es|it') // Only allow known locales
+        ->where('locale', App\Support\Seo\PublicLocales::routePattern()) // Only allow known locales
         ->where('slug', '[a-z-]+')
         ->name('page');
 });

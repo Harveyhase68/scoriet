@@ -14,17 +14,25 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Notifications\NewUserRegistered;
 use Illuminate\Support\Facades\Notification;
+use App\Notifications\RegistrationAttemptForExistingAccount;
+use App\Services\AuthFail2Ban;
 use App\Services\RegistrationValidationService;
+use App\Support\PasswordCheckTiming;
 use GuzzleHttp\Psr7\ServerRequest as PsrServerRequest;
 use GuzzleHttp\Psr7\Response as PsrResponse;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Cache;
 
 class AuthController extends Controller
 {
     protected RegistrationValidationService $registrationValidator;
 
-    public function __construct(RegistrationValidationService $registrationValidator)
+    protected AuthFail2Ban $fail2ban;
+
+    public function __construct(RegistrationValidationService $registrationValidator, AuthFail2Ban $fail2ban)
     {
         $this->registrationValidator = $registrationValidator;
+        $this->fail2ban = $fail2ban;
     }
 
     /**
@@ -35,7 +43,9 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:30|unique:users|regex:/^[a-z0-9_-]+$/',
-            'email' => 'required|string|email|max:255|unique:users',
+            // No unique:users here - an existing email is handled silently
+            // further down (see registrationAcceptedResponse()).
+            'email' => 'required|string|email|max:255',
             'password' => 'required|string|min:8|confirmed',
             'language' => 'nullable|string|in:en,de,fr',
             'invitation_token' => 'nullable|string',
@@ -48,11 +58,7 @@ class AuthController extends Controller
             $friendlyMessage = '';
 
             if ($errors->has('email')) {
-                if (str_contains($errors->first('email'), 'has already been taken')) {
-                    $friendlyMessage = __('authcontrollerphp50');
-                } else {
-                    $friendlyMessage = __('authcontrollerphp52');
-                }
+                $friendlyMessage = __('authcontrollerphp52');
             } elseif ($errors->has('username')) {
                 if (str_contains($errors->first('username'), 'has already been taken')) {
                     $friendlyMessage = __('authcontrollerphp56');
@@ -87,17 +93,7 @@ class AuthController extends Controller
                 'honeypot_value' => $request->math_check,
             ]);
 
-            // Return fake success response
-            return response()->json([
-                'message' => __('authcontrollerphp90'),
-                'user' => [
-                    'id' => 0,
-                    'name' => $request->name,
-                    'email' => $request->email,
-                ],
-                'email_verification_required' => true,
-                'has_pending_invitation' => false,
-            ], 201);
+            return $this->registrationAcceptedResponse();
         }
 
         // Security validation: check for Tor, disposable emails, scoriet in email, MX records
@@ -186,15 +182,43 @@ class AuthController extends Controller
             $pendingInvitationId = $invitation->id;
         }
 
-        $user = User::create([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'language' => $request->language ?? 'en',
-            'pending_project_invitation_id' => $pendingInvitationId,
-            'last_monthly_credits_at' => now(), // Set to now so user doesn't get double credits on first login
-        ]);
+        // Email already registered: answer exactly like a successful
+        // registration, so this endpoint cannot be used to find out which
+        // addresses have an account. The real owner is informed by mail.
+        $existingUser = User::where('email', $request->email)->first();
+        if ($existingUser) {
+            Hash::make($request->password); // same hashing cost as the create path below
+            $this->notifyExistingAccountOwner($existingUser);
+
+            return $this->registrationAcceptedResponse();
+        }
+
+        try {
+            $user = User::create([
+                'name' => $request->name,
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'language' => $request->language ?? 'en',
+                'pending_project_invitation_id' => $pendingInvitationId,
+                'last_monthly_credits_at' => now(), // Set to now so user doesn't get double credits on first login
+            ]);
+        } catch (UniqueConstraintViolationException $e) {
+            // A concurrent request registered the same email or username
+            // between the checks above and the insert.
+            $existingUser = User::where('email', $request->email)->first();
+            if ($existingUser) {
+                $this->notifyExistingAccountOwner($existingUser);
+
+                return $this->registrationAcceptedResponse();
+            }
+
+            return response()->json([
+                'message' => __('authcontrollerphp56'),
+                'errors' => ['username' => [__('authcontrollerphp56')]],
+                'field_errors' => ['username' => [__('authcontrollerphp56')]],
+            ], 422);
+        }
 
         // Mark registration invite as used (if any)
         if ($registrationInvite) {
@@ -213,12 +237,39 @@ class AuthController extends Controller
             \Log::error(__('authcontrollerphp211') . $e->getMessage());
         }
 
+        return $this->registrationAcceptedResponse();
+    }
+
+    /**
+     * The one response for every registration that passed validation: new
+     * account, email already registered, and honeypot hits. It must not
+     * contain anything that differs between these cases (no user id, no
+     * account data) - otherwise it becomes an account-existence oracle.
+     */
+    private function registrationAcceptedResponse()
+    {
         return response()->json([
             'message' => __('authcontrollerphp215'),
-            'user' => $user,
             'email_verification_required' => true,
-            'has_pending_invitation' => $user->hasPendingInvitation()
         ], 201);
+    }
+
+    /**
+     * Tell the owner of an existing account that someone tried to register
+     * with their address. At most one mail per account and hour, so the
+     * silent registration path cannot be abused to mail-bomb a user.
+     */
+    private function notifyExistingAccountOwner(User $user): void
+    {
+        if (! Cache::add('registration-attempt-notified:'.$user->id, true, now()->addHour())) {
+            return;
+        }
+
+        try {
+            $user->notify((new RegistrationAttemptForExistingAccount)->locale($user->language ?: 'en'));
+        } catch (\Exception $e) {
+            \Log::error('Registration attempt notification failed: '.$e->getMessage(), ['user_id' => $user->id]);
+        }
     }
 
     /**
@@ -241,7 +292,19 @@ class AuthController extends Controller
 
         $credentials = $request->only('email', 'password');
 
+        // Silent fail2ban: a banned IP gets the normal failure response
+        // without its credentials being evaluated.
+        if ($this->fail2ban->isBanned($request)) {
+            PasswordCheckTiming::equalize((string) $request->password);
+
+            return response()->json([
+                'message' => __('authcontrollerphp208')
+            ], 401);
+        }
+
         if (!Auth::attempt($credentials)) {
+            $this->fail2ban->recordFailure($request, 'api-login');
+
             return response()->json([
                 'message' => __('authcontrollerphp208')
             ], 401);
@@ -309,6 +372,13 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Silent fail2ban: answer like a wrong code without checking it.
+        if ($this->fail2ban->isBanned($request)) {
+            return response()->json([
+                'message' => __('authcontrollerphp309'),
+            ], 422);
+        }
+
         // Retrieve pending 2FA data
         $pendingData = \Cache::get('2fa_pending_' . $request->two_factor_token);
 
@@ -343,6 +413,8 @@ class AuthController extends Controller
         }
 
         if (!$verified) {
+            $this->fail2ban->recordFailure($request, 'login-2fa');
+
             return response()->json([
                 'message' => __('authcontrollerphp309'),
             ], 422);
@@ -527,30 +599,26 @@ class AuthController extends Controller
      */
     public function forgotPassword(Request $request)
     {
+        // Only the format is validated - whether the address has an account
+        // must not be observable (no exists:users rule).
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'message' => __('authcontrollerphp402'),
+                'message' => __('authcontrollerphp435'),
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
-
-        if ($status === Password::RESET_LINK_SENT) {
-            return response()->json([
-                'message' => __('authcontrollerphp413')
-            ]);
-        }
+        // RESET_LINK_SENT, INVALID_USER (no such account) and RESET_THROTTLED
+        // all get the same neutral answer.
+        Password::sendResetLink($request->only('email'));
 
         return response()->json([
-            'message' => __('authcontrollerphp418')
-        ], 500);
+            'message' => __('authcontrollerphp413')
+        ]);
     }
 
     /**
@@ -571,6 +639,13 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Silent fail2ban: answer like an invalid token without checking it.
+        if ($this->fail2ban->isBanned($request)) {
+            return response()->json([
+                'message' => __('authcontrollerphp458')
+            ], 500);
+        }
+
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
@@ -588,9 +663,37 @@ class AuthController extends Controller
             ]);
         }
 
+        $this->fail2ban->recordFailure($request, 'reset-password');
+
         return response()->json([
             'message' => __('authcontrollerphp458')
         ], 500);
+    }
+
+    /**
+     * Check a password reset token before the reset form is shown.
+     *
+     * Unknown email and invalid/expired token return the same response, so
+     * the endpoint reveals nothing about which addresses have an account.
+     */
+    public function validateResetToken(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+        ]);
+
+        if (! $this->fail2ban->isBanned($request)) {
+            $user = User::where('email', $request->email)->first();
+
+            if ($user && Password::getRepository()->exists($user, $request->token)) {
+                return response()->json(['valid' => true]);
+            }
+
+            $this->fail2ban->recordFailure($request, 'validate-reset-token');
+        }
+
+        return response()->json(['valid' => false, 'message' => 'This password reset token is invalid.'], 400);
     }
 
     /**

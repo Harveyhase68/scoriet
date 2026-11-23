@@ -327,6 +327,31 @@ const formatFieldName = (name: string): string => {
   return name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
+// Fetch per-language captions for one schema field from schema_translations,
+// keyed by `tablename.fieldname` — the same convention the SQL Parser seeds
+// on import and the SchemaTranslationPanel / TableModal already read from
+// (see TableModal.tsx's extractTranslationsToMap). The parser seeds a
+// placeholder row whose translated_text is just the raw field name, so we
+// drop entries that still equal `fieldName` — those aren't real translations
+// and would look worse than the formatFieldName(...) fallback callers use.
+async function fetchFieldCaptionLabels(tableName: string, fieldName: string): Promise<Record<string, string> | null> {
+  try {
+    const data: any = await apiClient.get(`/schema-translations/item/${encodeURIComponent(`${tableName}.${fieldName}`)}`);
+    const translations = data?.translations;
+    if (!translations || typeof translations !== 'object') return null;
+    const map: Record<string, string> = {};
+    Object.entries(translations as Record<string, any>).forEach(([langCode, t]) => {
+      const text = (t as any)?.translated_text;
+      if (typeof text === 'string' && text.trim() && text !== fieldName) {
+        map[langCode] = text;
+      }
+    });
+    return Object.keys(map).length > 0 ? map : null;
+  } catch {
+    return null;
+  }
+}
+
 const WINDOW_TYPE_OPTIONS = [
   { label: 'Main Menu', value: 'main_menu' },
   { label: 'Create/Edit', value: 'create_edit' },
@@ -2705,6 +2730,44 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
       // Save field placements and button placements in parallel
       const currentButtons = buttonPlacementsRef.current;
+      // Buttons have no dedicated reorder control (unlike data_table columns,
+      // which get sort_order from the Move-Left/Right buttons) — the user's
+      // only way to reorder them is dragging in the canvas. So sort_order
+      // must be derived from the canvas position here, top-to-bottom then
+      // left-to-right, or every template that renders buttons in sort_order
+      // (list/form pages across every tech stack) shows them in creation
+      // order instead of the order the user actually arranged.
+      const buttonsByPosition = [...currentButtons].sort((a, b) => {
+        const dy = (a.y_position ?? 0) - (b.y_position ?? 0);
+        return dy !== 0 ? dy : (a.x_position ?? 0) - (b.x_position ?? 0);
+      });
+      const buttonSortOrderByRef = new Map<ButtonPlacementData, number>();
+      buttonsByPosition.forEach((b, idx) => buttonSortOrderByRef.set(b, idx + 1));
+
+      // create_edit windows merge buttons into the fields' tab_order sequence
+      // (buildUltimateProjectData sorts layoutsingles by tab_order first,
+      // z_order only as a tie-breaker) — so unlike sort_order above, we can't
+      // just renumber buttons 1..N: that would collide with the fields'
+      // tab_order range. Instead keep the EXISTING set of tab_order values
+      // assigned to buttons (their reserved slots in the overall sequence)
+      // and just reassign which button gets which slot, by canvas position —
+      // same row-bucketed reading order as the "Tab Order → Auto" tool
+      // (tabOrderAuto above), so a plain drag-reorder doesn't require a
+      // separate manual Tab Order pass. Buttons explicitly excluded from tab
+      // order (-1) are left untouched.
+      const TAB_ORDER_ROW_BUCKET = 20;
+      const tabOrderableButtons = currentButtons.filter((b) => (b.tab_order ?? 0) !== -1);
+      const existingButtonTabOrderSlots = tabOrderableButtons
+        .map((b) => b.tab_order ?? 0)
+        .sort((a, b) => a - b);
+      const buttonsByReadingOrder = [...tabOrderableButtons].sort((a, b) => {
+        const rowA = Math.round((a.y_position ?? 0) / TAB_ORDER_ROW_BUCKET);
+        const rowB = Math.round((b.y_position ?? 0) / TAB_ORDER_ROW_BUCKET);
+        return rowA !== rowB ? rowA - rowB : (a.x_position ?? 0) - (b.x_position ?? 0);
+      });
+      const buttonTabOrderByRef = new Map<ButtonPlacementData, number>();
+      buttonsByReadingOrder.forEach((b, idx) => buttonTabOrderByRef.set(b, existingButtonTabOrderSlots[idx]));
+
       const buttonPayload = currentButtons.map((b, idx) => ({
         id: b.id || undefined,
         form_window_id: currentWindow.id,
@@ -2724,8 +2787,8 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         anchor_bottom: (b as any).anchor_bottom ?? null,
         anchor_width: (b as any).anchor_width ?? null,
         anchor_height: (b as any).anchor_height ?? null,
-        sort_order: idx + 1,
-        tab_order: b.tab_order ?? 0,
+        sort_order: buttonSortOrderByRef.get(b) ?? idx + 1,
+        tab_order: buttonTabOrderByRef.get(b) ?? (b.tab_order ?? 0),
         is_visible: b.is_visible,
       }));
 
@@ -2977,6 +3040,14 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         is_visible: true,
       }));
 
+      // Sync refs FIRST (synchronously) so the buildAllNodes pass triggered
+      // by this render already sees the new geometry — buildAllNodes reads
+      // from the refs, which otherwise only catch up one render later via
+      // their own sync effects, leaving the canvas showing stale positions
+      // until something else (e.g. Save → reload) forces a second rebuild.
+      menuPlacementsRef.current = newMenuItems;
+      placementsRef.current = [];
+      buttonPlacementsRef.current = [];
       setMenuPlacements(newMenuItems);
       setPlacements([]);
       setButtonPlacements([]);
@@ -2992,6 +3063,14 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       // Distribute width evenly, minimum 100px per column
       const colWidth = Math.max(100, Math.floor(containerWidth / Math.max(1, fieldsToPlace.length)));
 
+      // Pull per-language captions from schema_translations (tablename.fieldname
+      // convention) so the columns show real translations instead of the raw
+      // field name. Same source SchemaTranslationPanel/TableModal already use.
+      const dtTableName = tables.find((tbl) => Number(tbl.id) === Number(selectedTableId))?.table_name;
+      const dtCaptionMaps = dtTableName
+        ? await Promise.all(fieldsToPlace.map((f) => fetchFieldCaptionLabels(dtTableName, f.field_name)))
+        : fieldsToPlace.map(() => null);
+
       const newPlacements: FormFieldPlacement[] = fieldsToPlace.map((field, idx) => ({
         id: undefined as any,
         form_window_id: currentWindow!.id,
@@ -3004,12 +3083,15 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         width: colWidth,
         height: 32,
         caption_override: null,
+        caption_labels: dtCaptionMaps[idx],
         control_type: null,
         sort_order: idx,
         is_visible: true,
         schema_field: field,
       }));
 
+      // Sync ref FIRST — see comment on the main_menu branch above.
+      placementsRef.current = newPlacements;
       setPlacements(newPlacements);
 
       // Also auto-place buttons (with FormSet default colors as fallback)
@@ -3044,6 +3126,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         tab_order: el.tab_order ?? 0,
         is_visible: el.is_visible,
       }));
+      buttonPlacementsRef.current = newButtons;
       setButtonPlacements(newButtons);
       setHasUnsavedChanges(true);
       return;
@@ -3124,6 +3207,19 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       return cols > 1 ? Math.floor((usable - (cols - 1) * gapPx) / cols) : usable;
     };
 
+    // Pull per-language captions from schema_translations (tablename.fieldname
+    // convention) up front — same source as the data_table branch above and
+    // SchemaTranslationPanel/TableModal — so Create/Edit fields get real
+    // translations too instead of just the raw field name.
+    const ceTableName = tables.find((tbl) => Number(tbl.id) === Number(selectedTableId))?.table_name;
+    const fieldsForCaptions = currentFields.filter((f) => !f.is_auto_increment && !['created_at', 'updated_at', 'deleted_at'].includes(f.field_name));
+    const ceCaptionMaps = ceTableName
+      ? await Promise.all(fieldsForCaptions.map((f) => fetchFieldCaptionLabels(ceTableName, f.field_name)))
+      : fieldsForCaptions.map(() => null);
+    const fieldCaptionLabelsMap = new Map<number, Record<string, string> | null>(
+      fieldsForCaptions.map((f, idx) => [f.id, ceCaptionMaps[idx]])
+    );
+
     const newPlacements: FormFieldPlacement[] = [];
     let containerIdx = 0;
     let fieldCount = 0;
@@ -3200,6 +3296,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         width: fieldWidth,
         height: fieldHeight,
         caption_override: null,
+        caption_labels: fieldCaptionLabelsMap.get(field.id) ?? null,
         control_type_override: controlType,
         control_type: controlType,
         label_position: designerDefaults.labelPosition,
@@ -3228,6 +3325,13 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         form_element_id: el.id,
         button_type: el.element_type,
         button_label: el.button_label,
+        // Per-language labels live on the template element's custom_style
+        // (set in the Blueprint/Template Editor) — mirrors the data_table
+        // branch above and the backend's seedButtonPlacementsFromTemplate().
+        // Without this, Auto-Place on create_edit/main_menu windows saved
+        // button_labels as null, so any non-default language fell back to
+        // the single English button_label.
+        button_labels: el.custom_style?.button_labels ?? null,
         button_icon: el.effective_icon || el.button_icon,
         button_action: el.button_action,
         button_background_color: el.button_background_color,
@@ -3322,6 +3426,14 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
       });
     }
 
+    // Sync refs FIRST — see comment on the main_menu branch above. Without
+    // this, buildAllNodes' first pass (triggered by this same render) reads
+    // stale positions/heights from placementsRef/buttonPlacementsRef for any
+    // field/button whose key (id or schema_field_id) already existed before
+    // Auto-Place ran, and the canvas only catches up once something else
+    // (e.g. Save → reload) forces a second rebuild.
+    placementsRef.current = newPlacements;
+    buttonPlacementsRef.current = newButtons;
     setPlacements(newPlacements);
     setButtonPlacements(newButtons);
     setHasUnsavedChanges(true); // Mark as unsaved - user must click Save
@@ -3344,7 +3456,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
     setSelectedButtonNodeId(null);
     setLiveGeometry(null);
     toast.current?.show({ severity: 'success', summary: t.formlayoutdesigner_success || 'Success', detail: t.formlayoutdesigner_auto_placed || 'Fields and buttons auto-placed. Click Save to persist.', life: 3000 });
-  }, [currentWindow, selectedTableId, selectedWindowType, currentFields, placements, buttonPlacements, menuPlacements, schemaTables, layoutTabs, t]);
+  }, [currentWindow, selectedTableId, selectedWindowType, currentFields, placements, buttonPlacements, menuPlacements, schemaTables, layoutTabs, designerDefaults, tables, t]);
 
   // ========== DELETE PLACEMENT ==========
 
@@ -3841,7 +3953,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
       {/* ===== SETTINGS DIALOG ===== */}
       <Dialog
-        header="Layout-Designer Einstellungen"
+        header={t.formlayoutdesignerpanel3844}
         visible={showSettingsDialog}
         onHide={() => setShowSettingsDialog(false)}
         style={{ width: 460 }}
@@ -3850,18 +3962,18 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '6px 2px' }}>
           {/* --- Auto-Place Defaults (persisted in localStorage) --- */}
           <div style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Defaults für Auto-Place
+            {t.formlayoutdesignerpanel3853}
           </div>
 
           <div>
             <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
-              Label-Position
+              {t.formlayoutdesignerpanel3858}
             </label>
             <Dropdown
               value={draftSettings.labelPosition}
               options={[
-                { label: 'Über dem Feld (top)', value: 'top' },
-                { label: 'Links vom Feld (left)', value: 'left' },
+                { label: t.formlayoutdesignerpanel3863, value: 'top' },
+                { label: t.formlayoutdesignerpanel3864, value: 'left' },
               ]}
               onChange={(e) => setDraftSettings(prev => ({ ...prev, labelPosition: e.value }))}
               className="w-full"
@@ -3870,7 +3982,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
           <div>
             <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
-              Control-Höhe (px)
+              {t.formlayoutdesignerpanel3873}
             </label>
             <InputNumber
               value={draftSettings.controlHeight}
@@ -3882,7 +3994,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
           <div>
             <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
-              Abstand zwischen Controls (px)
+              {t.formlayoutdesignerpanel3885}
             </label>
             <InputNumber
               value={draftSettings.gap}
@@ -3894,13 +4006,13 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
           {/* --- Window Dimensions (saved to FormWindow) --- */}
           <div style={{ fontSize: 11, fontWeight: 600, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 8 }}>
-            Fenstergröße ({currentWindow?.display_name || ''})
+            {t.formlayoutdesignerpanel3897}({currentWindow?.display_name || ''})
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
-                Breite (px)
+                {t.formlayoutdesignerpanel3903}
               </label>
               <InputNumber
                 value={draftSettings.windowWidth}
@@ -3911,7 +4023,7 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 12, color: colors.textSecondary, display: 'block', marginBottom: 4 }}>
-                Höhe (px)
+                {t.formlayoutdesignerpanel3914}
               </label>
               <InputNumber
                 value={draftSettings.windowHeight}
@@ -3924,13 +4036,13 @@ const FormLayoutDesignerInner: React.FC<FormLayoutDesignerPanelProps> = ({ onOpe
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
             <Button
-              label="Abbrechen"
+              label={t.formlayoutdesignerpanel3927}
               icon="pi pi-times"
               onClick={() => setShowSettingsDialog(false)}
               className="p-button-sm p-button-text"
             />
             <Button
-              label="Übernehmen"
+              label={t.formlayoutdesignerpanel3933}
               icon="pi pi-check"
               onClick={async () => {
                 // Persist auto-place defaults locally

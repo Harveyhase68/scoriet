@@ -1,0 +1,37 @@
+{
+    "template": {
+        "name": "flutter_sml_template",
+        "full_name": "scoriet-system/flutter_sml_template",
+        "compatibility_tag": null,
+        "generation_order": 0,
+        "description": "Flutter navigation skeleton for Scoriet's Window Designer, WITH real business logic generated from SML code-behind: window/control events, local + global procedures, and project globals/structs/constants all translate to real, compiling Dart (see lib/generator/sml_to_dart.js and this template's own README.md). Successor to flutter_windows (kept as the historical, logic-free version).",
+        "category": "Desktop",
+        "language": "Dart",
+        "tags": ["Flutter", "Window Designer", "SML", "Code Generation"],
+        "is_active": true,
+        "protected_files": [],
+        "install_script": [],
+        "update_script": []
+    },
+    "custom_variables": [],
+    "files": [
+        { "file_name": "flutter_project.ini", "output_path": "build/windows/x64/runner/Debug/", "file_type": "project_file", "file_order": 1, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+		{ "file_name": "run.bat", "output_path": "/", "file_type": "static_file", "file_order": 1, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+		{ "file_name": "pubspec.yaml", "output_path": "/", "file_type": "project_file", "file_order": 1, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "main.dart", "output_path": "lib/", "file_type": "project_file", "file_order": 2, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "nav_module.dart", "output_path": "lib/core/", "file_type": "static_file", "file_order": 3, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "control_widgets.dart", "output_path": "lib/core/", "file_type": "static_file", "file_order": 3, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "window_frame.dart", "output_path": "lib/core/", "file_type": "static_file", "file_order": 3, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app_structs.dart", "output_path": "lib/core/", "file_type": "project_file", "file_order": 3, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "app_globals.dart", "output_path": "lib/core/", "file_type": "project_file", "file_order": 3, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "global_procedures.dart", "output_path": "lib/core/", "file_type": "project_file", "file_order": 3, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "window_modules.dart", "output_path": "lib/windows/", "file_type": "project_file", "file_order": 5, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "%1_page.dart", "output_path": "lib/windows/", "file_type": "window_file", "file_order": 10, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "CMakeLists.txt", "output_path": "windows/", "file_type": "project_file", "file_order": 60, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "CMakeLists.txt", "output_path": "windows/runner/", "file_type": "static_file", "file_order": 61, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "main.cpp", "output_path": "windows/runner/", "file_type": "project_file", "file_order": 62, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "Runner.rc", "output_path": "windows/runner/", "file_type": "project_file", "file_order": 63, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": ".gitignore", "output_path": "windows/", "file_type": "static_file", "file_order": 64, "content_type": "text", "zip_filename": null, "is_include_only": false, "inject_target": null, "inject_tag": null },
+        { "file_name": "windows_extra.zip", "output_path": "windows/", "file_type": "static_directory", "file_order": 65, "content_type": "zip", "zip_filename": "windows_extra.zip", "is_include_only": false, "inject_target": null, "inject_tag": null }
+    ]
+}

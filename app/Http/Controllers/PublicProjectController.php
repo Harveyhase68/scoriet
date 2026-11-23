@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Support\Seo\PublicLocales;
+use App\Support\Seo\SeoMeta;
+use App\Support\Seo\StructuredData;
 
 class PublicProjectController extends Controller
 {
@@ -18,7 +19,7 @@ class PublicProjectController extends Controller
         // Find user by username
         $user = User::where('username', $username)->first();
 
-        if (!$user) {
+        if (! $user) {
             abort(404, __('publicprojectcontrollerphp22'));
         }
 
@@ -29,7 +30,7 @@ class PublicProjectController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$project) {
+        if (! $project) {
             abort(404, __('publicprojectcontrollerphp33'));
         }
 
@@ -105,10 +106,57 @@ class PublicProjectController extends Controller
             'attachments' => $attachments,
         ];
 
-        return Inertia::render('PublicProjectPage', [
+        // Server-rendered (Blade) so the project is visible to crawlers without
+        // JavaScript. The URL carries no locale, so the page uses the default
+        // public language; see PublicSiteController for the architecture.
+        $locale = PublicLocales::DEFAULT;
+        app()->setLocale($locale);
+
+        $url = route('public.project', ['username' => $username, 'projectname' => $projectname]);
+        $displayName = $publicProjectData['caption'] ?: $project->name;
+        $description = SeoMeta::summarize($publicProjectData['description'])
+            ?: $displayName.' – a code generation project by @'.$username.' on Scoriet.';
+
+        $seo = new SeoMeta(
+            title: $displayName.' by @'.$username.' – Scoriet',
+            description: $description,
+            canonical: $url,
+            locale: $locale,
+            ogType: 'article',
+            jsonLd: [
+                StructuredData::project([
+                    'url' => $url,
+                    'name' => $displayName,
+                    'description' => $publicProjectData['description'],
+                    'author_name' => $project->owner->name,
+                    'author_username' => $project->owner->username,
+                    'created_at' => optional($project->created_at)->toAtomString(),
+                    'updated_at' => optional($project->updated_at)->toAtomString(),
+                ]),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Scoriet', 'url' => PublicLocales::homeUrl($locale)],
+                    ['name' => $displayName, 'url' => $url],
+                ]),
+            ],
+        );
+
+        return view('public.project', [
+            'locale' => $locale,
+            'seo' => $seo,
             'project' => $publicProjectData,
-            'username' => $username,
-            'projectname' => $projectname,
+            'displayName' => $displayName,
+            'isDemo' => (bool) config('scoriet.demo'),
+            'languageLinks' => [],
+            'islandContext' => [
+                'page' => 'project',
+                'locale' => $locale,
+                // No locale in the URL: modals follow the visitor's stored app language.
+                'uiLanguage' => null,
+                'isDemo' => (bool) config('scoriet.demo'),
+                'openRegister' => false,
+                'inviteToken' => null,
+                'cmsPageId' => null,
+            ],
         ]);
     }
 
@@ -120,7 +168,7 @@ class PublicProjectController extends Controller
         // Find user by username
         $user = User::where('username', $username)->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => __('publicprojectcontrollerphp129')], 404);
         }
 
@@ -131,12 +179,13 @@ class PublicProjectController extends Controller
             ->where('is_active', true)
             ->first();
 
-        if (!$project) {
+        if (! $project) {
             return response()->json(['error' => __('publicprojectcontrollerphp140')], 404);
         }
 
         // Return basic public data
         $project->load('translations');
+
         return response()->json([
             'name' => $project->name,
             'caption' => $project->getTranslatedCaption(),

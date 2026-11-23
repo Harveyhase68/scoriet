@@ -9,6 +9,8 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\User;
+use App\Services\AuthFail2Ban;
+use App\Support\PasswordCheckTiming;
 use Illuminate\Support\Facades\Hash;
 
 class CustomTokenController extends AccessTokenController
@@ -23,9 +25,63 @@ class CustomTokenController extends AccessTokenController
                          && isset($requestData['username']);
 
         if (!$isPasswordGrant) {
+            // TEMPORARY DIAGNOSTIC LOGGING (2026-08-30): tracking down a
+            // report of the web app repeatedly refreshing its access token
+            // every ~6-8 seconds and getting kicked with the (misleading -
+            // see below) "logged in on a different device" message, despite
+            // the user being on a single tab and not logging in anywhere
+            // else. Confirmed via oauth_access_tokens/oauth_refresh_tokens:
+            // a single, unbroken refresh-token lineage (no forking - rules
+            // out a second tab/device racing on a stale refresh token) still
+            // needed a fresh refresh_token grant every 6-8s. Logs enough on
+            // EVERY refresh_token grant to catch the next occurrence with
+            // certainty: who's calling it, how often, and from where.
+            // Remove once root-caused.
+            if (($requestData['grant_type'] ?? null) === 'refresh_token') {
+                try {
+                    $refreshTokenId = $requestData['refresh_token'] ?? null;
+                    \Log::channel('single')->info('🔍 [REFRESH-DIAG] refresh_token grant received', [
+                        'ip' => $psrRequest->getServerParams()['REMOTE_ADDR'] ?? request()->ip(),
+                        'user_agent' => request()->userAgent(),
+                        'referer' => request()->header('referer'),
+                        'refresh_token_prefix' => $refreshTokenId ? substr($refreshTokenId, 0, 16) : null,
+                    ]);
+                } catch (\Exception $e) {
+                    // Diagnostic logging must never break the real auth flow.
+                }
+            }
+
             try {
-                return parent::issueToken($psrRequest, $psrResponse);
+                $response = parent::issueToken($psrRequest, $psrResponse);
+
+                if (($requestData['grant_type'] ?? null) === 'refresh_token' && $response->getStatusCode() === 200) {
+                    try {
+                        $tokenData = json_decode($response->getContent(), true);
+                        $newTokenId = is_array($tokenData) ? $this->extractJwtId($tokenData['access_token'] ?? '') : null;
+                        $newUserId = $newTokenId ? \Laravel\Passport\Token::where('id', $newTokenId)->value('user_id') : null;
+                        \Log::channel('single')->info('🔍 [REFRESH-DIAG] refresh_token grant succeeded', [
+                            'user_id' => $newUserId,
+                            'new_access_token_prefix' => $newTokenId ? substr($newTokenId, 0, 16) : null,
+                            'other_active_web_tokens' => $newUserId
+                                ? \Laravel\Passport\Token::where('user_id', $newUserId)
+                                    ->where('revoked', false)
+                                    ->where('id', '!=', $newTokenId)
+                                    ->count()
+                                : null,
+                        ]);
+                    } catch (\Exception $e) {
+                        // Diagnostic logging must never break the real auth flow.
+                    }
+                }
+
+                return $response;
             } catch (\League\OAuth2\Server\Exception\OAuthServerException $e) {
+                if (($requestData['grant_type'] ?? null) === 'refresh_token') {
+                    \Log::channel('single')->warning('🔍 [REFRESH-DIAG] refresh_token grant FAILED', [
+                        'message' => $e->getMessage(),
+                        'hint' => method_exists($e, 'getHint') ? $e->getHint() : null,
+                    ]);
+                }
                 return $this->oauthErrorResponse($e);
             } catch (\Exception $e) {
                 return $this->genericErrorResponse($e);
@@ -34,30 +90,50 @@ class CustomTokenController extends AccessTokenController
 
         // ================================================================
         // Section 1: User identification & credential check
+        //   - Silent fail2ban: a banned IP gets the normal failure response
+        //     without its credentials being evaluated
         //   - Resolve username/email -> User
-        //   - Block if email not verified
-        //   - Reactivate dormant accounts
         //   - Verify password
+        //   - Only THEN reveal account state (email not verified) and
+        //     reactivate dormant accounts
+        //
+        // Unknown user, unknown email and wrong password produce one
+        // identical response with comparable timing, so the endpoint is no
+        // oracle for which usernames/emails exist.
         // ================================================================
         $user = null;
         try {
-            $loginField = $requestData['username'];
+            $fail2ban = app(AuthFail2Ban::class);
+            $password = (string) ($requestData['password'] ?? '');
 
-            if (str_contains($loginField, '@')) {
-                $user = User::where('email', $loginField)->first();
-            } else {
-                $user = User::where('username', $loginField)->first();
-                if (!$user) {
-                    return response()->json([
-                        'error' => 'invalid_credentials',
-                        'message' => __('customtokencontrollerphp51'),
-                    ], 401);
-                }
-                // Pass the email on to Passport - it only knows email.
-                $requestData['username'] = $user->email;
+            if ($fail2ban->isBanned(request())) {
+                PasswordCheckTiming::equalize($password);
+
+                return $this->invalidCredentialsResponse();
             }
 
-            if ($user && !$user->hasVerifiedEmail()) {
+            $loginField = (string) $requestData['username'];
+            $user = str_contains($loginField, '@')
+                ? User::where('email', $loginField)->first()
+                : User::where('username', $loginField)->first();
+
+            if (! $user) {
+                PasswordCheckTiming::equalize($password);
+                $fail2ban->recordFailure(request(), 'oauth-password-grant');
+
+                return $this->invalidCredentialsResponse();
+            }
+
+            if (! Hash::check($password, $user->password)) {
+                $fail2ban->recordFailure(request(), 'oauth-password-grant');
+
+                return $this->invalidCredentialsResponse();
+            }
+
+            // Pass the email on to Passport - it only knows email.
+            $requestData['username'] = $user->email;
+
+            if (! $user->hasVerifiedEmail()) {
                 return response()->json([
                     'message' => 'E-Mail-Adresse muss vor dem Login bestätigt werden',
                     'email_verification_required' => true,
@@ -65,16 +141,9 @@ class CustomTokenController extends AccessTokenController
             }
 
             // Inactivity-deactivated accounts come back to life on a successful
-            // login attempt - the user is proving they're still around.
-            if ($user && $user->isDeactivated()) {
+            // login - the user is proving they're still around.
+            if ($user->isDeactivated()) {
                 $user->reactivate();
-            }
-
-            if ($user && !Hash::check($requestData['password'] ?? '', $user->password)) {
-                return response()->json([
-                    'error' => 'invalid_credentials',
-                    'message' => 'The provided credentials are incorrect.',
-                ], 401);
             }
         } catch (\Exception $e) {
             return $this->genericErrorResponse($e);
@@ -227,6 +296,19 @@ class CustomTokenController extends AccessTokenController
             'error' => $e->getErrorType(),
             'message' => $e->getMessage(),
         ], $e->getHttpStatusCode());
+    }
+
+    /**
+     * The one and only failure response of the password grant for unknown
+     * user, unknown email, wrong password and an active fail2ban ban. It must
+     * stay identical for all of them - any difference is an enumeration oracle.
+     */
+    private function invalidCredentialsResponse(): Response
+    {
+        return response()->json([
+            'error' => 'invalid_credentials',
+            'message' => __('customtokencontrollerphp51'),
+        ], 401);
     }
 
     /**
