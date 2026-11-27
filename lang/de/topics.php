@@ -1,0 +1,303 @@
+<?php
+
+/*
+ * Keyword-Landingpages ("Anwendungsfälle"), siehe App\Support\Seo\TopicPages.
+ * Alle fünf Sprachen strukturell identisch halten.
+ */
+
+return [
+    'shared' => [
+        'kicker' => 'Anwendungsfall',
+        'included_kicker' => 'Was Sie bekommen',
+        'workflow_kicker' => 'So funktioniert es',
+        'faq_title' => 'Häufige Fragen',
+        'related_title' => 'Weitere Anwendungsfälle',
+        'cta_title' => 'Generieren Sie noch heute Ihr Fundament',
+        'cta_text' => 'Kostenlos starten, Open Source – und der generierte Code gehört Ihnen.',
+        'home_title' => 'Was möchten Sie bauen?',
+        'home_text' => 'Scoriet generiert komplette Anwendungen für viele Sprachen und Frameworks. Wählen Sie Ihren Anwendungsfall:',
+        'footer_title' => 'Anwendungsfälle',
+    ],
+
+    'pages' => [
+        'database-to-app' => [
+            'nav' => 'Datenbank zur App',
+            'title' => 'App aus dem Datenbankschema generieren – Scoriet',
+            'description' => 'Aus einem MySQL-Datenbankschema eine komplette Anwendung mit Login, Formularen, Listen, Reports und Suche generieren – Template-basiert und Open Source.',
+            'h1' => 'Machen Sie aus Ihrem Datenbankschema eine komplette Anwendung',
+            'intro' => 'Ihre Datenbank beschreibt Ihre Anwendung bereits: Tabellen, Felder, Typen und Beziehungen. Scoriet liest dieses Schema und generiert daraus eine lauffähige Anwendung – mit Login, Datenpflege für jede Tabelle, Eingabeformularen, Listen, Suchfenstern und Reports. Ohne Boilerplate, ohne Kopieren aus dem letzten Projekt.',
+            'benefits_title' => 'Warum aus dem Schema generieren?',
+            'benefits' => [
+                ['title' => 'Das Schema ist die einzige Wahrheit', 'text' => 'Feldtypen, Längen und Beziehungen kommen direkt aus Ihrer Datenbank – Formulare, Validierung und Listen passen immer zu den Daten.'],
+                ['title' => 'Jede Tabelle bekommt ihre Masken', 'text' => 'Listen, Eingabeformulare und Suche entstehen für alle Tabellen auf einmal – nicht einzeln von Hand.'],
+                ['title' => 'Schemaänderungen bleiben beherrschbar', 'text' => 'Ändert sich das Schema, generieren Sie neu, und Scoriet erzeugt das SQL-Migrationsskript von Version 1 auf Version 2.'],
+                ['title' => 'Technologie nach Wahl', 'text' => 'Aus demselben Schema wird je nach Template eine Laravel-, Spring-Boot-, C#-Blazor-, Flutter- oder PHP-Anwendung.'],
+            ],
+            'included_title' => 'Aus Ihrem Schema generiert',
+            'included' => [
+                'Login und Benutzerverwaltung',
+                'Listenansicht mit Sortierung, Blättern und Suche für jede Tabelle',
+                'Eingabeformulare mit Validierung aus den Feldtypen',
+                'Beziehungen (Fremdschlüssel) zwischen Tabellen',
+                'Reports auf Basis Ihrer Report-Layouts',
+                'Mehrsprachige Beschriftungen für Tabellen und Felder',
+            ],
+            'workflow_title' => 'In drei Schritten vom Schema zur App',
+            'workflow' => [
+                ['title' => 'Schema importieren', 'text' => 'Fügen Sie Ihre MySQL-CREATE-TABLE-Anweisungen ein oder modellieren Sie die Tabellen im eingebauten Datenbankdesigner.'],
+                ['title' => 'Template wählen', 'text' => 'Wählen Sie die Zielplattform. Das Template bestimmt Architektur und Codestil der generierten Anwendung.'],
+                ['title' => 'Generieren und starten', 'text' => 'Laden Sie das Projekt herunter oder deployen Sie es per FTP oder CLI – und entwickeln Sie Ihre Geschäftslogik weiter.'],
+            ],
+            'faq' => [
+                ['q' => 'Welche Datenbanken kann ich importieren?', 'a' => 'Scoriet liest MySQL-Schemas (CREATE-TABLE-Anweisungen inklusive Schlüssel und Beziehungen). Sie können das Schema auch von Grund auf im Datenbankdesigner entwerfen.'],
+                ['q' => 'Ist der generierte Code eine Blackbox?', 'a' => 'Nein. Sie erhalten normalen, lesbaren Quellcode für das gewählte Framework. Er gehört Ihnen und lässt sich wie jedes handgeschriebene Projekt ändern.'],
+                ['q' => 'Was passiert, wenn sich mein Schema ändert?', 'a' => 'Sie generieren neu. Scoriet zeigt, welche Dateien Sie von Hand geändert haben, kann diese per Reverse Engineering übernehmen und erzeugt das SQL-Migrationsskript für die Datenbank.'],
+            ],
+        ],
+
+        'ai-app-foundation' => [
+            'nav' => 'Fundament für KI-Entwicklung',
+            'title' => 'Generiertes App-Fundament für KI-Coding-Assistenten – Scoriet',
+            'description' => 'Lassen Sie die KI nicht mehr Login, Tabellen und Formulare neu bauen. Scoriet generiert das komplette App-Fundament, die KI baut die Geschäftslogik – weniger Tokens, weniger Kosten.',
+            'h1' => 'Geben Sie Ihrem KI-Assistenten ein fertiges Fundament statt eines leeren Ordners',
+            'intro' => 'KI-Assistenten sind stark bei Geschäftslogik – und teuer bei Boilerplate. Jedes neue Projekt beginnt mit demselben Login, derselben Benutzerverwaltung, denselben Tabellen, Formularen und Listen, Token für Token erzeugt und jedes Mal etwas anders. Scoriet generiert dieses Fundament deterministisch aus Ihrem Datenbankschema. Ihr KI-Assistent beginnt dort, wo die eigentliche Arbeit anfängt.',
+            'benefits_title' => 'Warum ein generiertes Fundament die KI besser macht',
+            'benefits' => [
+                ['title' => 'Deutlich weniger Tokens', 'text' => 'Login, CRUD-Masken, Formulare und Reports erzeugt nicht die KI – Ihr Token-Budget fließt in die Funktionen, die zählen.'],
+                ['title' => 'Einheitliche Architektur', 'text' => 'Templates erzeugen jedes Mal dieselbe bewährte Struktur. Die KI erweitert eine saubere Codebasis, statt pro Sitzung eine neue zu erfinden.'],
+                ['title' => 'Bessere KI-Ergebnisse', 'text' => 'Vorhandener, einheitlicher Code gibt der KI klare Muster vor – sie schreibt Code, der zum Projekt passt.'],
+                ['title' => 'Tage statt Wochen', 'text' => 'Ein einzelner Entwickler stellt eine komplette Anwendung in Tagen fertig, weil die Stammdaten vor dem ersten Prompt erledigt sind.'],
+            ],
+            'included_title' => 'Was die KI nicht mehr bauen muss',
+            'included' => [
+                'Login und Benutzerverwaltung mit 2FA / MFA',
+                'Datenzugriffsschicht für alle Tabellen',
+                'Listen, Eingabeformulare und Suchfenster',
+                'Reports',
+                'Mehrsprachige Benutzeroberfläche',
+                'Projektstruktur, Konfiguration und Build-Setup',
+            ],
+            'workflow_title' => 'Der Workflow mit Scoriet und KI',
+            'workflow' => [
+                ['title' => 'Fundament generieren', 'text' => 'Datenbankschema entwerfen oder importieren, Template wählen und die komplette Anwendung generieren.'],
+                ['title' => 'Im KI-Tool öffnen', 'text' => 'Öffnen Sie das Projekt in Claude Code, Cursor, Copilot oder einem anderen Assistenten – er sieht sofort eine einheitliche Codebasis.'],
+                ['title' => 'Geschäftslogik prompten', 'text' => 'Bitten Sie die KI genau um das, was Ihre Anwendung einzigartig macht: Berechnungen, Abläufe, Schnittstellen.'],
+            ],
+            'faq' => [
+                ['q' => 'Warum nicht alles von der KI generieren lassen?', 'a' => 'Das geht, kostet aber viele Tokens, viele Iterationen und liefert jedes Mal eine andere Struktur. Deterministische Templates erzeugen den wiederkehrenden Teil schneller, günstiger und identisch – die KI ist bei der individuellen Logik besser eingesetzt.'],
+                ['q' => 'Welche KI-Assistenten funktionieren mit Scoriet?', 'a' => 'Alle. Scoriet erzeugt normalen Quellcode – jeder Assistent, der mit Dateien arbeitet, etwa Claude Code, Cursor oder GitHub Copilot, kann darauf aufbauen.'],
+                ['q' => 'Verliere ich KI-Änderungen beim Neugenerieren?', 'a' => 'Nein. Scoriet zeigt, welche generierten Dateien geändert wurden, vergleicht sie und kann die Änderungen per Reverse Engineering in die nächste Generierung übernehmen.'],
+            ],
+        ],
+
+        'laravel-crud-generator' => [
+            'nav' => 'Laravel CRUD Generator',
+            'title' => 'Laravel CRUD Generator aus Ihrem Datenbankschema – Scoriet',
+            'description' => 'Generieren Sie eine komplette Laravel-Anwendung aus Ihrem MySQL-Schema: Models, Migrations, Controller und ein Admin-Frontend mit React oder Angular. Open Source.',
+            'h1' => 'Laravel CRUD Generator: eine komplette Laravel-App aus Ihrer Datenbank',
+            'intro' => 'Scoriet generiert aus Ihrem Datenbankschema eine komplette Laravel-Anwendung – nicht nur einzelne CRUD-Controller, sondern das ganze Projekt: Models, Migrations mit Fremdschlüsseln, Controller, API-Routen und ein Admin-Frontend in React oder Angular mit Listen, Formularen und Suche für jede Tabelle.',
+            'benefits_title' => 'Warum Scoriet für Laravel?',
+            'benefits' => [
+                ['title' => 'Das ganze Projekt, keine Schnipsel', 'text' => 'Statt Ressource für Ressource erzeugt Scoriet alle Models, Migrations, Controller und Masken Ihres Schemas in einem Durchlauf.'],
+                ['title' => 'Frontend mit React oder Angular', 'text' => 'Wählen Sie ein Laravel-Template mit React- oder Angular-Frontend – beide mit Admin-Panels für jede Tabelle.'],
+                ['title' => 'Beziehungen inklusive', 'text' => 'Fremdschlüssel aus Ihrem Schema werden zu Migrations und Relationen – verknüpfte Daten sind von Anfang an verbunden.'],
+                ['title' => 'Ihr Template, Ihre Konventionen', 'text' => 'Templates sind normale Dateien mit Platzhaltern. Passen Sie sie einmal an Ihre Konventionen an, und jedes Projekt folgt ihnen.'],
+            ],
+            'included_title' => 'Generiert für Ihr Laravel-Projekt',
+            'included' => [
+                'Eloquent-Models für jede Tabelle',
+                'Migrations inklusive Fremdschlüssel',
+                'Controller und API-Routen',
+                'Admin-Panels mit Listen, Formularen und Suche',
+                'Datenbank-Seeder und Projektkonfiguration',
+                'React- oder Angular-Frontend, je nach Template',
+            ],
+            'workflow_title' => 'Vom Schema zur Laravel-App',
+            'workflow' => [
+                ['title' => 'MySQL-Schema importieren', 'text' => 'Importieren Sie Ihre bestehende Datenbank oder modellieren Sie sie im Scoriet-Datenbankdesigner.'],
+                ['title' => 'Laravel-Template wählen', 'text' => 'Wählen Sie Laravel mit React oder Laravel mit Angular – oder passen Sie eines davon an Ihren Stack an.'],
+                ['title' => 'Generieren, migrieren, starten', 'text' => 'Projekt generieren, Migrations ausführen und mit der Geschäftslogik beginnen – von Hand oder mit Ihrem KI-Assistenten.'],
+            ],
+            'faq' => [
+                ['q' => 'Ist das ein Laravel-Paket, das ich installieren muss?', 'a' => 'Nein. Scoriet generiert ein komplettes, eigenständiges Laravel-Projekt. Der generierte Code hat keine Laufzeitabhängigkeit zu Scoriet.'],
+                ['q' => 'Kann ich den generierten Laravel-Code anpassen?', 'a' => 'Ja. Sie können die generierten Dateien direkt ändern oder das Template anpassen, damit jede künftige Generierung Ihre Anpassungen enthält.'],
+                ['q' => 'Was ist der Unterschied zu anderen Laravel-CRUD-Generatoren?', 'a' => 'Die meisten Generatoren erzeugen einzelne Ressourcen per Kommandozeile. Scoriet generiert die ganze Anwendung inklusive Frontend aus dem Datenbankschema, unterstützt Neugenerierung mit Reverse Engineering und erzeugt Datenbank-Migrationsskripte.'],
+            ],
+        ],
+
+        'spring-boot-code-generator' => [
+            'nav' => 'Spring Boot Code-Generator',
+            'title' => 'Spring Boot Code-Generator aus Ihrer Datenbank – Scoriet',
+            'description' => 'Generieren Sie eine komplette Spring-Boot-Anwendung aus Ihrem Datenbankschema – mit JPA-Entities, REST-API und Frontend in React, React Native oder Thymeleaf. Open Source.',
+            'h1' => 'Spring Boot Code-Generator: vom Datenbankschema zur Full-Stack-Java-App',
+            'intro' => 'Scoriet generiert aus Ihrem Datenbankschema eine komplette Spring-Boot-Anwendung: Entities, Repositories, Services und REST-Controller im Backend – und ein Frontend Ihrer Wahl mit Listen, Formularen und Suche für jede Tabelle. Zur Wahl stehen React mit Material UI, React mit shadcn/ui und Tailwind, eine React-Native-App oder serverseitiges Thymeleaf.',
+            'benefits_title' => 'Warum Scoriet für Spring Boot?',
+            'benefits' => [
+                ['title' => 'Full Stack in einem Durchlauf', 'text' => 'Backend und Frontend entstehen gemeinsam aus demselben Schema – API und Masken passen immer zusammen.'],
+                ['title' => 'Vier Frontend-Varianten', 'text' => 'React + Material UI, React + shadcn/ui + Tailwind, React Native oder Thymeleaf – wählen Sie, was zu Ihrem Projekt passt.'],
+                ['title' => 'Kein wiederkehrender Java-Boilerplate', 'text' => 'Entities, Repositories, Services und Controller für Dutzende Tabellen entstehen in Sekunden statt in Tagen.'],
+                ['title' => 'Einheitlich über Projekte hinweg', 'text' => 'Jedes Projekt aus demselben Template hat dieselbe Struktur – leichter zu warten, leichter für Ihr Team.'],
+            ],
+            'included_title' => 'Generiert für Ihr Spring-Boot-Projekt',
+            'included' => [
+                'JPA-Entities für jede Tabelle, inklusive Beziehungen',
+                'Repositories und Services',
+                'REST-Controller',
+                'Frontend mit Listen, Formularen und Suche',
+                'Maven-Projektsetup',
+                'Optional eine Mobile-App mit React Native',
+            ],
+            'workflow_title' => 'Vom Schema zur Spring-Boot-App',
+            'workflow' => [
+                ['title' => 'Schema importieren', 'text' => 'Importieren Sie Ihr MySQL-Schema oder entwerfen Sie die Tabellen im Scoriet-Datenbankdesigner.'],
+                ['title' => 'Frontend wählen', 'text' => 'Wählen Sie das Spring-Boot-Template mit dem passenden Frontend: React MUI, shadcn/Tailwind, React Native oder Thymeleaf.'],
+                ['title' => 'Generieren und starten', 'text' => 'Projekt generieren, mit Maven starten und mit der Geschäftslogik weitermachen – von Hand oder mit KI.'],
+            ],
+            'faq' => [
+                ['q' => 'Hängt die generierte Anwendung von Scoriet ab?', 'a' => 'Nein. Sie erhalten ein normales Spring-Boot-Projekt, das eigenständig baut und läuft.'],
+                ['q' => 'Kann ich auch eine Mobile-App generieren?', 'a' => 'Ja. Das Spring-Boot-React-Native-Template erzeugt ein Spring-Boot-Backend zusammen mit einer React-Native-App für iOS und Android.'],
+                ['q' => 'Kann ich meine eigene Architektur verwenden?', 'a' => 'Ja. Templates sind bearbeitbar. Passen Sie Paketstruktur, Benennung oder Schichten einmal im Template an, und jedes generierte Projekt folgt dem.'],
+            ],
+        ],
+
+        'csharp-code-generator' => [
+            'nav' => 'C# / .NET Code-Generator',
+            'title' => 'C# und .NET Code-Generator aus Ihrer Datenbank – Scoriet',
+            'description' => 'Generieren Sie eine C#-.NET-Anwendung mit Blazor aus Ihrem Datenbankschema: Entities, Datenzugriff, Listen und Formulare für jede Tabelle. Template-basiert und Open Source.',
+            'h1' => 'C# Code-Generator: eine .NET-Anwendung aus Ihrem Datenbankschema',
+            'intro' => 'Scoriet generiert C#-/.NET-Anwendungen aus Ihrem Datenbankschema. Das Blazor-Template erzeugt Datenschicht und Benutzeroberfläche für jede Tabelle – Listen, Eingabeformulare und Suche –, damit Sie sich auf die Logik Ihrer Anwendung statt auf wiederkehrenden CRUD-Code konzentrieren können.',
+            'benefits_title' => 'Warum Scoriet für C# und .NET?',
+            'benefits' => [
+                ['title' => 'Blazor-Oberfläche inklusive', 'text' => 'Die generierte Anwendung bringt eine Blazor-Oberfläche für alle Tabellen mit, nicht nur die Datenschicht.'],
+                ['title' => 'Streng typisiert aus dem Schema', 'text' => 'Feldtypen und Längen aus der Datenbank werden zu typisierten C#-Properties und Validierungsregeln.'],
+                ['title' => 'Passend zu Ihrer Datenbank', 'text' => 'Schema einmal modellieren und für die Datenbank generieren, auf die Ihr Template zielt, zum Beispiel PostgreSQL.'],
+                ['title' => 'Anpassbare Templates', 'text' => 'Benennung, Ordnerstruktur und Muster einmal im Template anpassen – jedes generierte Projekt folgt Ihren Konventionen.'],
+            ],
+            'included_title' => 'Generiert für Ihr .NET-Projekt',
+            'included' => [
+                'Entity-Klassen für jede Tabelle',
+                'Datenzugriffsschicht',
+                'Blazor-Seiten mit Listen und Suche',
+                'Eingabeformulare mit Validierung',
+                'Beziehungen zwischen Tabellen',
+                'Projekt- und Solution-Setup',
+            ],
+            'workflow_title' => 'Vom Schema zur .NET-App',
+            'workflow' => [
+                ['title' => 'Schema modellieren oder importieren', 'text' => 'Importieren Sie ein bestehendes MySQL-Schema oder entwerfen Sie es im Scoriet-Datenbankdesigner.'],
+                ['title' => 'C#-Template wählen', 'text' => 'Wählen Sie das C#-Blazor-Template oder passen Sie es an Ihren bevorzugten .NET-Stack an.'],
+                ['title' => 'Generieren und bauen', 'text' => 'Solution generieren, mit Ihren gewohnten .NET-Werkzeugen bauen und die Geschäftslogik ergänzen.'],
+            ],
+            'faq' => [
+                ['q' => 'Brauche ich Visual Studio?', 'a' => 'Nein. Das generierte Projekt ist ein normales .NET-Projekt. Sie können Visual Studio, Rider, VS Code oder die dotnet-Kommandozeile verwenden.'],
+                ['q' => 'Kann ich andere .NET-Frontends generieren?', 'a' => 'Die Generierung ist vollständig Template-basiert. Sie können ein Template für jeden .NET-Stack erstellen, etwa ASP.NET Core MVC oder eine Web-API.'],
+                ['q' => 'Ist der generierte C#-Code lesbar?', 'a' => 'Ja. Es ist normaler C#-Code nach der Struktur des Templates – ohne versteckte Laufzeit und ohne proprietäre Bibliothek.'],
+            ],
+        ],
+
+        'flutter-app-generator' => [
+            'nav' => 'Flutter App-Generator',
+            'title' => 'Flutter App-Generator aus Ihrer Datenbank – Scoriet',
+            'description' => 'Generieren Sie eine Flutter-/Dart-Anwendung aus Ihrem Datenbankschema – mit Fenstern, Formularen und Listen aus dem visuellen Fenster-Editor. Template-basiert und Open Source.',
+            'h1' => 'Flutter App-Generator: Dart-Anwendungen aus Datenbank und Entwürfen',
+            'intro' => 'Scoriet generiert Flutter-Anwendungen in Dart aus Ihrem Datenbankschema und aus Fenstern, die Sie im visuellen Fenster-Editor gestalten. Formulare, Listen und Navigation werden für Sie erzeugt; die generierte App läuft auf dem Desktop und – je nach Template – auf mobilen Plattformen.',
+            'benefits_title' => 'Warum Scoriet für Flutter?',
+            'benefits' => [
+                ['title' => 'Fenster visuell gestalten', 'text' => 'Felder, Buttons und Tabellen im Fenster-Editor platzieren. Scoriet macht aus dem Layout Flutter-Widgets.'],
+                ['title' => 'Von Anfang an datengebunden', 'text' => 'Fenster basieren auf Ihren Tabellen – Formulare und Listen sind automatisch mit dem Datenmodell verbunden.'],
+                ['title' => 'Eine Codebasis, viele Plattformen', 'text' => 'Flutter läuft auf Windows, macOS, Linux, Android und iOS – Scoriet erzeugt den Dart-Code einmal.'],
+                ['title' => 'Geschäftslogik aus dem Code-Behind', 'text' => 'Logik hinter den Fenstern lässt sich nach Dart übersetzen – die Grundlage des WinDev-Migrationspfads von Scoriet.'],
+            ],
+            'included_title' => 'Generiert für Ihr Flutter-Projekt',
+            'included' => [
+                'Dart-/Flutter-Projektstruktur',
+                'Fenster und Formulare aus dem Fenster-Editor',
+                'Listen und Tabellen, an Ihre Daten gebunden',
+                'Navigation zwischen Fenstern',
+                'Statusleiste, Meldungen und Dialoge',
+                'Mehrsprachige Beschriftungen',
+            ],
+            'workflow_title' => 'Vom Entwurf zur Flutter-App',
+            'workflow' => [
+                ['title' => 'Schema vorbereiten', 'text' => 'Importieren oder modellieren Sie die Tabellen, mit denen Ihre Anwendung arbeitet.'],
+                ['title' => 'Fenster gestalten', 'text' => 'Ordnen Sie Ihre Fenster im visuellen Fenster-Editor an – jedes Fenster basiert auf einer Tabelle.'],
+                ['title' => 'Generieren und starten', 'text' => 'Flutter-Projekt generieren und mit Ihren gewohnten Flutter-Werkzeugen starten.'],
+            ],
+            'faq' => [
+                ['q' => 'Welche Plattformen unterstützt die generierte App?', 'a' => 'Die aktuellen Flutter-Templates konzentrieren sich auf Desktop-Anwendungen. Da standardmäßiger Flutter-Code entsteht, lassen sich mit angepassten Templates weitere Plattformen bedienen.'],
+                ['q' => 'Muss ich Dart können?', 'a' => 'Für das generierte Fundament nicht. Um die Anwendung mit eigener Logik zu erweitern, helfen Dart-Grundkenntnisse – oder Sie lassen einen KI-Assistenten auf dem generierten Code weiterarbeiten.'],
+                ['q' => 'Kann ich eine WinDev-Anwendung nach Flutter migrieren?', 'a' => 'Genau dafür werden Fenster-Editor und Flutter-Templates entwickelt. Details finden Sie auf der Seite zur WinDev-Migration.'],
+            ],
+        ],
+
+        'rust-code-generator' => [
+            'nav' => 'Rust Code-Generator',
+            'title' => 'Rust Code-Generator aus Ihrem Datenbankschema – Scoriet',
+            'description' => 'Generieren Sie Rust-Code aus Ihrem Datenbankschema mit Templates: Datenstrukturen, Datenzugriff und Anwendungsgerüst – einheitlich, schnell und Open Source.',
+            'h1' => 'Rust Code-Generator: Rust-Anwendungen aus Ihrem Datenbankschema',
+            'intro' => 'Rust ist schnell und sicher – aber Structs, Datenzugriff und wiederkehrender CRUD-Code für jede Tabelle kosten Zeit. Scoriet generiert diesen Code mit Templates aus Ihrem Datenbankschema, damit Ihr Rust-Projekt mit einer kompletten, einheitlichen Datenschicht und Anwendungsstruktur startet.',
+            'benefits_title' => 'Warum Rust-Code mit Scoriet generieren?',
+            'benefits' => [
+                ['title' => 'Typen direkt aus dem Schema', 'text' => 'Spalten werden zu streng typisierten Struct-Feldern – inklusive optionaler Werte, Längen und Schlüssel.'],
+                ['title' => 'Kein handgeschriebener Boilerplate', 'text' => 'Datenzugriff und CRUD-Code für jede Tabelle entstehen in einem Durchlauf statt Tabelle für Tabelle.'],
+                ['title' => 'Ihre Crates, Ihr Stil', 'text' => 'Templates sind Text mit Platzhaltern. Nutzen Sie die Frameworks und Crates, die Sie bevorzugen, und halten Sie sie projektübergreifend einheitlich.'],
+                ['title' => 'Sicher neu generieren', 'text' => 'Ändert sich das Schema, generieren Sie neu. Scoriet zeigt geänderte Dateien und erzeugt das Datenbank-Migrationsskript.'],
+            ],
+            'included_title' => 'Generiert für Ihr Rust-Projekt',
+            'included' => [
+                'Structs für jede Tabelle',
+                'Datenzugriffsfunktionen zum Anlegen, Lesen, Ändern und Löschen',
+                'Beziehungen zwischen Tabellen',
+                'Projektstruktur und Konfiguration',
+                'Einheitliche Benennung im ganzen Projekt',
+                'SQL-Migrationsskripte bei Schemaänderungen',
+            ],
+            'workflow_title' => 'Vom Schema zum Rust-Code',
+            'workflow' => [
+                ['title' => 'Schema importieren', 'text' => 'Importieren Sie Ihr MySQL-Schema oder entwerfen Sie die Tabellen im Datenbankdesigner.'],
+                ['title' => 'Rust-Template wählen oder schreiben', 'text' => 'Verwenden Sie ein bestehendes Rust-Template oder erstellen Sie eines für Ihr bevorzugtes Framework und Ihre Crates.'],
+                ['title' => 'Generieren und bauen', 'text' => 'Projekt generieren, mit cargo bauen – und Ihre eigene Logik ergänzen.'],
+            ],
+            'faq' => [
+                ['q' => 'Welche Rust-Frameworks werden unterstützt?', 'a' => 'Scoriet ist an kein Framework gebunden. Was im Template steht, wird generiert – Sie entscheiden, welches Web-Framework und welche Datenbank-Crates das Projekt nutzt.'],
+                ['q' => 'Ist der generierte Rust-Code idiomatisch?', 'a' => 'Der Code folgt dem Template – er ist so idiomatisch wie Ihr Template. Verbessern Sie das Template einmal, profitiert jede Generierung.'],
+                ['q' => 'Kann ich generierten und handgeschriebenen Code mischen?', 'a' => 'Ja. Scoriet merkt sich, welche generierten Dateien Sie geändert haben, und kann diese Änderungen in die nächste Generierung übernehmen.'],
+            ],
+        ],
+
+        'windev-migration' => [
+            'nav' => 'WinDev-Migration',
+            'title' => 'WinDev-Migration: WinDev-Anwendungen auf modernen Code umstellen – Scoriet',
+            'description' => 'WinDev-Anwendungen Schritt für Schritt migrieren: Fenster im Scoriet-Fenster-Editor nachbauen und WLanguage-Code-Behind nach Flutter / Dart übersetzen. Eine offene Alternative zu WinDev.',
+            'h1' => 'WinDev-Migration: von WinDev zu moderner, offener Technologie',
+            'intro' => 'Scoriet begann als Neuentwicklung einer WinDev-Anwendung – und die neuesten Funktionen sind dafür gebaut, WinDev-Projekte in die offene Welt zu bringen. Fenster auf Basis einer einzelnen Tabelle werden im visuellen Fenster-Editor nachgebaut, und Code-Behind wird nach Dart übersetzt. Das Ergebnis ist eine moderne Flutter-Anwendung statt einer proprietären Laufzeitumgebung.',
+            'benefits_title' => 'Warum mit Scoriet migrieren?',
+            'benefits' => [
+                ['title' => 'Vertraute Konzepte', 'text' => 'Fenster auf Basis einer Tabelle, Controls mit Namen wie BTN_NoName1, datengebundene Felder – der Fenster-Editor folgt der WinDev-Arbeitsweise.'],
+                ['title' => 'Logik wird übersetzt, nicht abgetippt', 'text' => 'Code-Behind der Fenster wird nach Dart übersetzt, inklusive Meldungen, Fortschrittsbalken und INI-Dateizugriff.'],
+                ['title' => 'Offenes Ergebnis', 'text' => 'Heraus kommt normaler Flutter-/Dart-Quellcode ohne Lizenzgebühren und ohne proprietäre Laufzeit.'],
+                ['title' => 'Schritt für Schritt', 'text' => 'Migrieren Sie Fenster für Fenster. Das Datenmodell kommt aus Ihrem bestehenden Datenbankschema.'],
+            ],
+            'included_title' => 'Was die Migration heute abdeckt',
+            'included' => [
+                'Fenster auf Basis einer einzelnen Tabelle, im Fenster-Editor nachgebaut',
+                'Automatische Control-Benennung im WinDev-Stil',
+                'Übersetzung von Code-Behind nach Dart',
+                'Meldungen, Fortschrittsbalken, INI lesen und schreiben',
+                'Fenster öffnen und Daten zwischen ihnen übergeben',
+                'WinDev-Farbkonstanten',
+            ],
+            'workflow_title' => 'So läuft eine Migration ab',
+            'workflow' => [
+                ['title' => 'Datenbank importieren', 'text' => 'Übernehmen Sie das Schema Ihrer WinDev-Anwendung, damit alle Fenster ihr Datenmodell haben.'],
+                ['title' => 'Fenster nachbauen', 'text' => 'Bauen Sie jedes Fenster im Fenster-Editor nach und ergänzen Sie den Code-Behind.'],
+                ['title' => 'Flutter generieren', 'text' => 'Flutter-Anwendung generieren, testen und Fenster für Fenster weitermachen.'],
+            ],
+            'faq' => [
+                ['q' => 'Kann Scoriet ein komplettes WinDev-Projekt automatisch umwandeln?', 'a' => 'Noch nicht. Der Migrationspfad wird aktiv entwickelt und deckt Fenster auf Basis einer einzelnen Tabelle sowie einen wachsenden Teil des Code-Behind ab. Größere Projekte werden Schritt für Schritt migriert.'],
+                ['q' => 'Welche Zieltechnologie wird verwendet?', 'a' => 'Flutter mit Dart. Das Ergebnis ist eine native Desktop-Anwendung mit standardmäßigem, offenem Quellcode.'],
+                ['q' => 'Brauche ich danach noch eine WinDev-Lizenz?', 'a' => 'Nein. Die generierte Anwendung ist unabhängig von WinDev und seiner Laufzeitumgebung.'],
+            ],
+        ],
+    ],
+];

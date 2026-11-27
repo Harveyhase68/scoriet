@@ -74,7 +74,8 @@ class PublicSiteController extends Controller
             jsonLd: [
                 StructuredData::organization(),
                 StructuredData::website($locale),
-                StructuredData::softwareApplication($locale, $description, $pricing['prices'], $pricing['currency']),
+                StructuredData::softwareApplication($locale, $description, $pricing['subscriptions'], $pricing['currency']),
+                StructuredData::faqPage(PublicLocales::homeUrl($locale), __('home.faq')),
             ],
         );
 
@@ -82,6 +83,7 @@ class PublicSiteController extends Controller
             'locale' => $locale,
             'seo' => $seo,
             'pricing' => $pricing,
+            'screenshots' => $this->screenshots(),
             'isDemo' => (bool) config('scoriet.demo'),
             'languageLinks' => array_diff_key(PublicLocales::homeAlternates(), ['x-default' => true]),
             'islandContext' => array_merge([
@@ -94,5 +96,32 @@ class PublicSiteController extends Controller
                 'cmsPageId' => null,
             ], $contextOverrides),
         ]);
+    }
+
+    /**
+     * Optional screenshots of the home page, looked up in public/images/landing/.
+     * A slot is rendered only when its file exists, so the live page never shows
+     * an empty placeholder. Drop in e.g. "studio.webp" to activate a slot.
+     *
+     * @return array<string, string|null> slot => asset URL or null
+     */
+    private function screenshots(): array
+    {
+        $slots = ['studio', 'generated', 'editor'];
+        $extensions = ['webp', 'png', 'jpg'];
+
+        $found = [];
+        foreach ($slots as $slot) {
+            $found[$slot] = null;
+            foreach ($extensions as $extension) {
+                $relative = 'images/landing/'.$slot.'.'.$extension;
+                if (is_file(public_path($relative))) {
+                    $found[$slot] = asset($relative);
+                    break;
+                }
+            }
+        }
+
+        return $found;
     }
 }

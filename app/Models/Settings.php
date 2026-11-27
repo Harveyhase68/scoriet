@@ -2,22 +2,27 @@
 
 namespace App\Models;
 
+use App\Support\PricingCatalog;
 use Illuminate\Database\Eloquent\Model;
 
 class Settings extends Model
 {
     protected $fillable = [
         'global_google_translate_key',
-        'price_patron_annual',
-        'price_patron_monthly',
+        'price_team_studio_monthly',
+        'price_team_studio_yearly',
+        'price_pro_unlimited_monthly',
+        'price_pro_unlimited_yearly',
         'price_credits_500',
         'price_credits_1000',
         'price_credits_2500',
     ];
 
     protected $casts = [
-        'price_patron_annual' => 'decimal:2',
-        'price_patron_monthly' => 'decimal:2',
+        'price_team_studio_monthly' => 'decimal:2',
+        'price_team_studio_yearly' => 'decimal:2',
+        'price_pro_unlimited_monthly' => 'decimal:2',
+        'price_pro_unlimited_yearly' => 'decimal:2',
         'price_credits_500' => 'decimal:2',
         'price_credits_1000' => 'decimal:2',
         'price_credits_2500' => 'decimal:2',
@@ -30,14 +35,8 @@ class Settings extends Model
     {
         $settings = self::first();
 
-        if (!$settings) {
-            $settings = self::create([
-                'price_patron_annual' => 34.90,
-                'price_patron_monthly' => 49.90,
-                'price_credits_500' => 9.90,
-                'price_credits_1000' => 17.90,
-                'price_credits_2500' => 29.90,
-            ]);
+        if (! $settings) {
+            $settings = self::create(PricingCatalog::defaultPriceColumns());
         }
 
         return $settings;

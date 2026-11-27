@@ -903,11 +903,13 @@ class ApiClient {
       return {
         success: true,
         prices: {
-          patron_annual: 34.90,
-          patron_monthly: 49.90,
           credits_500: 9.90,
           credits_1000: 17.90,
           credits_2500: 29.90
+        },
+        subscriptions: {
+          patron_annual: { month: 4.90, year: 34.90 },
+          patron_monthly: { month: 49.90, year: 478.80 }
         },
         currency: 'EUR',
         updated_at: new Date().toISOString()
@@ -1033,10 +1035,22 @@ export type { SchemaTable, SchemaField, SchemaConstraint, SchemaVersion, Display
 // Utility functions to access pricing data from localStorage
 export const pricingUtils = {
   // Get pricing data from localStorage
-  getPricingData(): { patron_annual: number; patron_monthly: number; credits_500: number; credits_1000: number; credits_2500: number } | null {
+  // Credit package prices
+  getPricingData(): { credits_500: number; credits_1000: number; credits_2500: number } | null {
     try {
       const pricingData = localStorage.getItem('pricing_data');
       return pricingData ? JSON.parse(pricingData) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Subscription prices per plan key and billing interval — read through
+  // getSubscriptionPrices() in lib/plans.ts, which validates and adds defaults.
+  getSubscriptionPrices(): Partial<Record<string, Partial<Record<string, unknown>>>> | null {
+    try {
+      const subscriptions = localStorage.getItem('pricing_subscriptions');
+      return subscriptions ? JSON.parse(subscriptions) : null;
     } catch {
       return null;
     }
@@ -1053,7 +1067,7 @@ export const pricingUtils = {
   },
 
   // Get individual price
-  getPrice(plan: 'patron_annual' | 'patron_monthly' | 'credits_500' | 'credits_1000' | 'credits_2500'): number | null {
+  getPrice(plan: 'credits_500' | 'credits_1000' | 'credits_2500'): number | null {
     const pricing = this.getPricingData();
     return pricing ? pricing[plan] : null;
   },
@@ -1077,6 +1091,7 @@ export const pricingUtils = {
 
       if (pricingData.success) {
         localStorage.setItem('pricing_data', JSON.stringify(pricingData.prices));
+        localStorage.setItem('pricing_subscriptions', JSON.stringify(pricingData.subscriptions ?? null));
         localStorage.setItem('pricing_currency', pricingData.currency || 'EUR');
         localStorage.setItem('pricing_timestamp', pricingData.updated_at || new Date().toISOString());
         return true;
@@ -1090,6 +1105,7 @@ export const pricingUtils = {
   // Clear pricing cache
   clearCache(): void {
     localStorage.removeItem('pricing_data');
+    localStorage.removeItem('pricing_subscriptions');
     localStorage.removeItem('pricing_timestamp');
     localStorage.removeItem('pricing_currency');
   }

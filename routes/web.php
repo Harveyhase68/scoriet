@@ -13,6 +13,18 @@ Route::get('/{locale}', [App\Http\Controllers\PublicSiteController::class, 'loca
     ->where('locale', App\Support\Seo\PublicLocales::nonDefaultRoutePattern())
     ->name('landing.localized');
 
+// Keyword landing pages ("use cases"), registry: App\Support\Seo\TopicPages.
+// Registered before the generic CMS route /{locale}/{slug} so they take precedence.
+Route::get('/en/{topic}', [App\Http\Controllers\TopicPageController::class, 'redirectDefault'])
+    ->whereIn('topic', App\Support\Seo\TopicPages::slugs());
+Route::get('/{topic}', [App\Http\Controllers\TopicPageController::class, 'show'])
+    ->whereIn('topic', App\Support\Seo\TopicPages::slugs())
+    ->name('topic');
+Route::get('/{locale}/{topic}', [App\Http\Controllers\TopicPageController::class, 'showLocalized'])
+    ->where('locale', App\Support\Seo\PublicLocales::nonDefaultRoutePattern())
+    ->whereIn('topic', App\Support\Seo\TopicPages::slugs())
+    ->name('topic.localized');
+
 // Public sitemap (dynamic, generated from DB) — referenced by public/robots.txt
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
 

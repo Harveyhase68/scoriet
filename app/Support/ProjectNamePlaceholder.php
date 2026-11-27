@@ -39,6 +39,7 @@ final class ProjectNamePlaceholder
                     return '';
                 }
                 $format = $m[1] ?? '';
+
                 return self::format($projectName, $format);
             },
             $subject
@@ -75,6 +76,7 @@ final class ProjectNamePlaceholder
                 $out[] = $p;
             }
         }
+
         return $out;
     }
 
@@ -89,7 +91,8 @@ final class ProjectNamePlaceholder
         foreach ($words as $w) {
             $rest .= ucfirst(strtolower($w));
         }
-        return $first . $rest;
+
+        return $first.$rest;
     }
 
     private static function toPascalCase(string $s): string
@@ -98,6 +101,7 @@ final class ProjectNamePlaceholder
         foreach (self::splitWords($s) as $w) {
             $out .= ucfirst(strtolower($w));
         }
+
         return $out;
     }
 
@@ -108,6 +112,7 @@ final class ProjectNamePlaceholder
         foreach ($words as $w) {
             $capitalized[] = ucfirst(strtolower($w));
         }
+
         return implode(' ', $capitalized);
     }
 }

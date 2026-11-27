@@ -1,0 +1,303 @@
+<?php
+
+/*
+ * Landing page per parola chiave ("casi d’uso"), vedi App\Support\Seo\TopicPages.
+ * Mantenere le cinque lingue strutturalmente identiche.
+ */
+
+return [
+    'shared' => [
+        'kicker' => 'Caso d’uso',
+        'included_kicker' => 'Cosa ottieni',
+        'workflow_kicker' => 'Come funziona',
+        'faq_title' => 'Domande frequenti',
+        'related_title' => 'Altri casi d’uso',
+        'cta_title' => 'Genera oggi le tue fondamenta',
+        'cta_text' => 'Gratis per iniziare, open source e il codice generato ti appartiene.',
+        'home_title' => 'Cosa vuoi costruire?',
+        'home_text' => 'Scoriet genera applicazioni complete per molti linguaggi e framework. Scegli il tuo caso d’uso:',
+        'footer_title' => 'Casi d’uso',
+    ],
+
+    'pages' => [
+        'database-to-app' => [
+            'nav' => 'Dal database all’app',
+            'title' => 'Genera un’app dal tuo schema di database – Scoriet',
+            'description' => 'Trasforma uno schema MySQL in un’applicazione completa con login, moduli, elenchi, report e ricerca, generata da template e open source.',
+            'h1' => 'Trasforma il tuo schema di database in un’applicazione completa',
+            'intro' => 'Il tuo database descrive già la tua applicazione: tabelle, campi, tipi e relazioni. Scoriet legge questo schema e ne genera un’applicazione funzionante, con login, gestione dei dati per ogni tabella, moduli, elenchi, finestre di ricerca e report. Senza codice ripetitivo e senza copiare dall’ultimo progetto.',
+            'benefits_title' => 'Perché generare dallo schema?',
+            'benefits' => [
+                ['title' => 'Lo schema è l’unica fonte di verità', 'text' => 'Tipi, lunghezze e relazioni arrivano direttamente dal database, quindi moduli, validazione ed elenchi corrispondono sempre ai dati.'],
+                ['title' => 'Ogni tabella ha le sue maschere', 'text' => 'Elenchi, moduli e ricerca vengono generati per tutte le tabelle insieme, non costruiti uno per uno a mano.'],
+                ['title' => 'Le modifiche allo schema restano gestibili', 'text' => 'Quando lo schema cambia, rigenera e Scoriet crea lo script SQL di migrazione dalla versione 1 alla 2.'],
+                ['title' => 'La tecnologia che preferisci', 'text' => 'Lo stesso schema diventa un’applicazione Laravel, Spring Boot, C# Blazor, Flutter o PHP, a seconda del template.'],
+            ],
+            'included_title' => 'Generato dal tuo schema',
+            'included' => [
+                'Login e gestione utenti',
+                'Elenco con ordinamento, paginazione e ricerca per ogni tabella',
+                'Moduli con validazione ricavata dai tipi di campo',
+                'Relazioni (chiavi esterne) tra tabelle',
+                'Report basati sui tuoi layout',
+                'Etichette multilingue per tabelle e campi',
+            ],
+            'workflow_title' => 'Dallo schema all’app in tre passi',
+            'workflow' => [
+                ['title' => 'Importa lo schema', 'text' => 'Incolla o carica le istruzioni MySQL CREATE TABLE, oppure modella le tabelle nel designer integrato.'],
+                ['title' => 'Scegli un template', 'text' => 'Seleziona la piattaforma di destinazione. Il template definisce architettura e stile del codice generato.'],
+                ['title' => 'Genera ed esegui', 'text' => 'Scarica il progetto o distribuiscilo via FTP o CLI e continua a sviluppare la tua logica di business.'],
+            ],
+            'faq' => [
+                ['q' => 'Quali database posso importare?', 'a' => 'Scoriet analizza schemi MySQL (istruzioni CREATE TABLE con chiavi e relazioni). Puoi anche progettare lo schema da zero nel designer integrato.'],
+                ['q' => 'Il codice generato è una scatola nera?', 'a' => 'No. Ottieni codice sorgente normale e leggibile per il framework scelto. Ti appartiene e si modifica come qualsiasi progetto scritto a mano.'],
+                ['q' => 'Cosa succede se il mio schema cambia?', 'a' => 'Rigeneri l’applicazione. Scoriet mostra quali file hai modificato a mano, può riportare quelle modifiche tramite reverse engineering e crea lo script SQL di migrazione.'],
+            ],
+        ],
+
+        'ai-app-foundation' => [
+            'nav' => 'Fondamenta per lo sviluppo con IA',
+            'title' => 'Fondamenta di app generate per gli assistenti di programmazione IA – Scoriet',
+            'description' => 'Non far più ricostruire all’IA login, tabelle e moduli. Scoriet genera le fondamenta complete, l’IA costruisce la logica di business: meno token, meno costi.',
+            'h1' => 'Dai al tuo assistente IA fondamenta pronte invece di una cartella vuota',
+            'intro' => 'Gli assistenti IA sono bravi nella logica di business e costosi nel codice ripetitivo. Ogni nuovo progetto inizia con lo stesso login, la stessa gestione utenti e le stesse tabelle, moduli ed elenchi, generati token dopo token e ogni volta un po’ diversi. Scoriet genera queste fondamenta in modo deterministico dal tuo schema. Il tuo assistente IA inizia dove comincia il lavoro vero.',
+            'benefits_title' => 'Perché fondamenta generate migliorano l’IA',
+            'benefits' => [
+                ['title' => 'Molti meno token', 'text' => 'Login, maschere CRUD, moduli e report non li genera l’IA: il tuo budget di token va alle funzioni che contano.'],
+                ['title' => 'Architettura coerente', 'text' => 'I template producono sempre la stessa struttura collaudata. L’IA estende un codice pulito invece di inventarne uno nuovo a ogni sessione.'],
+                ['title' => 'Risultati IA migliori', 'text' => 'Un codice esistente e coerente dà all’IA modelli chiari: scrive codice che si integra nel progetto.'],
+                ['title' => 'Giorni invece di settimane', 'text' => 'Un solo sviluppatore completa un’applicazione intera in pochi giorni, perché i dati anagrafici sono pronti prima del primo prompt.'],
+            ],
+            'included_title' => 'Cosa l’IA non deve più costruire',
+            'included' => [
+                'Login e gestione utenti con 2FA / MFA',
+                'Livello di accesso ai dati per tutte le tabelle',
+                'Elenchi, moduli e finestre di ricerca',
+                'Report',
+                'Interfaccia utente multilingue',
+                'Struttura del progetto, configurazione e build',
+            ],
+            'workflow_title' => 'Il flusso di lavoro con Scoriet e l’IA',
+            'workflow' => [
+                ['title' => 'Genera le fondamenta', 'text' => 'Progetta o importa lo schema, scegli un template e genera l’applicazione completa.'],
+                ['title' => 'Aprila nel tuo strumento IA', 'text' => 'Apri il progetto in Claude Code, Cursor, Copilot o un altro assistente: vedrà subito un codice coerente.'],
+                ['title' => 'Chiedi la logica di business', 'text' => 'Chiedi all’IA esattamente ciò che rende unica la tua applicazione: calcoli, processi, integrazioni.'],
+            ],
+            'faq' => [
+                ['q' => 'Perché non far generare tutto all’IA?', 'a' => 'Si può, ma costa molti token e iterazioni e produce ogni volta una struttura diversa. I template deterministici creano la parte ripetitiva più velocemente, a costi minori e in modo identico; l’IA rende meglio sulla logica specifica.'],
+                ['q' => 'Quali assistenti IA funzionano con Scoriet?', 'a' => 'Tutti. Scoriet produce codice sorgente normale, quindi qualsiasi assistente che lavora con i file, come Claude Code, Cursor o GitHub Copilot, può proseguire da lì.'],
+                ['q' => 'Perdo le modifiche dell’IA quando rigenero?', 'a' => 'No. Scoriet mostra quali file generati sono cambiati, permette di confrontarli e può riportare le modifiche tramite reverse engineering.'],
+            ],
+        ],
+
+        'laravel-crud-generator' => [
+            'nav' => 'Generatore CRUD per Laravel',
+            'title' => 'Generatore CRUD per Laravel dal tuo schema di database – Scoriet',
+            'description' => 'Genera un’applicazione Laravel completa dal tuo schema MySQL: modelli, migrazioni, controller e un front-end di amministrazione React o Angular. Open source.',
+            'h1' => 'Generatore CRUD per Laravel: un’app Laravel completa dal tuo database',
+            'intro' => 'Scoriet genera un’applicazione Laravel completa dal tuo schema, non solo singoli controller CRUD ma l’intero progetto: modelli, migrazioni con chiavi esterne, controller, rotte API e un front-end di amministrazione React o Angular con elenchi, moduli e ricerca per ogni tabella.',
+            'benefits_title' => 'Perché Scoriet per Laravel?',
+            'benefits' => [
+                ['title' => 'L’intero progetto, non frammenti', 'text' => 'Invece di una risorsa alla volta, Scoriet crea tutti i modelli, le migrazioni, i controller e le maschere del tuo schema in un’unica esecuzione.'],
+                ['title' => 'Front-end React o Angular', 'text' => 'Scegli un template Laravel con front-end React o Angular, entrambi con pannelli di amministrazione per ogni tabella.'],
+                ['title' => 'Relazioni incluse', 'text' => 'Le chiavi esterne diventano migrazioni e relazioni: i dati collegati sono connessi fin dall’inizio.'],
+                ['title' => 'Il tuo template, le tue convenzioni', 'text' => 'I template sono normali file con segnaposto. Adattali una volta alle tue convenzioni e ogni progetto le seguirà.'],
+            ],
+            'included_title' => 'Generato per il tuo progetto Laravel',
+            'included' => [
+                'Modelli Eloquent per ogni tabella',
+                'Migrazioni con chiavi esterne',
+                'Controller e rotte API',
+                'Pannelli di amministrazione con elenchi, moduli e ricerca',
+                'Seeder e configurazione del progetto',
+                'Front-end React o Angular, a seconda del template',
+            ],
+            'workflow_title' => 'Dallo schema all’app Laravel',
+            'workflow' => [
+                ['title' => 'Importa lo schema MySQL', 'text' => 'Importa il tuo database esistente o modellalo nel designer di Scoriet.'],
+                ['title' => 'Scegli un template Laravel', 'text' => 'Laravel con React o Laravel con Angular, oppure adattane uno al tuo stack.'],
+                ['title' => 'Genera, migra, esegui', 'text' => 'Genera il progetto, esegui le migrazioni e sviluppa la logica di business a mano o con il tuo assistente IA.'],
+            ],
+            'faq' => [
+                ['q' => 'È un pacchetto Laravel da installare?', 'a' => 'No. Scoriet genera un progetto Laravel completo e autonomo. Il codice generato non dipende da Scoriet in esecuzione.'],
+                ['q' => 'Posso adattare il codice Laravel generato?', 'a' => 'Sì. Puoi modificare direttamente i file generati o il template, così ogni generazione futura includerà le tue modifiche.'],
+                ['q' => 'In cosa differisce dagli altri generatori CRUD per Laravel?', 'a' => 'La maggior parte crea singole risorse da riga di comando. Scoriet genera l’intera applicazione, front-end compreso, dallo schema, supporta la rigenerazione con reverse engineering e crea script di migrazione.'],
+            ],
+        ],
+
+        'spring-boot-code-generator' => [
+            'nav' => 'Generatore di codice Spring Boot',
+            'title' => 'Generatore di codice Spring Boot dal tuo database – Scoriet',
+            'description' => 'Genera un’applicazione Spring Boot completa dal tuo schema: entità JPA, API REST e front-end React, React Native o Thymeleaf. Open source.',
+            'h1' => 'Generatore di codice Spring Boot: dallo schema a un’app Java full-stack',
+            'intro' => 'Scoriet genera un’applicazione Spring Boot completa dal tuo schema: entità, repository, servizi e controller REST nel back-end, e il front-end che preferisci con elenchi, moduli e ricerca per ogni tabella. Puoi scegliere React con Material UI, React con shadcn/ui e Tailwind, un’app mobile React Native o Thymeleaf lato server.',
+            'benefits_title' => 'Perché Scoriet per Spring Boot?',
+            'benefits' => [
+                ['title' => 'Full-stack in un’unica esecuzione', 'text' => 'Back-end e front-end vengono generati insieme dallo stesso schema, quindi API e maschere combaciano sempre.'],
+                ['title' => 'Quattro opzioni di front-end', 'text' => 'React + Material UI, React + shadcn/ui + Tailwind, React Native o Thymeleaf: scegli ciò che si adatta al tuo progetto.'],
+                ['title' => 'Niente codice Java ripetitivo', 'text' => 'Entità, repository, servizi e controller per decine di tabelle in pochi secondi invece che in giorni.'],
+                ['title' => 'Coerente tra i progetti', 'text' => 'Ogni progetto generato dallo stesso template ha la stessa struttura: più facile da mantenere e per il tuo team.'],
+            ],
+            'included_title' => 'Generato per il tuo progetto Spring Boot',
+            'included' => [
+                'Entità JPA per ogni tabella, relazioni incluse',
+                'Repository e servizi',
+                'Controller REST',
+                'Front-end con elenchi, moduli e ricerca',
+                'Configurazione del progetto Maven',
+                'App mobile React Native come opzione',
+            ],
+            'workflow_title' => 'Dallo schema all’app Spring Boot',
+            'workflow' => [
+                ['title' => 'Importa lo schema', 'text' => 'Importa il tuo schema MySQL o progetta le tabelle nel designer di Scoriet.'],
+                ['title' => 'Scegli il front-end', 'text' => 'Seleziona il template Spring Boot con il front-end che ti serve: React MUI, shadcn/Tailwind, React Native o Thymeleaf.'],
+                ['title' => 'Genera e avvia', 'text' => 'Genera il progetto, avvialo con Maven e prosegui con la logica di business, a mano o con l’IA.'],
+            ],
+            'faq' => [
+                ['q' => 'L’applicazione generata dipende da Scoriet?', 'a' => 'No. Ottieni un progetto Spring Boot standard che si compila ed esegue da solo.'],
+                ['q' => 'Posso generare anche un’app mobile?', 'a' => 'Sì. Il template Spring Boot React Native genera un back-end Spring Boot insieme a un’app React Native per iOS e Android.'],
+                ['q' => 'Posso usare la mia architettura?', 'a' => 'Sì. I template sono modificabili. Adatta una volta struttura dei package, nomi o livelli, e ogni progetto generato li seguirà.'],
+            ],
+        ],
+
+        'csharp-code-generator' => [
+            'nav' => 'Generatore di codice C# / .NET',
+            'title' => 'Generatore di codice C# e .NET dal tuo database – Scoriet',
+            'description' => 'Genera un’applicazione C# .NET con Blazor dal tuo schema: entità, accesso ai dati, elenchi e moduli per ogni tabella. Basato su template e open source.',
+            'h1' => 'Generatore di codice C#: un’applicazione .NET dal tuo schema di database',
+            'intro' => 'Scoriet genera applicazioni C# / .NET dal tuo schema. Il template Blazor crea il livello dati e l’interfaccia per ogni tabella (elenchi, moduli e ricerca), così puoi concentrarti sulla logica della tua applicazione invece che su codice CRUD ripetitivo.',
+            'benefits_title' => 'Perché Scoriet per C# e .NET?',
+            'benefits' => [
+                ['title' => 'Interfaccia Blazor inclusa', 'text' => 'L’applicazione generata include un’interfaccia Blazor per tutte le tabelle, non solo il livello dati.'],
+                ['title' => 'Tipizzazione forte dallo schema', 'text' => 'Tipi e lunghezze dei campi diventano proprietà C# tipizzate e regole di validazione.'],
+                ['title' => 'Adatto al tuo database', 'text' => 'Modella lo schema una volta e genera per il motore a cui punta il tuo template, ad esempio PostgreSQL.'],
+                ['title' => 'Template adattabili', 'text' => 'Adatta una volta nomi, struttura delle cartelle e pattern nel template: ogni progetto seguirà le tue convenzioni.'],
+            ],
+            'included_title' => 'Generato per il tuo progetto .NET',
+            'included' => [
+                'Classi entità per ogni tabella',
+                'Livello di accesso ai dati',
+                'Pagine Blazor con elenchi e ricerca',
+                'Moduli con validazione',
+                'Relazioni tra tabelle',
+                'Configurazione di progetto e solution',
+            ],
+            'workflow_title' => 'Dallo schema all’app .NET',
+            'workflow' => [
+                ['title' => 'Modella o importa lo schema', 'text' => 'Importa uno schema MySQL esistente o progettalo nel designer di Scoriet.'],
+                ['title' => 'Scegli il template C#', 'text' => 'Seleziona il template C# Blazor o adattalo al tuo stack .NET preferito.'],
+                ['title' => 'Genera e compila', 'text' => 'Genera la solution, compilala con i tuoi strumenti .NET abituali e aggiungi la logica di business.'],
+            ],
+            'faq' => [
+                ['q' => 'Mi serve Visual Studio?', 'a' => 'No. Il progetto generato è un normale progetto .NET. Puoi usare Visual Studio, Rider, VS Code o la riga di comando dotnet.'],
+                ['q' => 'Posso generare altri front-end .NET?', 'a' => 'La generazione è interamente basata su template. Puoi creare un template per qualsiasi stack .NET, ad esempio ASP.NET Core MVC o una Web API.'],
+                ['q' => 'Il codice C# generato è leggibile?', 'a' => 'Sì. È normale codice C# che segue la struttura del template, senza runtime nascosti né librerie proprietarie.'],
+            ],
+        ],
+
+        'flutter-app-generator' => [
+            'nav' => 'Generatore di app Flutter',
+            'title' => 'Generatore di app Flutter dal tuo database – Scoriet',
+            'description' => 'Genera un’applicazione Flutter / Dart dal tuo schema, con finestre, moduli ed elenchi progettati nell’editor visuale delle finestre. Basato su template e open source.',
+            'h1' => 'Generatore di app Flutter: applicazioni Dart dal tuo database e dai tuoi design',
+            'intro' => 'Scoriet genera applicazioni Flutter in Dart dal tuo schema e dalle finestre che progetti nell’editor visuale. Moduli, elenchi e navigazione vengono creati per te; l’app generata funziona su desktop e, a seconda del template, su piattaforme mobili.',
+            'benefits_title' => 'Perché Scoriet per Flutter?',
+            'benefits' => [
+                ['title' => 'Progetta le finestre visivamente', 'text' => 'Posiziona campi, pulsanti e tabelle nell’editor delle finestre. Scoriet trasforma il layout in widget Flutter.'],
+                ['title' => 'Collegato ai dati fin dall’inizio', 'text' => 'Le finestre si basano sulle tue tabelle, quindi moduli ed elenchi sono collegati automaticamente al modello dati.'],
+                ['title' => 'Un codice, molte piattaforme', 'text' => 'Flutter funziona su Windows, macOS, Linux, Android e iOS; Scoriet genera il codice Dart una sola volta.'],
+                ['title' => 'Logica di business dal code-behind', 'text' => 'La logica dietro le finestre può essere tradotta in Dart: la base del percorso di migrazione WinDev di Scoriet.'],
+            ],
+            'included_title' => 'Generato per il tuo progetto Flutter',
+            'included' => [
+                'Struttura di progetto Dart / Flutter',
+                'Finestre e moduli dall’editor delle finestre',
+                'Elenchi e tabelle collegati ai tuoi dati',
+                'Navigazione tra le finestre',
+                'Barra di stato, messaggi e dialoghi',
+                'Etichette multilingue',
+            ],
+            'workflow_title' => 'Dal design all’app Flutter',
+            'workflow' => [
+                ['title' => 'Prepara lo schema', 'text' => 'Importa o modella le tabelle con cui lavora la tua applicazione.'],
+                ['title' => 'Progetta le finestre', 'text' => 'Disponi le finestre nell’editor visuale: ogni finestra si basa su una tabella.'],
+                ['title' => 'Genera ed esegui', 'text' => 'Genera il progetto Flutter e avvialo con i tuoi strumenti Flutter abituali.'],
+            ],
+            'faq' => [
+                ['q' => 'Quali piattaforme supporta l’app generata?', 'a' => 'Gli attuali template Flutter sono pensati per applicazioni desktop. Poiché il risultato è codice Flutter standard, altre piattaforme sono possibili con template adattati.'],
+                ['q' => 'Devo conoscere Dart?', 'a' => 'Per le fondamenta generate no. Per estendere l’applicazione con la tua logica aiutano basi di Dart, oppure lasci che un assistente IA prosegua sul codice generato.'],
+                ['q' => 'Posso migrare un’applicazione WinDev a Flutter?', 'a' => 'È proprio lo scopo dell’editor delle finestre e dei template Flutter. Vedi la pagina sulla migrazione WinDev.'],
+            ],
+        ],
+
+        'rust-code-generator' => [
+            'nav' => 'Generatore di codice Rust',
+            'title' => 'Generatore di codice Rust dal tuo schema di database – Scoriet',
+            'description' => 'Genera codice Rust dal tuo schema con i template: strutture dati, accesso ai dati e scheletro dell’applicazione. Coerente, veloce e open source.',
+            'h1' => 'Generatore di codice Rust: applicazioni Rust dal tuo schema di database',
+            'intro' => 'Rust è veloce e sicuro, ma scrivere struct, accesso ai dati e codice CRUD ripetitivo per ogni tabella richiede tempo. Scoriet genera questo codice dal tuo schema tramite template, così il tuo progetto Rust parte con un livello dati e una struttura completi e coerenti.',
+            'benefits_title' => 'Perché generare codice Rust con Scoriet?',
+            'benefits' => [
+                ['title' => 'Tipi direttamente dallo schema', 'text' => 'Le colonne diventano campi di struct fortemente tipizzati, con valori opzionali, lunghezze e chiavi.'],
+                ['title' => 'Niente codice ripetitivo scritto a mano', 'text' => 'Accesso ai dati e codice CRUD per ogni tabella in un’unica esecuzione, non tabella per tabella.'],
+                ['title' => 'I tuoi crate, il tuo stile', 'text' => 'I template sono testo con segnaposto. Usa i framework e i crate che preferisci e mantienili coerenti tra i progetti.'],
+                ['title' => 'Rigenera in sicurezza', 'text' => 'Quando lo schema cambia, rigenera. Scoriet mostra i file modificati e crea lo script di migrazione.'],
+            ],
+            'included_title' => 'Generato per il tuo progetto Rust',
+            'included' => [
+                'Struct per ogni tabella',
+                'Funzioni per creare, leggere, aggiornare ed eliminare',
+                'Relazioni tra tabelle',
+                'Struttura del progetto e configurazione',
+                'Nomi coerenti in tutto il progetto',
+                'Script SQL di migrazione quando lo schema cambia',
+            ],
+            'workflow_title' => 'Dallo schema al codice Rust',
+            'workflow' => [
+                ['title' => 'Importa lo schema', 'text' => 'Importa il tuo schema MySQL o progetta le tabelle nel designer.'],
+                ['title' => 'Scegli o scrivi un template Rust', 'text' => 'Usa un template Rust esistente o creane uno per il tuo framework e i tuoi crate.'],
+                ['title' => 'Genera e compila', 'text' => 'Genera il progetto, compilalo con cargo e aggiungi la tua logica.'],
+            ],
+            'faq' => [
+                ['q' => 'Quali framework Rust sono supportati?', 'a' => 'Scoriet non è legato ad alcun framework. Viene generato ciò che contiene il template: decidi tu quale framework web e quali crate per il database usare.'],
+                ['q' => 'Il codice Rust generato è idiomatico?', 'a' => 'Il codice segue il template: è idiomatico quanto il tuo template. Miglioralo una volta e ogni generazione ne beneficia.'],
+                ['q' => 'Posso combinare codice generato e scritto a mano?', 'a' => 'Sì. Scoriet tiene traccia dei file generati che hai modificato e può riportare queste modifiche nella generazione successiva.'],
+            ],
+        ],
+
+        'windev-migration' => [
+            'nav' => 'Migrazione WinDev',
+            'title' => 'Migrazione WinDev: porta le applicazioni WinDev su codice moderno – Scoriet',
+            'description' => 'Migra le applicazioni WinDev passo dopo passo: ricrea le finestre nell’editor di Scoriet e traduci il code-behind WLanguage in Flutter / Dart. Un’alternativa aperta a WinDev.',
+            'h1' => 'Migrazione WinDev: da WinDev a una tecnologia moderna e aperta',
+            'intro' => 'Scoriet è nato come riscrittura di un’applicazione WinDev, e le sue funzioni più recenti servono a portare i progetti WinDev nel mondo aperto. Le finestre basate su una singola tabella vengono ricreate nell’editor visuale e il code-behind viene tradotto in Dart. Il risultato è un’applicazione Flutter moderna invece di un runtime proprietario.',
+            'benefits_title' => 'Perché migrare con Scoriet?',
+            'benefits' => [
+                ['title' => 'Concetti familiari', 'text' => 'Finestre basate su una tabella, controlli con nomi come BTN_NoName1, campi collegati ai dati: l’editor segue il modo di lavorare di WinDev.'],
+                ['title' => 'La logica viene tradotta, non riscritta', 'text' => 'Il code-behind delle finestre viene tradotto in Dart, inclusi messaggi, barre di avanzamento e accesso ai file INI.'],
+                ['title' => 'Un risultato aperto', 'text' => 'Ottieni normale codice Flutter / Dart, senza licenze né runtime proprietario.'],
+                ['title' => 'Passo dopo passo', 'text' => 'Migra finestra per finestra. Il modello dati arriva dal tuo schema di database esistente.'],
+            ],
+            'included_title' => 'Cosa copre oggi la migrazione',
+            'included' => [
+                'Finestre basate su una singola tabella, ricreate nell’editor',
+                'Nomi automatici dei controlli in stile WinDev',
+                'Traduzione del code-behind in Dart',
+                'Messaggi, barre di avanzamento, lettura e scrittura INI',
+                'Apertura di finestre e passaggio di dati tra loro',
+                'Costanti di colore WinDev',
+            ],
+            'workflow_title' => 'Come funziona una migrazione',
+            'workflow' => [
+                ['title' => 'Importa il database', 'text' => 'Porta lo schema della tua applicazione WinDev, così ogni finestra ha il suo modello dati.'],
+                ['title' => 'Ricrea le finestre', 'text' => 'Ricrea ogni finestra nell’editor e aggiungi il suo code-behind.'],
+                ['title' => 'Genera Flutter', 'text' => 'Genera l’applicazione Flutter, testala e prosegui finestra per finestra.'],
+            ],
+            'faq' => [
+                ['q' => 'Scoriet può convertire automaticamente un progetto WinDev completo?', 'a' => 'Non ancora. La migrazione è in sviluppo attivo e copre le finestre basate su una singola tabella e una parte crescente del code-behind. I progetti più grandi vengono migrati passo dopo passo.'],
+                ['q' => 'Quale tecnologia di destinazione viene usata?', 'a' => 'Flutter con Dart. Il risultato è un’applicazione desktop nativa con codice sorgente standard e aperto.'],
+                ['q' => 'Mi serve ancora una licenza WinDev dopo?', 'a' => 'No. L’applicazione generata è indipendente da WinDev e dal suo runtime.'],
+            ],
+        ],
+    ],
+];

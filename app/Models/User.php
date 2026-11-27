@@ -32,7 +32,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'kanban_initials', // 2-3 letter initials for Kanban boards
         'kanban_color', // Hex color for Kanban avatar
         'credits',
-        'patron_type',
+        'patron_type', // subscription plan tier: 'annual' = Team & Studio, 'monthly' = Pro Unlimited (see PricingCatalog)
+        'billing_interval', // 'month' | 'year' — how the subscription is billed, independent of the plan tier
         'pending_project_invitation_id',
         'last_monthly_credits_at',
         'last_login_at', // Last successful login timestamp
@@ -230,11 +231,19 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->user_type === 'patron';
     }
 
+    /**
+     * Pro Unlimited subscriber (unlimited generation). The name refers to the plan
+     * tier stored in patron_type, not to the billing interval (see billing_interval).
+     */
     public function isPatronMonthly(): bool
     {
         return $this->user_type === 'patron' && $this->patron_type === 'monthly';
     }
 
+    /**
+     * Team & Studio subscriber. The name refers to the plan tier stored in
+     * patron_type, not to the billing interval (see billing_interval).
+     */
     public function isPatronAnnual(): bool
     {
         return $this->user_type === 'patron' && $this->patron_type === 'annual';

@@ -44,7 +44,8 @@ export default [
         },
     },
     {
-        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'storage/app/temp/**', 'storage/templates/**', 'tools/**', 'scripts/**'],
+        // storage/ holds only runtime data (logs, cache, generated code, debug dumps), never source code
+        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'storage/**', 'tools/**', 'scripts/**'],
     },
     prettier, // Turn off all rules that might conflict with Prettier
 ];

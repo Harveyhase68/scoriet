@@ -7,6 +7,8 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 import CMSPopupModal from '@/Components/Modals/CMSPopupModal';
 import FeaturesModal from '@/Components/Modals/FeaturesModal';
 import { getStoredLanguage, setStoredLanguage, SupportedLanguage, useTranslation } from '@/i18n';
+import { DEFAULT_BILLING_INTERVAL } from '@/lib/plans';
+import type { BillingInterval } from '@/lib/plans';
 
 /**
  * Behaviour layer of the server-rendered public pages (resources/views/public).
@@ -24,7 +26,7 @@ import { getStoredLanguage, setStoredLanguage, SupportedLanguage, useTranslation
 
 /** Server-provided context, see "islandContext" in the public controllers. */
 export interface PublicPageContext {
-  page: 'home' | 'cms' | 'project';
+  page: 'home' | 'cms' | 'project' | 'topic';
   locale: SupportedLanguage;
   /** Language for the modals; null = follow the visitor's stored app language. */
   uiLanguage: SupportedLanguage | null;
@@ -55,6 +57,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+/** Interval currently shown by the pricing section around `element` (default outside of it). */
+function billingIntervalOf(element: HTMLElement): BillingInterval {
+  const value = element.closest<HTMLElement>('[data-billing-interval]')?.dataset.billingInterval;
+  return value === 'month' || value === 'year' ? value : DEFAULT_BILLING_INTERVAL;
+}
+
 type PublicAction =
   | 'login'
   | 'register'
@@ -66,10 +74,12 @@ type PublicAction =
   | 'logout'
   | 'goto-app'
   | 'features'
-  | 'pricing';
+  | 'pricing'
+  | 'billing-interval';
 
 const ACTIONS: ReadonlySet<string> = new Set<PublicAction>([
   'login', 'register', 'demo', 'video', 'install', 'profile', 'plans', 'logout', 'goto-app', 'features', 'pricing',
+  'billing-interval',
 ]);
 
 function readStoredToken(): string | null {
@@ -100,6 +110,8 @@ export default function PublicIsland({ context }: { context: PublicPageContext }
   const [demoNotice, setDemoNotice] = useState<'required' | 'expired' | null>(null);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  // Interval chosen on the pricing section, preselected in the plan dialog.
+  const [planInterval, setPlanInterval] = useState<BillingInterval>(DEFAULT_BILLING_INTERVAL);
   const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [cmsPopups, setCmsPopups] = useState<CMSPopup[]>([]);
@@ -244,7 +256,7 @@ export default function PublicIsland({ context }: { context: PublicPageContext }
   }, [deferredPrompt, t]);
 
   // ---- Click delegation for the server-rendered markup --------------------
-  const runAction = useCallback((action: PublicAction): void => {
+  const runAction = useCallback((action: PublicAction, element: HTMLElement): void => {
     switch (action) {
       case 'login':
         setActiveModal('login');
@@ -276,11 +288,25 @@ export default function PublicIsland({ context }: { context: PublicPageContext }
         break;
       case 'pricing':
         if (isAuthenticated()) {
+          setPlanInterval(billingIntervalOf(element));
           setShowPlanModal(true);
         } else {
           setActiveModal(context.isDemo ? 'login' : 'register');
         }
         break;
+      case 'billing-interval': {
+        const section = element.closest<HTMLElement>('[data-billing-interval]');
+        if (!section) break;
+        const requested = element.dataset.interval;
+        const next: BillingInterval = requested === 'month' || requested === 'year'
+          ? requested
+          : (section.dataset.billingInterval === 'year' ? 'month' : 'year'); // 'toggle'
+        section.dataset.billingInterval = next;
+        section.querySelectorAll<HTMLElement>('[role="switch"][data-public-action="billing-interval"]').forEach((toggle) => {
+          toggle.setAttribute('aria-checked', next === 'year' ? 'true' : 'false');
+        });
+        break;
+      }
       case 'goto-app':
         if (isAuthenticated()) {
           window.location.href = '/app';
@@ -312,10 +338,10 @@ export default function PublicIsland({ context }: { context: PublicPageContext }
 
       const actionElement = target.closest<HTMLElement>('[data-public-action]');
       const action = actionElement?.dataset.publicAction;
-      if (!action || !ACTIONS.has(action)) return;
+      if (!actionElement || !action || !ACTIONS.has(action)) return;
 
       event.preventDefault();
-      runAction(action as PublicAction);
+      runAction(action as PublicAction, actionElement);
     };
 
     document.addEventListener('click', onClick);
@@ -352,7 +378,7 @@ export default function PublicIsland({ context }: { context: PublicPageContext }
         </div>
       </Dialog>
 
-      <PlanModal visible={showPlanModal} onHide={() => setShowPlanModal(false)} initialTab={0} />
+      <PlanModal visible={showPlanModal} onHide={() => setShowPlanModal(false)} initialTab={0} initialInterval={planInterval} />
 
       <FeaturesModal
         visible={showFeaturesModal}

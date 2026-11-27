@@ -17,6 +17,7 @@ import PlanModal from '@/Components/AuthModals/PlanModal';
 import { isPushSupported, getPushPermission, subscribeToPush, unsubscribeFromPush, hasPushSubscription } from '@/lib/pushNotifications';
 import TwoFactorSection from '@/Components/AuthModals/TwoFactorSection';
 import { useTheme, ThemeMode } from '@/contexts/ThemeContext';
+import { PLAN_NAMES } from '@/lib/plans';
 import { apiClient } from '@/lib/api';
 
 interface ProfileModalProps {
@@ -407,10 +408,8 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
   const euCountries = ['AT', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'PL', 'SE', 'DK', 'FI', 'IE', 'PT', 'GR', 'CZ', 'RO', 'HU', 'SK', 'BG', 'HR', 'SI', 'LT', 'LV', 'EE', 'CY', 'LU', 'MT'];
   const isEuCountry = euCountries.includes(sellerData.company_country);
 
-  // Pricing from Settings
+  // Credit package prices from /api/pricing (subscription prices: lib/plans.ts)
   const [_pricing, setPricing] = useState<{
-    patron_annual: number;
-    patron_monthly: number;
     credits_500: number;
     credits_1000: number;
     credits_2500: number;
@@ -1950,7 +1949,7 @@ export default function ProfileModal({ visible, onHide, defaultTab = 0 }: Profil
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold" style={{ color: colors.textPrimary }}>{t.profilemodal616}</h3>
                 <Badge
-                  value={cliStatus?.cli.is_patron ? (userData.user_type === 'patron' ? 'Patron' : 'Free') : 'Free'}
+                  value={cliStatus?.cli.is_patron && userData.user_type === 'patron' ? 'Premium' : PLAN_NAMES.free}
                   severity={cliStatus?.cli.is_patron ? 'success' : 'info'}
                 />
               </div>

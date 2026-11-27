@@ -5,7 +5,7 @@
 @endphp
 <footer class="py-12 bg-(--theme-bg-secondary) border-t border-(--theme-border-secondary)">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid sm:grid-cols-2 md:grid-cols-4 gap-8">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-5 gap-8">
             <div>
                 <h2 class="text-lg font-semibold mb-4 text-(--theme-text-primary)">Scoriet</h2>
                 <p class="mb-4 text-(--theme-text-muted)">{{ __('landing.footer_tagline') }}</p>
@@ -27,6 +27,15 @@
                 <ul class="space-y-2">
                     <li><button type="button" class="pub-link" data-public-action="features">{{ __('landing.footer_features') }}</button></li>
                     <li><a href="{{ $homeUrl }}#pricing" class="pub-link">{{ __('landing.footer_pricing') }}</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h2 class="font-semibold mb-4 text-(--theme-text-primary)">{{ __('topics.shared.footer_title') }}</h2>
+                <ul class="space-y-2">
+                    @foreach (\App\Support\Seo\TopicPages::slugs() as $slug)
+                        <li><a href="{{ \App\Support\Seo\TopicPages::url($locale, $slug) }}" class="pub-link">{{ __('topics.pages.' . $slug . '.nav') }}</a></li>
+                    @endforeach
                 </ul>
             </div>
 

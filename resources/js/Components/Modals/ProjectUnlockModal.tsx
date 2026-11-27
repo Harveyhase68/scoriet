@@ -2,6 +2,7 @@ import React from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { useTheme } from '@/contexts/ThemeContext';
+import { PLAN_NAMES } from '@/lib/plans';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 
 interface ProjectUnlockModalProps {
@@ -39,7 +40,9 @@ export default function ProjectUnlockModal({
   // Dynamic text based on resource type
   const resourceName = resourceType === 'project' ? 'Project' : 'Database';
   const resourceNamePlural = resourceType === 'project' ? 'projects' : 'databases';
-  const unlimitedPlan = resourceType === 'project' ? 'Patron Monthly' : 'Patron Annual or Monthly';
+  const unlimitedPlan = resourceType === 'project'
+    ? PLAN_NAMES.patron_monthly
+    : `${PLAN_NAMES.patron_annual} / ${PLAN_NAMES.patron_monthly}`;
 
   return (
     <Dialog

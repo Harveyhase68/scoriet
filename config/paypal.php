@@ -23,13 +23,21 @@ return [
     'locale'         => env('PAYPAL_LOCALE', 'de_DE'), // force gateway language  i.e. it_IT, es_ES, en_US ... (for express checkout only)
     'validate_ssl'   => env('PAYPAL_VALIDATE_SSL', false), // Disable for local dev, enable in production!
 
-    // Billing Plan IDs for Patron Subscriptions (created in PayPal Dashboard)
-    // SANDBOX Plans (for development/testing):
+    // Billing Plan IDs per plan key and billing interval (created in the PayPal Dashboard,
+    // see App\Support\PricingCatalog). Defaults are the SANDBOX plans for development.
     'billing_plans' => [
-        'patron_monthly' => env('PAYPAL_PLAN_MONTHLY', 'P-34398099KE172002DNE43FPI'),
-        'patron_annual'  => env('PAYPAL_PLAN_ANNUAL', 'P-3X956831L9482074BNE43KXI'),
+        'patron_annual' => [ // Team & Studio
+            'month' => env('PAYPAL_PLAN_TEAM_STUDIO_MONTHLY'),
+            'year'  => env('PAYPAL_PLAN_TEAM_STUDIO_YEARLY', 'P-3X956831L9482074BNE43KXI'),
+        ],
+        'patron_monthly' => [ // Pro Unlimited
+            'month' => env('PAYPAL_PLAN_PRO_UNLIMITED_MONTHLY', 'P-34398099KE172002DNE43FPI'),
+            'year'  => env('PAYPAL_PLAN_PRO_UNLIMITED_YEARLY'),
+        ],
     ],
-    // LIVE Plans (for production - set in .env):
-    // PAYPAL_PLAN_MONTHLY=P-9JX306986G0884828NE373YY
-    // PAYPAL_PLAN_ANNUAL=P-9XV43565L93580047NE37ZPA
+    // LIVE plans (production .env):
+    // PAYPAL_PLAN_TEAM_STUDIO_MONTHLY=P-2RB966393N0522825NMEEWJI
+    // PAYPAL_PLAN_TEAM_STUDIO_YEARLY=P-98C20566R49350626NMEEVIA
+    // PAYPAL_PLAN_PRO_UNLIMITED_MONTHLY=P-0FL971178D189242JNMEEZQY
+    // PAYPAL_PLAN_PRO_UNLIMITED_YEARLY=P-7BM36253563703339NMEEYWA
 ];

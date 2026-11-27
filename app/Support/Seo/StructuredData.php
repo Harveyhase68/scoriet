@@ -2,6 +2,8 @@
 
 namespace App\Support\Seo;
 
+use App\Support\PricingCatalog;
+
 /**
  * schema.org JSON-LD builders for the public pages.
  *
@@ -56,11 +58,18 @@ final class StructuredData
     }
 
     /**
-     * @param  array<string, float>  $prices  as returned by PricingCatalog::current()['prices']
+     * @param  array<string, array{month: float, year: float}>  $subscriptions  PricingCatalog::current()['subscriptions']
      * @return array<string, mixed>
      */
-    public static function softwareApplication(string $locale, string $description, array $prices, string $currency): array
+    public static function softwareApplication(string $locale, string $description, array $subscriptions, string $currency): array
     {
+        $offers = [self::offer(PricingCatalog::PLAN_NAMES['free'], 0.0, $currency, null)];
+        foreach ($subscriptions as $plan => $prices) {
+            foreach (PricingCatalog::INTERVALS as $interval) {
+                $offers[] = self::offer(PricingCatalog::displayName($plan, $interval), $prices[$interval], $currency, $interval);
+            }
+        }
+
         return [
             '@context' => 'https://schema.org',
             '@type' => 'SoftwareApplication',
@@ -76,11 +85,7 @@ final class StructuredData
             'inLanguage' => $locale,
             'image' => asset('images/logos/scoriet-logo.png'),
             'publisher' => ['@id' => self::organizationId()],
-            'offers' => [
-                self::offer('Free', 0.0, $currency),
-                self::offer('Patron Annual', $prices['patron_annual'] ?? 0.0, $currency),
-                self::offer('Patron Monthly', $prices['patron_monthly'] ?? 0.0, $currency),
-            ],
+            'offers' => $offers,
         ];
     }
 
@@ -124,6 +129,31 @@ final class StructuredData
     }
 
     /**
+     * FAQ as schema.org FAQPage. Must mirror the questions visible on the page.
+     *
+     * @param  list<array{q: string, a: string}>  $entries
+     * @return array<string, mixed>
+     */
+    public static function faqPage(string $url, array $entries): array
+    {
+        $questions = [];
+        foreach ($entries as $entry) {
+            $questions[] = [
+                '@type' => 'Question',
+                'name' => $entry['q'],
+                'acceptedAnswer' => ['@type' => 'Answer', 'text' => $entry['a']],
+            ];
+        }
+
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'FAQPage',
+            '@id' => $url.'#faq',
+            'mainEntity' => $questions,
+        ];
+    }
+
+    /**
      * @param  list<array{name: string, url: string}>  $items  ordered from root to current page
      * @return array<string, mixed>
      */
@@ -146,14 +176,30 @@ final class StructuredData
         ];
     }
 
-    /** @return array<string, mixed> */
-    private static function offer(string $name, float $price, string $currency): array
+    /**
+     * @param  string|null  $interval  'month' | 'year' for subscriptions, null for a one-off price
+     * @return array<string, mixed>
+     */
+    private static function offer(string $name, float $price, string $currency, ?string $interval): array
     {
-        return [
+        $price = number_format($price, 2, '.', '');
+        $offer = [
             '@type' => 'Offer',
             'name' => $name,
-            'price' => number_format($price, 2, '.', ''),
+            'price' => $price,
             'priceCurrency' => $currency,
         ];
+
+        if ($interval !== null) {
+            // UN/CEFACT unit codes: MON = month, ANN = year
+            $offer['priceSpecification'] = [
+                '@type' => 'UnitPriceSpecification',
+                'price' => $price,
+                'priceCurrency' => $currency,
+                'unitCode' => $interval === 'year' ? 'ANN' : 'MON',
+            ];
+        }
+
+        return $offer;
     }
 }

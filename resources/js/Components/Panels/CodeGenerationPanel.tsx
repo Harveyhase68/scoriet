@@ -5,6 +5,7 @@ import { Dropdown } from 'primereact/dropdown';
 import PlanModal from '@/Components/AuthModals/PlanModal';
 import ProfileModal from '@/Components/AuthModals/ProfileModal';
 import { useTheme } from '@/contexts/ThemeContext';
+import { PLAN_NAMES } from '@/lib/plans';
 import { apiClient } from '@/lib/api';
 
 interface Project {
@@ -1063,7 +1064,7 @@ export default function CodeGenerationPanel() {
     return selectedProject?.is_soft_locked === true;
   };
 
-  // 💰 Charge credits before generation (skips for Patron Monthly users)
+  // 💰 Charge credits before generation (skips for Pro Unlimited / patron_monthly users)
   const chargeCreditsForGeneration = async (): Promise<{ success: boolean; message?: string; isFree?: boolean }> => {
     try {
       const data = await apiClient.post('/generation/charge', { project_id: selectedProjectId });
@@ -4099,7 +4100,7 @@ export default function CodeGenerationPanel() {
                       </div>
                     )}
                   </div>
-                  {/* Patron Monthly upgrade hint when low on credits */}
+                  {/* Pro Unlimited upgrade hint when low on credits */}
                   {currentUser.patron_type !== 'monthly' && (currentUser.credits || 0) < 5 && (
                     <p className="text-xs text-center mt-2" style={{ color: colors.textMuted }}>
                       {t.codegenerationpanel3205}{' '}
@@ -4109,7 +4110,7 @@ export default function CodeGenerationPanel() {
                         className="underline font-semibold"
                         style={{ color: colors.warningText }}
                       >
-                        Patron Monthly
+                        {PLAN_NAMES.patron_monthly}
                       </button>
                       {' '}{t.codegenerationpanel3214}
                     </p>
