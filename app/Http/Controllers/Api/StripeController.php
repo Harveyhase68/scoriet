@@ -7,7 +7,9 @@ use App\Models\CreditTransaction;
 use App\Models\Settings;
 use App\Models\User;
 use App\Notifications\NewPatronSubscription;
+use App\Support\PricingCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -20,6 +22,42 @@ class StripeController extends Controller
     public function __construct()
     {
         Stripe::setApiKey(config('services.stripe.secret'));
+    }
+
+    /**
+     * Checkout Session options for Stripe Tax, switched by STRIPE_AUTOMATIC_TAX
+     * (config services.stripe.automatic_tax). Empty when switched off.
+     *
+     * - automatic_tax: Stripe calculates the VAT of the customer's country. All
+     *   prices are tax-inclusive, so the customer always pays the listed amount;
+     *   only the split into net + VAT on the invoice depends on the country.
+     * - billing_address_collection: the country determines the VAT rate.
+     * - tax_id_collection: EU business customers can enter their VAT ID (reverse charge).
+     *   In payment mode this requires Checkout to create a customer.
+     *
+     * Template purchases are deliberately excluded: they are sales on behalf of
+     * the template creator, whose tax situation differs from Scoriet's own.
+     *
+     * @param  'payment'|'subscription'  $mode
+     * @return array<string, mixed>
+     */
+    private function taxSessionOptions(string $mode): array
+    {
+        if (! config('services.stripe.automatic_tax')) {
+            return [];
+        }
+
+        $options = [
+            'automatic_tax' => ['enabled' => true],
+            'billing_address_collection' => 'required',
+            'tax_id_collection' => ['enabled' => true],
+        ];
+
+        if ($mode === 'payment') {
+            $options['customer_creation'] = 'always';
+        }
+
+        return $options;
     }
 
     /**
@@ -69,8 +107,10 @@ class StripeController extends Controller
                         'product_data' => [
                             'name' => 'Scoriet ' . $selectedPackage['name'],
                             'description' => 'Credit package for Scoriet code generator',
+                            'tax_code' => config('services.stripe.tax_code'),
                         ],
                         'unit_amount' => $priceInCents,
+                        'tax_behavior' => 'inclusive', // settings prices are gross prices
                     ],
                     'quantity' => 1,
                 ];
@@ -89,7 +129,7 @@ class StripeController extends Controller
                     'price' => $selectedPackage['price'],
                     'type' => 'credits',
                 ],
-            ]);
+            ] + $this->taxSessionOptions('payment'));
 
             return response()->json([
                 'success' => true,
@@ -111,34 +151,29 @@ class StripeController extends Controller
     public function createPatronCheckout(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:patron_monthly,patron_annual',
+            'plan' => ['required', Rule::in(PricingCatalog::subscriptionPlans())],
+            'interval' => ['required', Rule::in(PricingCatalog::INTERVALS)],
         ]);
 
         $user = $request->user();
         $plan = $request->plan;
+        $interval = $request->interval;
         $settings = Settings::get();
 
-        // Get plan details
-        $plans = [
-            'patron_monthly' => [
-                'price' => $settings->price_patron_monthly,
-                'name' => 'Scoriet Patron Monthly',
-                'interval' => 'month',
-                'credits_monthly' => 100,
-            ],
-            'patron_annual' => [
-                'price' => $settings->price_patron_annual,
-                'name' => 'Scoriet Patron Yearly',
-                'interval' => 'year',
-                'credits_monthly' => 100,
-            ],
-        ];
-
-        $selectedPlan = $plans[$plan];
-        $priceInCents = (int) round($selectedPlan['price'] * 100);
+        $productName = 'Scoriet ' . PricingCatalog::displayName($plan, $interval);
+        $priceInCents = (int) round(PricingCatalog::subscriptionPrice($settings, $plan, $interval) * 100);
 
         // Use fixed Stripe Price ID if configured, otherwise create inline price_data
-        $stripePriceId = config("services.stripe.price_{$plan}");
+        $stripePriceId = PricingCatalog::stripePriceId($plan, $interval);
+
+        // Stored on the session AND on the subscription, so subscription events
+        // (updated / deleted) can be matched to the user and plan as well.
+        $metadata = [
+            'user_id' => $user->id,
+            'plan' => $plan,
+            'interval' => $interval,
+            'type' => 'patron',
+        ];
 
         try {
             $lineItem = $stripePriceId
@@ -147,12 +182,14 @@ class StripeController extends Controller
                     'price_data' => [
                         'currency' => 'eur',
                         'product_data' => [
-                            'name' => $selectedPlan['name'],
-                            'description' => 'Patron subscription with 100 credits/month',
+                            'name' => $productName,
+                            'description' => $productName . ' subscription',
+                            'tax_code' => config('services.stripe.tax_code'),
                         ],
                         'unit_amount' => $priceInCents,
+                        'tax_behavior' => 'inclusive', // settings prices are gross prices
                         'recurring' => [
-                            'interval' => $selectedPlan['interval'],
+                            'interval' => $interval,
                         ],
                     ],
                     'quantity' => 1,
@@ -165,12 +202,9 @@ class StripeController extends Controller
                 'success_url' => config('app.url') . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => config('app.url') . '/payment/cancel',
                 'client_reference_id' => $user->id,
-                'metadata' => [
-                    'user_id' => $user->id,
-                    'plan' => $plan,
-                    'type' => 'patron',
-                ],
-            ]);
+                'metadata' => $metadata,
+                'subscription_data' => ['metadata' => $metadata],
+            ] + $this->taxSessionOptions('subscription'));
 
             return response()->json([
                 'success' => true,
@@ -272,14 +306,21 @@ class StripeController extends Controller
         } elseif ($type === 'template') {
             $this->handleTemplatePurchase($session, $user, $metadata);
         } elseif ($type === 'patron') {
-            $plan = $metadata->plan ?? 'patron_monthly';
-            // Extract 'monthly' or 'annual' from 'patron_monthly' or 'patron_annual'
-            $patronType = str_replace('patron_', '', $plan);
+            $plan = $metadata->plan ?? null;
+            $interval = $metadata->interval ?? null;
 
-            DB::transaction(function () use ($user, $patronType, $session) {
+            if (! PricingCatalog::isSubscriptionPlan($plan)) {
+                Log::error('Stripe Webhook: Unknown subscription plan', ['plan' => $plan, 'session' => $session->id]);
+                return;
+            }
+            $patronType = PricingCatalog::PATRON_TYPES[$plan];
+            $billingInterval = PricingCatalog::isInterval($interval) ? $interval : null;
+
+            DB::transaction(function () use ($user, $patronType, $billingInterval, $session) {
                 $user->update([
                     'user_type' => 'patron',
-                    'patron_type' => $patronType, // 'monthly' or 'annual'
+                    'patron_type' => $patronType,
+                    'billing_interval' => $billingInterval,
                     'stripe_subscription_id' => $session->subscription ?? null,
                     'stripe_customer_id' => $session->customer ?? null,
                 ]);
@@ -288,7 +329,7 @@ class StripeController extends Controller
             // Send admin notification
             try {
                 Notification::route('mail', 'office@predl.cc')
-                    ->notify(new NewPatronSubscription($user, $patronType, 'stripe'));
+                    ->notify(new NewPatronSubscription($user, $patronType, 'stripe', $billingInterval));
             } catch (\Exception $e) {
                 Log::error('Failed to send patron subscription notification: ' . $e->getMessage());
             }
@@ -364,6 +405,7 @@ class StripeController extends Controller
             $user->update([
                 'user_type' => 'free',
                 'patron_type' => null,
+                'billing_interval' => null,
                 'stripe_subscription_id' => $subscription->id,
             ]);
         }
@@ -384,6 +426,7 @@ class StripeController extends Controller
             $user->update([
                 'user_type' => 'free',
                 'patron_type' => null,
+                'billing_interval' => null,
             ]);
         }
     }

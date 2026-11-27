@@ -12,12 +12,15 @@ import { InputNumber } from 'primereact/inputnumber';
 import { ProgressSpinner } from 'primereact/progressspinner';
 import { api, pricingUtils } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
+import { PLAN_NAMES } from '@/lib/plans';
 
 interface Settings {
   id: number;
   global_google_translate_key: string | null;
-  price_patron_annual: number;
-  price_patron_monthly: number;
+  price_team_studio_monthly: number;
+  price_team_studio_yearly: number;
+  price_pro_unlimited_monthly: number;
+  price_pro_unlimited_yearly: number;
   price_credits_500: number;
   price_credits_1000: number;
   price_credits_2500: number;
@@ -57,8 +60,10 @@ export default function SystemSettingsPanel() {
   const { control, handleSubmit, reset, formState: { errors } } = useForm({
     defaultValues: {
       global_google_translate_key: '',
-      price_patron_annual: 0,
-      price_patron_monthly: 0,
+      price_team_studio_monthly: 0,
+      price_team_studio_yearly: 0,
+      price_pro_unlimited_monthly: 0,
+      price_pro_unlimited_yearly: 0,
       price_credits_500: 0,
       price_credits_1000: 0,
       price_credits_2500: 0,
@@ -72,8 +77,10 @@ export default function SystemSettingsPanel() {
       setSettings(response);
       reset({
         global_google_translate_key: response.global_google_translate_key || '',
-        price_patron_annual: parseFloat(response.price_patron_annual),
-        price_patron_monthly: parseFloat(response.price_patron_monthly),
+        price_team_studio_monthly: parseFloat(response.price_team_studio_monthly),
+        price_team_studio_yearly: parseFloat(response.price_team_studio_yearly),
+        price_pro_unlimited_monthly: parseFloat(response.price_pro_unlimited_monthly),
+        price_pro_unlimited_yearly: parseFloat(response.price_pro_unlimited_yearly),
         price_credits_500: parseFloat(response.price_credits_500),
         price_credits_1000: parseFloat(response.price_credits_1000),
         price_credits_2500: parseFloat(response.price_credits_2500),
@@ -105,6 +112,17 @@ export default function SystemSettingsPanel() {
       setSaving(false);
     }
   };
+
+  const subscriptionPriceFields: Array<{
+    name: 'price_team_studio_monthly' | 'price_team_studio_yearly' | 'price_pro_unlimited_monthly' | 'price_pro_unlimited_yearly';
+    label: string;
+    placeholder: string;
+  }> = [
+    { name: 'price_team_studio_monthly', label: `${PLAN_NAMES.patron_annual} · ${t.billingMonthly} (€${t.billingPerMonth}) *`, placeholder: '4.90' },
+    { name: 'price_team_studio_yearly', label: `${PLAN_NAMES.patron_annual} · ${t.billingYearly} (€${t.billingPerYear}) *`, placeholder: '34.90' },
+    { name: 'price_pro_unlimited_monthly', label: `${PLAN_NAMES.patron_monthly} · ${t.billingMonthly} (€${t.billingPerMonth}) *`, placeholder: '49.90' },
+    { name: 'price_pro_unlimited_yearly', label: `${PLAN_NAMES.patron_monthly} · ${t.billingYearly} (€${t.billingPerYear}) *`, placeholder: '478.80' },
+  ];
 
   // Refresh pricing cache
   const refreshPrices = async () => {
@@ -267,70 +285,41 @@ export default function SystemSettingsPanel() {
                 </p>
               </div>
 
+              {/* One field per subscription plan and billing interval (App\Support\PricingCatalog). */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="field">
-                  <label htmlFor="price_patron_annual" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {t.systemsettingspanel266}
-                  </label>
-                  <Controller
-                    name="price_patron_annual"
-                    control={control}
-                    rules={{
-                      required: t.systemsettingspanel272,
-                      min: { value: 0, message: t.systemsettingspanel149 }
-                    }}
-                    render={({ field }) => (
-                      <InputNumber
-                        id="price_patron_annual"
-                        value={field.value}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        mode="currency"
-                        currency="EUR"
-                        locale="de-DE"
-                        minFractionDigits={2}
-                        min={0}
-                        max={9999999.99}
-                        className="w-full"
-                        placeholder="34.90"
-                      />
+                {subscriptionPriceFields.map(({ name, label, placeholder }) => (
+                  <div className="field" key={name}>
+                    <label htmlFor={name} className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
+                      {label}
+                    </label>
+                    <Controller
+                      name={name}
+                      control={control}
+                      rules={{
+                        required: t.billingPriceRequired,
+                        min: { value: 0, message: t.systemsettingspanel149 }
+                      }}
+                      render={({ field }) => (
+                        <InputNumber
+                          id={name}
+                          value={field.value}
+                          onValueChange={(e) => field.onChange(e.value)}
+                          mode="currency"
+                          currency="EUR"
+                          locale="de-DE"
+                          minFractionDigits={2}
+                          min={0}
+                          max={9999999.99}
+                          className="w-full"
+                          placeholder={placeholder}
+                        />
+                      )}
+                    />
+                    {errors[name] && (
+                      <small className="mt-1 block" style={{ color: colors.errorText }}>{errors[name]?.message}</small>
                     )}
-                  />
-                  {errors.price_patron_annual && (
-                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_patron_annual.message}</small>
-                  )}
-                </div>
-
-                <div className="field">
-                  <label htmlFor="price_patron_monthly" className="block text-sm font-medium mb-2" style={{ color: colors.textSecondary }}>
-                    {t.systemsettingspanel298}
-                  </label>
-                  <Controller
-                    name="price_patron_monthly"
-                    control={control}
-                    rules={{
-                      required: t.systemsettingspanel304,
-                      min: { value: 0, message: t.systemsettingspanel149 }
-                    }}
-                    render={({ field }) => (
-                      <InputNumber
-                        id="price_patron_monthly"
-                        value={field.value}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        mode="currency"
-                        currency="EUR"
-                        locale="de-DE"
-                        minFractionDigits={2}
-                        min={0}
-                        max={9999999.99}
-                        className="w-full"
-                        placeholder="49.90"
-                      />
-                    )}
-                  />
-                  {errors.price_patron_monthly && (
-                    <small className="mt-1 block" style={{ color: colors.errorText }}>{errors.price_patron_monthly.message}</small>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
 
               <h5 className="text-md font-semibold mb-3 mt-6" style={{ color: colors.textPrimary }}>

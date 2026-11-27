@@ -43,8 +43,23 @@ return [
         'price_credits_500' => env('STRIPE_PRICE_CREDITS_500'),
         'price_credits_1000' => env('STRIPE_PRICE_CREDITS_1000'),
         'price_credits_2500' => env('STRIPE_PRICE_CREDITS_2500'),
-        'price_patron_monthly' => env('STRIPE_PRICE_PATRON_MONTHLY'),
-        'price_patron_annual' => env('STRIPE_PRICE_PATRON_ANNUAL'),
+        // Stripe Tax: calculate VAT in Checkout (credits + subscriptions). Requires Stripe Tax
+        // to be activated with a tax registration in the Stripe Dashboard, otherwise Checkout fails.
+        'automatic_tax' => (bool) env('STRIPE_AUTOMATIC_TAX', false),
+        // Tax code of inline prices (txcd_10000000 = electronically supplied services)
+        'tax_code' => env('STRIPE_TAX_CODE', 'txcd_10000000'),
+        // Subscription Price IDs per plan key and billing interval (see App\Support\PricingCatalog).
+        // Not set = the checkout builds the price inline from the settings table.
+        'subscription_prices' => [
+            'patron_annual' => [ // Team & Studio
+                'month' => env('STRIPE_PRICE_TEAM_STUDIO_MONTHLY'),
+                'year' => env('STRIPE_PRICE_TEAM_STUDIO_YEARLY'),
+            ],
+            'patron_monthly' => [ // Pro Unlimited
+                'month' => env('STRIPE_PRICE_PRO_UNLIMITED_MONTHLY'),
+                'year' => env('STRIPE_PRICE_PRO_UNLIMITED_YEARLY'),
+            ],
+        ],
     ],
 
     'github' => [

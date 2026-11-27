@@ -38,9 +38,9 @@ final class TableNamePlaceholders
      * MUST run before the generic `%1` replacement so the two-digit codes are
      * consumed first (otherwise `%1` would match the `%1` prefix of `%15`).
      *
-     * @param string      $subject    filename or output_path fragment
-     * @param string|null $tableName  raw DB table name (e.g. "postal_codes")
-     * @param string|null $singular   resolved singular (e.g. the table's
+     * @param  string  $subject  filename or output_path fragment
+     * @param  string|null  $tableName  raw DB table name (e.g. "postal_codes")
+     * @param  string|null  $singular  resolved singular (e.g. the table's
      *                                 `singular_name`); auto-guessed when null/empty
      */
     public static function apply(string $subject, ?string $tableName, ?string $singular = null): string
@@ -82,19 +82,20 @@ final class TableNamePlaceholders
 
         // Common English pluralization rules (reversed).
         if (str_ends_with($lastPart, 'ies') && strlen($lastPart) > 4) {
-            $lastPart = substr($lastPart, 0, -3) . 'y'; // categories -> category
+            $lastPart = substr($lastPart, 0, -3).'y'; // categories -> category
         } elseif (str_ends_with($lastPart, 'ses') || str_ends_with($lastPart, 'xes')
             || str_ends_with($lastPart, 'zes') || str_ends_with($lastPart, 'shes')
             || str_ends_with($lastPart, 'ches')) {
             $lastPart = substr($lastPart, 0, -2); // addresses -> address, boxes -> box
         } elseif (str_ends_with($lastPart, 'ves')) {
-            $lastPart = substr($lastPart, 0, -3) . 'f'; // wolves -> wolf (approximate)
-        } elseif (str_ends_with($lastPart, 's') && !str_ends_with($lastPart, 'ss')
-            && !str_ends_with($lastPart, 'us') && !str_ends_with($lastPart, 'is')) {
+            $lastPart = substr($lastPart, 0, -3).'f'; // wolves -> wolf (approximate)
+        } elseif (str_ends_with($lastPart, 's') && ! str_ends_with($lastPart, 'ss')
+            && ! str_ends_with($lastPart, 'us') && ! str_ends_with($lastPart, 'is')) {
             $lastPart = substr($lastPart, 0, -1); // products -> product
         }
 
         $parts[] = $lastPart;
+
         return implode('_', $parts);
     }
 }

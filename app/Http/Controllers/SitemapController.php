@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Page;
 use App\Models\Project;
 use App\Support\Seo\PublicLocales;
+use App\Support\Seo\TopicPages;
 use Illuminate\Http\Response;
 
 /**
@@ -32,6 +33,19 @@ class SitemapController extends Controller
                 'priority' => '1.0',
                 'alternates' => $homeAlternates,
             ];
+        }
+
+        // Keyword landing pages ("use cases") in every language, with hreflang alternates.
+        foreach (TopicPages::slugs() as $topic) {
+            $topicAlternates = TopicPages::alternates($topic);
+            foreach (PublicLocales::codes() as $locale) {
+                $urls[] = [
+                    'loc' => TopicPages::url($locale, $topic),
+                    'changefreq' => 'monthly',
+                    'priority' => '0.9',
+                    'alternates' => $topicAlternates,
+                ];
+            }
         }
 
         // Localized CMS / info pages. Every active Page row (help, impressum,

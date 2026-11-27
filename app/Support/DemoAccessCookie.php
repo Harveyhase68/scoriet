@@ -31,7 +31,7 @@ class DemoAccessCookie
     {
         $sig = hash_hmac('sha256', (string) $expiresAtEpoch, self::secret());
 
-        return $expiresAtEpoch . '.' . $sig;
+        return $expiresAtEpoch.'.'.$sig;
     }
 
     /**
@@ -49,12 +49,12 @@ class DemoAccessCookie
         }
 
         [$epoch, $sig] = $parts;
-        if (!ctype_digit($epoch)) {
+        if (! ctype_digit($epoch)) {
             return false;
         }
 
         $expected = hash_hmac('sha256', $epoch, self::secret());
-        if (!hash_equals($expected, $sig)) {
+        if (! hash_equals($expected, $sig)) {
             return false;
         }
 

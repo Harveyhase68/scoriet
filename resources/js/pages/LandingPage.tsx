@@ -25,6 +25,10 @@ import CMSPopupModal from '@/Components/Modals/CMSPopupModal';
 import { useTranslation, SupportedLanguage, getStoredLanguage, setStoredLanguage } from '@/i18n';
 import { pricingUtils } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
+import { PLAN_NAMES, PlanKey, DEFAULT_BILLING_INTERVAL, getSubscriptionPrices } from '@/lib/plans';
+import type { BillingInterval } from '@/lib/plans';
+import BillingIntervalToggle from '@/Components/Pricing/BillingIntervalToggle';
+import PlanPrice from '@/Components/Pricing/PlanPrice';
 
 interface UserData {
   id?: number;
@@ -82,6 +86,7 @@ export default function LandingPage() {
   const [demoNotice, setDemoNotice] = useState<'required' | 'expired' | null>(null);
   const [showVideoModal, setShowVideoModal] = useState<boolean>(false);
   const [showPlanModal, setShowPlanModal] = useState<boolean>(false);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>(DEFAULT_BILLING_INTERVAL);
   const [showFeaturesModal, setShowFeaturesModal] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -223,8 +228,6 @@ export default function LandingPage() {
     // Fallback to defaults if no pricing data available
     if (!prices) {
       return {
-        patron_annual: 34.90,
-        patron_monthly: 49.90,
         credits_500: 9.90,
         credits_1000: 17.90,
         credits_2500: 29.90,
@@ -233,8 +236,6 @@ export default function LandingPage() {
     }
 
     return {
-      patron_annual: prices.patron_annual,
-      patron_monthly: prices.patron_monthly,
       credits_500: prices.credits_500,
       credits_1000: prices.credits_1000,
       credits_2500: prices.credits_2500,
@@ -307,13 +308,12 @@ export default function LandingPage() {
 
   // Get pricing data
   const pricingData = getPricingData();
+  const subscriptionPrices = getSubscriptionPrices();
 
+  // Price, unit and yearly saving of the subscriptions are rendered by <PlanPrice>.
   interface PricingTier {
     name: string;
-    plan: string;
-    price: string;
-    period: string;
-    yearlyPrice?: string;
+    plan: PlanKey;
     description: string;
     features: string[];
     buttonText: string;
@@ -323,10 +323,8 @@ export default function LandingPage() {
 
   const pricingTiers: PricingTier[] = [
     {
-      name: "Free",
+      name: PLAN_NAMES.free,
       plan: "free",
-      price: `${pricingData.currency} 0.00`,
-      period: t.landingpage151,
       description: t.landingpage152,
       features: [
         t.landingpage221,
@@ -341,10 +339,8 @@ export default function LandingPage() {
       popular: false
     },
     {
-      name: "Patron Annual",
+      name: PLAN_NAMES.patron_annual,
       plan: "patron_annual",
-      price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
-      period: t.landingpage236,
       description: t.landingpage237,
       features: [
         t.landingpage239,
@@ -358,11 +354,8 @@ export default function LandingPage() {
       popular: true
     },
     {
-      name: "Patron Monthly",
+      name: PLAN_NAMES.patron_monthly,
       plan: "patron_monthly",
-      price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
-      period: t.landingpage254,
-      yearlyPrice: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}${t.landingpage236}`,
       description: t.landingpage255,
       features: [
         t.landingpage257,
@@ -790,9 +783,13 @@ export default function LandingPage() {
               <h2 className="text-3xl font-bold text-center mb-4" style={{ color: colors.textPrimary }}>
                 {t.pricingTitle}
               </h2>
-              <p className="text-center mb-12" style={{ color: colors.textMuted }}>
+              <p className="text-center mb-8" style={{ color: colors.textMuted }}>
                 {t.pricingSubtitle}
               </p>
+
+              <div className="mb-10">
+                <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} t={t} />
+              </div>
 
               <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto">
                 {pricingTiers.map((tier, index) => (
@@ -813,16 +810,17 @@ export default function LandingPage() {
                     <div className="p-6 text-center">
                       <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
                         {tier.name}
-                        {(tier.name === "Patron Annual" || tier.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                        {tier.plan !== 'free' && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
                       </h3>
 
                       <div className="mb-4">
-                        <span className="text-4xl font-bold" style={{ color: colors.textPrimary }}>{tier.price}</span>
-                        <span style={{ color: colors.textMuted }}>{tier.period}</span>
-                        {tier.yearlyPrice && (
-                          <div className="text-sm mt-1" style={{ color: colors.successText }}>
-                            {t.landingpage815}{tier.yearlyPrice}
-                          </div>
+                        {tier.plan === 'free' ? (
+                          <>
+                            <span className="text-4xl font-bold" style={{ color: colors.textPrimary }}>{pricingData.currency} 0.00</span>
+                            <span style={{ color: colors.textMuted }}>{t.landingpage151}</span>
+                          </>
+                        ) : (
+                          <PlanPrice plan={tier.plan} interval={billingInterval} prices={subscriptionPrices} currency={pricingData.currency} t={t} />
                         )}
                       </div>
 
@@ -838,7 +836,7 @@ export default function LandingPage() {
                       </ul>
 
                       <Button
-                        label={tier.name === 'Free' ? tier.buttonText : t.registerFirst || t.landingpage832}
+                        label={tier.plan === 'free' ? tier.buttonText : t.registerFirst || t.landingpage832}
                         className={`${tier.buttonClass} w-full`}
                         onClick={() => {
                           // All buttons open registration for non-authenticated users
@@ -910,9 +908,13 @@ export default function LandingPage() {
                   {t.landingpage901}{userData?.name || 'User'}! 👋
                 </h2>
                 <p className="text-xl mb-4" style={{ color: colors.textSecondary }}>
-                  {t.currentPlan} <span style={{ color: colors.accent }} className="font-semibold">{t.freeLabel} Plan</span>
+                  {t.currentPlan} <span style={{ color: colors.accent }} className="font-semibold">{PLAN_NAMES.free}</span>
                 </p>
                 <Badge value={t.freeTier} severity="info" className="text-lg px-4 py-2" />
+              </div>
+
+              <div className="mb-10">
+                <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} t={t} />
               </div>
 
               <div className="grid md:grid-cols-3 gap-6 max-w-7xl mx-auto">
@@ -931,12 +933,21 @@ export default function LandingPage() {
                       )}
                       <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
                         {plan.name}
-                        {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                        {plan.plan !== 'free' && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
                       </h3>
-                      <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
-                        {plan.price}
-                        {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && (
-                          <span className="text-lg" style={{ color: colors.textMuted }}>{plan.period}</span>
+                      <div className="mb-2">
+                        {plan.plan === 'free' ? (
+                          <span className="text-3xl font-bold" style={{ color: colors.accent }}>{pricingData.currency} 0.00</span>
+                        ) : (
+                          <PlanPrice
+                            plan={plan.plan}
+                            interval={billingInterval}
+                            prices={subscriptionPrices}
+                            currency={pricingData.currency}
+                            t={t}
+                            amountClassName="text-3xl font-bold"
+                            amountColor={colors.accent}
+                          />
                         )}
                       </div>
                       <p className="mb-6" style={{ color: colors.textSecondary }}>{plan.description}</p>
@@ -952,11 +963,11 @@ export default function LandingPage() {
                     </ul>
 
                     <Button
-                      label={plan.name === t.freeLabel ? t.currentPlanButton : `${t.upgradeTo} ${plan.name}`}
-                      className={plan.name === t.freeLabel ? 'p-button-secondary' : plan.buttonClass}
+                      label={plan.plan === 'free' ? t.currentPlanButton : `${t.upgradeTo} ${plan.name}`}
+                      className={plan.plan === 'free' ? 'p-button-secondary' : plan.buttonClass}
                       style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px' }}
-                      disabled={plan.name === t.freeLabel}
-                      onClick={() => plan.name !== t.freeLabel && setShowPlanModal(true)}
+                      disabled={plan.plan === 'free'}
+                      onClick={() => plan.plan !== 'free' && setShowPlanModal(true)}
                     />
                   </Card>
                 ))}
@@ -1097,6 +1108,7 @@ export default function LandingPage() {
         visible={showPlanModal}
         onHide={() => setShowPlanModal(false)}
         initialTab={0}
+        initialInterval={billingInterval}
       />
 
       {/* Features Modal */}

@@ -231,6 +231,93 @@ html[data-auth='user'] [data-auth-show='guest'] {
     border: 2px solid var(--theme-accent);
 }
 
+/* ---------- Billing interval (pricing section) ----------
+ * The section carries data-billing-interval="month|year"; every price block is
+ * marked data-billing-only="month|year" and only the matching one is shown.
+ * The attribute is flipped by PublicIsland ('billing-interval' action).
+ * In-app counterpart: Components/Pricing/BillingIntervalToggle.tsx. */
+[data-billing-interval="year"] [data-billing-only="month"],
+[data-billing-interval="month"] [data-billing-only="year"] {
+    display: none;
+}
+
+.pub-billing-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.pub-billing-toggle__label {
+    background: none;
+    border: 0;
+    padding: 0.25rem;
+    cursor: pointer;
+    font: inherit;
+    color: var(--theme-text-muted);
+}
+
+[data-billing-interval="month"] .pub-billing-toggle__label[data-interval="month"],
+[data-billing-interval="year"] .pub-billing-toggle__label[data-interval="year"] {
+    color: var(--theme-text-primary);
+    font-weight: 600;
+}
+
+.pub-billing-toggle__switch {
+    position: relative;
+    width: 3.25rem;
+    height: 1.75rem;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 9999px;
+    padding: 0;
+    cursor: pointer;
+    background: var(--theme-border-secondary);
+    transition: background-color 0.2s ease;
+}
+
+.pub-billing-toggle__switch:focus-visible {
+    outline: 2px solid var(--theme-accent);
+    outline-offset: 2px;
+}
+
+.pub-billing-toggle__knob {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+    transition: transform 0.2s ease;
+}
+
+[data-billing-interval="year"] .pub-billing-toggle__switch {
+    background: var(--theme-accent);
+}
+
+[data-billing-interval="year"] .pub-billing-toggle__knob {
+    transform: translateX(1.5rem);
+}
+
+.pub-billing-toggle__hint {
+    border-radius: 9999px;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--theme-success-text);
+    color: var(--theme-bg-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pub-billing-toggle__switch,
+    .pub-billing-toggle__knob {
+        transition: none;
+    }
+}
+
 /* ---------- CMS content (same rules as the in-app .cms-content) ---------- */
 .cms-content {
     color: var(--theme-text-secondary);
@@ -334,4 +421,257 @@ html[data-auth='user'] [data-auth-show='guest'] {
 .pub-btn--orange:hover {
     background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
     box-shadow: 0 4px 12px rgba(249, 115, 22, 0.6);
+}
+
+/* =====================================================================
+ * Home page building blocks (resources/views/public/home.blade.php)
+ * ===================================================================== */
+
+/* Larger base text for readability; rem-based Tailwind sizes are unaffected,
+   so the React modals keep their in-app proportions. */
+.public-body {
+    font-size: 1.125rem;
+    line-height: 1.65;
+}
+
+.pub-btn--lg {
+    padding: 0.8rem 1.5rem;
+    font-size: 1.1rem;
+    border-radius: 10px;
+}
+
+.pub-eyebrow {
+    display: inline-block;
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, transparent);
+    background-color: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+    color: var(--theme-accent);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.pub-kicker {
+    margin-bottom: 0.75rem;
+    color: var(--theme-accent);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.pub-section-title {
+    margin-bottom: 1.5rem;
+    color: var(--theme-text-primary);
+    font-size: clamp(1.9rem, 1.3rem + 2.2vw, 3rem);
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.pub-lead {
+    color: var(--theme-text-secondary);
+    font-size: clamp(1.15rem, 1.05rem + 0.4vw, 1.35rem);
+    line-height: 1.7;
+}
+
+/* Schema → Template → App → AI */
+.pub-pipeline {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem 2.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pub-pipeline__stage {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--theme-border-primary);
+    background-color: var(--theme-bg-secondary);
+    color: var(--theme-text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.pub-pipeline__stage:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -1.7rem;
+    color: var(--theme-accent);
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.pub-pipeline__stage--ai {
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+}
+
+.pub-pipeline__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7rem;
+    height: 1.7rem;
+    border-radius: 9999px;
+    background-color: var(--theme-accent);
+    color: #ffffff;
+    font-size: 0.9rem;
+}
+
+/* On narrow screens the stages stack; the arrows would point into nothing. */
+@media (max-width: 640px) {
+    .pub-pipeline {
+        flex-direction: column;
+    }
+
+    .pub-pipeline__stage:not(:last-child)::after {
+        content: '↓';
+        right: auto;
+        left: 50%;
+        bottom: -1.55rem;
+        transform: translateX(-50%);
+    }
+}
+
+.pub-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    color: #ffffff;
+    font-size: 1.3rem;
+    font-weight: 800;
+}
+
+.pub-card--negative {
+    border-color: color-mix(in srgb, #ef4444 45%, transparent);
+}
+
+.pub-card--positive {
+    border: 2px solid color-mix(in srgb, #22c55e 60%, transparent);
+    box-shadow: 0 10px 30px rgba(34, 197, 94, 0.12);
+}
+
+.pub-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 9999px;
+    border: 1px solid var(--theme-border-primary);
+    background-color: var(--theme-bg-tertiary);
+    color: var(--theme-text-primary);
+    font-weight: 600;
+}
+
+.pub-chip--lg {
+    padding: 0.75rem 1.25rem;
+    font-size: 1.15rem;
+}
+
+.pub-chip--dashed {
+    border-style: dashed;
+    background-color: transparent;
+    color: var(--theme-text-secondary);
+}
+
+.pub-screenshot {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 14px;
+    border: 1px solid var(--theme-border-primary);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+}
+
+/* FAQ: native <details>, fully readable without JavaScript */
+.pub-faq {
+    padding: 0;
+}
+
+.pub-faq > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.pub-faq > summary::-webkit-details-marker {
+    display: none;
+}
+
+.pub-faq > summary h3 {
+    margin: 0;
+    color: var(--theme-text-primary);
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.pub-faq > summary .pi {
+    color: var(--theme-accent);
+    transition: transform 0.2s;
+}
+
+.pub-faq[open] > summary .pi {
+    transform: rotate(180deg);
+}
+
+.pub-faq > p {
+    margin: 0;
+    padding: 0 1.5rem 1.4rem;
+    color: var(--theme-text-secondary);
+    font-size: 1.1rem;
+    line-height: 1.7;
+}
+
+.pub-feature-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 12px;
+    background-color: color-mix(in srgb, var(--theme-accent) 15%, transparent);
+    color: var(--theme-accent);
+}
+
+/* Card surface variants. .pub-card is unlayered CSS, so Tailwind bg-* utilities
+   (cascade layer) cannot override it — use these modifiers instead. */
+.pub-card--tertiary {
+    background-color: var(--theme-bg-tertiary);
+}
+
+.pub-card--raised {
+    background-color: var(--theme-bg-primary);
+}
+
+/* Internal link cards (use-case pages, home "use cases" section) */
+.pub-topic-link {
+    color: var(--theme-text-primary);
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.pub-topic-link:hover {
+    border-color: var(--theme-accent);
+    transform: translateY(-2px);
+}
+
+.pub-topic-link .pi-arrow-right {
+    color: var(--theme-accent);
 }

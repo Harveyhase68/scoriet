@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Settings;
 use App\Models\User;
+use App\Support\PricingCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,24 @@ use Illuminate\Validation\Rule;
 
 class PatronSubscriptionController extends Controller
 {
+    private const PLAN_FEATURES = [
+        'patron_annual' => [
+            'Teams unlocked',
+            'Private templates',
+            'Uses credits for generation (5 credits/gen)',
+            'Buy credits as needed',
+            '5 free support tickets/month',
+        ],
+        'patron_monthly' => [
+            'Everything unlimited',
+            'No credits needed for generation',
+            'Unlimited private projects',
+            'Unlimited databases',
+            'Teams unlocked',
+            '5 free support tickets/month',
+        ],
+    ];
+
     /**
      * Get available patron subscription plans
      */
@@ -19,41 +38,25 @@ class PatronSubscriptionController extends Controller
     {
         $settings = Settings::get();
 
-        $plans = [
-            [
-                'id' => 'patron_annual',
-                'name' => 'Patron Annual',
-                'type' => 'annual',
-                'price' => (float) $settings->price_patron_annual,
-                'billing_period' => 'year',
+        $plans = [];
+        foreach (PricingCatalog::subscriptionPlans() as $plan) {
+            $prices = [];
+            foreach (PricingCatalog::INTERVALS as $interval) {
+                $prices[$interval] = PricingCatalog::subscriptionPrice($settings, $plan, $interval);
+            }
+
+            $plans[] = [
+                'id' => $plan,
+                'name' => PricingCatalog::PLAN_NAMES[$plan],
+                'type' => PricingCatalog::PATRON_TYPES[$plan],
+                'prices' => $prices,
+                'savings' => PricingCatalog::yearlySavings($prices),
+                'default_interval' => PricingCatalog::DEFAULT_INTERVAL,
                 'currency' => '€',
-                'features' => [
-                    'Teams unlocked',
-                    'Private templates',
-                    'Uses credits for generation (5 credits/gen)',
-                    'Buy credits as needed',
-                    '5 free support tickets/month'
-                ],
-                'popular' => true,
-            ],
-            [
-                'id' => 'patron_monthly',
-                'name' => 'Patron Monthly',
-                'type' => 'monthly',
-                'price' => (float) $settings->price_patron_monthly,
-                'billing_period' => 'month',
-                'currency' => '€',
-                'features' => [
-                    'Everything unlimited',
-                    'No credits needed for generation',
-                    'Unlimited private projects',
-                    'Unlimited databases',
-                    'Teams unlocked',
-                    '5 free support tickets/month'
-                ],
-                'popular' => false,
-            ],
-        ];
+                'features' => self::PLAN_FEATURES[$plan],
+                'popular' => $plan === 'patron_annual',
+            ];
+        }
 
         return response()->json([
             'success' => true,
@@ -70,33 +73,32 @@ class PatronSubscriptionController extends Controller
         $user = Auth::user();
 
         $validated = $request->validate([
-            'plan_id' => ['required', Rule::in(['patron_annual', 'patron_monthly'])],
+            'plan_id' => ['required', Rule::in(PricingCatalog::subscriptionPlans())],
+            'interval' => ['sometimes', Rule::in(PricingCatalog::INTERVALS)],
             'payment_method' => ['required', Rule::in(['stripe', 'paypal', 'demo'])],
         ]);
 
         $settings = Settings::get();
-
-        // Get plan details
-        $planMap = [
-            'patron_annual' => ['type' => 'annual', 'price' => $settings->price_patron_annual],
-            'patron_monthly' => ['type' => 'monthly', 'price' => $settings->price_patron_monthly],
-        ];
-
-        $plan = $planMap[$validated['plan_id']];
+        $planKey = $validated['plan_id'];
+        $interval = $validated['interval'] ?? PricingCatalog::DEFAULT_INTERVAL;
+        $patronType = PricingCatalog::PATRON_TYPES[$planKey];
+        $price = PricingCatalog::subscriptionPrice($settings, $planKey, $interval);
 
         // TODO: Integrate real payment subscription here (Stripe/PayPal recurring)
         if ($validated['payment_method'] === 'demo') {
             // DEMO MODE: Activate patron subscription
             $user->user_type = 'patron';
-            $user->patron_type = $plan['type'];
+            $user->patron_type = $patronType;
+            $user->billing_interval = $interval;
             $user->save();
 
             return response()->json([
                 'success' => true,
-                'message' => "Willkommen als Patron {$plan['type']}!",
+                'message' => 'Willkommen bei ' . PricingCatalog::displayName($planKey, $interval) . '!',
                 'subscription' => [
-                    'type' => $plan['type'],
-                    'price' => $plan['price'],
+                    'type' => $patronType,
+                    'interval' => $interval,
+                    'price' => $price,
                     'status' => 'active'
                 ],
                 'note' => 'DEMO MODE: Keine echte Zahlung erforderlich'
@@ -130,6 +132,7 @@ class PatronSubscriptionController extends Controller
         // Downgrade to free
         $user->user_type = 'free';
         $user->patron_type = null;
+        $user->billing_interval = null;
         $user->save();
 
         return response()->json([
@@ -154,12 +157,12 @@ class PatronSubscriptionController extends Controller
 
         if ($user->isPatron()) {
             $settings = Settings::get();
+            $planKey = array_search($user->patron_type, PricingCatalog::PATRON_TYPES, true) ?: 'patron_monthly';
+            $interval = $user->billing_interval ?? PricingCatalog::DEFAULT_INTERVAL;
             $status['subscription'] = [
                 'type' => $user->patron_type,
-                'price' => $user->patron_type === 'annual'
-                    ? (float) $settings->price_patron_annual
-                    : (float) $settings->price_patron_monthly,
-                'billing_period' => $user->patron_type === 'annual' ? 'year' : 'month',
+                'price' => PricingCatalog::subscriptionPrice($settings, $planKey, $interval),
+                'billing_period' => $interval,
             ];
 
             // Calculate free tickets remaining this month

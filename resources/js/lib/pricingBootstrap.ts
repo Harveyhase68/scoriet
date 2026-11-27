@@ -10,9 +10,11 @@ export async function loadPricingData(): Promise<void> {
     try {
         // Check if pricing data already exists and is not too old (10 minutes)
         const storedPricing = localStorage.getItem('pricing_data');
+        const storedSubscriptions = localStorage.getItem('pricing_subscriptions');
         const storedTimestamp = localStorage.getItem('pricing_timestamp');
 
-        if (storedPricing && storedTimestamp) {
+        // A cache written before subscription prices existed is reloaded at once.
+        if (storedPricing && storedSubscriptions && storedTimestamp) {
             const timestamp = new Date(storedTimestamp);
             const now = new Date();
             const minutesDiff = (now.getTime() - timestamp.getTime()) / (1000 * 60);
@@ -29,23 +31,24 @@ export async function loadPricingData(): Promise<void> {
         if (pricingData.success) {
             // Store pricing data in localStorage
             localStorage.setItem('pricing_data', JSON.stringify(pricingData.prices));
+            localStorage.setItem('pricing_subscriptions', JSON.stringify(pricingData.subscriptions ?? null));
             localStorage.setItem('pricing_currency', pricingData.currency || 'EUR');
             localStorage.setItem('pricing_timestamp', pricingData.updated_at || new Date().toISOString());
         } else {
-            storeFallbackPrices();
+            clearPricingCache();
         }
     } catch {
-        storeFallbackPrices();
+        clearPricingCache();
     }
 }
 
-function storeFallbackPrices(): void {
-    const fallbackPrices = {
-        premium: 9.99,
-        business: 29.99,
-        patron: 99.99,
-    };
-    localStorage.setItem('pricing_data', JSON.stringify(fallbackPrices));
-    localStorage.setItem('pricing_currency', 'EUR');
-    localStorage.setItem('pricing_timestamp', new Date().toISOString());
+/**
+ * Nothing valid to cache: drop the cache so the next page load retries, and the
+ * pricing views fall back to their documented defaults (lib/plans.ts) meanwhile.
+ */
+function clearPricingCache(): void {
+    localStorage.removeItem('pricing_data');
+    localStorage.removeItem('pricing_subscriptions');
+    localStorage.removeItem('pricing_currency');
+    localStorage.removeItem('pricing_timestamp');
 }

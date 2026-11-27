@@ -7,7 +7,9 @@ use App\Models\CreditTransaction;
 use App\Models\Settings;
 use App\Models\User;
 use App\Notifications\NewPatronSubscription;
+use App\Support\PricingCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -15,6 +17,12 @@ use Srmklive\PayPal\Services\PayPal as PayPalClient;
 
 class PayPalController extends Controller
 {
+    /** Interval of subscriptions created before both plans were sold monthly and yearly. */
+    private const LEGACY_INTERVALS = [
+        'patron_annual' => 'year',
+        'patron_monthly' => 'month',
+    ];
+
     /**
      * Create a PayPal order for credit purchases
      */
@@ -220,17 +228,19 @@ class PayPalController extends Controller
     public function createPatronSubscription(Request $request)
     {
         $request->validate([
-            'plan' => 'required|in:patron_monthly,patron_annual',
+            'plan' => ['required', Rule::in(PricingCatalog::subscriptionPlans())],
+            'interval' => ['required', Rule::in(PricingCatalog::INTERVALS)],
         ]);
 
         $user = $request->user();
         $plan = $request->plan;
+        $interval = $request->interval;
 
         // Get the billing plan ID from config
-        $billingPlanId = config("paypal.billing_plans.{$plan}");
+        $billingPlanId = PricingCatalog::paypalPlanId($plan, $interval);
 
         if (!$billingPlanId) {
-            Log::error('PayPal: Billing plan not configured for ' . $plan);
+            Log::error("PayPal: Billing plan not configured for {$plan} / {$interval}");
             return response()->json([
                 'success' => false,
                 'error' => 'Billing plan not configured',
@@ -249,12 +259,16 @@ class PayPalController extends Controller
                     'locale' => 'de-DE',
                     'shipping_preference' => 'NO_SHIPPING',
                     'user_action' => 'SUBSCRIBE_NOW',
-                    'return_url' => config('app.url') . '/payment/paypal/subscription-success?plan=' . $plan,
+                    // Plan and interval are NOT passed in the URL (the customer could edit it);
+                    // the success callback reads them from custom_id instead.
+                    'return_url' => config('app.url') . '/payment/paypal/subscription-success',
                     'cancel_url' => config('app.url') . '/payment/cancel',
                 ],
+                // Set by the server and returned unchanged by PayPal (max. 127 characters).
                 'custom_id' => json_encode([
                     'user_id' => $user->id,
                     'plan' => $plan,
+                    'interval' => $interval,
                     'type' => 'patron',
                 ]),
             ];
@@ -305,7 +319,6 @@ class PayPalController extends Controller
     {
         // PayPal returns subscription_id or ba_token depending on the flow
         $subscriptionId = $request->query('subscription_id') ?? $request->query('token');
-        $plan = $request->query('plan', 'patron_monthly');
 
         if (!$subscriptionId) {
             Log::error('PayPal Subscription Success: missing subscription_id', ['params' => $request->all()]);
@@ -325,16 +338,20 @@ class PayPalController extends Controller
                 $customId = $subscription['custom_id'] ?? null;
                 $metadata = $customId ? json_decode($customId, true) : null;
 
-                if ($metadata && isset($metadata['user_id'])) {
+                $plan = $this->subscriptionPlanFromMetadata($metadata);
+
+                if ($plan && isset($metadata['user_id'])) {
                     $user = User::find($metadata['user_id']);
 
                     if ($user) {
-                        $patronType = str_replace('patron_', '', $plan);
+                        $patronType = PricingCatalog::PATRON_TYPES[$plan['plan']];
+                        $billingInterval = $plan['interval'];
 
-                        DB::transaction(function () use ($user, $patronType, $subscriptionId) {
+                        DB::transaction(function () use ($user, $patronType, $billingInterval, $subscriptionId) {
                             $user->update([
                                 'user_type' => 'patron',
                                 'patron_type' => $patronType,
+                                'billing_interval' => $billingInterval,
                                 'paypal_subscription_id' => $subscriptionId,
                             ]);
                         });
@@ -342,7 +359,7 @@ class PayPalController extends Controller
                         // Send admin notification
                         try {
                             Notification::route('mail', 'office@predl.cc')
-                                ->notify(new NewPatronSubscription($user, $patronType, 'paypal'));
+                                ->notify(new NewPatronSubscription($user, $patronType, 'paypal', $billingInterval));
                         } catch (\Exception $e) {
                             Log::error('Failed to send patron subscription notification: ' . $e->getMessage());
                         }
@@ -455,14 +472,19 @@ class PayPalController extends Controller
         } elseif ($type === 'template') {
             $this->processTemplatePurchase($user, $metadata, $paypalOrderId);
         } elseif ($type === 'patron') {
-            $plan = $metadata['plan'] ?? 'patron_monthly';
-            // Extract 'monthly' or 'annual' from 'patron_monthly' or 'patron_annual'
-            $patronType = str_replace('patron_', '', $plan);
+            $plan = $this->subscriptionPlanFromMetadata($metadata);
+            if (!$plan) {
+                Log::error('PayPal: Unknown subscription plan in metadata', ['metadata' => $metadata]);
+                return;
+            }
+            $patronType = PricingCatalog::PATRON_TYPES[$plan['plan']];
+            $billingInterval = $plan['interval'];
 
-            DB::transaction(function () use ($user, $patronType, $paypalOrderId) {
+            DB::transaction(function () use ($user, $patronType, $billingInterval, $paypalOrderId) {
                 $user->update([
                     'user_type' => 'patron',
-                    'patron_type' => $patronType, // 'monthly' or 'annual'
+                    'patron_type' => $patronType,
+                    'billing_interval' => $billingInterval,
                 ]);
 
                 // Give initial 100 credits for new patron
@@ -589,14 +611,16 @@ class PayPalController extends Controller
         }
 
         // Only activate if not already a patron (callback may have already done this)
-        if ($user->user_type !== 'patron') {
-            $plan = $metadata['plan'] ?? 'patron_monthly';
-            $patronType = str_replace('patron_', '', $plan);
+        $plan = $this->subscriptionPlanFromMetadata($metadata);
+        if ($user->user_type !== 'patron' && $plan) {
+            $patronType = PricingCatalog::PATRON_TYPES[$plan['plan']];
+            $billingInterval = $plan['interval'];
 
-            DB::transaction(function () use ($user, $patronType, $subscriptionId) {
+            DB::transaction(function () use ($user, $patronType, $billingInterval, $subscriptionId) {
                 $user->update([
                     'user_type' => 'patron',
                     'patron_type' => $patronType,
+                    'billing_interval' => $billingInterval,
                 ]);
 
                 $user->increment('credits', 100);
@@ -656,6 +680,29 @@ class PayPalController extends Controller
     }
 
     /**
+     * Plan and billing interval from the custom_id metadata this controller sent to PayPal.
+     * Subscriptions created before billing intervals existed carry no 'interval';
+     * their plan was only sold in one interval, which LEGACY_INTERVALS restores.
+     *
+     * @param  array<string, mixed>|null  $metadata
+     * @return array{plan: string, interval: string}|null  null = unknown plan
+     */
+    private function subscriptionPlanFromMetadata(?array $metadata): ?array
+    {
+        $plan = $metadata['plan'] ?? null;
+        if (!PricingCatalog::isSubscriptionPlan($plan)) {
+            return null;
+        }
+
+        $interval = $metadata['interval'] ?? null;
+
+        return [
+            'plan' => $plan,
+            'interval' => PricingCatalog::isInterval($interval) ? $interval : self::LEGACY_INTERVALS[$plan],
+        ];
+    }
+
+    /**
      * Handle subscription cancellation
      */
     private function handleSubscriptionCancelled($resource)
@@ -681,6 +728,7 @@ class PayPalController extends Controller
         $user->update([
             'user_type' => 'free',
             'patron_type' => null,
+            'billing_interval' => null,
         ]);
 
     }

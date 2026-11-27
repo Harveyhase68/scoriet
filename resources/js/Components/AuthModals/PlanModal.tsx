@@ -10,14 +10,20 @@ import { CheckIcon, HeartIcon, CurrencyEuroIcon } from '@heroicons/react/24/outl
 import { pricingUtils } from '@/lib/api';
 import { useTranslation, SupportedLanguage, getStoredLanguage } from '@/i18n';
 import { useTheme } from '@/contexts/ThemeContext';
+import { PLAN_NAMES, PlanKey, planNameForUser, DEFAULT_BILLING_INTERVAL, getSubscriptionPrices } from '@/lib/plans';
+import type { BillingInterval, SubscriptionPlanKey } from '@/lib/plans';
+import BillingIntervalToggle from '@/Components/Pricing/BillingIntervalToggle';
+import PlanPrice from '@/Components/Pricing/PlanPrice';
 
 interface PlanModalProps {
   visible: boolean;
   onHide: () => void;
   initialTab?: number; // 0 = Subscriptions, 1 = Buy Credits
+  /** Interval preselected when the dialog opens (e.g. the one chosen on the public pricing section). */
+  initialInterval?: BillingInterval;
 }
 
-export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModalProps) {
+export default function PlanModal({ visible, onHide, initialTab = 0, initialInterval = DEFAULT_BILLING_INTERVAL }: PlanModalProps) {
   // i18n setup
   const [currentLanguage] = React.useState<SupportedLanguage>(getStoredLanguage());
   const { t } = useTranslation(currentLanguage);
@@ -25,6 +31,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   const [activeTabIndex, setActiveTabIndex] = useState(initialTab);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>(initialInterval);
   const [userStatus, setUserStatus] = useState<{
     user_type: string;
     patron_type: string | null;
@@ -59,31 +66,27 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     if (visible) {
       loadUserStatus();
       setActiveTabIndex(initialTab);
+      setBillingInterval(initialInterval);
       setError(null);
     }
-  }, [visible, initialTab]);
+  }, [visible, initialTab, initialInterval]);
 
-  // Helper to check if user is on a specific plan
-  const isCurrentPlan = (planName: string): boolean => {
-    if (planName === 'Free') {
+  // Helper to check if user is on a specific plan (compared by key, never by display name)
+  const isCurrentPlan = (plan: PlanKey): boolean => {
+    if (plan === 'free') {
       return userStatus.user_type === 'free';
     }
-    if (planName === 'Patron Annual') {
+    if (plan === 'patron_annual') {
       return userStatus.user_type === 'patron' && userStatus.patron_type === 'annual';
     }
-    if (planName === 'Patron Monthly') {
+    if (plan === 'patron_monthly') {
       return userStatus.user_type === 'patron' && userStatus.patron_type === 'monthly';
     }
     return false;
   };
 
   // Get display name for current plan
-  const getCurrentPlanName = (): string => {
-    if (userStatus.user_type === 'patron') {
-      return userStatus.patron_type === 'annual' ? t.planmodal82 : t.planmodal82_2;
-    }
-    return 'Free';
-  };
+  const getCurrentPlanName = (): string => planNameForUser(userStatus.user_type, userStatus.patron_type);
 
   // Handle Stripe checkout for credits
   const handleBuyCredits = async (packageName: string) => {
@@ -126,7 +129,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   };
 
   // Handle Stripe checkout for Patron subscription
-  const handlePatronUpgrade = async (planType: 'patron_monthly' | 'patron_annual') => {
+  const handlePatronUpgrade = async (planType: SubscriptionPlanKey) => {
     setLoading(planType);
     setError(null);
 
@@ -144,7 +147,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ plan: planType }),
+        body: JSON.stringify({ plan: planType, interval: billingInterval }),
       });
 
       const data = await response.json();
@@ -206,7 +209,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
   };
 
   // Handle PayPal checkout for Patron subscription
-  const handlePayPalPatron = async (planType: 'patron_monthly' | 'patron_annual') => {
+  const handlePayPalPatron = async (planType: SubscriptionPlanKey) => {
     setLoading(`paypal_${planType}`);
     setError(null);
 
@@ -224,7 +227,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ plan: planType }),
+        body: JSON.stringify({ plan: planType, interval: billingInterval }),
       });
 
       const data = await response.json();
@@ -297,8 +300,6 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     // Fallback to defaults if no pricing data available
     if (!prices) {
       return {
-        patron_annual: 34.90,
-        patron_monthly: 49.90,
         credits_500: 9.90,
         credits_1000: 17.90,
         credits_2500: 29.90,
@@ -307,8 +308,6 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
     }
 
     return {
-      patron_annual: prices.patron_annual || 34.90,
-      patron_monthly: prices.patron_monthly || 49.90,
       credits_500: prices.credits_500 || 9.90,
       credits_1000: prices.credits_1000 || 17.90,
       credits_2500: prices.credits_2500 || 29.90,
@@ -318,12 +317,20 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
 
   // Get pricing data
   const pricingData = getPricingData();
-  
-  const pricingTiers = [
+  const subscriptionPrices = getSubscriptionPrices();
+
+  const pricingTiers: Array<{
+    plan: PlanKey;
+    name: string;
+    description: string;
+    features: string[];
+    buttonText: string;
+    buttonClass: string;
+    popular: boolean;
+  }> = [
     {
-      name: "Free",
-      price: `${pricingData.currency} 0`,
-      period: "/forever",
+      plan: 'free',
+      name: PLAN_NAMES.free,
       description: t.planmodal326,
       features: [
         t.planmodal328,
@@ -337,9 +344,8 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       popular: false
     },
     {
-      name: "Patron Annual",
-      price: `${pricingData.currency} ${pricingData.patron_annual.toFixed(2)}`,
-      period: "/year",
+      plan: 'patron_annual',
+      name: PLAN_NAMES.patron_annual,
       description: t.planmodal342,
       features: [
         t.planmodal344,
@@ -353,9 +359,8 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
       popular: true
     },
     {
-      name: "Patron Monthly",
-      price: `${pricingData.currency} ${pricingData.patron_monthly.toFixed(2)}`,
-      period: "/month",
+      plan: 'patron_monthly',
+      name: PLAN_NAMES.patron_monthly,
       description: t.planmodal358,
       features: [
         t.planmodal360,
@@ -462,6 +467,10 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
               </p>
             </div>
 
+            <div className="mb-6">
+              <BillingIntervalToggle value={billingInterval} onChange={setBillingInterval} t={t} disabled={loading !== null} />
+            </div>
+
             {/* Plans Grid */}
             <div className="grid md:grid-cols-3 gap-6">
               {pricingTiers.map((plan, index) => (
@@ -479,15 +488,21 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                     )}
                     <h3 className="text-2xl font-bold mb-2 flex items-center justify-center" style={{ color: colors.textPrimary }}>
                       {plan.name}
-                      {(plan.name === "Patron Annual" || plan.name === "Patron Monthly") && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
+                      {plan.plan !== 'free' && <HeartIcon className="w-6 h-6 text-red-500 ml-2" />}
                     </h3>
-                    <div className="text-3xl font-bold mb-2" style={{ color: colors.accent }}>
-                      {plan.price}
-                      {plan.name === "Patron Monthly" && plan.price !== '€0' && plan.price !== t.planmodal151 && (
-                        <span className="text-lg" style={{ color: colors.textMuted }}>{t.planmodal476}</span>
-                      )}
-                      {plan.name === "Patron Annual" && plan.price !== '€0' && plan.price !== t.planmodal151 && (
-                        <span className="text-lg" style={{ color: colors.textMuted }}>{t.planmodal479}</span>
+                    <div className="mb-4">
+                      {plan.plan === 'free' ? (
+                        <span className="text-3xl font-bold" style={{ color: colors.accent }}>{pricingData.currency} 0</span>
+                      ) : (
+                        <PlanPrice
+                          plan={plan.plan}
+                          interval={billingInterval}
+                          prices={subscriptionPrices}
+                          currency={pricingData.currency}
+                          t={t}
+                          amountClassName="text-3xl font-bold"
+                          amountColor={colors.accent}
+                        />
                       )}
                     </div>
                     <p className="mb-6" style={{ color: colors.textSecondary }}>{plan.description}</p>
@@ -501,7 +516,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                       ))}
                     </ul>
 
-                    {plan.name === "Free" && userStatus.user_type === 'free' ? (
+                    {plan.plan === 'free' && userStatus.user_type === 'free' ? (
                       /* User is free, Free is current plan */
                       <Button
                         label={t.planmodal496}
@@ -510,7 +525,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                         disabled={true}
                         icon="pi pi-check"
                       />
-                    ) : plan.name === "Free" && userStatus.user_type === 'patron' ? (
+                    ) : plan.plan === 'free' && userStatus.user_type === 'patron' ? (
                       /* User is patron, Free plan is not selectable */
                       <Button
                         label={t.planmodal505}
@@ -518,7 +533,7 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                         style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px', fontSize: '0.85rem' }}
                         disabled={true}
                       />
-                    ) : isCurrentPlan(plan.name) ? (
+                    ) : isCurrentPlan(plan.plan) ? (
                       /* Current patron plan - show cancel button */
                       <Button
                         label={loading === 'cancel' ? (t.planmodal513) : (t.planmodal513_2)}
@@ -540,30 +555,26 @@ export default function PlanModal({ visible, onHide, initialTab = 0 }: PlanModal
                       /* User is free - show upgrade buttons */
                       <div className="flex flex-col gap-2">
                         <Button
-                          label={loading === (plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly') ? (t.planmodal546) : `${plan.buttonText} (Stripe)`}
-                          icon={loading === (plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly') ? 'pi pi-spinner pi-spin' : 'pi pi-credit-card'}
+                          label={loading === plan.plan ? (t.planmodal546) : `${plan.buttonText} (Stripe)`}
+                          icon={loading === plan.plan ? 'pi pi-spinner pi-spin' : 'pi pi-credit-card'}
                           className={`${plan.buttonClass} w-full`}
                           style={{ borderRadius: '8px', paddingTop: '10px', paddingBottom: '10px' }}
                           disabled={loading !== null}
                           onClick={() => {
-                            if (plan.name === "Patron Annual") {
-                              handlePatronUpgrade('patron_annual');
-                            } else if (plan.name === "Patron Monthly") {
-                              handlePatronUpgrade('patron_monthly');
+                            if (plan.plan !== 'free') {
+                              handlePatronUpgrade(plan.plan);
                             }
                           }}
                         />
                         <Button
-                          label={loading === `paypal_${plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly'}` ? (t.planmodal546) : 'PayPal'}
-                          icon={loading === `paypal_${plan.name === "Patron Annual" ? 'patron_annual' : 'patron_monthly'}` ? 'pi pi-spinner pi-spin' : 'pi pi-paypal'}
+                          label={loading === `paypal_${plan.plan}` ? (t.planmodal546) : 'PayPal'}
+                          icon={loading === `paypal_${plan.plan}` ? 'pi pi-spinner pi-spin' : 'pi pi-paypal'}
                           className="p-button-outlined w-full"
                           style={{ borderRadius: '8px', paddingTop: '8px', paddingBottom: '8px', backgroundColor: '#ffc439', borderColor: '#ffc439', color: '#003087' }}
                           disabled={loading !== null}
                           onClick={() => {
-                            if (plan.name === "Patron Annual") {
-                              handlePayPalPatron('patron_annual');
-                            } else if (plan.name === "Patron Monthly") {
-                              handlePayPalPatron('patron_monthly');
+                            if (plan.plan !== 'free') {
+                              handlePayPalPatron(plan.plan);
                             }
                           }}
                         />

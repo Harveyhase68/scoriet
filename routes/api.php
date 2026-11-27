@@ -143,7 +143,9 @@ Route::get('/pricing', function () {
 
         return response()->json([
             'success' => true,
-            'prices' => $catalog['prices'],
+            'prices' => $catalog['prices'], // credit packages
+            'subscriptions' => $catalog['subscriptions'], // plan key => ['month' => price, 'year' => price]
+            'default_interval' => \App\Support\PricingCatalog::DEFAULT_INTERVAL,
             'currency' => $catalog['currency'],
             'updated_at' => $catalog['updated_at'],
         ]);

@@ -23,9 +23,9 @@ namespace App\Support;
 class CopyNameSuggester
 {
     /**
-     * @param string   $sourceName Name being cloned (raw — may already end in _copy/_copy_<n>).
-     * @param callable $exists     fn(string $candidate): bool — true if the candidate is already taken.
-     * @param int      $maxLen     Column length cap (defaults to varchar(255)).
+     * @param  string  $sourceName  Name being cloned (raw — may already end in _copy/_copy_<n>).
+     * @param  callable  $exists  fn(string $candidate): bool — true if the candidate is already taken.
+     * @param  int  $maxLen  Column length cap (defaults to varchar(255)).
      */
     public static function suggest(string $sourceName, callable $exists, int $maxLen = 255): string
     {
@@ -38,23 +38,23 @@ class CopyNameSuggester
         // First-time clones try plain "_copy"; reclones jump straight to the
         // numbered variant so we never end up with "<x>_copy_copy".
         if ($startCounter === null) {
-            $first = $base . '_copy';
-            if (!$exists($first)) {
+            $first = $base.'_copy';
+            if (! $exists($first)) {
                 return $first;
             }
             $startCounter = 1;
         }
 
         for ($i = $startCounter; $i <= 9999; $i++) {
-            $candidate = $base . '_copy_' . $i;
-            if (!$exists($candidate)) {
+            $candidate = $base.'_copy_'.$i;
+            if (! $exists($candidate)) {
                 return $candidate;
             }
         }
 
         // Pathological: caller has 9999+ clones already. Fall back to a
         // time-suffixed name so the insert still succeeds.
-        return $base . '_copy_' . time();
+        return $base.'_copy_'.time();
     }
 
     /**
@@ -90,6 +90,7 @@ class CopyNameSuggester
             if (str_ends_with($beforeDigits, '_copy_')) {
                 $digits = (int) substr($name, $i);
                 $base = substr($beforeDigits, 0, -strlen('_copy_'));
+
                 return ['base' => $base, 'startCounter' => $digits + 1];
             }
         }
@@ -97,6 +98,7 @@ class CopyNameSuggester
         // Pattern "_copy" (no number).
         if (str_ends_with($name, '_copy')) {
             $base = substr($name, 0, -strlen('_copy'));
+
             return ['base' => $base, 'startCounter' => 1];
         }
 
